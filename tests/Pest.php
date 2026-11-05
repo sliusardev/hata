@@ -1,5 +1,6 @@
 <?php
 
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +45,11 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Create the registered permissions and the system roles, as the DatabaseSeeder does.
+ */
+function seedRolesAndPermissions(): void
 {
-    // ..
+    test()->artisan('permissions:sync');
+    test()->seed(RoleSeeder::class);
 }

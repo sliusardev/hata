@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
 
 /**
  * @extends Factory<User>
@@ -49,6 +50,30 @@ class UserFactory extends Factory
     /**
      * Indicate that the model has two-factor authentication configured.
      */
+    /**
+     * Assign an existing role to the created user.
+     */
+    public function withRole(string $role): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->assignRole($role));
+    }
+
+    /**
+     * Grant permissions directly to the created user, creating missing permissions.
+     *
+     * @param  list<string>  $permissions
+     */
+    public function withPermissions(array $permissions): static
+    {
+        return $this->afterCreating(function (User $user) use ($permissions): void {
+            foreach ($permissions as $permission) {
+                Permission::findOrCreate($permission, 'web');
+            }
+
+            $user->givePermissionTo($permissions);
+        });
+    }
+
     public function withTwoFactor(): static
     {
         return $this->state(fn (array $attributes) => [

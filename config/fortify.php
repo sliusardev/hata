@@ -161,7 +161,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        ...(config('admin.registration_enabled') ? [Features::registration()] : []),
         Features::resetPasswords(),
         Features::twoFactorAuthentication([
             'confirm' => true,

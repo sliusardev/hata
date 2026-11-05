@@ -1,0 +1,42 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Enums\SystemRole;
+use App\Models\Role;
+use App\Support\Permissions\PermissionRegistry;
+use Illuminate\Database\Seeder;
+
+/**
+ * Create the system roles and grant their default permissions.
+ *
+ * Safe to run repeatedly: permissions are only added, never revoked, so changes made
+ * by administrators survive. Run `permissions:sync` first.
+ */
+class RoleSeeder extends Seeder
+{
+    public function run(PermissionRegistry $registry): void
+    {
+        foreach (SystemRole::cases() as $systemRole) {
+            $role = Role::firstOrCreate(
+                ['name' => $systemRole->value, 'guard_name' => 'web'],
+                ['is_system' => true],
+            );
+
+            if (! $role->is_system) {
+                $role->update(['is_system' => true]);
+            }
+
+            $defaults = config("permissions.roles.{$systemRole->value}", []);
+            $permissions = in_array('*', $defaults, true)
+                ? $registry->all()
+                : array_values(array_intersect($defaults, $registry->all()));
+
+            $missing = array_values(array_diff($permissions, $role->permissions()->pluck('name')->all()));
+
+            if ($missing !== []) {
+                $role->givePermissionTo($missing);
+            }
+        }
+    }
+}

@@ -2,10 +2,14 @@
 
 namespace App\Providers;
 
+use App\Enums\SystemRole;
+use App\Models\User;
+use App\Support\Permissions\PermissionRegistry;
 use App\Support\Translation\VendorTranslations;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -17,7 +21,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(
+            PermissionRegistry::class,
+            fn (): PermissionRegistry => (new PermissionRegistry)->registerMany(config('permissions.groups', [])),
+        );
     }
 
     /**
@@ -27,6 +34,19 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureTranslations();
+        $this->configureAuthorization();
+    }
+
+    /**
+     * Let super admins pass every authorization check.
+     *
+     * Returning null for everyone else lets the regular permission checks decide.
+     */
+    protected function configureAuthorization(): void
+    {
+        Gate::before(
+            fn (User $user): ?bool => $user->hasRole(SystemRole::SuperAdmin->value) ? true : null,
+        );
     }
 
     /**
