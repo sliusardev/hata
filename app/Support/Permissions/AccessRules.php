@@ -83,6 +83,30 @@ class AccessRules
     }
 
     /**
+     * The translation key explaining why the role's name and permissions cannot be changed,
+     * or null when they can (rule 1: the super-admin role is fixed).
+     */
+    public function roleUpdateDenial(Role $role): ?string
+    {
+        return $role->isSuperAdmin() ? 'roles.errors.super_admin_locked' : null;
+    }
+
+    /**
+     * The translation key explaining why the role cannot be deleted, or null when it can.
+     *
+     * Rule 1: never super-admin. Rule 6: never a system role. Rule 7: never a role in use.
+     */
+    public function roleDeletionDenial(Role $role): ?string
+    {
+        return match (true) {
+            $role->isSuperAdmin() => 'roles.errors.super_admin_locked',
+            $role->is_system => 'roles.errors.cannot_delete_system',
+            $role->users()->exists() => 'roles.errors.cannot_delete_in_use',
+            default => null,
+        };
+    }
+
+    /**
      * @return array<int, string>
      */
     private function permissionNamesOf(User $user): array

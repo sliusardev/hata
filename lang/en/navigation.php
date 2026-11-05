@@ -11,5 +11,6 @@ return [
     'log_out' => 'Log out',
     'administration' => 'Administration',
     'users' => 'Users',
+    'roles' => 'Roles',
 
 ];

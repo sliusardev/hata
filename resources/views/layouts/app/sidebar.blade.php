@@ -18,11 +18,16 @@
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 
-                    @canany(['users.view'])
+                    @canany(['users.view', 'roles.view'])
                         <flux:sidebar.group :heading="__('navigation.administration')" class="grid">
                             @can('users.view')
                                 <flux:sidebar.item icon="users" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>
                                     {{ __('navigation.users') }}
+                                </flux:sidebar.item>
+                            @endcan
+                            @can('roles.view')
+                                <flux:sidebar.item icon="shield-check" :href="route('admin.roles.index')" :current="request()->routeIs('admin.roles.*')" wire:navigate>
+                                    {{ __('navigation.roles') }}
                                 </flux:sidebar.item>
                             @endcan
                         </flux:sidebar.group>

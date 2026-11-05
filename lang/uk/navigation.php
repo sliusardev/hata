@@ -11,5 +11,6 @@ return [
     'log_out' => 'Вийти',
     'administration' => 'Адміністрування',
     'users' => 'Користувачі',
+    'roles' => 'Ролі',
 
 ];

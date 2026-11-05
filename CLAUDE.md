@@ -67,6 +67,11 @@ Each decision gives its date and its reason. Add new ones at the end.
 25. **Actions with an actor** call `Gate::forUser($actor)->authorize(...)` (users.create/edit/delete) and then the protection rules. `SyncUserRoles` doesn't check permissions itself; `CreateUser`/`UpdateUser` do it before calling it.
 26. **When an admin edits a user**, changing the email doesn't reset `email_verified_at` (that's the admin's call; the "email verified" checkbox only exists on create).
 27. **Shared UI pieces:** `<x-confirm-modal>` (confirmation for destructive actions), `<x-admin.empty-state>`, and the partial `partials/admin/user-form.blade.php` for create/edit. Form object: `App\Livewire\Forms\UserForm`. Dates are shown with `isoFormat('LL')` (genitive case in Ukrainian).
+28. **Roles:** the label of system roles is not edited (they're shown under their translated name `roles.names.*`); only their permissions change (rule 6). The technical name of a custom role is set only at creation (a slug from the label via `Str::slug`, transliterated, until it's edited by hand), and the format is `^[a-z0-9]+(-[a-z0-9]+)*$`.
+29. **Rule 5 for roles** applies to permissions being added. In the matrix, permissions the actor lacks are disabled, and "select all / clear all" only touch the ones they can grant.
+30. **Deleting a role:** the button is shown for custom roles. If the role has users, the dialog says how many and has no confirm button, and `DeleteRole` refuses anyway (rule 7).
+31. **`roles.edit` without `roles.view`** also opens the role page (`RolePolicy::view`). With only `roles.view`, the page is in view mode.
+32. **Base component `App\Livewire\Admin\RoleFormPage`** for the role create/edit pages (the matrix and select/clear by group). It's a class rather than a trait because PHPStan doesn't analyse SFC files and reports a trait used only inside them as unused.
 
 ## Conventions
 

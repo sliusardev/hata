@@ -21,4 +21,8 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
         Route::livewire('users', 'pages::admin.users.index')->name('users.index');
         Route::livewire('users/create', 'pages::admin.users.create')->name('users.create');
         Route::livewire('users/{user}/edit', 'pages::admin.users.edit')->name('users.edit');
+
+        Route::livewire('roles', 'pages::admin.roles.index')->name('roles.index');
+        Route::livewire('roles/create', 'pages::admin.roles.create')->name('roles.create');
+        Route::livewire('roles/{role}/edit', 'pages::admin.roles.edit')->name('roles.edit');
     });

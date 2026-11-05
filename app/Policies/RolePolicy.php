@@ -21,7 +21,7 @@ class RolePolicy
 
     public function view(User $actor, Role $role): bool
     {
-        return $actor->can('roles.view');
+        return $actor->can('roles.view') || $actor->can('roles.edit');
     }
 
     public function create(User $actor): bool
