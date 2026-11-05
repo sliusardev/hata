@@ -1,0 +1,119 @@
+# Admin panel starter kit
+
+A Laravel admin panel starter kit with users, roles and permissions, built on the official Laravel Livewire starter kit. Stage 1 covers the foundation: an English/Ukrainian interface, code-defined permissions, roles, and user and role management. Pages, posts, media and frontend themes come in later stages.
+
+## Stack
+
+- Laravel 13, PHP 8.4+
+- Livewire 4 (single-file components), Flux UI (free), Tailwind CSS 4
+- Laravel Fortify for authentication (login, password reset, 2FA, passkeys)
+- spatie/laravel-permission for roles and permissions
+- Pest for tests
+- MySQL/MariaDB or SQLite
+
+Production needs neither Node.js nor long-running workers, so the kit runs on shared hosting as well as on a VPS.
+
+## Installation
+
+```bash
+git clone <repository-url> admin && cd admin
+composer install
+cp .env.example .env
+php artisan key:generate
+```
+
+Configure the database in `.env` (SQLite works out of the box with `DB_CONNECTION=sqlite`), then:
+
+```bash
+php artisan migrate
+php artisan db:seed      # creates the permissions and the system roles
+php artisan admin:create # creates the first super admin
+npm install && npm run build
+```
+
+`db:seed` is safe to run on every deploy. It only creates missing permissions, roles and the initial admin, and it never removes permissions that an administrator assigned.
+
+### Shared hosting without SSH
+
+1. Build the frontend locally (`npm run build`) and upload `public/build` together with the code.
+2. Set `ADMIN_NAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`.
+3. Run the migrations and the seeder from your hosting control panel (`php artisan migrate --force && php artisan db:seed --force`). The seeder creates that super admin if it does not exist yet.
+4. Remove `ADMIN_PASSWORD` from `.env` after the first deploy.
+
+Stage 1 does not queue any jobs. On hosting without workers, set `QUEUE_CONNECTION=sync`.
+
+## Creating the first admin
+
+```bash
+php artisan admin:create
+```
+
+The command asks for the name, email and password. To run it without prompts, pass the values as options:
+
+```bash
+php artisan admin:create --name="Jane Doe" --email=jane@example.com --password="a-strong-password"
+```
+
+The new user gets the `super-admin` role, which passes every permission check.
+
+## Roles and permissions
+
+- **Permissions** are declared in code and can only be assigned to roles from the interface.
+- **System roles** are created by the seeder: `super-admin`, `admin`, `editor` and `author`. They cannot be deleted, and `super-admin` cannot be changed at all.
+- **Code checks permissions, never role names:** `can('users.edit')`, `@can('roles.view')`. The only exception is super-admin, which passes every check through `Gate::before`.
+- **Protection rules** prevent removing the last super admin, changing your own roles, deleting yourself and escalating privileges. They are enforced in the actions in `app/Actions`, not only in the interface.
+
+### Adding a permission
+
+1. Declare it in `config/permissions.php` under its resource group (format `resource.action`):
+
+    ```php
+    'groups' => [
+        'pages' => ['view', 'create', 'edit', 'delete'],
+    ],
+    ```
+
+    A module can register its permissions from a service provider instead:
+
+    ```php
+    $this->app->make(\App\Support\Permissions\PermissionRegistry::class)
+        ->register('pages', ['view', 'create', 'edit', 'delete']);
+    ```
+
+2. Add the labels to every language in `lang/*/permissions.php` (`groups.pages`, `items.pages.view`, …).
+3. Optionally grant it to a system role by default in `config/permissions.php` → `roles`.
+4. Run `php artisan permissions:sync` (or `php artisan db:seed`). Add `--prune` to delete permissions that were removed from the registry.
+
+## Languages
+
+The interface is available in English (`en`, the default and fallback) and Ukrainian (`uk`). Each user chooses a language under **Settings → Language**. Guests see `APP_LOCALE`.
+
+### Adding a language
+
+1. Add it to `config/app.php` → `available_locales`, for example `'pl' => 'Polski'`.
+2. Copy `lang/en` to `lang/pl` and translate every file. Use PHP files only, not JSON.
+
+`tests/Feature/Localization/TranslationParityTest.php` fails if a file or key is missing, a value is empty, or placeholders differ from English. It also fails if the code uses a translation key that does not exist.
+
+## Public registration
+
+Registration is disabled by default. Set `ADMIN_REGISTRATION_ENABLED=true` to enable it. Registered users get no role, so they cannot open the admin panel until an administrator assigns one.
+
+## Development
+
+```bash
+composer run dev        # the local development processes (php artisan dev)
+php artisan test        # tests on SQLite in memory
+composer lint           # format with Pint
+composer types:check    # PHPStan
+```
+
+To run the tests against MySQL, create an empty database and override the connection:
+
+```bash
+DB_CONNECTION=mysql DB_DATABASE=app_testing DB_USERNAME=root DB_PASSWORD= php artisan test
+```
+
+GitHub Actions runs Pint and PHPStan, then runs the test suite on PHP 8.4 and 8.5 against both SQLite and MySQL 8.
+
+Architecture notes and the decisions made during development are in [CLAUDE.md](CLAUDE.md).

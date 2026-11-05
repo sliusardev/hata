@@ -6,7 +6,7 @@ Admin panel starter kit (users, roles, permissions; later pages, posts, themes).
 
 | Package | Version |
 |---|---|
-| PHP (local) | 8.5 (`composer.json` requires `^8.3`) |
+| PHP | `^8.4` (local 8.5; CI 8.4 and 8.5) |
 | laravel/framework | 13.40 |
 | livewire/livewire | 4.4 (SFC, no Volt) |
 | livewire/flux | 2.21 **free** (no `livewire/flux-pro`) |
@@ -58,7 +58,7 @@ Each decision gives its date and its reason. Add new ones at the end.
 16. **`CreateSuperAdmin` is an action without an actor** (used by the CLI and the seeder). Actions with an actor (`CreateUser` and others) arrive in step 4.
 17. **Artisan command output is in English.** It's for developers, not the admin UI.
 18. **Starter registration tests are skipped** while registration is off (`skipUnlessFortifyHas`). `RegistrationToggleTest` covers that registration is off by default and that a new user gets no role.
-19. **Laravel Boost appends its guidelines to this file** on `composer update/require` (block `<laravel-boost-guidelines>`). Don't edit that block; Boost regenerates it.
+19. **Laravel Boost appends its guidelines to this file** on `composer update/require` (the block at the end of the file, after the `===` line). Don't edit that block; Boost regenerates it. Never write the literal opening tag of that block anywhere else in this file: Boost would treat it as the block start and overwrite everything after it.
 20. **Cyrillic-aware case-insensitive search:** the `users.search_index` column holds `mb_strtolower(name + ' ' + email)`, kept up to date by the `App\Models\Concerns\HasSearchIndex` trait (on `saving`). The `search()` scope does `LIKE` on the lowercased term. This works the same on SQLite (whose `LIKE` only ignores ASCII case) and MySQL, with no DB-specific SQL. `%`/`_` in the term are not escaped (they only widen the match). Reuse the trait for posts and pages.
 21. **Protection rules** live in `App\Support\Permissions\AccessRules`, which actions call directly. Not via the Gate: `Gate::before` lets a super admin through everything, but the rules (self, last super admin) bind super admins too. The UI hides buttons using the same methods. A violation throws `App\Exceptions\ProtectedActionException` (an `AuthorizationException` with a translated message); components show it as a field error or a danger toast.
 22. **Extra rule derived from rule 2:** only a super admin can edit or delete a super admin. Otherwise an admin could change a super admin's email or password and take over the account. The edit page returns 403 in that case.
@@ -72,6 +72,8 @@ Each decision gives its date and its reason. Add new ones at the end.
 30. **Deleting a role:** the button is shown for custom roles. If the role has users, the dialog says how many and has no confirm button, and `DeleteRole` refuses anyway (rule 7).
 31. **`roles.edit` without `roles.view`** also opens the role page (`RolePolicy::view`). With only `roles.view`, the page is in view mode.
 32. **Base component `App\Livewire\Admin\RoleFormPage`** for the role create/edit pages (the matrix and select/clear by group). It's a class rather than a trait because PHPStan doesn't analyse SFC files and reports a trait used only inside them as unused.
+33. **Minimum PHP 8.4** instead of 8.3 from the spec (user's decision, 2026-11-05). Pest 5 / PHPUnit 13 from the starter kit and Symfony 8 in the lock file require PHP 8.4+, so the project can't be installed on 8.3 without downgrading those dependencies.
+34. **CI** (`.github/workflows/tests.yml`): a `quality` job (Pint `--test` and PHPStan, PHP 8.5) and a `tests` matrix (PHP 8.4/8.5 × SQLite in memory / MySQL 8). Tests read the database from env variables; `phpunit.xml` sets SQLite only as the default (no `force`).
 
 ## Conventions
 
