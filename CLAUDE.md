@@ -45,3 +45,13 @@ Each decision gives its date and its reason. Add new ones at the end.
 3. **The dashboard moves into the admin area:** `/admin`, route `admin.dashboard`, behind `can:admin.access`. `/settings/*` (profile, language, security, appearance) stays available to any authenticated user. After login (Fortify `home`), a user without `admin.access` is sent to `profile.edit` instead of a 403 page.
 4. **Use `flux:table`** (it's in Flux free) instead of a custom Blade table component.
 5. **Registration toggle:** `config/admin.php` → `registration_enabled` (env `ADMIN_REGISTRATION_ENABLED`, default `false`). `Features::registration()` is added to Fortify's features only when it's enabled.
+6. **Page titles are translation keys.** `#[Title('settings.profile.title')]` holds a key, and `partials/head.blade.php` translates it with `__($title)`. A title passed already translated (`:title="__('...')"`) still works, because `__()` returns a missing key unchanged.
+7. **Vendor literals without JSON files.** Fortify, laravel/passkeys and Flux call `__('Some English sentence')`. The project has no `lang/*.json`, so `App\Support\Translation\VendorTranslations` maps these literals to PHP keys (`auth.vendor.*`, `common.flux.*`) through `Lang::handleMissingKeysUsing()` in `AppServiceProvider`. When a package update adds a new literal, add it to that map and to both languages.
+8. **Toast after a redirect:** `App\Support\Toast::success()/danger()` flashes to the session, and `<x-flash-toast />` in the app layouts fires Flux's `toast-show` event on the next page. `Flux::toast()` stays for actions that don't redirect. This is the single toast approach for the whole admin.
+9. **Language page:** `settings/language` (`language.edit`), a separate settings page. After saving, a full redirect (no `wire:navigate`) re-renders `<html lang>` in the new language. `User` implements `HasLocalePreference`, so emails such as password reset go out in the user's language.
+10. **`welcome.blade.php` is not translated.** It's Laravel's demo landing page and will be replaced by the frontend themes stage.
+
+## Conventions
+
+- **Translations:** PHP files only in `lang/en` and `lang/uk`. Keys are snake_case and nested by page/block. Every new key goes into both languages in the same change. `tests/Feature/Localization/TranslationParityTest.php` checks file/key parity, empty values and placeholders, that every `__('group.key')` used in `app/` and `resources/views/` exists, and that every vendor-map target exists.
+- **Languages:** `config('app.available_locales')`. The `SetLocale` middleware (web group) applies `users.locale` or `config('app.locale')`.

@@ -86,6 +86,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Available Locales
+    |--------------------------------------------------------------------------
+    |
+    | The interface languages users can choose from in their account settings.
+    | Keys are locale codes matching the directories in lang/, values are the
+    | language names written in that language. Adding a language only needs
+    | an entry here and a matching lang/<code>/ directory.
+    |
+    */
+
+    'available_locales' => [
+        'en' => 'English',
+        'uk' => 'Українська',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------
     |
