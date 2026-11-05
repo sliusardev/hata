@@ -86,7 +86,7 @@ Each decision gives its date and its reason. Add new ones at the end.
 
 ## Specs
 
-Short specs for each section of the site. Read the relevant one before changing that section, and update it together with the code.
+Short specs for each section of the site. Read the relevant one before changing that section. **Every change to a section's routes, permissions, forms, actions or rules updates its spec in the same commit; every new section (pages, posts, themes, …) gets a new spec here.**
 
 - [User settings](docs/specs/user-settings.md): profile, language, security, appearance
 - [Users page](docs/specs/users.md): list, create/edit form, user actions and protection rules
