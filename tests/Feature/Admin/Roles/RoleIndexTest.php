@@ -55,6 +55,15 @@ test('the navigation shows roles only with the roles.view permission', function 
     $this->get(route('admin.dashboard'))->assertDontSee(route('admin.roles.index'));
 });
 
+test('the role name links to the role page', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'roles.view'])->create());
+    $editor = Role::findByName('editor');
+
+    Livewire::test('pages::admin.roles.index')
+        ->assertSeeHtml('data-test="edit-role-link-'.$editor->id.'"')
+        ->assertSeeHtml('href="'.route('admin.roles.edit', $editor).'"');
+});
+
 test('delete buttons are shown only for custom roles', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
     $custom = Role::create(['name' => 'moderator', 'guard_name' => 'web']);

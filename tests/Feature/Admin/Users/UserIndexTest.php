@@ -182,6 +182,30 @@ describe('deleting from the list', function () {
             ->assertDontSeeHtml('data-test="delete-user-'.$actor->id.'"');
     });
 
+    test('the row actions menu is hidden when no action is available', function () {
+        $actor = User::factory()->withPermissions(['admin.access', 'users.view', 'users.delete'])->create();
+        $this->actingAs($actor);
+        $other = User::factory()->create();
+
+        Livewire::test('pages::admin.users.index')
+            ->assertSeeHtml('data-test="user-actions-'.$other->id.'"')
+            ->assertDontSeeHtml('data-test="user-actions-'.$actor->id.'"');
+    });
+
+    test('the user name links to the edit page only when the actor may edit the user', function () {
+        $editor = User::factory()->withPermissions(['admin.access', 'users.view', 'users.edit'])->create();
+        $other = User::factory()->create();
+
+        $this->actingAs($editor);
+        Livewire::test('pages::admin.users.index')
+            ->assertSeeHtml('data-test="edit-user-link-'.$other->id.'"')
+            ->assertSeeHtml('href="'.route('admin.users.edit', $other).'"');
+
+        $this->actingAs(usersViewer());
+        Livewire::test('pages::admin.users.index')
+            ->assertDontSeeHtml('data-test="edit-user-link-'.$other->id.'"');
+    });
+
     test('a protected deletion is rejected with a message', function () {
         $actor = User::factory()->withRole('admin')->create();
         $this->actingAs($actor);

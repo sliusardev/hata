@@ -37,6 +37,8 @@ Components: `resources/views/pages/admin/roles/`. The create and edit pages exte
 
 - Columns: name (+ "System" badge), technical name, user count, permission count ("All" for super-admin), actions.
 - Counts come from `withCount(['users', 'permissions'])`.
+- Row actions sit in a "⋮" dropdown (`<x-admin.row-actions>`): Edit (or View when the actor can't edit the role, and always for super-admin) and Delete.
+- The role name links to the role page (edit or view mode) whenever the actor may view it.
 - Delete only for custom roles. If the role has users, the dialog shows how many and has no confirm button.
 
 ## Form

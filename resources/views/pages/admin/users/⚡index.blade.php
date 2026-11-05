@@ -207,7 +207,11 @@ new #[Title('users.index.title')] class extends Component {
                                 <flux:avatar size="sm" :name="$user->name" :initials="$user->initials()" />
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2 font-medium text-zinc-800 dark:text-white">
-                                        <span class="truncate">{{ $user->name }}</span>
+                                        @if ($this->canEdit($user))
+                                            <a href="{{ route('admin.users.edit', $user) }}" wire:navigate class="truncate hover:underline" data-test="edit-user-link-{{ $user->id }}">{{ $user->name }}</a>
+                                        @else
+                                            <span class="truncate">{{ $user->name }}</span>
+                                        @endif
                                         @if ($user->is(auth()->user()))
                                             <flux:badge size="sm" color="zinc">{{ __('users.index.you') }}</flux:badge>
                                         @endif
@@ -229,14 +233,14 @@ new #[Title('users.index.title')] class extends Component {
                         <flux:table.cell class="max-lg:hidden">{{ config('app.available_locales')[$user->locale ?? config('app.locale')] ?? '—' }}</flux:table.cell>
                         <flux:table.cell class="max-lg:hidden">{{ $user->created_at?->isoFormat('LL') }}</flux:table.cell>
                         <flux:table.cell align="end">
-                            <div class="flex justify-end gap-1">
+                            <x-admin.row-actions data-test="user-actions-{{ $user->id }}">
                                 @if ($this->canEdit($user))
-                                    <flux:button size="sm" variant="ghost" icon="pencil-square" :href="route('admin.users.edit', $user)" wire:navigate :aria-label="__('common.actions.edit')" :tooltip="__('common.actions.edit')" />
+                                    <flux:menu.item icon="pencil-square" :href="route('admin.users.edit', $user)" wire:navigate>{{ __('common.actions.edit') }}</flux:menu.item>
                                 @endif
                                 @if ($this->canDelete($user))
-                                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="confirmDelete({{ $user->id }})" :aria-label="__('common.actions.delete')" :tooltip="__('common.actions.delete')" data-test="delete-user-{{ $user->id }}" />
+                                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $user->id }})" data-test="delete-user-{{ $user->id }}">{{ __('common.actions.delete') }}</flux:menu.item>
                                 @endif
-                            </div>
+                            </x-admin.row-actions>
                         </flux:table.cell>
                     </flux:table.row>
                 @endforeach

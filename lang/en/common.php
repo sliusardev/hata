@@ -10,7 +10,9 @@ return [
         'continue' => 'Continue',
         'delete' => 'Delete',
         'edit' => 'Edit',
+        'more' => 'Actions',
         'save' => 'Save',
+        'view' => 'View',
     ],
 
     'fields' => [

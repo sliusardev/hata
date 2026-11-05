@@ -110,7 +110,11 @@ new #[Title('roles.index.title')] class extends Component {
                     <flux:table.row :key="$role->id">
                         <flux:table.cell>
                             <div class="flex items-center gap-2 font-medium text-zinc-800 dark:text-white">
-                                <span>{{ $role->displayName() }}</span>
+                                @can('view', $role)
+                                    <a href="{{ route('admin.roles.edit', $role) }}" wire:navigate class="hover:underline" data-test="edit-role-link-{{ $role->id }}">{{ $role->displayName() }}</a>
+                                @else
+                                    <span>{{ $role->displayName() }}</span>
+                                @endcan
                                 @if ($role->is_system)
                                     <flux:badge size="sm" color="zinc">{{ __('roles.system') }}</flux:badge>
                                 @endif
@@ -122,21 +126,18 @@ new #[Title('roles.index.title')] class extends Component {
                             {{ $role->isSuperAdmin() ? __('roles.all_permissions') : $role->permissions_count }}
                         </flux:table.cell>
                         <flux:table.cell align="end">
-                            <div class="flex justify-end gap-1">
+                            <x-admin.row-actions data-test="role-actions-{{ $role->id }}">
                                 @can('view', $role)
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        :icon="auth()->user()->can('update', $role) && ! $role->isSuperAdmin() ? 'pencil-square' : 'eye'"
-                                        :href="route('admin.roles.edit', $role)"
-                                        wire:navigate
-                                        :aria-label="__('common.actions.edit')"
-                                    />
+                                    @if (auth()->user()->can('update', $role) && ! $role->isSuperAdmin())
+                                        <flux:menu.item icon="pencil-square" :href="route('admin.roles.edit', $role)" wire:navigate>{{ __('common.actions.edit') }}</flux:menu.item>
+                                    @else
+                                        <flux:menu.item icon="eye" :href="route('admin.roles.edit', $role)" wire:navigate>{{ __('common.actions.view') }}</flux:menu.item>
+                                    @endif
                                 @endcan
                                 @if ($this->canDelete($role))
-                                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="confirmDelete({{ $role->id }})" :aria-label="__('common.actions.delete')" data-test="delete-role-{{ $role->id }}" />
+                                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $role->id }})" data-test="delete-role-{{ $role->id }}">{{ __('common.actions.delete') }}</flux:menu.item>
                                 @endif
-                            </div>
+                            </x-admin.row-actions>
                         </flux:table.cell>
                     </flux:table.row>
                 @endforeach

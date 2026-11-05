@@ -15,12 +15,14 @@ Admin group (`routes/admin.php`): `auth, verified, can:admin.access`. Components
 ## List
 
 - Columns: avatar, name (+ "You" badge), email, roles (translated badges), language, created date (`isoFormat('LL')`), actions.
+- Row actions (Edit, Delete) sit in a "⋮" dropdown (`<x-admin.row-actions>`). Each item is shown only when the actor may perform it; with no items the button isn't rendered.
+- The user's name links to the edit page when the actor may edit that user (same check as the Edit item); otherwise it's plain text.
 - Search by name/email with a 300 ms debounce. It ignores case for Cyrillic too: it runs against the `users.search_index` column (lowercased name + email, kept current by the `HasSearchIndex` trait).
 - Role filter, sorting by `name` / `email` / `created_at` (whitelisted), 25 per page.
 - `search`, `role`, `sortBy`, `sortDirection` and `page` are kept in the URL (`#[Url]`).
 - Empty states: "no users yet" and "nothing found".
 - Roles are eager loaded (`with('roles')`).
-- Deleting goes through `<x-confirm-modal>` with the user's name. The button is hidden when deletion isn't allowed.
+- Deleting goes through `<x-confirm-modal>` with the user's name. The menu item is hidden when deletion isn't allowed.
 
 ## Form (create / edit)
 
