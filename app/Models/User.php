@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\SystemRole;
+use App\Models\Concerns\HasSearchIndex;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +23,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $name
  * @property string $email
  * @property string|null $locale
+ * @property string|null $search_index
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -31,11 +34,11 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['name', 'email', 'password', 'locale'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'search_index'])]
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, HasSearchIndex, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.
@@ -56,6 +59,19 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function preferredLocale(): ?string
     {
         return $this->locale;
+    }
+
+    /**
+     * Whether the user has the super-admin role.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole(SystemRole::SuperAdmin->value);
+    }
+
+    protected function searchIndexSource(): string
+    {
+        return $this->name.' '.$this->email;
     }
 
     /**

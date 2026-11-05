@@ -9,5 +9,7 @@ return [
     'documentation' => 'Documentation',
     'settings' => 'Settings',
     'log_out' => 'Log out',
+    'administration' => 'Administration',
+    'users' => 'Users',
 
 ];

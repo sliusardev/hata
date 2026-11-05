@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Enums\SystemRole;
 use App\Models\User;
 use App\Support\Permissions\PermissionRegistry;
 use App\Support\Translation\VendorTranslations;
@@ -45,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configureAuthorization(): void
     {
         Gate::before(
-            fn (User $user): ?bool => $user->hasRole(SystemRole::SuperAdmin->value) ? true : null,
+            fn (User $user): ?bool => $user->isSuperAdmin() ? true : null,
         );
     }
 

@@ -59,6 +59,14 @@ Each decision gives its date and its reason. Add new ones at the end.
 17. **Artisan command output is in English.** It's for developers, not the admin UI.
 18. **Starter registration tests are skipped** while registration is off (`skipUnlessFortifyHas`). `RegistrationToggleTest` covers that registration is off by default and that a new user gets no role.
 19. **Laravel Boost appends its guidelines to this file** on `composer update/require` (block `<laravel-boost-guidelines>`). Don't edit that block; Boost regenerates it.
+20. **Cyrillic-aware case-insensitive search:** the `users.search_index` column holds `mb_strtolower(name + ' ' + email)`, kept up to date by the `App\Models\Concerns\HasSearchIndex` trait (on `saving`). The `search()` scope does `LIKE` on the lowercased term. This works the same on SQLite (whose `LIKE` only ignores ASCII case) and MySQL, with no DB-specific SQL. `%`/`_` in the term are not escaped (they only widen the match). Reuse the trait for posts and pages.
+21. **Protection rules** live in `App\Support\Permissions\AccessRules`, which actions call directly. Not via the Gate: `Gate::before` lets a super admin through everything, but the rules (self, last super admin) bind super admins too. The UI hides buttons using the same methods. A violation throws `App\Exceptions\ProtectedActionException` (an `AuthorizationException` with a translated message); components show it as a field error or a danger toast.
+22. **Extra rule derived from rule 2:** only a super admin can edit or delete a super admin. Otherwise an admin could change a super admin's email or password and take over the account. The edit page returns 403 in that case.
+23. **Rule 3 when removing a role** is checked before rule 2, so that an admin who tries to remove the role from the last super admin gets the "last super admin" message.
+24. **Rule 5 for users** applies to roles being added; removing a role is limited only by rule 2. In the UI, roles you can't assign are disabled (with an explanation) both ways, and a disabled role that is already assigned stays assigned.
+25. **Actions with an actor** call `Gate::forUser($actor)->authorize(...)` (users.create/edit/delete) and then the protection rules. `SyncUserRoles` doesn't check permissions itself; `CreateUser`/`UpdateUser` do it before calling it.
+26. **When an admin edits a user**, changing the email doesn't reset `email_verified_at` (that's the admin's call; the "email verified" checkbox only exists on create).
+27. **Shared UI pieces:** `<x-confirm-modal>` (confirmation for destructive actions), `<x-admin.empty-state>`, and the partial `partials/admin/user-form.blade.php` for create/edit. Form object: `App\Livewire\Forms\UserForm`. Dates are shown with `isoFormat('LL')` (genitive case in Ukrainian).
 
 ## Conventions
 

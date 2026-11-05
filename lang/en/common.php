@@ -8,6 +8,8 @@ return [
         'close' => 'Close',
         'confirm' => 'Confirm',
         'continue' => 'Continue',
+        'delete' => 'Delete',
+        'edit' => 'Edit',
         'save' => 'Save',
     ],
 
