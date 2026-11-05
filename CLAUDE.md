@@ -83,6 +83,15 @@ Each decision gives its date and its reason. Add new ones at the end.
 - **Admin routes:** `routes/admin.php`, prefix `admin`, names `admin.*`, middleware `auth, verified, can:admin.access`.
 - **Tests:** `seedRolesAndPermissions()` (tests/Pest.php), and the factory states `User::factory()->withRole('editor')` and `->withPermissions([...])`.
 
+
+## Specs
+
+Short specs for each section of the site. Read the relevant one before changing that section, and update it together with the code.
+
+- [User settings](docs/specs/user-settings.md): profile, language, security, appearance
+- [Users page](docs/specs/users.md): list, create/edit form, user actions and protection rules
+- [Roles and permissions page](docs/specs/roles.md): permission registry, system roles, permission matrix, role actions
+
 ===
 
 <laravel-boost-guidelines>
