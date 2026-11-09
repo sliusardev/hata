@@ -4,50 +4,58 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.header>
+        <flux:sidebar sticky collapsible="mobile" class="gap-0! border-e border-zinc-200 bg-zinc-50 p-0! dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:sidebar.header class="h-16 shrink-0 border-b border-zinc-200 px-4 dark:border-zinc-700">
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
-            <flux:sidebar.nav>
+            @php
+                $groupClasses = 'grid [&>div:first-child]:px-3 [&>div:first-child]:pt-1 [&>div:first-child]:pb-2 [&>div:first-child]:text-[11px] [&>div:first-child]:font-semibold [&>div:first-child]:uppercase [&>div:first-child]:tracking-wider [&>div:first-child]:text-zinc-400 dark:[&>div:first-child]:text-zinc-500';
+            @endphp
+
+            <flux:sidebar.nav class="gap-6 px-3 py-5">
                 @can('admin.access')
-                    <flux:sidebar.group :heading="__('navigation.platform')" class="grid">
-                        <flux:sidebar.item icon="home" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>
+                    <flux:sidebar.group :heading="__('navigation.platform')" :class="$groupClasses">
+                        <flux:sidebar.item icon="home" :icon:variant="request()->routeIs('admin.dashboard') ? 'solid' : 'outline'" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>
                             {{ __('navigation.dashboard') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 
                     @canany(['users.view', 'roles.view'])
-                        <flux:sidebar.group :heading="__('navigation.administration')" class="grid">
+                        <flux:sidebar.group :heading="__('navigation.administration')" :class="$groupClasses">
                             @can('users.view')
-                                <flux:sidebar.item icon="users" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>
+                                <flux:sidebar.item icon="users" :icon:variant="request()->routeIs('admin.users.*') ? 'solid' : 'outline'" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>
                                     {{ __('navigation.users') }}
                                 </flux:sidebar.item>
                             @endcan
                             @can('roles.view')
-                                <flux:sidebar.item icon="shield-check" :href="route('admin.roles.index')" :current="request()->routeIs('admin.roles.*')" wire:navigate>
+                                <flux:sidebar.item icon="shield-check" :icon:variant="request()->routeIs('admin.roles.*') ? 'solid' : 'outline'" :href="route('admin.roles.index')" :current="request()->routeIs('admin.roles.*')" wire:navigate>
                                     {{ __('navigation.roles') }}
                                 </flux:sidebar.item>
                             @endcan
                         </flux:sidebar.group>
                     @endcanany
                 @endcan
+
+                <flux:sidebar.group :heading="__('navigation.account')" :class="$groupClasses">
+                    <flux:sidebar.item icon="user-circle" :icon:variant="request()->routeIs('profile.edit', 'language.edit', 'security.edit', 'appearance.edit') ? 'solid' : 'outline'" :href="route('profile.edit')" :current="request()->routeIs('profile.edit', 'language.edit', 'security.edit', 'appearance.edit')" wire:navigate>
+                        {{ __('navigation.my_profile') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
             </flux:sidebar.nav>
 
             <flux:spacer />
 
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('navigation.repository') }}
-                </flux:sidebar.item>
-
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('navigation.documentation') }}
+            <flux:sidebar.nav class="px-3 pb-2">
+                <flux:sidebar.item icon="arrow-top-right-on-square" :href="route('home')" target="_blank">
+                    {{ __('navigation.view_site') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 
-            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+            <div class="hidden border-t border-zinc-200 p-3 lg:block dark:border-zinc-700">
+                <x-desktop-user-menu :name="auth()->user()->name" />
+            </div>
         </flux:sidebar>
 
         <!-- Mobile User Menu -->

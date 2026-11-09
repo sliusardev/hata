@@ -11,7 +11,7 @@ Account settings for any signed-in user. They don't require `admin.access`: user
 | Security | `/settings/security` | `security.edit` | `pages::settings.security` |
 | Appearance | `/settings/appearance` | `appearance.edit` | `pages::settings.appearance` |
 
-Middleware: `auth`. Security also requires `password.confirm`. Routes are in `routes/settings.php`, sub-navigation in `resources/views/pages/settings/layout.blade.php`.
+Middleware: `auth`. Security also requires `password.confirm`. Routes are in `routes/settings.php`, sub-navigation in `resources/views/pages/settings/layout.blade.php`. The sidebar shows an "Account → My profile" item to every authenticated user (active on any `/settings/*` page).
 
 ## Profile
 
