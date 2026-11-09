@@ -28,11 +28,12 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 | `mail_mailer` | `mail.default` (only `smtp` is stored) | Email |
 | `mail_host`, `mail_port`, `mail_scheme`, `mail_username`, `mail_password` | `mail.mailers.smtp.*` | Email |
 | `mail_from_address`, `mail_from_name` | `mail.from.*` | Email |
+| `color_scheme`, `color_accent`, `color_gray`, `color_tint_sidebar` | `admin.colors.*` | Colors |
 | `logo_light`, `logo_dark` | `admin.logo.light`, `admin.logo.dark` (paths on `admin.logo.disk`) | Logo |
 
 ## Tabs
 
-The page has four tabs, "General", "Access", "Email" and "Logo" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail|logo`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
+The page has five tabs, "General", "Access", "Email", "Logo" and "Colors" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail|logo|colors`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
 
 Switching tabs while the open one has unsaved changes (compared with the values loaded on mount; a typed SMTP password always counts) opens a confirmation (`<x-confirm-modal>`): "Cancel" stays on the tab, "Switch without saving" restores that tab's fields and opens the other one. Leaving the page with unsaved changes is guarded in the browser (Alpine compares `$wire.form` with `savedValues`, so it also sees edits not yet sent to the server): a `wire:navigate` link (the sidebar) is cancelled through the `livewire:navigate` event and a confirmation "Leave without saving" opens; closing or reloading the tab and plain links get the browser's own `beforeunload` dialog. The browser's Back button is not guarded (`livewire:navigate` with `history: true` arrives after the URL has already changed). A successful save marks the form clean before its redirect.
 
@@ -55,6 +56,17 @@ Switching tabs while the open one has unsaved changes (compared with the values 
 - **Fallback:** with only one logo uploaded, it's used in both themes (`SiteLogo::path()`).
 - **Storage:** `UploadLogo` stores the file in `branding/` on `admin.logo.disk` (default `local`, private) and deletes the file it replaces; `RemoveLogo` deletes the file and the setting.
 - **Serving:** `GET /branding/logo/{light|dark}` (`branding.logo`, public, because the sign-in pages show it), `SiteLogoController`. 404 without a logo. The URL carries `?v=` (hash of the path), so the response is cached for a year (`immutable`). `Content-Security-Policy: … sandbox` and `nosniff` keep scripts in an uploaded SVG from running when it's opened directly; inside `<img>` they never run.
+
+## Colors
+
+- **Scope:** the admin panel and the sign-in pages (every layout that includes `partials/head`). Public themes come later.
+- **Presets** (`ColorScheme::PRESETS`, key → company color + base gray): neutral (stock look, no overrides), blue, indigo, violet, rose, orange, amber, emerald, teal.
+- **Custom** (one per site): company color (`#rrggbb`, color picker + text field) and base gray (neutral, zinc, slate, stone, gray). The company color is kept when a preset is chosen, so switching back restores it.
+- **Tint the sidebar** (on by default, hidden for neutral): light shade (step 50, border 100) in the light theme, deep shade (950, border 900) in the dark theme; off uses the base gray.
+- **How it works:** `App\Support\ColorScheme\ColorScheme` builds an 11-step accent scale from the company color in OKLCH (`Oklch`, fixed lightness per step, chroma scaled, clipped to sRGB) and writes CSS variables in `partials/color-scheme` (an inline `<style id="color-scheme">` after the Vite CSS): `--color-zinc-*` (base gray; Flux uses zinc everywhere), `--color-accent`, `--color-accent-content`, `--color-accent-foreground`, `--color-sidebar`, `--color-sidebar-border`, for `:root` and `.dark`. No CSS rebuild. `resources/css/app.css` defines the sidebar variables for the stock look; the layouts use `bg-sidebar` / `border-sidebar-border`.
+- **Rules:** light accent = the company color; light accent text = the first of it or steps 600–900 with 4.5:1 on white. Dark accent = the company color if it is already light (OKLCH L ≥ step 500), otherwise step 500; dark accent text = the first readable (4.5:1) on gray 800. Text on accent buttons = white while contrast ≥ 3:1 (WCAG for UI), otherwise step 950.
+- **Role badges** in the user list use the accent (`bg-accent/10`, `text-accent-content`); super-admin stays amber.
+- **Preview:** the Colors tab renders the form's scheme in an inline `<style>` (including the stock values, so "Neutral" previews over a saved scheme). Saved with the tab's Save button, guarded by the unsaved-changes warnings like the other tabs.
 
 ## Action (`app/Actions/Settings`)
 

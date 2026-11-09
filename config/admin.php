@@ -40,6 +40,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Color Scheme
+    |--------------------------------------------------------------------------
+    |
+    | Colors of the admin panel and the sign-in pages, set in the site settings.
+    | See App\Support\ColorScheme\ColorScheme.
+    |
+    */
+
+    'colors' => [
+        // A ColorScheme::PRESETS key or "custom" (uses accent and gray below).
+        'scheme' => env('ADMIN_COLOR_SCHEME', 'neutral'),
+        'accent' => null,
+        'gray' => 'neutral',
+        'tint_sidebar' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Site Logo
     |--------------------------------------------------------------------------
     |

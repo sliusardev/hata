@@ -80,6 +80,7 @@ Each decision gives its date and its reason. Add new ones at the end.
 37. **Registration is switched at runtime.** Fortify always registers `Features::registration()`, because the setting lives in the database and Fortify builds its routes before that. `EnsureRegistrationIsEnabled` (in `fortify.middleware`) returns 404 on `register`/`register.store` while `admin.registration_enabled` is off, and the "Sign up" links check the same config.
 38. **The site timezone is for display only.** `app.timezone` stays UTC, so stored dates don't shift; admin views convert with `->tz(config('admin.timezone'))`.
 39. **Default logo and uploaded logos** (2026-11-09). The default mark (`<x-app-logo-icon>`, user picked variant 5 of 7: crossed rafters + four-pane window) replaces the starter kit logo and the Laravel favicon. Uploaded light/dark logos live on a private disk and are served by the `branding.logo` route with a versioned URL, so shared hosting needs no `storage:link`; SVG is allowed, protected by a CSP sandbox header. Layouts render `<x-site-logo>`.
+40. **Color schemes are CSS variables** (2026-11-09). A site-wide scheme (presets or one custom company color, user's decision) overrides `--color-zinc-*`, `--color-accent*` and `--color-sidebar*` with an inline style in `<head>` (`App\Support\ColorScheme\ColorScheme`), so no Tailwind rebuild. Shades are generated in OKLCH with contrast checks instead of storing palettes. New surfaces should use `bg-sidebar`/`border-sidebar-border` or zinc/accent utilities so schemes reach them.
 
 ## Conventions
 
@@ -97,7 +98,7 @@ Short specs for each section of the site. Read the relevant one before changing 
 - [User settings](docs/specs/user-settings.md): profile, language, security, appearance
 - [Users page](docs/specs/users.md): list, create/edit form, user actions and protection rules
 - [Roles and permissions page](docs/specs/roles.md): permission registry, system roles, permission matrix, role actions
-- [Site settings page](docs/specs/site-settings.md): site name, language, timezone, registration, default role, email, logo
+- [Site settings page](docs/specs/site-settings.md): site name, language, timezone, registration, default role, email, logo, colors
 
 ===
 

@@ -64,6 +64,37 @@ return [
         'removed' => 'Logo removed.',
     ],
 
+    'colors' => [
+        'heading' => 'Colors',
+        'description' => 'The color scheme of the admin panel and the sign-in pages: buttons, links, the active menu item, switches, the sidebar and the logo tile, in the light and the dark theme.',
+        'schemes' => [
+            'neutral' => 'Neutral',
+            'blue' => 'Blue',
+            'indigo' => 'Indigo',
+            'violet' => 'Violet',
+            'rose' => 'Rose',
+            'orange' => 'Orange',
+            'amber' => 'Amber',
+            'emerald' => 'Emerald',
+            'teal' => 'Teal',
+            'custom' => 'Custom',
+        ],
+        'accent' => 'Company color',
+        'accent_description' => 'Buttons and links use it as is; lighter and darker shades, the dark theme and the text color on buttons are calculated from it.',
+        'gray' => 'Base gray',
+        'gray_description' => 'Backgrounds, borders and secondary text.',
+        'grays' => [
+            'neutral' => 'Neutral',
+            'zinc' => 'Zinc (slightly cool)',
+            'slate' => 'Slate (cool, bluish)',
+            'stone' => 'Stone (warm)',
+            'gray' => 'Gray (cool)',
+        ],
+        'tint_sidebar' => 'Tint the sidebar',
+        'tint_sidebar_description' => 'A light shade of the color in the light theme and a deep one in the dark theme.',
+        'preview_hint' => 'You see the scheme right away. It is saved for everyone only after you press Save.',
+    ],
+
     'unsaved' => [
         'heading' => 'Unsaved changes',
         'body' => 'The “:tab” tab has unsaved changes. If you switch tabs, they will be lost.',

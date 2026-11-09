@@ -3,6 +3,7 @@
 namespace App\Livewire\Forms;
 
 use App\Enums\SystemRole;
+use App\Support\ColorScheme\ColorScheme;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
@@ -45,6 +46,20 @@ class SiteSettingsForm extends Form
     public string $mail_from_name = '';
 
     /**
+     * A ColorScheme::PRESETS key or "custom".
+     */
+    public string $color_scheme = 'neutral';
+
+    /**
+     * The company color of the custom scheme (#rrggbb). Kept when a preset is chosen.
+     */
+    public string $color_accent = '#2563eb';
+
+    public string $color_gray = 'neutral';
+
+    public bool $color_tint_sidebar = true;
+
+    /**
      * Fill the form with the values in effect (stored settings over .env).
      */
     public function fillFromSettings(SiteSettings $settings): void
@@ -57,6 +72,10 @@ class SiteSettingsForm extends Form
         $this->mail_mailer = $settings->has('mail_mailer') ? 'smtp' : 'server';
         $this->mail_from_address = (string) config('mail.from.address');
         $this->mail_from_name = (string) config('mail.from.name');
+        $this->color_scheme = (string) config('admin.colors.scheme');
+        $this->color_accent = ColorScheme::isHexColor(config('admin.colors.accent')) ? (string) config('admin.colors.accent') : '#2563eb';
+        $this->color_gray = (string) config('admin.colors.gray');
+        $this->color_tint_sidebar = (bool) config('admin.colors.tint_sidebar');
 
         if ($this->mail_mailer === 'smtp') {
             $this->mail_host = (string) config('mail.mailers.smtp.host');
@@ -77,6 +96,7 @@ class SiteSettingsForm extends Form
         'mail' => ['mail_mailer', 'mail_host', 'mail_port', 'mail_scheme', 'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name'],
         // Logos are uploaded and removed right away, without the Save button.
         'logo' => [],
+        'colors' => ['color_scheme', 'color_accent', 'color_gray', 'color_tint_sidebar'],
     ];
 
     /**
@@ -122,7 +142,8 @@ class SiteSettingsForm extends Form
             $value = $validated[$field] ?? null;
 
             $data[$field] = match (true) {
-                $field === 'registration_enabled' => (bool) $value,
+                $field === 'registration_enabled', $field === 'color_tint_sidebar' => (bool) $value,
+                $field === 'color_accent' => filled($value) ? strtolower((string) $value) : null,
                 $field === 'mail_port' => filled($value) ? (int) $value : null,
                 default => filled($value) ? $value : null,
             };
@@ -150,6 +171,10 @@ class SiteSettingsForm extends Form
             'mail_password' => ['nullable', 'string', 'max:255'],
             'mail_from_address' => ['required', 'email', 'max:255'],
             'mail_from_name' => ['required', 'string', 'max:255'],
+            'color_scheme' => ['required', Rule::in([...array_keys(ColorScheme::PRESETS), ColorScheme::CUSTOM])],
+            'color_accent' => ['nullable', 'required_if:color_scheme,'.ColorScheme::CUSTOM, 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'color_gray' => ['required', Rule::in(array_keys(ColorScheme::GRAYS))],
+            'color_tint_sidebar' => ['boolean'],
         ];
     }
 }

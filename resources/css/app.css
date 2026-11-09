@@ -26,6 +26,10 @@
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
+
+    /* Sidebar and header surface; color schemes tint them (App\Support\ColorScheme). */
+    --color-sidebar: var(--color-zinc-50);
+    --color-sidebar-border: var(--color-zinc-200);
 }
 
 @layer theme {
@@ -33,6 +37,8 @@
         --color-accent: var(--color-white);
         --color-accent-content: var(--color-white);
         --color-accent-foreground: var(--color-neutral-800);
+        --color-sidebar: var(--color-zinc-900);
+        --color-sidebar-border: var(--color-zinc-700);
     }
 }
 

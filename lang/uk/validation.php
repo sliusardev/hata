@@ -184,6 +184,9 @@ return [
 
     'attributes' => [
         'code' => 'код',
+        'color_accent' => 'колір компанії',
+        'color_gray' => 'базовий сірий',
+        'color_scheme' => 'кольорова схема',
         'current_password' => 'поточний пароль',
         'default_locale' => 'мова за замовчуванням',
         'default_role' => 'роль нових користувачів',

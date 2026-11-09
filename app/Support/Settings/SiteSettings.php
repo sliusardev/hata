@@ -41,6 +41,10 @@ class SiteSettings
         'mail_from_name' => 'mail.from.name',
         'logo_light' => 'admin.logo.light',
         'logo_dark' => 'admin.logo.dark',
+        'color_scheme' => 'admin.colors.scheme',
+        'color_accent' => 'admin.colors.accent',
+        'color_gray' => 'admin.colors.gray',
+        'color_tint_sidebar' => 'admin.colors.tint_sidebar',
     ];
 
     /**

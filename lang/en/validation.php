@@ -195,6 +195,9 @@ return [
 
     'attributes' => [
         'code' => 'code',
+        'color_accent' => 'company color',
+        'color_gray' => 'base gray',
+        'color_scheme' => 'color scheme',
         'current_password' => 'current password',
         'default_locale' => 'default language',
         'default_role' => 'role of new users',

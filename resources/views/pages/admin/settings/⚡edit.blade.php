@@ -6,6 +6,7 @@ use App\Actions\Settings\UploadLogo;
 use App\Enums\SystemRole;
 use App\Exceptions\ProtectedActionException;
 use App\Livewire\Forms\SiteSettingsForm;
+use App\Support\ColorScheme\ColorScheme;
 use App\Models\Role;
 use App\Support\Settings\SiteLogo;
 use App\Support\Settings\SiteSettings;
@@ -158,6 +159,51 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     /**
+     * The scheme as currently chosen in the form, applied to the page before it is saved.
+     */
+    #[Computed]
+    public function previewCss(): string
+    {
+        return $this->schemeFromForm()->css(includeStock: true);
+    }
+
+    /**
+     * Swatches of every option: light accent, dark accent and the light sidebar.
+     *
+     * @return array<string, array{accent: string, dark: string, sidebar: string}>
+     */
+    #[Computed]
+    public function schemeSwatches(): array
+    {
+        $swatches = [];
+
+        foreach ([...array_keys(ColorScheme::PRESETS), ColorScheme::CUSTOM] as $key) {
+            $scheme = $key === ColorScheme::CUSTOM
+                ? ColorScheme::resolve($key, $this->form->color_accent, $this->form->color_gray, true)
+                : ColorScheme::resolve($key, null, null, true);
+            $variables = $scheme->variables(includeStock: true);
+
+            $swatches[$key] = [
+                'accent' => $variables['light']['--color-accent'],
+                'dark' => $variables['dark']['--color-sidebar'],
+                'sidebar' => $variables['light']['--color-sidebar'],
+            ];
+        }
+
+        return $swatches;
+    }
+
+    private function schemeFromForm(): ColorScheme
+    {
+        return ColorScheme::resolve(
+            $this->form->color_scheme,
+            $this->form->color_accent,
+            $this->form->color_gray,
+            $this->form->color_tint_sidebar,
+        );
+    }
+
+    /**
      * Validate and store the logo, then reload so every layout shows it.
      */
     private function storeLogo(UploadLogo $uploadLogo, string $variant): void
@@ -305,7 +351,7 @@ new #[Title('site_settings.title')] class extends Component {
     </div>
 
     <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 dark:border-zinc-700" data-test="site-settings-tabs">
-        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo'] as $section => $icon)
+        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch'] as $section => $icon)
             <flux:navbar.item
                 :icon="$icon"
                 :current="$tab === $section"
@@ -350,6 +396,68 @@ new #[Title('site_settings.title')] class extends Component {
             @if ($this->defaultRoleGrantsAdminAccess)
                 <flux:callout icon="exclamation-triangle" color="amber" :heading="__('site_settings.access.admin_access_warning')" />
             @endif
+        @elseif ($tab === 'colors')
+            {{-- Live preview: overrides the saved scheme from <head> while this tab is open. --}}
+            <style>{!! $this->previewCss !!}</style>
+
+            <flux:text>{{ __('site_settings.colors.description') }}</flux:text>
+
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label="{{ __('site_settings.colors.heading') }}">
+                @foreach ($this->schemeSwatches as $key => $swatch)
+                    <button
+                        type="button"
+                        role="radio"
+                        aria-checked="{{ $form->color_scheme === $key ? 'true' : 'false' }}"
+                        wire:click="$set('form.color_scheme', '{{ $key }}')"
+                        wire:key="scheme-{{ $key }}"
+                        data-test="color-scheme-{{ $key }}"
+                        @class([
+                            'flex cursor-pointer flex-col gap-2 rounded-lg border p-3 text-start transition',
+                            'border-accent ring-2 ring-accent' => $form->color_scheme === $key,
+                            'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600' => $form->color_scheme !== $key,
+                        ])
+                    >
+                        <span class="flex items-center gap-1">
+                            <span class="size-5 rounded-full border border-black/10" style="background: {{ $swatch['accent'] }}"></span>
+                            <span class="size-5 rounded-full border border-black/10" style="background: {{ $swatch['sidebar'] }}"></span>
+                            <span class="size-5 rounded-full border border-white/10" style="background: {{ $swatch['dark'] }}"></span>
+                        </span>
+                        <span class="text-sm font-medium text-zinc-800 dark:text-white">{{ __("site_settings.colors.schemes.{$key}") }}</span>
+                    </button>
+                @endforeach
+            </div>
+            <flux:error name="form.color_scheme" />
+
+            @if ($form->color_scheme === App\Support\ColorScheme\ColorScheme::CUSTOM)
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <flux:field>
+                        <flux:label>{{ __('site_settings.colors.accent') }}</flux:label>
+                        <flux:description>{{ __('site_settings.colors.accent_description') }}</flux:description>
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="color"
+                                wire:model.live.debounce.200ms="form.color_accent"
+                                aria-label="{{ __('site_settings.colors.accent') }}"
+                                class="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-zinc-200 bg-white p-1 dark:border-zinc-600 dark:bg-zinc-700"
+                            />
+                            <flux:input wire:model.live.blur="form.color_accent" placeholder="#2563eb" maxlength="7" class="font-mono" />
+                        </div>
+                        <flux:error name="form.color_accent" />
+                    </flux:field>
+
+                    <flux:select wire:model.live="form.color_gray" :label="__('site_settings.colors.gray')" :description="__('site_settings.colors.gray_description')">
+                        @foreach (array_keys(App\Support\ColorScheme\ColorScheme::GRAYS) as $gray)
+                            <flux:select.option :value="$gray" wire:key="gray-{{ $gray }}">{{ __("site_settings.colors.grays.{$gray}") }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
+            @endif
+
+            @unless ($form->color_scheme === 'neutral')
+                <flux:switch wire:model.live="form.color_tint_sidebar" :label="__('site_settings.colors.tint_sidebar')" :description="__('site_settings.colors.tint_sidebar_description')" align="left" />
+            @endunless
+
+            <flux:callout icon="eye" variant="secondary" :heading="__('site_settings.colors.preview_hint')" />
         @elseif ($tab === 'logo')
             <flux:text>{{ __('site_settings.logo.description') }}</flux:text>
 
