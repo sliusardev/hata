@@ -6,6 +6,7 @@ return [
         'admin' => 'Admin panel',
         'users' => 'Users',
         'roles' => 'Roles',
+        'settings' => 'Site settings',
     ],
 
     'items' => [
@@ -23,6 +24,9 @@ return [
             'create' => 'Create roles',
             'edit' => 'Edit roles and their permissions',
             'delete' => 'Delete roles',
+        ],
+        'settings' => [
+            'edit' => 'Editing site settings',
         ],
     ],
 

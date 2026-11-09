@@ -97,7 +97,9 @@ The interface is available in English (`en`, the default and fallback) and Ukrai
 
 ## Public registration
 
-Registration is disabled by default. Set `ADMIN_REGISTRATION_ENABLED=true` to enable it. Registered users get no role, so they cannot open the admin panel until an administrator assigns one.
+Registration is disabled by default. Turn it on in **Admin → Site settings** (or set `ADMIN_REGISTRATION_ENABLED=true`). Registered users get the role chosen there, no role by default, so they cannot open the admin panel until an administrator assigns one.
+
+The site settings page also holds the site name, default language, timezone and email (SMTP) settings. Values saved there override `.env`. After updating an existing install, run `php artisan migrate`, `php artisan permissions:sync` and `php artisan db:seed --class=RoleSeeder` so the `admin` role gets the new `settings.edit` permission.
 
 ## Development
 

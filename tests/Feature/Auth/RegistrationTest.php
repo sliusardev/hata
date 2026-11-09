@@ -1,9 +1,7 @@
 <?php
 
-use Laravel\Fortify\Features;
-
 beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::registration());
+    config(['admin.registration_enabled' => true]);
 });
 
 test('registration screen can be rendered', function () {

@@ -7,12 +7,36 @@ return [
     | Public Registration
     |--------------------------------------------------------------------------
     |
-    | When enabled, visitors can create an account. New accounts receive no
-    | role and therefore have no access to the admin panel.
+    | When enabled, visitors can create an account. New accounts receive the
+    | default role below (none by default). Values stored in the site settings
+    | (admin panel) override the ones from .env.
     |
     */
 
     'registration_enabled' => (bool) env('ADMIN_REGISTRATION_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Role Of Registered Users
+    |--------------------------------------------------------------------------
+    |
+    | Name of the role given to users who register themselves. Null means no
+    | role. Like the options above, it can be changed in the site settings.
+    |
+    */
+
+    'default_role' => env('ADMIN_DEFAULT_ROLE'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Display Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Dates are stored in app.timezone (UTC) and shown in this timezone.
+    |
+    */
+
+    'timezone' => env('ADMIN_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

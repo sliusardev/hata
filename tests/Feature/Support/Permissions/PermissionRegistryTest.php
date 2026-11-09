@@ -4,11 +4,12 @@ use App\Enums\SystemRole;
 use App\Support\Permissions\PermissionRegistry;
 use Illuminate\Support\Facades\Lang;
 
-test('it loads the stage 1 permissions from the configuration', function () {
+test('it loads the permissions from the configuration', function () {
     expect(app(PermissionRegistry::class)->groups())->toBe([
         'admin' => ['admin.access'],
         'users' => ['users.view', 'users.create', 'users.edit', 'users.delete'],
         'roles' => ['roles.view', 'roles.create', 'roles.edit', 'roles.delete'],
+        'settings' => ['settings.edit'],
     ]);
 });
 

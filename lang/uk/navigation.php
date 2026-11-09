@@ -14,6 +14,7 @@ return [
     'log_out' => 'Вийти',
     'administration' => 'Адміністрування',
     'users' => 'Користувачі',
+    'site_settings' => 'Налаштування сайту',
     'roles' => 'Ролі',
 
 ];

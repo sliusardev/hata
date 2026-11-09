@@ -30,7 +30,7 @@ test('it lists roles with translated names, user and permission counts', functio
             $roles = $component->instance()->roles->keyBy('name');
 
             expect($roles['editor']->users_count)->toBe(2)
-                ->and($roles['admin']->permissions_count)->toBe(9);
+                ->and($roles['admin']->permissions_count)->toBe(10);
         });
 });
 

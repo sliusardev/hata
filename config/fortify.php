@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureRegistrationIsEnabled;
 use Laravel\Fortify\Features;
 
 return [
@@ -99,9 +100,12 @@ return [
     | that it registers with the application. If necessary, you may change
     | these middleware but typically this provided default is preferred.
     |
+    | EnsureRegistrationIsEnabled answers 404 on the registration routes while
+    | registration is turned off in the site settings (admin.registration_enabled).
+    |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', EnsureRegistrationIsEnabled::class],
 
     /*
     |--------------------------------------------------------------------------
@@ -161,7 +165,8 @@ return [
     */
 
     'features' => [
-        ...(config('admin.registration_enabled') ? [Features::registration()] : []),
+        // Always registered; EnsureRegistrationIsEnabled hides it while it's turned off.
+        Features::registration(),
         Features::resetPasswords(),
         Features::twoFactorAuthentication([
             'confirm' => true,

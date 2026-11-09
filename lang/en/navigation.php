@@ -14,6 +14,7 @@ return [
     'log_out' => 'Log out',
     'administration' => 'Administration',
     'users' => 'Users',
+    'site_settings' => 'Site settings',
     'roles' => 'Roles',
 
 ];

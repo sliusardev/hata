@@ -15,7 +15,7 @@ Components: `resources/views/pages/admin/roles/`. The create and edit pages exte
 ## Permissions
 
 - **Registry:** `config/permissions.php` → `groups` (`resource => [actions]`, name `resource.action`). Modules extend it with `app(PermissionRegistry::class)->register('pages', [...])`.
-- **Stage 1 permissions:** `admin.access`, `users.view|create|edit|delete`, `roles.view|create|edit|delete`.
+- **Permissions:** `admin.access`, `users.view|create|edit|delete`, `roles.view|create|edit|delete`, `settings.edit` (see [site settings](site-settings.md)).
 - **Sync:** `php artisan permissions:sync` creates missing permissions and lists stale ones; `--prune` deletes them. It also clears the Spatie cache.
 - **Labels:** `lang/*/permissions.php` → `groups.<resource>`, `items.<resource>.<action>`. A test checks that every permission has a label in every language.
 - **Checks in code** always use permissions (`can('users.edit')`), never role names.

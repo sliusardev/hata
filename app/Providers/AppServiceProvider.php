@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Support\Permissions\PermissionRegistry;
+use App\Support\Settings\SiteSettings;
 use App\Support\Translation\VendorTranslations;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -24,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
             PermissionRegistry::class,
             fn (): PermissionRegistry => (new PermissionRegistry)->registerMany(config('permissions.groups', [])),
         );
+
+        $this->app->singleton(SiteSettings::class);
     }
 
     /**
@@ -31,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->app->make(SiteSettings::class)->apply();
         $this->configureDefaults();
         $this->configureTranslations();
         $this->configureAuthorization();

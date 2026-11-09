@@ -18,6 +18,7 @@ test('it creates the system roles with their default permissions', function () {
             'roles.delete',
             'roles.edit',
             'roles.view',
+            'settings.edit',
             'users.create',
             'users.delete',
             'users.edit',

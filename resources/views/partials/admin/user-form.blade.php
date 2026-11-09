@@ -46,7 +46,7 @@
                 <flux:label>{{ __('users.form.email_verified') }}</flux:label>
                 <div>
                     @if ($editedUser?->email_verified_at)
-                        <flux:badge color="green" icon="check-circle" size="sm">{{ __('users.form.verified') }} · {{ $editedUser->email_verified_at->isoFormat('LL') }}</flux:badge>
+                        <flux:badge color="green" icon="check-circle" size="sm">{{ __('users.form.verified') }} · {{ $editedUser->email_verified_at->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:badge>
                     @else
                         <flux:badge color="zinc" size="sm">{{ __('users.form.not_verified') }}</flux:badge>
                     @endif

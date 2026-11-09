@@ -25,4 +25,6 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
         Route::livewire('roles', 'pages::admin.roles.index')->name('roles.index');
         Route::livewire('roles/create', 'pages::admin.roles.create')->name('roles.create');
         Route::livewire('roles/{role}/edit', 'pages::admin.roles.edit')->name('roles.edit');
+
+        Route::livewire('settings', 'pages::admin.settings.edit')->name('settings.edit');
     });

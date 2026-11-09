@@ -12,6 +12,7 @@ test('it creates every registered permission', function () {
         'roles.delete',
         'roles.edit',
         'roles.view',
+        'settings.edit',
         'users.create',
         'users.delete',
         'users.edit',
@@ -24,7 +25,7 @@ test('running it again does not duplicate permissions', function () {
 
     $this->artisan('permissions:sync')->assertSuccessful();
 
-    expect(Permission::count())->toBe(9);
+    expect(Permission::count())->toBe(10);
 });
 
 test('it creates permissions registered by modules', function () {

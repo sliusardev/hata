@@ -44,7 +44,7 @@ Each decision gives its date and its reason. Add new ones at the end.
 2. **Email verification stays disabled** (no `Features::emailVerification()`, `User` doesn't implement `MustVerifyEmail`). The admin route group still carries the `verified` middleware, so it starts working once verification is enabled. The "email verified" checkbox only sets `email_verified_at`. Reason: shared hosting may not have working mail.
 3. **The dashboard moves into the admin area:** `/admin`, route `admin.dashboard`, behind `can:admin.access`. `/settings/*` (profile, language, security, appearance) stays available to any authenticated user. After login (Fortify `home`), a user without `admin.access` is sent to `profile.edit` instead of a 403 page.
 4. **Use `flux:table`** (it's in Flux free) instead of a custom Blade table component.
-5. **Registration toggle:** `config/admin.php` → `registration_enabled` (env `ADMIN_REGISTRATION_ENABLED`, default `false`). `Features::registration()` is added to Fortify's features only when it's enabled.
+5. **Registration toggle:** `config/admin.php` → `registration_enabled` (env `ADMIN_REGISTRATION_ENABLED`, default `false`). `Features::registration()` is added to Fortify's features only when it's enabled. *Superseded by decision 37.*
 6. **Page titles are translation keys.** `#[Title('settings.profile.title')]` holds a key, and `partials/head.blade.php` translates it with `__($title)`. A title passed already translated (`:title="__('...')"`) still works, because `__()` returns a missing key unchanged.
 7. **Vendor literals without JSON files.** Fortify, laravel/passkeys and Flux call `__('Some English sentence')`. The project has no `lang/*.json`, so `App\Support\Translation\VendorTranslations` maps these literals to PHP keys (`auth.vendor.*`, `common.flux.*`) through `Lang::handleMissingKeysUsing()` in `AppServiceProvider`. When a package update adds a new literal, add it to that map and to both languages.
 8. **Toast after a redirect:** `App\Support\Toast::success()/danger()` flashes to the session, and `<x-flash-toast />` in the app layouts fires Flux's `toast-show` event on the next page. `Flux::toast()` stays for actions that don't redirect. This is the single toast approach for the whole admin.
@@ -57,7 +57,7 @@ Each decision gives its date and its reason. Add new ones at the end.
 15. **`App\Enums\SystemRole`** holds the names of the system roles. `App\Models\Role::displayName()` returns `roles.names.<name>` for system roles and `label` for custom ones.
 16. **`CreateSuperAdmin` is an action without an actor** (used by the CLI and the seeder). Actions with an actor (`CreateUser` and others) arrive in step 4.
 17. **Artisan command output is in English.** It's for developers, not the admin UI.
-18. **Starter registration tests are skipped** while registration is off (`skipUnlessFortifyHas`). `RegistrationToggleTest` covers that registration is off by default and that a new user gets no role.
+18. **Starter registration tests are skipped** while registration is off (`skipUnlessFortifyHas`). *Superseded by decision 37: they now turn registration on in `beforeEach`.* `RegistrationToggleTest` covers that registration is off by default and that a new user gets no role.
 19. **Laravel Boost appends its guidelines to this file** on `composer update/require` (the block at the end of the file, after the `===` line). Don't edit that block; Boost regenerates it. Never write the literal opening tag of that block anywhere else in this file: Boost would treat it as the block start and overwrite everything after it.
 20. **Cyrillic-aware case-insensitive search:** the `users.search_index` column holds `mb_strtolower(name + ' ' + email)`, kept up to date by the `App\Models\Concerns\HasSearchIndex` trait (on `saving`). The `search()` scope does `LIKE` on the lowercased term. This works the same on SQLite (whose `LIKE` only ignores ASCII case) and MySQL, with no DB-specific SQL. `%`/`_` in the term are not escaped (they only widen the match). Reuse the trait for posts and pages.
 21. **Protection rules** live in `App\Support\Permissions\AccessRules`, which actions call directly. Not via the Gate: `Gate::before` lets a super admin through everything, but the rules (self, last super admin) bind super admins too. The UI hides buttons using the same methods. A violation throws `App\Exceptions\ProtectedActionException` (an `AuthorizationException` with a translated message); components show it as a field error or a danger toast.
@@ -76,6 +76,10 @@ Each decision gives its date and its reason. Add new ones at the end.
 34. **CI** (`.github/workflows/tests.yml`): a `quality` job (Pint `--test` and PHPStan, PHP 8.5) and a `tests` matrix (PHP 8.4/8.5 × SQLite in memory / MySQL 8). Tests read the database from env variables; `phpunit.xml` sets SQLite only as the default (no `force`).
 35. **Per-record actions in every table go into a "⋮" dropdown** (`<x-admin.row-actions>` with `<flux:menu.item>` children, destructive ones `variant="danger"`), not into icon buttons in the row (user's decision, 2026-11-05). The component renders nothing when no item is visible to the actor. Page-level actions ("Create") stay as buttons above the table. The record's name in the first column links to its edit page when the actor may open it.
 
+36. **Site settings override config** (2026-11-09). `App\Support\Settings\SiteSettings` stores values in the `settings` table and writes them over `config()` in `AppServiceProvider::boot()`, so code keeps reading config. No settings package (no new dependency). Settings that aren't stored fall back to `.env`. The SMTP password is encrypted with `APP_KEY`.
+37. **Registration is switched at runtime.** Fortify always registers `Features::registration()`, because the setting lives in the database and Fortify builds its routes before that. `EnsureRegistrationIsEnabled` (in `fortify.middleware`) returns 404 on `register`/`register.store` while `admin.registration_enabled` is off, and the "Sign up" links check the same config.
+38. **The site timezone is for display only.** `app.timezone` stays UTC, so stored dates don't shift; admin views convert with `->tz(config('admin.timezone'))`.
+
 ## Conventions
 
 - **Translations:** PHP files only in `lang/en` and `lang/uk`. Keys are snake_case and nested by page/block. Every new key goes into both languages in the same change. `tests/Feature/Localization/TranslationParityTest.php` checks file/key parity, empty values and placeholders, that every `__('group.key')` used in `app/` and `resources/views/` exists, and that every vendor-map target exists.
@@ -92,6 +96,7 @@ Short specs for each section of the site. Read the relevant one before changing 
 - [User settings](docs/specs/user-settings.md): profile, language, security, appearance
 - [Users page](docs/specs/users.md): list, create/edit form, user actions and protection rules
 - [Roles and permissions page](docs/specs/roles.md): permission registry, system roles, permission matrix, role actions
+- [Site settings page](docs/specs/site-settings.md): site name, language, timezone, registration, default role, email
 
 ===
 
