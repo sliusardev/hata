@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "laravel-boost": {
+      "command": "/Users/vitalii/Library/Application Support/Herd/bin/php85",
+      "args": [
+        "/Users/vitalii/Herd/hata/artisan",
+        "boost:mcp"
+      ]
+    }
+  }
+}
