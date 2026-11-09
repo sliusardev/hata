@@ -235,3 +235,42 @@ test('it reports a failed test email', function () {
         ->call('sendTestEmail')
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger');
 });
+
+test('switching tabs without changes opens the tab right away', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::test('pages::admin.settings.edit')
+        ->call('switchTab', 'mail')
+        ->assertSet('tab', 'mail')
+        ->assertSet('showUnsavedModal', false);
+});
+
+test('switching tabs with unsaved changes asks first and can discard them', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+    $originalName = config('app.name');
+
+    Livewire::test('pages::admin.settings.edit')
+        ->set('form.site_name', 'Changed')
+        ->call('switchTab', 'mail')
+        ->assertSet('tab', 'general')
+        ->assertSet('showUnsavedModal', true)
+        ->assertSee(__('site_settings.unsaved.body', ['tab' => __('site_settings.general.heading')]))
+        ->call('discardChangesAndSwitch')
+        ->assertSet('tab', 'mail')
+        ->assertSet('showUnsavedModal', false)
+        ->assertSet('form.site_name', $originalName);
+
+    expect(Setting::count())->toBe(0);
+});
+
+test('a typed SMTP password counts as an unsaved change', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+    app(SiteSettings::class)->put(['mail_mailer' => 'smtp', 'mail_host' => 'smtp.example.com', 'mail_port' => 587, 'mail_scheme' => 'smtp']);
+
+    Livewire::test('pages::admin.settings.edit', ['tab' => 'mail'])
+        ->set('form.mail_password', 'secret')
+        ->call('switchTab', 'general')
+        ->assertSet('showUnsavedModal', true)
+        ->call('discardChangesAndSwitch')
+        ->assertSet('form.mail_password', '');
+});

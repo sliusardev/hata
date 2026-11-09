@@ -9,10 +9,12 @@ use App\Support\Settings\SiteSettings;
 use App\Support\Toast;
 use Flux\Flux;
 use Illuminate\Mail\Message;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -27,6 +29,22 @@ new #[Title('site_settings.title')] class extends Component {
     #[Url]
     public string $tab = 'general';
 
+    /**
+     * The form as it was loaded, to detect unsaved changes when switching tabs.
+     *
+     * @var array<string, mixed>
+     */
+    #[Locked]
+    public array $savedValues = [];
+
+    /**
+     * The tab the user asked for while the open one has unsaved changes.
+     */
+    #[Locked]
+    public string $pendingTab = '';
+
+    public bool $showUnsavedModal = false;
+
     public function mount(SiteSettings $settings): void
     {
         $this->authorize('settings.edit');
@@ -36,6 +54,7 @@ new #[Title('site_settings.title')] class extends Component {
         }
 
         $this->form->fillFromSettings($settings);
+        $this->savedValues = $this->form->all();
     }
 
     public function updatedTab(): void
@@ -44,6 +63,47 @@ new #[Title('site_settings.title')] class extends Component {
             $this->tab = 'general';
         }
 
+        $this->resetErrorBag();
+    }
+
+    /**
+     * Open another tab, or ask first when the open one has unsaved changes.
+     */
+    public function switchTab(string $section): void
+    {
+        if (! array_key_exists($section, SiteSettingsForm::SECTIONS) || $section === $this->tab) {
+            return;
+        }
+
+        if ($this->form->hasChangesIn($this->tab, $this->savedValues)) {
+            $this->pendingTab = $section;
+            $this->showUnsavedModal = true;
+
+            return;
+        }
+
+        $this->openTab($section);
+    }
+
+    /**
+     * Drop the unsaved changes of the open tab and go to the requested one.
+     */
+    public function discardChangesAndSwitch(): void
+    {
+        $this->form->fill(Arr::only($this->savedValues, SiteSettingsForm::SECTIONS[$this->tab]));
+        $this->form->mail_password = '';
+        $this->showUnsavedModal = false;
+
+        if (array_key_exists($this->pendingTab, SiteSettingsForm::SECTIONS)) {
+            $this->openTab($this->pendingTab);
+        }
+
+        $this->pendingTab = '';
+    }
+
+    private function openTab(string $section): void
+    {
+        $this->tab = $section;
         $this->resetErrorBag();
     }
 
@@ -145,7 +205,7 @@ new #[Title('site_settings.title')] class extends Component {
             <flux:navbar.item
                 :icon="$icon"
                 :current="$tab === $section"
-                wire:click="$set('tab', '{{ $section }}')"
+                wire:click="switchTab('{{ $section }}')"
                 wire:key="tab-{{ $section }}"
                 class="cursor-pointer"
             >
@@ -239,4 +299,13 @@ new #[Title('site_settings.title')] class extends Component {
             <flux:text class="text-xs">{{ __('site_settings.mail.send_test_hint') }}</flux:text>
         @endif
     </form>
+
+    <x-confirm-modal
+        wire:model.self="showUnsavedModal"
+        :heading="__('site_settings.unsaved.heading')"
+        :confirm-label="__('site_settings.unsaved.discard')"
+        confirm-action="discardChangesAndSwitch"
+    >
+        {{ __('site_settings.unsaved.body', ['tab' => __("site_settings.{$tab}.heading")]) }}
+    </x-confirm-modal>
 </section>

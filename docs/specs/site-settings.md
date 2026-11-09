@@ -31,7 +31,9 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 
 ## Tabs
 
-The page has three tabs, "General", "Access" and "Email" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab. Unsaved edits on another tab are dropped by that redirect.
+The page has three tabs, "General", "Access" and "Email" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
+
+Switching tabs while the open one has unsaved changes (compared with the values loaded on mount; a typed SMTP password always counts) opens a confirmation (`<x-confirm-modal>`): "Cancel" stays on the tab, "Switch without saving" restores that tab's fields and opens the other one. Leaving the page itself is not guarded.
 
 ## Form
 

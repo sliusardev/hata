@@ -49,6 +49,12 @@ return [
         'test_failed' => 'Could not send the email: :error',
     ],
 
+    'unsaved' => [
+        'heading' => 'Unsaved changes',
+        'body' => 'The “:tab” tab has unsaved changes. If you switch tabs, they will be lost.',
+        'discard' => 'Switch without saving',
+    ],
+
     'messages' => [
         'saved' => 'Site settings saved.',
         'role_unavailable' => 'You cannot choose this role: it has permissions you do not have.',

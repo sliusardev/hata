@@ -78,6 +78,31 @@ class SiteSettingsForm extends Form
     ];
 
     /**
+     * Whether a field of the tab differs from the saved values. A typed SMTP password always
+     * counts as a change, because the stored one is never loaded into the form.
+     *
+     * @param  array<string, mixed>  $savedValues  Values of the form as they were loaded.
+     */
+    public function hasChangesIn(string $section, array $savedValues): bool
+    {
+        foreach (self::SECTIONS[$section] as $field) {
+            if ($field === 'mail_password') {
+                if (filled($this->mail_password)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ((string) $this->{$field} !== (string) ($savedValues[$field] ?? '')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Validate the fields of one tab. Empty optional fields become null.
      *
      * @return array<string, string|int|bool|null>
