@@ -28,10 +28,11 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 | `mail_mailer` | `mail.default` (only `smtp` is stored) | Email |
 | `mail_host`, `mail_port`, `mail_scheme`, `mail_username`, `mail_password` | `mail.mailers.smtp.*` | Email |
 | `mail_from_address`, `mail_from_name` | `mail.from.*` | Email |
+| `logo_light`, `logo_dark` | `admin.logo.light`, `admin.logo.dark` (paths on `admin.logo.disk`) | Logo |
 
 ## Tabs
 
-The page has three tabs, "General", "Access" and "Email" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
+The page has four tabs, "General", "Access", "Email" and "Logo" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail|logo`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
 
 Switching tabs while the open one has unsaved changes (compared with the values loaded on mount; a typed SMTP password always counts) opens a confirmation (`<x-confirm-modal>`): "Cancel" stays on the tab, "Switch without saving" restores that tab's fields and opens the other one. Leaving the page with unsaved changes is guarded in the browser (Alpine compares `$wire.form` with `savedValues`, so it also sees edits not yet sent to the server): a `wire:navigate` link (the sidebar) is cancelled through the `livewire:navigate` event and a confirmation "Leave without saving" opens; closing or reloading the tab and plain links get the browser's own `beforeunload` dialog. The browser's Back button is not guarded (`livewire:navigate` with `history: true` arrives after the URL has already changed). A successful save marks the form clean before its redirect.
 
@@ -46,8 +47,19 @@ Switching tabs while the open one has unsaved changes (compared with the values 
 - **Send a test email** (Email tab only): to the current user's address with the saved settings (not the unsaved form). A transport error is shown in a danger toast.
 - After saving: a full redirect back to the same tab (so the layout shows the new site name) with a success toast.
 
+## Logo
+
+- **Default mark:** `<x-app-logo-icon>`, a house with crossed rafters over the gable and a four-pane window (`currentColor`). `public/favicon.svg` (follows the system theme), `favicon.ico` and `apple-touch-icon.png` use the same mark. Uploaded logos don't change the favicon.
+- **`<x-site-logo class="h-8">`** shows the uploaded logos (light one with `dark:hidden`, dark one with `hidden dark:block`) or the default mark on an accent tile. Used by `<x-app-logo>` (sidebar, header) and the auth layouts; `variant="dark"` always shows the dark one (the dark panel of the split auth layout).
+- **Logo tab:** a light and a dark slot, each with a preview on a matching background, a file input and "Remove". PNG, JPG, WebP or SVG up to 1 MB. A file is stored as soon as it's uploaded (no Save button on this tab), then the page reloads on the same tab with a toast.
+- **Fallback:** with only one logo uploaded, it's used in both themes (`SiteLogo::path()`).
+- **Storage:** `UploadLogo` stores the file in `branding/` on `admin.logo.disk` (default `local`, private) and deletes the file it replaces; `RemoveLogo` deletes the file and the setting.
+- **Serving:** `GET /branding/logo/{light|dark}` (`branding.logo`, public, because the sign-in pages show it), `SiteLogoController`. 404 without a logo. The URL carries `?v=` (hash of the path), so the response is cached for a year (`immutable`). `Content-Security-Policy: … sandbox` and `nosniff` keep scripts in an uploaded SVG from running when it's opened directly; inside `<img>` they never run.
+
 ## Action (`app/Actions/Settings`)
 
 | Action | Permission | Rules |
 |---|---|---|
+| `UploadLogo` | `settings.edit` | stores the validated file, deletes the previous one |
+| `RemoveLogo` | `settings.edit` | deletes the file and the setting |
 | `UpdateSiteSettings` | `settings.edit` | stores only the keys it's given (one tab); the role of new users must be assignable by the actor and not super-admin (`ProtectedActionException`, shown as a field error) |

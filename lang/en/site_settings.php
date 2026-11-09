@@ -49,6 +49,21 @@ return [
         'test_failed' => 'Could not send the email: :error',
     ],
 
+    'logo' => [
+        'heading' => 'Logo',
+        'description' => 'Shown next to the site name in the admin panel and on the sign-in pages. Without an upload, the default Hata mark is used. If you upload only one logo, it is used in both themes.',
+        'light' => 'Light theme',
+        'dark' => 'Dark theme',
+        'default' => 'Default logo',
+        'uses_other' => 'Uses the other theme’s logo',
+        'upload' => 'Upload a logo',
+        'uploading' => 'Uploading…',
+        'remove' => 'Remove',
+        'requirements' => 'PNG, JPG, WebP or SVG, up to 1 MB. A logo is saved as soon as it is uploaded. Best: transparent background, height at least 64 px.',
+        'uploaded' => 'Logo uploaded.',
+        'removed' => 'Logo removed.',
+    ],
+
     'unsaved' => [
         'heading' => 'Unsaved changes',
         'body' => 'The “:tab” tab has unsaved changes. If you switch tabs, they will be lost.',

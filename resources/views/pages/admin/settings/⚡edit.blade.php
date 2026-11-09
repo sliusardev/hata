@@ -1,10 +1,13 @@
 <?php
 
+use App\Actions\Settings\RemoveLogo;
 use App\Actions\Settings\UpdateSiteSettings;
+use App\Actions\Settings\UploadLogo;
 use App\Enums\SystemRole;
 use App\Exceptions\ProtectedActionException;
 use App\Livewire\Forms\SiteSettingsForm;
 use App\Models\Role;
+use App\Support\Settings\SiteLogo;
 use App\Support\Settings\SiteSettings;
 use App\Support\Toast;
 use Flux\Flux;
@@ -18,10 +21,24 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 new #[Title('site_settings.title')] class extends Component {
+    use WithFileUploads;
+
     public SiteSettingsForm $form;
+
+    /**
+     * New light-theme logo, stored as soon as it is uploaded.
+     */
+    public ?TemporaryUploadedFile $logoLight = null;
+
+    /**
+     * New dark-theme logo, stored as soon as it is uploaded.
+     */
+    public ?TemporaryUploadedFile $logoDark = null;
 
     /**
      * The open tab, one of SiteSettingsForm::SECTIONS.
@@ -99,6 +116,67 @@ new #[Title('site_settings.title')] class extends Component {
         }
 
         $this->pendingTab = '';
+    }
+
+    public function updatedLogoLight(UploadLogo $uploadLogo): void
+    {
+        $this->storeLogo($uploadLogo, 'light');
+    }
+
+    public function updatedLogoDark(UploadLogo $uploadLogo): void
+    {
+        $this->storeLogo($uploadLogo, 'dark');
+    }
+
+    public function removeLogo(RemoveLogo $removeLogo, string $variant): void
+    {
+        $this->authorize('settings.edit');
+
+        if (! in_array($variant, SiteLogo::VARIANTS, true)) {
+            return;
+        }
+
+        $removeLogo->handle(Auth::user(), $variant);
+
+        Toast::success(__('site_settings.logo.removed'));
+
+        $this->redirectRoute('admin.settings.edit', ['tab' => 'logo']);
+    }
+
+    /**
+     * Uploaded path of each variant (no fallback to the other one), for the previews.
+     *
+     * @return array<string, string|null>
+     */
+    #[Computed]
+    public function uploadedLogos(): array
+    {
+        return [
+            'light' => filled(config('admin.logo.light')) ? config('admin.logo.light') : null,
+            'dark' => filled(config('admin.logo.dark')) ? config('admin.logo.dark') : null,
+        ];
+    }
+
+    /**
+     * Validate and store the logo, then reload so every layout shows it.
+     */
+    private function storeLogo(UploadLogo $uploadLogo, string $variant): void
+    {
+        $this->authorize('settings.edit');
+
+        $property = $variant === 'light' ? 'logoLight' : 'logoDark';
+
+        $this->validate(
+            [$property => ['required', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:1024']],
+            attributes: [$property => __("site_settings.logo.{$variant}")],
+        );
+
+        $uploadLogo->handle(Auth::user(), $variant, $this->{$property});
+        $this->reset($property);
+
+        Toast::success(__('site_settings.logo.uploaded'));
+
+        $this->redirectRoute('admin.settings.edit', ['tab' => 'logo']);
     }
 
     private function openTab(string $section): void
@@ -227,7 +305,7 @@ new #[Title('site_settings.title')] class extends Component {
     </div>
 
     <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 dark:border-zinc-700" data-test="site-settings-tabs">
-        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope'] as $section => $icon)
+        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo'] as $section => $icon)
             <flux:navbar.item
                 :icon="$icon"
                 :current="$tab === $section"
@@ -272,6 +350,57 @@ new #[Title('site_settings.title')] class extends Component {
             @if ($this->defaultRoleGrantsAdminAccess)
                 <flux:callout icon="exclamation-triangle" color="amber" :heading="__('site_settings.access.admin_access_warning')" />
             @endif
+        @elseif ($tab === 'logo')
+            <flux:text>{{ __('site_settings.logo.description') }}</flux:text>
+
+            <div class="grid gap-6 sm:grid-cols-2">
+                @foreach (['light' => 'logoLight', 'dark' => 'logoDark'] as $variant => $property)
+                    <div class="space-y-3" wire:key="logo-{{ $variant }}">
+                        <flux:heading>{{ __("site_settings.logo.{$variant}") }}</flux:heading>
+
+                        <div @class([
+                            'flex h-24 items-center justify-center rounded-lg border px-4',
+                            'border-zinc-200 bg-zinc-50' => $variant === 'light',
+                            'border-zinc-700 bg-zinc-900' => $variant === 'dark',
+                        ])>
+                            @if ($this->uploadedLogos[$variant])
+                                <img src="{{ SiteLogo::url($variant) }}" alt="" class="h-12 w-auto max-w-full object-contain" data-test="logo-preview-{{ $variant }}" />
+                            @else
+                                <div class="text-center">
+                                    @if (SiteLogo::isCustom())
+                                        <img src="{{ SiteLogo::url($variant) }}" alt="" class="mx-auto h-12 w-auto max-w-full object-contain opacity-60" />
+                                    @else
+                                        <span @class([
+                                            'mx-auto flex size-12 items-center justify-center rounded-md',
+                                            'bg-neutral-800 text-white' => $variant === 'light',
+                                            'bg-white text-neutral-800' => $variant === 'dark',
+                                        ])>
+                                            <x-app-logo-icon class="size-[72%]" />
+                                        </span>
+                                    @endif
+                                    <flux:text class="mt-1 text-xs {{ $variant === 'dark' ? 'text-zinc-400!' : '' }}">
+                                        {{ SiteLogo::isCustom() ? __('site_settings.logo.uses_other') : __('site_settings.logo.default') }}
+                                    </flux:text>
+                                </div>
+                            @endif
+                        </div>
+
+                        <flux:input type="file" wire:model="{{ $property }}" accept=".png,.jpg,.jpeg,.webp,.svg" :aria-label="__('site_settings.logo.upload')" />
+                        <div wire:loading wire:target="{{ $property }}">
+                            <flux:text class="text-xs">{{ __('site_settings.logo.uploading') }}</flux:text>
+                        </div>
+                        <flux:error :name="$property" />
+
+                        @if ($this->uploadedLogos[$variant])
+                            <flux:button size="sm" variant="ghost" icon="trash" wire:click="removeLogo('{{ $variant }}')" data-test="remove-logo-{{ $variant }}">
+                                {{ __('site_settings.logo.remove') }}
+                            </flux:button>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+
+            <flux:text class="text-xs">{{ __('site_settings.logo.requirements') }}</flux:text>
         @else
             <div class="grid gap-6 sm:grid-cols-2">
                 <flux:input wire:model="form.mail_from_address" type="email" :label="__('site_settings.mail.from_address')" required />
@@ -316,9 +445,11 @@ new #[Title('site_settings.title')] class extends Component {
                 @endif
             </div>
 
-            <flux:button variant="primary" type="submit" data-test="save-site-settings-button">
-                {{ __('common.actions.save') }}
-            </flux:button>
+            @unless ($tab === 'logo')
+                <flux:button variant="primary" type="submit" data-test="save-site-settings-button">
+                    {{ __('common.actions.save') }}
+                </flux:button>
+            @endunless
         </div>
 
         @if ($tab === 'mail')

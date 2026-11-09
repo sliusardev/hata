@@ -39,6 +39,8 @@ class SiteSettings
         'mail_password' => 'mail.mailers.smtp.password',
         'mail_from_address' => 'mail.from.address',
         'mail_from_name' => 'mail.from.name',
+        'logo_light' => 'admin.logo.light',
+        'logo_dark' => 'admin.logo.dark',
     ];
 
     /**
