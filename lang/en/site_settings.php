@@ -53,6 +53,8 @@ return [
         'heading' => 'Unsaved changes',
         'body' => 'The “:tab” tab has unsaved changes. If you switch tabs, they will be lost.',
         'discard' => 'Switch without saving',
+        'leave_body' => 'This page has unsaved changes. If you leave it, they will be lost.',
+        'leave' => 'Leave without saving',
     ],
 
     'messages' => [

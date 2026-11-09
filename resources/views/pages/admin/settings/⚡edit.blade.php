@@ -164,6 +164,10 @@ new #[Title('site_settings.title')] class extends Component {
             return;
         }
 
+        // Mark the form clean, so the leave-page warning doesn't fire on the redirect below.
+        $this->form->mail_password = '';
+        $this->savedValues = $this->form->all();
+
         Toast::success(__('site_settings.messages.saved'));
 
         // A full reload, so the layout picks up the new site name.
@@ -194,7 +198,29 @@ new #[Title('site_settings.title')] class extends Component {
     }
 }; ?>
 
-<section class="w-full max-w-3xl space-y-6">
+<section
+    class="w-full max-w-3xl space-y-6"
+    x-data="{
+        fields: @js(array_merge(...array_values(App\Livewire\Forms\SiteSettingsForm::SECTIONS))),
+        pendingUrl: null,
+        leaving: false,
+        isDirty() {
+            const form = $wire.form;
+            const saved = $wire.savedValues;
+
+            return this.fields.some((field) => field === 'mail_password'
+                ? (form.mail_password ?? '') !== ''
+                : String(form[field] ?? '') !== String(saved[field] ?? ''));
+        },
+        leave() {
+            this.leaving = true;
+            $flux.modal('leave-site-settings').close();
+            Livewire.navigate(this.pendingUrl);
+        },
+    }"
+    x-on:livewire:navigate.document="if (! leaving && ! $event.detail.history && isDirty()) { $event.preventDefault(); pendingUrl = $event.detail.url.toString(); $flux.modal('leave-site-settings').show(); }"
+    x-on:beforeunload.window="if (! leaving && isDirty()) { $event.preventDefault(); $event.returnValue = ''; }"
+>
     <div>
         <flux:heading size="xl" level="1">{{ __('site_settings.title') }}</flux:heading>
         <flux:subheading>{{ __('site_settings.description') }}</flux:subheading>
@@ -308,4 +334,23 @@ new #[Title('site_settings.title')] class extends Component {
     >
         {{ __('site_settings.unsaved.body', ['tab' => __("site_settings.{$tab}.heading")]) }}
     </x-confirm-modal>
+
+    <flux:modal name="leave-site-settings" class="max-w-md md:min-w-md">
+        <div class="space-y-6">
+            <div class="space-y-2">
+                <flux:heading size="lg">{{ __('site_settings.unsaved.heading') }}</flux:heading>
+                <flux:text>{{ __('site_settings.unsaved.leave_body') }}</flux:text>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <flux:modal.close>
+                    <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
+                </flux:modal.close>
+
+                <flux:button variant="danger" x-on:click="leave()" data-test="leave-without-saving-button">
+                    {{ __('site_settings.unsaved.leave') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </section>

@@ -274,3 +274,12 @@ test('a typed SMTP password counts as an unsaved change', function () {
         ->call('discardChangesAndSwitch')
         ->assertSet('form.mail_password', '');
 });
+
+test('a successful save marks the form clean for the leave-page warning', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::test('pages::admin.settings.edit')
+        ->set(siteSettingsInput(['form.site_name' => 'Renamed']))
+        ->call('save')
+        ->assertSet('savedValues.site_name', 'Renamed');
+});
