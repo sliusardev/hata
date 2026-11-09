@@ -115,3 +115,10 @@ test('the layouts show the uploaded logo instead of the default mark', function 
     auth()->logout();
     $this->get(route('login'))->assertSee(SiteLogo::url('dark'), false);
 });
+
+test('every auth layout shows the uploaded logo', function (string $layout) {
+    Storage::disk(config('admin.logo.disk'))->put('branding/light.png', 'png');
+    app(SiteSettings::class)->put(['logo_light' => 'branding/light.png']);
+
+    expect(view($layout, ['slot' => ''])->render())->toContain(e(SiteLogo::url('light')));
+})->with(['layouts.auth.simple', 'layouts.auth.card', 'layouts.auth.split']);
