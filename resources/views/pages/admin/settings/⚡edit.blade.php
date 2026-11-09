@@ -14,17 +14,37 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 new #[Title('site_settings.title')] class extends Component {
     public SiteSettingsForm $form;
 
+    /**
+     * The open tab, one of SiteSettingsForm::SECTIONS.
+     */
+    #[Url]
+    public string $tab = 'general';
+
     public function mount(SiteSettings $settings): void
     {
         $this->authorize('settings.edit');
 
+        if (! array_key_exists($this->tab, SiteSettingsForm::SECTIONS)) {
+            $this->tab = 'general';
+        }
+
         $this->form->fillFromSettings($settings);
+    }
+
+    public function updatedTab(): void
+    {
+        if (! array_key_exists($this->tab, SiteSettingsForm::SECTIONS)) {
+            $this->tab = 'general';
+        }
+
+        $this->resetErrorBag();
     }
 
     /**
@@ -74,7 +94,7 @@ new #[Title('site_settings.title')] class extends Component {
     {
         $this->authorize('settings.edit');
 
-        $data = $this->form->validateForSave();
+        $data = $this->form->validateSection($this->tab);
 
         try {
             $updateSiteSettings->handle(Auth::user(), $data);
@@ -87,7 +107,7 @@ new #[Title('site_settings.title')] class extends Component {
         Toast::success(__('site_settings.messages.saved'));
 
         // A full reload, so the layout picks up the new site name.
-        $this->redirectRoute('admin.settings.edit');
+        $this->redirectRoute('admin.settings.edit', ['tab' => $this->tab]);
     }
 
     /**
@@ -120,10 +140,22 @@ new #[Title('site_settings.title')] class extends Component {
         <flux:subheading>{{ __('site_settings.description') }}</flux:subheading>
     </div>
 
-    <form wire:submit="save" class="space-y-6">
-        <flux:fieldset class="space-y-6">
-            <flux:legend>{{ __('site_settings.general.heading') }}</flux:legend>
+    <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 dark:border-zinc-700" data-test="site-settings-tabs">
+        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope'] as $section => $icon)
+            <flux:navbar.item
+                :icon="$icon"
+                :current="$tab === $section"
+                wire:click="$set('tab', '{{ $section }}')"
+                wire:key="tab-{{ $section }}"
+                class="cursor-pointer"
+            >
+                {{ __("site_settings.{$section}.heading") }}
+            </flux:navbar.item>
+        @endforeach
+    </flux:navbar>
 
+    <form wire:submit="save" class="space-y-6">
+        @if ($tab === 'general')
             <flux:input wire:model="form.site_name" :label="__('site_settings.general.site_name')" :description="__('site_settings.general.site_name_description')" required />
 
             <div class="grid gap-6 sm:grid-cols-2">
@@ -139,13 +171,7 @@ new #[Title('site_settings.title')] class extends Component {
                     @endforeach
                 </flux:select>
             </div>
-        </flux:fieldset>
-
-        <flux:separator variant="subtle" />
-
-        <flux:fieldset class="space-y-6">
-            <flux:legend>{{ __('site_settings.access.heading') }}</flux:legend>
-
+        @elseif ($tab === 'access')
             <flux:switch wire:model="form.registration_enabled" :label="__('site_settings.access.registration')" :description="__('site_settings.access.registration_description')" align="left" />
 
             <flux:select wire:model.live="form.default_role" :label="__('site_settings.access.default_role')" :description="__('site_settings.access.default_role_description')">
@@ -160,13 +186,7 @@ new #[Title('site_settings.title')] class extends Component {
             @if ($this->defaultRoleGrantsAdminAccess)
                 <flux:callout icon="exclamation-triangle" color="amber" :heading="__('site_settings.access.admin_access_warning')" />
             @endif
-        </flux:fieldset>
-
-        <flux:separator variant="subtle" />
-
-        <flux:fieldset class="space-y-6">
-            <flux:legend>{{ __('site_settings.mail.heading') }}</flux:legend>
-
+        @else
             <div class="grid gap-6 sm:grid-cols-2">
                 <flux:input wire:model="form.mail_from_address" type="email" :label="__('site_settings.mail.from_address')" required />
                 <flux:input wire:model="form.mail_from_name" :label="__('site_settings.mail.from_name')" required />
@@ -199,18 +219,24 @@ new #[Title('site_settings.title')] class extends Component {
                     />
                 </div>
             @endif
-        </flux:fieldset>
+        @endif
 
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <flux:button variant="ghost" icon="paper-airplane" wire:click="sendTestEmail" data-test="send-test-email-button">
-                {{ __('site_settings.mail.send_test') }}
-            </flux:button>
+            <div>
+                @if ($tab === 'mail')
+                    <flux:button variant="ghost" icon="paper-airplane" wire:click="sendTestEmail" data-test="send-test-email-button">
+                        {{ __('site_settings.mail.send_test') }}
+                    </flux:button>
+                @endif
+            </div>
 
             <flux:button variant="primary" type="submit" data-test="save-site-settings-button">
                 {{ __('common.actions.save') }}
             </flux:button>
         </div>
 
-        <flux:text class="text-xs">{{ __('site_settings.mail.send_test_hint') }}</flux:text>
+        @if ($tab === 'mail')
+            <flux:text class="text-xs">{{ __('site_settings.mail.send_test_hint') }}</flux:text>
+        @endif
     </form>
 </section>

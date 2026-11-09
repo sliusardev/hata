@@ -52,27 +52,48 @@ test('the sidebar links to the page only with the settings.edit permission', fun
     $this->get(route('admin.dashboard'))->assertSee(route('admin.settings.edit'));
 });
 
-test('it saves the settings, applies them and redirects with a message', function () {
+test('each tab saves only its own settings and redirects back to it with a message', function (string $tab, array $expected) {
     $this->actingAs(User::factory()->withRole('admin')->create());
 
     Livewire::test('pages::admin.settings.edit')
         ->set(siteSettingsInput(['form.default_role' => 'author']))
+        ->set('tab', $tab)
         ->call('save')
         ->assertHasNoErrors()
-        ->assertRedirect(route('admin.settings.edit'));
+        ->assertRedirect(route('admin.settings.edit', ['tab' => $tab]));
 
-    expect(Setting::query()->pluck('value', 'key')->all())->toMatchArray([
-        'site_name' => 'Hata',
-        'default_locale' => 'uk',
-        'timezone' => 'Europe/Kyiv',
-        'registration_enabled' => true,
-        'default_role' => 'author',
-        'mail_from_address' => 'site@example.com',
-        'mail_from_name' => 'Hata site',
-    ])
-        ->and(config('app.name'))->toBe('Hata')
-        ->and(config('admin.registration_enabled'))->toBeTrue()
+    expect(Setting::query()->pluck('value', 'key')->sortKeys()->all())->toBe($expected)
         ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('site_settings.messages.saved'));
+})->with([
+    'general' => ['general', ['default_locale' => 'uk', 'site_name' => 'Hata', 'timezone' => 'Europe/Kyiv']],
+    'access' => ['access', ['default_role' => 'author', 'registration_enabled' => true]],
+    'mail' => ['mail', ['mail_from_address' => 'site@example.com', 'mail_from_name' => 'Hata site']],
+]);
+
+test('saved settings are applied to the config', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::test('pages::admin.settings.edit')
+        ->set(siteSettingsInput())
+        ->call('save')
+        ->set('tab', 'access')
+        ->call('save');
+
+    expect(config('app.name'))->toBe('Hata')
+        ->and(config('admin.timezone'))->toBe('Europe/Kyiv')
+        ->and(config('admin.registration_enabled'))->toBeTrue();
+});
+
+test('the tab comes from the query string and falls back to general', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::withQueryParams(['tab' => 'mail'])->test('pages::admin.settings.edit')
+        ->assertSet('tab', 'mail')
+        ->assertSee(__('site_settings.mail.send_test'));
+
+    Livewire::withQueryParams(['tab' => 'nonsense'])->test('pages::admin.settings.edit')
+        ->assertSet('tab', 'general')
+        ->assertDontSee(__('site_settings.mail.send_test'));
 });
 
 test('it stores the SMTP password encrypted and keeps it when the field is left empty', function () {
@@ -86,11 +107,13 @@ test('it stores the SMTP password encrypted and keeps it when the field is left 
     ];
 
     Livewire::test('pages::admin.settings.edit')
+        ->set('tab', 'mail')
         ->set(siteSettingsInput([...$smtp, 'form.mail_password' => 'secret']))
         ->call('save')
         ->assertHasNoErrors();
 
     Livewire::test('pages::admin.settings.edit')
+        ->set('tab', 'mail')
         ->assertSet('form.mail_password', '')
         ->set(siteSettingsInput([...$smtp, 'form.mail_host' => 'smtp2.example.com']))
         ->call('save')
@@ -110,6 +133,7 @@ test('switching back to the server mailer removes the SMTP settings', function (
 
     Livewire::test('pages::admin.settings.edit')
         ->assertSet('form.mail_mailer', 'smtp')
+        ->set('tab', 'mail')
         ->set(siteSettingsInput())
         ->call('save')
         ->assertHasNoErrors();
@@ -122,6 +146,7 @@ test('it requires the SMTP host, port and encryption only for the SMTP mailer', 
     $this->actingAs(User::factory()->withRole('admin')->create());
 
     Livewire::test('pages::admin.settings.edit')
+        ->set('tab', 'mail')
         ->set(siteSettingsInput(['form.mail_mailer' => 'smtp', 'form.mail_host' => '', 'form.mail_port' => '', 'form.mail_scheme' => '']))
         ->call('save')
         ->assertHasErrors(['form.mail_host' => 'required_if', 'form.mail_port' => 'required_if', 'form.mail_scheme' => 'required_if']);
@@ -135,18 +160,30 @@ test('it validates the general settings', function () {
             'form.site_name' => '',
             'form.default_locale' => 'fr',
             'form.timezone' => 'Mars/Olympus',
-            'form.mail_from_address' => 'not-an-email',
         ]))
         ->call('save')
-        ->assertHasErrors(['form.site_name', 'form.default_locale', 'form.timezone', 'form.mail_from_address']);
+        ->assertHasErrors(['form.site_name', 'form.default_locale', 'form.timezone']);
 
     expect(Setting::count())->toBe(0);
+});
+
+test('it validates the sender address on the mail tab only', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::test('pages::admin.settings.edit')
+        ->set(siteSettingsInput(['form.mail_from_address' => 'not-an-email']))
+        ->call('save')
+        ->assertHasNoErrors()
+        ->set('tab', 'mail')
+        ->call('save')
+        ->assertHasErrors(['form.mail_from_address' => 'email']);
 });
 
 test('super-admin cannot be the role of new users', function () {
     $this->actingAs(User::factory()->withRole('super-admin')->create());
 
     Livewire::test('pages::admin.settings.edit')
+        ->set('tab', 'access')
         ->set(siteSettingsInput(['form.default_role' => 'super-admin']))
         ->call('save')
         ->assertHasErrors(['form.default_role' => 'not_in']);
@@ -157,6 +194,7 @@ test('the role of new users must be one the actor may assign', function () {
     Role::create(['name' => 'manager', 'guard_name' => 'web'])->givePermissionTo('users.delete');
 
     Livewire::test('pages::admin.settings.edit')
+        ->set('tab', 'access')
         ->set(siteSettingsInput(['form.default_role' => 'manager']))
         ->call('save')
         ->assertHasErrors(['form.default_role'])
@@ -169,6 +207,7 @@ test('it warns when the role of new users opens the admin panel', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
 
     Livewire::test('pages::admin.settings.edit')
+        ->set('tab', 'access')
         ->set('form.default_role', 'editor')
         ->assertSee(__('site_settings.access.admin_access_warning'))
         ->set('form.default_role', '')
@@ -179,7 +218,7 @@ test('it sends a test email to the current user', function () {
     $user = User::factory()->withRole('admin')->create();
     $this->actingAs($user);
 
-    Livewire::test('pages::admin.settings.edit')
+    Livewire::test('pages::admin.settings.edit', ['tab' => 'mail'])
         ->call('sendTestEmail')
         ->assertDispatched('toast-show');
 
@@ -192,7 +231,7 @@ test('it reports a failed test email', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
     app(SiteSettings::class)->put(['mail_mailer' => 'smtp', 'mail_host' => '127.0.0.1', 'mail_port' => 1, 'mail_scheme' => 'smtp']);
 
-    Livewire::test('pages::admin.settings.edit')
+    Livewire::test('pages::admin.settings.edit', ['tab' => 'mail'])
         ->call('sendTestEmail')
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger');
 });

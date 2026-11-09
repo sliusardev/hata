@@ -67,12 +67,49 @@ class SiteSettingsForm extends Form
     }
 
     /**
-     * @return array{site_name: string, default_locale: string, timezone: string, registration_enabled: bool, default_role: string|null, mail_mailer: string, mail_host: string|null, mail_port: int|null, mail_scheme: string|null, mail_username: string|null, mail_password: string|null, mail_from_address: string, mail_from_name: string}
+     * Fields of each settings tab, saved independently of each other.
+     *
+     * @var array<string, list<string>>
      */
-    public function validateForSave(): array
+    public const array SECTIONS = [
+        'general' => ['site_name', 'default_locale', 'timezone'],
+        'access' => ['registration_enabled', 'default_role'],
+        'mail' => ['mail_mailer', 'mail_host', 'mail_port', 'mail_scheme', 'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name'],
+    ];
+
+    /**
+     * Validate the fields of one tab. Empty optional fields become null.
+     *
+     * @return array<string, string|int|bool|null>
+     */
+    public function validateSection(string $section): array
     {
-        /** @var array{site_name: string, default_locale: string, timezone: string, registration_enabled: bool, default_role: string|null, mail_mailer: string, mail_host: string|null, mail_port: int|string|null, mail_scheme: string|null, mail_username: string|null, mail_password: string|null, mail_from_address: string, mail_from_name: string} $validated */
-        $validated = $this->validate([
+        $rules = array_intersect_key($this->rules(), array_flip(self::SECTIONS[$section]));
+
+        /** @var array<string, string|int|bool|null> $validated */
+        $validated = $this->validate($rules);
+
+        $data = [];
+
+        foreach (self::SECTIONS[$section] as $field) {
+            $value = $validated[$field] ?? null;
+
+            $data[$field] = match (true) {
+                $field === 'registration_enabled' => (bool) $value,
+                $field === 'mail_port' => filled($value) ? (int) $value : null,
+                default => filled($value) ? $value : null,
+            };
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    protected function rules(): array
+    {
+        return [
             'site_name' => ['required', 'string', 'max:255'],
             'default_locale' => ['required', Rule::in(array_keys(config('app.available_locales')))],
             'timezone' => ['required', 'timezone:all'],
@@ -86,22 +123,6 @@ class SiteSettingsForm extends Form
             'mail_password' => ['nullable', 'string', 'max:255'],
             'mail_from_address' => ['required', 'email', 'max:255'],
             'mail_from_name' => ['required', 'string', 'max:255'],
-        ]);
-
-        return [
-            'site_name' => $validated['site_name'],
-            'default_locale' => $validated['default_locale'],
-            'timezone' => $validated['timezone'],
-            'registration_enabled' => (bool) $validated['registration_enabled'],
-            'default_role' => filled($validated['default_role'] ?? null) ? $validated['default_role'] : null,
-            'mail_mailer' => $validated['mail_mailer'],
-            'mail_host' => filled($validated['mail_host'] ?? null) ? $validated['mail_host'] : null,
-            'mail_port' => filled($validated['mail_port'] ?? null) ? (int) $validated['mail_port'] : null,
-            'mail_scheme' => filled($validated['mail_scheme'] ?? null) ? $validated['mail_scheme'] : null,
-            'mail_username' => filled($validated['mail_username'] ?? null) ? $validated['mail_username'] : null,
-            'mail_password' => filled($validated['mail_password'] ?? null) ? $validated['mail_password'] : null,
-            'mail_from_address' => $validated['mail_from_address'],
-            'mail_from_name' => $validated['mail_from_name'],
         ];
     }
 }

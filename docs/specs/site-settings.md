@@ -29,6 +29,10 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 | `mail_host`, `mail_port`, `mail_scheme`, `mail_username`, `mail_password` | `mail.mailers.smtp.*` | Email |
 | `mail_from_address`, `mail_from_name` | `mail.from.*` | Email |
 
+## Tabs
+
+The page has three tabs, "General", "Access" and "Email" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab. Unsaved edits on another tab are dropped by that redirect.
+
 ## Form
 
 - **Site name:** required, ≤255.
@@ -37,11 +41,11 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 - **Public registration:** switch. Fortify always registers the registration routes; `App\Http\Middleware\EnsureRegistrationIsEnabled` (in `fortify.middleware`) answers 404 while it's off, and the "Sign up" links check the setting.
 - **Role of new users:** "No role" or any role except super-admin. Roles the actor can't assign (rule 5, `RolePolicy::assign`) are disabled. A warning is shown when the role has `admin.access`. `CreateNewUser` gives the role and never gives super-admin.
 - **Email:** sender address (required, email) and name (required). Sending method "Server settings (.env)" or "SMTP server". With SMTP: host and port (1–65535) required, encryption STARTTLS (`smtp`) or SSL/TLS (`smtps`), username, password. The password is stored encrypted with `APP_KEY` (a row that can't be decrypted is ignored), is never sent to the browser, and an empty field keeps the stored one. Choosing the server method deletes every SMTP setting.
-- **Send a test email:** to the current user's address with the saved settings (not the unsaved form). A transport error is shown in a danger toast.
-- After saving: a full redirect back to the page (so the layout shows the new site name) with a success toast.
+- **Send a test email** (Email tab only): to the current user's address with the saved settings (not the unsaved form). A transport error is shown in a danger toast.
+- After saving: a full redirect back to the same tab (so the layout shows the new site name) with a success toast.
 
 ## Action (`app/Actions/Settings`)
 
 | Action | Permission | Rules |
 |---|---|---|
-| `UpdateSiteSettings` | `settings.edit` | the role of new users must be assignable by the actor and not super-admin (`ProtectedActionException`, shown as a field error) |
+| `UpdateSiteSettings` | `settings.edit` | stores only the keys it's given (one tab); the role of new users must be assignable by the actor and not super-admin (`ProtectedActionException`, shown as a field error) |
