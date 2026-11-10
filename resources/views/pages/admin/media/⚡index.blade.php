@@ -16,6 +16,7 @@ use App\Models\MediaFolder;
 use App\Models\User;
 use App\Support\Media\MediaIds;
 use App\Support\Media\MediaTypes;
+use App\Support\Media\ServerCapabilities;
 use Carbon\CarbonImmutable;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -812,7 +813,7 @@ new #[Title('media.index.title')] class extends Component {
     /**
      * Config of the mediaUploader Alpine component (see resources/js/media-uploader.js).
      *
-     * Browser resizing only runs while optimization is on.
+     * Browser resizing only runs while optimization is on; uploadCap is PHP's upload cap in bytes (null = none).
      *
      * @return array<string, mixed>
      */
@@ -828,6 +829,7 @@ new #[Title('media.index.title')] class extends Component {
             'limits' => collect(MediaKind::cases())
                 ->mapWithKeys(fn (MediaKind $kind): array => [$kind->value => MediaTypes::limitBytes($kind)])
                 ->all(),
+            'uploadCap' => app(ServerCapabilities::class)->uploadCapBytes(),
             'locale' => str_replace('_', '-', app()->getLocale()),
             'texts' => [
                 'too_large' => __('media.errors.too_large'),

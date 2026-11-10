@@ -6,7 +6,8 @@
  * that fails shows its error on its tile and the queue goes on with the next one.
  *
  * Config (from the page): canUpload, clientResize, clientSide (px), accept (extensions), types ({ext: kind}),
- * limits ({kind: bytes}), locale and texts (translated strings with :placeholders).
+ * limits ({kind: bytes}), uploadCap (PHP's upload cap in bytes, null = none), locale and texts
+ * (translated strings with :placeholders).
  */
 
 /** Formats the browser can decode and the canvas can re-encode. */
@@ -198,14 +199,27 @@ export default function mediaUploader(config) {
                 return replace(config.texts.unsupported, { name: file.name });
             }
 
-            if (file.size > config.limits[kind]) {
-                return replace(config.texts.too_large, {
-                    size: this.megabytes(file.size),
-                    limit: this.megabytes(config.limits[kind]),
-                });
+            // A file the browser may shrink is checked against the server cap only after shrinking (see process()).
+            const shrinkable = config.clientResize && RESIZABLE.includes(extension);
+
+            return this.sizeError(file.size, shrinkable ? config.limits[kind] : this.capped(config.limits[kind]));
+        },
+
+        /** The limit, lowered to the server upload cap when there is one. */
+        capped(limit) {
+            return config.uploadCap === null || config.uploadCap === undefined ? limit : Math.min(limit, config.uploadCap);
+        },
+
+        /** The too_large text when the size is over the limit, else null. */
+        sizeError(size, limit) {
+            if (size <= limit) {
+                return null;
             }
 
-            return null;
+            return replace(config.texts.too_large, {
+                size: this.megabytes(size),
+                limit: this.megabytes(limit),
+            });
         },
 
         megabytes(bytes) {
@@ -239,6 +253,13 @@ export default function mediaUploader(config) {
             try {
                 item.status = 'preparing';
                 const file = await this.shrink(picked, item.extension);
+                const capError = this.sizeError(file.size, this.capped(Infinity));
+
+                if (capError !== null) {
+                    this.fail(item, capError);
+
+                    return;
+                }
 
                 item.status = 'uploading';
                 const sent = await new Promise((resolve) => {

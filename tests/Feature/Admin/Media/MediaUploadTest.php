@@ -3,6 +3,7 @@
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
+use App\Support\Media\ServerCapabilities;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -119,6 +120,20 @@ it('is forbidden to upload without media.upload', function () {
 
     expect(Media::query()->count())->toBe(0);
 });
+
+it('passes the server upload cap to the uploader', function (?int $cap) {
+    $capabilities = Mockery::mock(ServerCapabilities::class)->makePartial();
+    $capabilities->shouldReceive('uploadCapBytes')->andReturn($cap);
+    app()->instance(ServerCapabilities::class, $capabilities);
+    $this->actingAs(mediaUploader());
+
+    $config = Livewire::test('pages::admin.media.index')->instance()->uploaderConfig;
+
+    expect($config)->toHaveKey('uploadCap', $cap);
+})->with([
+    '8 MB' => 8 * 1024 * 1024,
+    'unlimited' => null,
+]);
 
 it('turns browser resizing off when optimization is off', function (bool $optimize, bool $clientResize, bool $expected) {
     config(['media.optimize.enabled' => $optimize, 'media.optimize.client_resize' => $clientResize]);
