@@ -785,6 +785,23 @@ new #[Title('media.index.title')] class extends Component {
         Flux::toast(variant: 'success', text: __('media.messages.folder_deleted'));
     }
 
+    /**
+     * The "N files" drag badge text for resources/js/media-drag.js, rendered once for the page:
+     * the plural forms for 1, 2 and 5 (":count" kept), which the browser maps through Intl.PluralRules.
+     *
+     * @return array{locale: string, forms: array<int, string>}
+     */
+    #[Computed]
+    public function dragLabels(): array
+    {
+        return [
+            'locale' => app()->getLocale(),
+            'forms' => collect([1, 2, 5])
+                ->mapWithKeys(fn (int $count): array => [$count => trans_choice('media.bulk.dragging', $count, ['count' => ':count'])])
+                ->all(),
+        ];
+    }
+
     #[Computed]
     public function deletingFolder(): ?MediaFolder
     {
@@ -1205,7 +1222,7 @@ new #[Title('media.index.title')] class extends Component {
         ])
 
         <div class="flex min-w-0 flex-1 flex-col gap-6 xl:flex-row xl:items-start">
-        <div class="min-w-0 flex-1 space-y-4">
+        <div class="min-w-0 flex-1 space-y-4" data-media-drag-labels="{{ json_encode($this->dragLabels) }}">
             <div class="flex min-h-8 items-center gap-2 text-sm">
                 <flux:breadcrumbs :aria-label="__('media.index.folders.path')">
                     @if ($folder === null)

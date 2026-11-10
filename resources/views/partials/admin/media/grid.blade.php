@@ -27,6 +27,7 @@
                 type="button"
                 wire:key="media-tile-{{ $item->id }}"
                 data-media-id="{{ $item->id }}"
+                {{-- Shift + mousedown: no text selection across tiles during a Shift + click range (a Shift-drag of a tile is intentionally not supported). --}}
                 x-on:mousedown="if ($event.shiftKey) $event.preventDefault()"
                 x-on:click="
                     if ($event.shiftKey) { $wire.pick({{ $item->id }}, 'range') }
@@ -35,8 +36,7 @@
                 "
                 @if ($canMove)
                     draggable="true"
-                    @php $dragIds = $isPicked ? array_values($selected) : [$item->id]; @endphp
-                    x-on:dragstart="mediaDragStart($event, @js($dragIds), @js(trans_choice('media.bulk.dragging', count($dragIds))))"
+                    x-on:dragstart="mediaDragStart($event, {{ $item->id }}, $wire)"
                 @endif
                 @class([
                     'group min-w-0 rounded-xl p-1.5 text-start transition-colors focus:outline-none',

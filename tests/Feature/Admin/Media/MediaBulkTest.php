@@ -157,22 +157,27 @@ it('hides "Move to…" without media.edit', function () {
         ->assertDontSeeHtml('data-test="media-bulk-move"');
 });
 
-it('drags the whole selection when a selected tile is dragged', function () {
+it('lets the browser pick the dragged ids, with the "N files" forms rendered once', function () {
     $this->actingAs(mediaManager(['media.edit']));
     [$first, $second, $other] = Media::factory()->count(3)->create();
-    $dragging = fn (array $ids): string => 'mediaDragStart($event, '.Js::from($ids).', '.Js::from(trans_choice('media.bulk.dragging', count($ids))).')';
+    $dragging = fn (int $id): string => 'mediaDragStart($event, '.$id.', $wire)';
+    $labels = e(json_encode([
+        'locale' => app()->getLocale(),
+        'forms' => collect([1, 2, 5])->mapWithKeys(fn (int $count) => [$count => trans_choice('media.bulk.dragging', $count, ['count' => ':count'])])->all(),
+    ]));
 
-    Livewire::test('pages::admin.media.index')
-        ->set('selected', [$first->id, $second->id])
-        ->assertSeeHtml($dragging([$first->id, $second->id]))
-        ->assertSeeHtml($dragging([$other->id]));
+    foreach (['grid', 'list'] as $view) {
+        $html = Livewire::withQueryParams(['view' => $view])->test('pages::admin.media.index')
+            ->set('selected', [$first->id, $second->id])
+            ->html();
 
-    $list = Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
-        ->set('selected', [$first->id, $second->id])
-        ->html();
-
-    expect(html_entity_decode($list, ENT_QUOTES))->toContain($dragging([$first->id, $second->id]))
-        ->toContain($dragging([$other->id]));
+        expect(html_entity_decode($html, ENT_QUOTES))->toContain($dragging($first->id))
+            ->toContain($dragging($second->id))
+            ->toContain($dragging($other->id))
+            ->not->toContain(Js::from([$first->id, $second->id])->toHtml())
+            ->and(substr_count($html, 'data-media-drag-labels='))->toBe(1)
+            ->and($html)->toContain('data-media-drag-labels="'.$labels.'"');
+    }
 });
 
 it('selects a range with shift and single files with ctrl or cmd', function () {

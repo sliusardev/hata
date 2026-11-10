@@ -5,6 +5,11 @@
  * a folder keeps working. While drawing, touched tiles get data-boxed="true"; on release the ids
  * go to $wire.selectBox(ids, add). Shift or Ctrl/Cmd adds to the current selection, otherwise the
  * box replaces it. A press without movement (under 5 px) does nothing.
+ *
+ * The start point, the pointer and the tile rects are kept in page coordinates, so scrolling while
+ * drawing doesn't make the box drift; the box itself is position: fixed and drawn at page
+ * coordinates minus the current scroll. Tile rects are measured once, when the box first appears.
+ * Pointer moves and scrolls are folded into one update per animation frame.
  */
 const THRESHOLD = 5;
 
@@ -13,6 +18,11 @@ export default function mediaMarquee() {
         box: null,
         start: null,
         add: false,
+        pointer: null,
+        rects: null,
+        frame: null,
+        listeners: null,
+        root: null,
 
         begin(event) {
             if (event.button !== 0 || event.pointerType === 'touch') {
@@ -23,66 +33,144 @@ export default function mediaMarquee() {
                 return;
             }
 
-            this.start = { x: event.clientX, y: event.clientY };
+            this.finish({ cancelled: true });
+
+            this.root = this.$el;
+            this.start = { x: event.clientX + window.scrollX, y: event.clientY + window.scrollY };
+            this.pointer = { x: event.clientX, y: event.clientY };
             this.add = event.shiftKey || event.metaKey || event.ctrlKey;
             this.box = null;
+            this.rects = null;
 
-            const move = (moveEvent) => this.update(moveEvent);
-            const end = (endEvent) => {
-                window.removeEventListener('pointermove', move);
-                window.removeEventListener('pointerup', end);
-                this.finish(endEvent);
+            const move = (moveEvent) => {
+                if (moveEvent.buttons === 0) {
+                    this.finish();
+
+                    return;
+                }
+
+                this.pointer = { x: moveEvent.clientX, y: moveEvent.clientY };
+
+                if (this.box) {
+                    moveEvent.preventDefault();
+                }
+
+                this.schedule();
+            };
+            const scroll = () => this.schedule();
+            const end = () => this.finish();
+            const cancel = () => this.finish({ cancelled: true });
+
+            this.listeners = { pointermove: move, pointerup: end, pointercancel: cancel, scroll };
+
+            for (const [name, listener] of Object.entries(this.listeners)) {
+                window.addEventListener(name, listener, name === 'scroll' ? { passive: true } : undefined);
+            }
+        },
+
+        /** Runs update() once on the next animation frame, however many events arrive before it. */
+        schedule() {
+            if (this.frame === null) {
+                this.frame = requestAnimationFrame(() => {
+                    this.frame = null;
+                    this.update();
+                });
+            }
+        },
+
+        update() {
+            if (!this.start || !this.pointer) {
+                return;
+            }
+
+            const x = this.pointer.x + window.scrollX;
+            const y = this.pointer.y + window.scrollY;
+            const box = {
+                left: Math.min(this.start.x, x),
+                top: Math.min(this.start.y, y),
+                width: Math.abs(x - this.start.x),
+                height: Math.abs(y - this.start.y),
             };
 
-            window.addEventListener('pointermove', move);
-            window.addEventListener('pointerup', end);
-        },
-
-        update(event) {
-            if (!this.start) {
+            if (!this.box && box.width < THRESHOLD && box.height < THRESHOLD) {
                 return;
             }
 
-            const left = Math.min(this.start.x, event.clientX);
-            const top = Math.min(this.start.y, event.clientY);
-            const width = Math.abs(event.clientX - this.start.x);
-            const height = Math.abs(event.clientY - this.start.y);
-
-            if (!this.box && width < THRESHOLD && height < THRESHOLD) {
-                return;
+            if (this.rects === null) {
+                this.rects = this.measure();
             }
 
-            event.preventDefault();
-            this.box = { left, top, width, height };
+            this.box = box;
 
-            for (const tile of this.tiles()) {
-                tile.dataset.boxed = this.touches(tile) ? 'true' : 'false';
+            for (const { tile, rect } of this.rects) {
+                const boxed = this.touches(rect) ? 'true' : 'false';
+
+                if (tile.dataset.boxed !== boxed) {
+                    tile.dataset.boxed = boxed;
+                }
             }
         },
 
-        finish() {
-            if (this.box) {
-                const ids = this.tiles()
-                    .filter((tile) => this.touches(tile))
-                    .map((tile) => Number(tile.dataset.mediaId));
+        /**
+         * Ends the drag: removes every listener, sends the touched ids unless the pointer was
+         * cancelled, and clears the highlight.
+         */
+        finish({ cancelled = false } = {}) {
+            if (this.listeners) {
+                for (const [name, listener] of Object.entries(this.listeners)) {
+                    window.removeEventListener(name, listener);
+                }
+
+                this.listeners = null;
+            }
+
+            if (this.frame !== null) {
+                cancelAnimationFrame(this.frame);
+                this.frame = null;
+            }
+
+            if (!cancelled && this.start) {
+                this.update();
+            }
+
+            if (!cancelled && this.box) {
+                const ids = (this.rects ?? [])
+                    .filter(({ rect }) => this.touches(rect))
+                    .map(({ tile }) => Number(tile.dataset.mediaId));
 
                 this.$wire.selectBox(ids, this.add);
             }
 
-            for (const tile of this.tiles()) {
+            for (const { tile } of this.rects ?? []) {
                 delete tile.dataset.boxed;
             }
 
             this.start = null;
+            this.pointer = null;
             this.box = null;
+            this.rects = null;
         },
 
-        tiles() {
-            return Array.from(this.$el.querySelectorAll('[data-media-id]'));
+        /** Every tile with its rect in page coordinates. */
+        measure() {
+            const root = this.root ?? this.$el;
+
+            return Array.from(root.querySelectorAll('[data-media-id]')).map((tile) => {
+                const rect = tile.getBoundingClientRect();
+
+                return {
+                    tile,
+                    rect: {
+                        left: rect.left + window.scrollX,
+                        right: rect.right + window.scrollX,
+                        top: rect.top + window.scrollY,
+                        bottom: rect.bottom + window.scrollY,
+                    },
+                };
+            });
         },
 
-        touches(tile) {
-            const rect = tile.getBoundingClientRect();
+        touches(rect) {
             const box = this.box;
 
             return (
@@ -94,11 +182,13 @@ export default function mediaMarquee() {
             );
         },
 
-        /** Inline style of the box, in viewport coordinates. */
+        /** Inline style of the box: page coordinates minus the current scroll, since the box is fixed. */
         boxStyle() {
             const box = this.box;
 
-            return box ? `left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px` : '';
+            return box
+                ? `left:${box.left - window.scrollX}px;top:${box.top - window.scrollY}px;width:${box.width}px;height:${box.height}px`
+                : '';
         },
     };
 }

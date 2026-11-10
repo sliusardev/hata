@@ -35,7 +35,6 @@
         @foreach ($media as $item)
             @php
                 $alt = $item->altFor(app()->getLocale());
-                $dragIds = in_array($item->id, $selected, true) ? array_values($selected) : [$item->id];
                 $isActive = $selectedId === $item->id || in_array($item->id, $selected, true);
             @endphp
             <flux:table.row
@@ -43,7 +42,7 @@
                 :class="$isActive ? 'bg-zinc-100 dark:bg-white/10' : null"
                 :data-active="$isActive ? 'true' : 'false'"
                 :draggable="$canMove ? 'true' : null"
-                :x-on:dragstart="$canMove ? 'mediaDragStart($event, '.\Illuminate\Support\Js::from($dragIds).', '.\Illuminate\Support\Js::from(trans_choice('media.bulk.dragging', count($dragIds))).')' : null"
+                :x-on:dragstart="$canMove ? 'mediaDragStart($event, '.$item->id.', $wire)' : null"
             >
                 <flux:table.cell>
                     <input
