@@ -73,3 +73,22 @@ it('maps media abilities to permissions', function () {
         ->and($user->can('delete', $media))->toBeFalse()
         ->and($user->can('create', Media::class))->toBeFalse();
 });
+
+it('reports the uploaded extension only when it differs from the current one', function () {
+    $converted = Media::factory()->make(['name' => 'a.webp', 'original_path' => 'media/originals/x.jpg']);
+    $jpeg = Media::factory()->make(['name' => 'a.jpg', 'original_path' => 'media/originals/x.jpeg']);
+    $same = Media::factory()->make(['name' => 'a.webp', 'original_path' => 'media/originals/x.webp']);
+    $none = Media::factory()->make(['name' => 'a.webp', 'original_path' => null]);
+
+    expect($converted->convertedFrom())->toBe('JPG')
+        ->and($jpeg->convertedFrom())->toBeNull()
+        ->and($same->convertedFrom())->toBeNull()
+        ->and($none->convertedFrom())->toBeNull();
+});
+
+it('computes the saved percentage', function () {
+    $media = Media::factory()->make(['original_size' => 19_293_798, 'size' => 167_936]);
+
+    expect($media->savedPercent())->toBe(99)
+        ->and(Media::factory()->make(['original_size' => null])->savedPercent())->toBeNull();
+});

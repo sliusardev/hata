@@ -1,13 +1,26 @@
 <?php
 
+use App\Actions\Media\CreateFolder;
+use App\Actions\Media\DeleteFolder;
+use App\Actions\Media\DeleteMedia;
+use App\Actions\Media\MoveMedia;
+use App\Actions\Media\RenameFolder;
+use App\Actions\Media\UpdateMedia;
 use App\Enums\MediaKind;
+use App\Livewire\Forms\MediaDetailsForm;
 use App\Models\Media;
 use App\Models\MediaFolder;
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Flux\Flux;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -68,9 +81,58 @@ new #[Title('media.index.title')] class extends Component {
     public int $gridLimit = self::GRID_STEP;
 
     /**
-     * The file open in the details panel.
+     * The file open in the details panel. Changed only through select(), so the unsaved-changes guard can't be skipped.
      */
+    #[Locked]
     public ?int $selectedId = null;
+
+    public MediaDetailsForm $details;
+
+    /**
+     * The details form as it was loaded, to detect unsaved changes.
+     *
+     * @var array<string, mixed>
+     */
+    #[Locked]
+    public array $savedDetails = [];
+
+    /**
+     * The file to open once unsaved changes are discarded; 0 closes the panel.
+     */
+    #[Locked]
+    public ?int $pendingSelectId = null;
+
+    public bool $showDiscardModal = false;
+
+    /**
+     * Files the open delete confirmation is about (one file, or the bulk selection).
+     *
+     * @var array<int, int>
+     */
+    #[Locked]
+    public array $deletingIds = [];
+
+    public bool $showDeleteModal = false;
+
+    public string $folderName = '';
+
+    /**
+     * The folder the name dialog renames; null when it creates a new one.
+     */
+    #[Locked]
+    public ?int $renamingFolderId = null;
+
+    public bool $showFolderModal = false;
+
+    #[Locked]
+    public ?int $deletingFolderId = null;
+
+    /**
+     * The folder name typed to confirm deleting a folder with many files.
+     */
+    public string $confirmName = '';
+
+    public bool $showFolderDeleteModal = false;
 
     /**
      * Files picked for bulk actions.
@@ -125,6 +187,316 @@ new #[Title('media.index.title')] class extends Component {
     public function showMore(): void
     {
         $this->gridLimit = min($this->gridLimit + self::GRID_STEP, self::GRID_MAX);
+    }
+
+    /**
+     * Open a file in the details panel, or ask first when the open one has unsaved changes.
+     */
+    public function select(int $id): void
+    {
+        $this->authorize('viewAny', Media::class);
+
+        if ($id === $this->selectedId || ! Media::query()->whereKey($id)->exists()) {
+            return;
+        }
+
+        if ($this->hasUnsavedDetails()) {
+            $this->pendingSelectId = $id;
+            $this->showDiscardModal = true;
+
+            return;
+        }
+
+        $this->openDetails($id);
+    }
+
+    public function closeDetails(): void
+    {
+        if ($this->hasUnsavedDetails()) {
+            $this->pendingSelectId = 0;
+            $this->showDiscardModal = true;
+
+            return;
+        }
+
+        $this->openDetails(null);
+    }
+
+    /**
+     * Drop the unsaved changes and go where the user asked to.
+     */
+    public function discardChanges(): void
+    {
+        $target = $this->pendingSelectId ?? $this->selectedId;
+
+        $this->showDiscardModal = false;
+        $this->pendingSelectId = null;
+        $this->openDetails($target === 0 ? null : $target);
+    }
+
+    public function saveDetails(UpdateMedia $updateMedia): void
+    {
+        $media = $this->selectedMedia;
+
+        if ($media === null) {
+            return;
+        }
+
+        $this->resetErrorBag();
+
+        try {
+            $updateMedia->handle($this->actor(), $media, $this->details->payload());
+        } catch (ValidationException $exception) {
+            foreach ($exception->errors() as $field => $messages) {
+                $this->addError('details.'.$field, $messages[0]);
+            }
+
+            return;
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return;
+        }
+
+        $this->openDetails($media->id);
+        Flux::toast(variant: 'success', text: __('media.messages.saved'));
+    }
+
+    #[Computed]
+    public function selectedMedia(): ?Media
+    {
+        if ($this->selectedId === null) {
+            return null;
+        }
+
+        return Media::query()->with(['uploader', 'usages'])->find($this->selectedId);
+    }
+
+    public function confirmDelete(int $id): void
+    {
+        $media = Media::query()->find($id);
+
+        if ($media === null) {
+            return;
+        }
+
+        $this->authorize('delete', $media);
+
+        $this->deletingIds = [$media->id];
+        unset($this->deletingMedia);
+        $this->showDeleteModal = true;
+    }
+
+    /**
+     * Delete the files the open confirmation is about.
+     */
+    public function deleteConfirmed(DeleteMedia $deleteMedia): void
+    {
+        $items = $this->deletingMedia;
+
+        $this->showDeleteModal = false;
+        $this->deletingIds = [];
+
+        if ($items->isEmpty()) {
+            return;
+        }
+
+        try {
+            $count = $deleteMedia->handle($this->actor(), $items);
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return;
+        }
+
+        $this->forgetDeletedMedia();
+        Flux::toast(variant: 'success', text: trans_choice('media.messages.deleted', $count));
+    }
+
+    /**
+     * @return EloquentCollection<int, Media>
+     */
+    #[Computed]
+    public function deletingMedia(): EloquentCollection
+    {
+        if ($this->deletingIds === []) {
+            return new EloquentCollection;
+        }
+
+        return Media::query()->with('usages')->whereKey($this->deletingIds)->get();
+    }
+
+    /**
+     * Move files into a folder (null = "No folder"); dropping tiles onto a folder calls this.
+     *
+     * @param  array<int, mixed>  $ids
+     */
+    public function moveTo(array $ids, ?int $folderId, MoveMedia $moveMedia): void
+    {
+        $ids = array_slice(array_values(array_unique(array_map('intval', array_filter(
+            $ids,
+            fn (mixed $id): bool => is_int($id) || (is_string($id) && ctype_digit($id)),
+        )))), 0, self::GRID_MAX);
+
+        $folder = $folderId === null ? null : MediaFolder::query()->find($folderId);
+        $items = Media::query()->whereKey($ids)->get();
+
+        if (($folderId !== null && $folder === null) || $items->isEmpty()) {
+            return;
+        }
+
+        try {
+            $moveMedia->handle($this->actor(), $items, $folder);
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return;
+        }
+
+        if ($this->selectedId !== null && in_array($this->selectedId, $ids, true)) {
+            $folderValue = $folder === null ? '' : (string) $folder->id;
+            $this->details->folder_id = $folderValue;
+            $this->savedDetails['folder_id'] = $folderValue;
+        }
+
+        unset($this->folders, $this->totals, $this->media);
+        Flux::toast(variant: 'success', text: trans_choice('media.messages.moved', $items->count()));
+    }
+
+    public function openNewFolder(): void
+    {
+        $this->authorize('manageFolders', Media::class);
+
+        $this->renamingFolderId = null;
+        $this->folderName = '';
+        $this->resetErrorBag('folderName');
+        $this->showFolderModal = true;
+    }
+
+    public function openRenameFolder(int $id): void
+    {
+        $this->authorize('manageFolders', Media::class);
+
+        $folder = MediaFolder::query()->find($id);
+
+        if ($folder === null) {
+            return;
+        }
+
+        $this->renamingFolderId = $folder->id;
+        $this->folderName = $folder->name;
+        $this->resetErrorBag('folderName');
+        $this->showFolderModal = true;
+    }
+
+    /**
+     * Submit the folder name dialog.
+     */
+    public function saveFolder(): void
+    {
+        $this->renamingFolderId === null
+            ? $this->createFolder($this->folderName)
+            : $this->renameFolder($this->renamingFolderId, $this->folderName);
+    }
+
+    /**
+     * Create a folder inside the open one ("All files" and "No folder" create at the top level).
+     */
+    public function createFolder(string $name): void
+    {
+        $this->runFolderAction(function () use ($name): void {
+            app(CreateFolder::class)->handle($this->actor(), $name, $this->currentFolder);
+        }, __('media.messages.folder_created'));
+    }
+
+    public function renameFolder(int $id, string $name): void
+    {
+        $folder = MediaFolder::query()->find($id);
+
+        if ($folder === null) {
+            return;
+        }
+
+        $this->runFolderAction(function () use ($folder, $name): void {
+            app(RenameFolder::class)->handle($this->actor(), $folder, $name);
+        }, __('media.messages.folder_renamed'));
+    }
+
+    public function confirmFolderDelete(int $id): void
+    {
+        $folder = MediaFolder::query()->find($id);
+
+        if ($folder === null) {
+            return;
+        }
+
+        $this->authorize('deleteFolders', Media::class);
+
+        $this->deletingFolderId = $folder->id;
+        $this->confirmName = '';
+        $this->resetErrorBag('confirmName');
+        unset($this->deletingFolder, $this->folderDeletionSummary);
+        $this->showFolderDeleteModal = true;
+    }
+
+    /**
+     * Delete the folder of the open confirmation with its subfolders and files.
+     * A folder with more than 10 files needs its exact name typed; that is checked here, not only in the browser.
+     */
+    public function deleteFolder(DeleteFolder $deleteFolder): void
+    {
+        $folder = $this->deletingFolder;
+        $summary = $this->folderDeletionSummary;
+
+        if ($folder === null || $summary === null) {
+            $this->showFolderDeleteModal = false;
+
+            return;
+        }
+
+        if ($summary['files'] > 10 && trim($this->confirmName) !== $folder->name) {
+            $this->addError('confirmName', __('media.folders.delete.name_mismatch'));
+
+            return;
+        }
+
+        $removedIds = [$folder->id, ...$folder->descendantIds()];
+
+        try {
+            $deleteFolder->handle($this->actor(), $folder);
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return;
+        }
+
+        $this->showFolderDeleteModal = false;
+        $this->deletingFolderId = null;
+        $this->confirmName = '';
+
+        if ($this->folder !== null && in_array((int) $this->folder, $removedIds, true)) {
+            $this->folder = null;
+            $this->resetPage();
+        }
+
+        unset($this->folders, $this->currentFolder, $this->breadcrumb);
+        $this->forgetDeletedMedia();
+        Flux::toast(variant: 'success', text: __('media.messages.folder_deleted'));
+    }
+
+    #[Computed]
+    public function deletingFolder(): ?MediaFolder
+    {
+        return $this->deletingFolderId === null ? null : MediaFolder::query()->find($this->deletingFolderId);
+    }
+
+    /**
+     * @return array{folders: int, files: int, used: int}|null
+     */
+    #[Computed]
+    public function folderDeletionSummary(): ?array
+    {
+        return $this->deletingFolder?->deletionSummary();
     }
 
     /**
@@ -263,6 +635,90 @@ new #[Title('media.index.title')] class extends Component {
         return [$start->utc(), $start->endOfMonth()->utc()];
     }
 
+    private function actor(): User
+    {
+        $user = Auth::user();
+
+        abort_unless($user instanceof User, 403);
+
+        return $user;
+    }
+
+    private function toastForbidden(): void
+    {
+        Flux::toast(variant: 'danger', text: __('media.errors.forbidden'));
+    }
+
+    /**
+     * Run a folder create/rename, showing name errors on the dialog's field.
+     */
+    private function runFolderAction(Closure $action, string $success): void
+    {
+        $this->resetErrorBag('folderName');
+
+        try {
+            $action();
+        } catch (ValidationException $exception) {
+            $this->addError('folderName', $exception->errors()['name'][0] ?? __('media.errors.folder_name'));
+
+            return;
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return;
+        }
+
+        $this->showFolderModal = false;
+        $this->folderName = '';
+        $this->renamingFolderId = null;
+        unset($this->folders, $this->currentFolder, $this->breadcrumb);
+        Flux::toast(variant: 'success', text: $success);
+    }
+
+    private function hasUnsavedDetails(): bool
+    {
+        return $this->selectedId !== null && $this->details->differsFrom($this->savedDetails);
+    }
+
+    /**
+     * Load a file into the details panel (null closes it) and remember its saved state.
+     */
+    private function openDetails(?int $id): void
+    {
+        $this->selectedId = $id;
+        unset($this->selectedMedia);
+        $this->resetErrorBag();
+
+        $media = $this->selectedMedia;
+
+        if ($media === null) {
+            $this->selectedId = null;
+            $this->details->reset();
+            $this->savedDetails = [];
+
+            return;
+        }
+
+        $this->details->fillFromMedia($media);
+        $this->savedDetails = $this->details->all();
+    }
+
+    /**
+     * After files were deleted, close their details and drop them from the bulk selection.
+     */
+    private function forgetDeletedMedia(): void
+    {
+        if ($this->selectedId !== null && ! Media::query()->whereKey($this->selectedId)->exists()) {
+            $this->openDetails(null);
+        }
+
+        $this->selected = $this->selected === []
+            ? []
+            : Media::query()->whereKey($this->selected)->pluck('id')->all();
+
+        unset($this->media, $this->totals, $this->folders, $this->months);
+    }
+
     /**
      * A folder id that no longer exists (or isn't an id) falls back to "All files".
      */
@@ -277,6 +733,10 @@ new #[Title('media.index.title')] class extends Component {
         }
     }
 }; ?>
+
+@php
+    $canManageFolders = auth()->user()->can('manageFolders', App\Models\Media::class);
+@endphp
 
 <section
     class="w-full space-y-6"
@@ -359,8 +819,10 @@ new #[Title('media.index.title')] class extends Component {
             'folder' => $folder,
             'folders' => $this->folders,
             'totals' => $this->totals,
+            'canManageFolders' => $canManageFolders,
         ])
 
+        <div class="flex min-w-0 flex-1 flex-col gap-6 xl:flex-row xl:items-start">
         <div class="min-w-0 flex-1 space-y-4">
             <div class="flex min-h-8 items-center gap-2 text-sm">
                 <flux:breadcrumbs :aria-label="__('media.index.folders.path')">
@@ -382,7 +844,14 @@ new #[Title('media.index.title')] class extends Component {
                 </flux:breadcrumbs>
                 <flux:text size="sm" variant="subtle">· {{ trans_choice('media.index.file_count', $this->media->total()) }}</flux:text>
 
-                {{-- Task 10: the folder "⋮" menu (rename, delete) goes here. --}}
+                @if ($this->currentFolder && $canManageFolders)
+                    <x-admin.row-actions :label="__('media.folders.actions')" data-test="media-folder-actions">
+                        <flux:menu.item icon="pencil-square" wire:click="openRenameFolder({{ $this->currentFolder->id }})">{{ __('media.folders.rename') }}</flux:menu.item>
+                        @can('deleteFolders', App\Models\Media::class)
+                            <flux:menu.item icon="trash" variant="danger" wire:click="confirmFolderDelete({{ $this->currentFolder->id }})">{{ __('common.actions.delete') }}</flux:menu.item>
+                        @endcan
+                    </x-admin.row-actions>
+                @endif
             </div>
 
             @if ($this->media->isEmpty())
@@ -396,6 +865,7 @@ new #[Title('media.index.title')] class extends Component {
                     'media' => $this->media,
                     'sortBy' => $sortBy,
                     'sortDirection' => $sortDirection,
+                    'canMove' => $canManageFolders,
                 ])
             @else
                 @include('partials.admin.media.grid', [
@@ -403,12 +873,21 @@ new #[Title('media.index.title')] class extends Component {
                     'selectedId' => $selectedId,
                     'gridStep' => $this::GRID_STEP,
                     'canShowMore' => $gridLimit < $this::GRID_MAX,
+                    'canMove' => $canManageFolders,
                 ])
             @endif
         </div>
 
-        {{-- Task 10: the details panel for $selectedId goes here. --}}
+        @if ($this->selectedMedia)
+            @include('partials.admin.media.details', [
+                'media' => $this->selectedMedia,
+                'folders' => $this->folders,
+            ])
+        @endif
+        </div>
     </div>
 
     {{-- Task 11: the bulk actions bar for $selected goes here. --}}
+
+    @include('partials.admin.media.dialogs')
 </section>

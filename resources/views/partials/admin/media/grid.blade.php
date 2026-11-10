@@ -1,16 +1,21 @@
 {{--
     Grid view of the media library: square thumbnails, the first $gridLimit files with "Show more".
     Expects: $media (paginator), $selectedId (the file open in the details panel),
-    $gridStep (files added by "Show more"), $canShowMore (false once the grid reached its cap).
+    $gridStep (files added by "Show more"), $canShowMore (false once the grid reached its cap),
+    $canMove (tiles can be dragged onto a folder in the tree).
 --}}
 <div class="space-y-6">
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         @foreach ($media as $item)
-            {{-- Task 10: selecting a tile opens the details panel; Task 11 adds the "Select several" checkmark. --}}
+            {{-- Task 11 adds the "Select several" checkmark. --}}
             <button
                 type="button"
                 wire:key="media-tile-{{ $item->id }}"
-                wire:click="$set('selectedId', {{ $item->id }})"
+                wire:click="select({{ $item->id }})"
+                @if ($canMove)
+                    draggable="true"
+                    x-on:dragstart="event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('application/x-media-ids', JSON.stringify([{{ $item->id }}]))"
+                @endif
                 class="group min-w-0 text-start focus:outline-none"
                 aria-label="{{ $item->name }}"
                 @if ($selectedId === $item->id) aria-pressed="true" @endif

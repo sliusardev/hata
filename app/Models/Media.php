@@ -128,7 +128,30 @@ class Media extends Model
      */
     public function humanSize(): string
     {
-        return (string) Number::withLocale(app()->getLocale(), fn () => Number::fileSize($this->size, maxPrecision: 1));
+        return self::formatBytes($this->size);
+    }
+
+    /**
+     * A byte count in binary units with the current locale's decimal separator, e.g. "18,4 MB".
+     */
+    public static function formatBytes(int $bytes): string
+    {
+        return (string) Number::withLocale(app()->getLocale(), fn () => Number::fileSize($bytes, maxPrecision: 1));
+    }
+
+    /**
+     * The extension the file was uploaded with (e.g. "JPG") when the stored file has another one, else null.
+     */
+    public function convertedFrom(): ?string
+    {
+        if ($this->original_path === null) {
+            return null;
+        }
+
+        $original = Str::upper(pathinfo($this->original_path, PATHINFO_EXTENSION));
+        $normalize = fn (string $extension): string => $extension === 'JPEG' ? 'JPG' : $extension;
+
+        return $original !== '' && $normalize($original) !== $normalize($this->extension()) ? $original : null;
     }
 
     public function altFor(string $locale): string
@@ -146,6 +169,16 @@ class Media extends Model
         }
 
         return $this->original_size - $this->size;
+    }
+
+    /**
+     * The saving as a whole percentage of the uploaded size, or null when the file did not shrink.
+     */
+    public function savedPercent(): ?int
+    {
+        $saved = $this->savedBytes();
+
+        return $saved === null ? null : (int) round($saved / (int) $this->original_size * 100);
     }
 
     protected function searchIndexSource(): string

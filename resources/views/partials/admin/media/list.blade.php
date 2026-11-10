@@ -1,6 +1,6 @@
 {{--
     List view of the media library: flux:table, 25 per page, sortable by name, size and date.
-    Expects: $media (paginator), $sortBy, $sortDirection.
+    Expects: $media (paginator), $sortBy, $sortDirection, $canMove (rows can be dragged onto a folder in the tree).
 --}}
 <flux:table :paginate="$media">
     <flux:table.columns>
@@ -16,7 +16,11 @@
     <flux:table.rows>
         @foreach ($media as $item)
             @php $alt = $item->altFor(app()->getLocale()); @endphp
-            <flux:table.row :key="$item->id">
+            <flux:table.row
+                :key="$item->id"
+                :draggable="$canMove ? 'true' : null"
+                :x-on:dragstart="$canMove ? 'event.dataTransfer.effectAllowed = \'move\'; event.dataTransfer.setData(\'application/x-media-ids\', JSON.stringify(['.$item->id.']))' : null"
+            >
                 <flux:table.cell>
                     <div class="flex items-center gap-3">
                         <div class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100 ring-1 ring-black/5 ring-inset dark:bg-white/5 dark:ring-white/10">
@@ -27,7 +31,7 @@
                             @endif
                         </div>
                         <div class="min-w-0">
-                            <div class="truncate font-medium text-zinc-800 dark:text-white">{{ $item->name }}</div>
+                            <button type="button" wire:click="select({{ $item->id }})" class="block max-w-full truncate text-start font-medium text-zinc-800 hover:underline dark:text-white">{{ $item->name }}</button>
                             @if ($alt !== '')
                                 <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $alt }}</div>
                             @elseif ($item->isImage())
@@ -47,9 +51,13 @@
                 </flux:table.cell>
                 <flux:table.cell class="whitespace-nowrap max-lg:hidden">{{ $item->created_at?->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
                 <flux:table.cell align="end">
-                    {{-- Task 10 adds details, download and delete to this menu. --}}
                     <x-admin.row-actions data-test="media-actions-{{ $item->id }}">
+                        <flux:menu.item icon="information-circle" wire:click="select({{ $item->id }})">{{ __('media.details.heading') }}</flux:menu.item>
                         <flux:menu.item icon="arrow-top-right-on-square" :href="$item->url()" target="_blank">{{ __('media.index.open') }}</flux:menu.item>
+                        <flux:menu.item icon="arrow-down-tray" :href="$item->url()" download="{{ $item->name }}">{{ __('media.details.download') }}</flux:menu.item>
+                        @can('delete', $item)
+                            <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $item->id }})">{{ __('common.actions.delete') }}</flux:menu.item>
+                        @endcan
                     </x-admin.row-actions>
                 </flux:table.cell>
             </flux:table.row>
