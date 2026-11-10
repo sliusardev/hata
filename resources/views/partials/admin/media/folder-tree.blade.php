@@ -15,7 +15,7 @@
         x-data="{
             over: null,
             accepts(event) { return event.dataTransfer.types.includes('application/x-media-ids') },
-            enter(event, target) { if (this.accepts(event)) { event.preventDefault(); this.over = target } },
+            enter(event, target) { if (this.accepts(event)) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; this.over = target } },
             drop(event, folderId) {
                 this.over = null;
                 const ids = event.dataTransfer.getData('application/x-media-ids');

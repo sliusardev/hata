@@ -32,7 +32,7 @@
                     'ring-2! ring-accent!' => $isPicked || (! $selecting && $selectedId === $item->id),
                 ])>
                     @if ($thumbUrl = $item->thumbUrl())
-                        <img src="{{ $thumbUrl }}" alt="{{ $item->altFor(app()->getLocale()) }}" loading="lazy" class="size-full object-cover" />
+                        <img src="{{ $thumbUrl }}" alt="{{ $item->altFor(app()->getLocale()) }}" loading="lazy" draggable="false" class="size-full object-cover" />
                     @else
                         <div class="flex size-full flex-col items-center justify-center gap-2 text-zinc-400 dark:text-zinc-500">
                             <flux:icon :name="$item->kind->icon()" variant="outline" class="size-10" />

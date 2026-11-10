@@ -51,7 +51,7 @@
                     <div class="flex items-center gap-3">
                         <div class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100 ring-1 ring-black/5 ring-inset dark:bg-white/5 dark:ring-white/10">
                             @if ($thumbUrl = $item->thumbUrl())
-                                <img src="{{ $thumbUrl }}" alt="" loading="lazy" class="size-full object-cover" />
+                                <img src="{{ $thumbUrl }}" alt="" loading="lazy" draggable="false" class="size-full object-cover" />
                             @else
                                 <span class="text-[10px] font-semibold tracking-wide text-zinc-500 dark:text-zinc-400">{{ $item->extension() }}</span>
                             @endif

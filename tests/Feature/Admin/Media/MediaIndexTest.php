@@ -228,3 +228,14 @@ it('does not run a query per tile', function (string $view) {
 
     expect($withMany)->toBe($withOne);
 })->with(['grid', 'list']);
+
+it('drags the tile, not its thumbnail image, so the uploader does not take it for a file', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.edit'])->create());
+    Media::factory()->create(['thumb_path' => 'media/thumbs/x.webp']);
+
+    Livewire::test('pages::admin.media.index')
+        ->assertSeeHtmlInOrder(['draggable="true"', 'loading="lazy" draggable="false"']);
+
+    Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
+        ->assertSeeHtml('loading="lazy" draggable="false"');
+});
