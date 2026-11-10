@@ -166,20 +166,47 @@
                 @endforelse
             </div>
 
-            {{-- The clipboard API needs HTTPS; without it the link is selected in the field and a toast says why. --}}
+            {{--
+                The clipboard API needs HTTPS. Over plain HTTP the link is copied with execCommand('copy')
+                from a hidden textarea, which browsers still allow inside a click. Only when both fail is the
+                link selected in the field with a toast saying to copy it by hand.
+            --}}
             <div
                 class="flex gap-2"
                 x-data="{
                     url: @js($media->url()),
                     copy() {
                         if (! navigator.clipboard?.writeText) {
-                            return this.selectInstead();
+                            return this.copyWithCommand() ? this.copied() : this.selectInstead();
                         }
 
                         navigator.clipboard.writeText(this.url).then(
-                            () => this.$flux.toast({ text: @js(__('media.details.copied')), variant: 'success' }),
-                            () => this.selectInstead(),
+                            () => this.copied(),
+                            () => (this.copyWithCommand() ? this.copied() : this.selectInstead()),
                         );
+                    },
+                    copyWithCommand() {
+                        const area = document.createElement('textarea');
+                        area.value = this.url;
+                        area.setAttribute('readonly', '');
+                        area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+                        document.body.appendChild(area);
+                        area.select();
+
+                        let done = false;
+
+                        try {
+                            done = document.execCommand('copy');
+                        } catch {
+                            done = false;
+                        }
+
+                        area.remove();
+
+                        return done;
+                    },
+                    copied() {
+                        this.$flux.toast({ text: @js(__('media.details.copied')), variant: 'success' });
                     },
                     selectInstead() {
                         const field = this.$root.querySelector('input');

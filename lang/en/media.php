@@ -81,7 +81,7 @@ return [
         'url' => 'File link',
         'copy' => 'Copy',
         'copied' => 'Link copied.',
-        'copy_failed' => 'Copying needs HTTPS. The link is selected: press Ctrl+C (⌘C on a Mac) to copy it.',
+        'copy_failed' => 'The browser didn\'t allow copying. The link is selected: press Ctrl+C (⌘C on a Mac) to copy it.',
         'download' => 'Download to your computer',
         'open' => 'Open in a new tab',
         'unsaved' => [

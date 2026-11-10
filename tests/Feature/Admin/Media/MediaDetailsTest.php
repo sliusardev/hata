@@ -296,5 +296,6 @@ it('shows the file url in a selectable field with a copy fallback for plain http
         ->call('select', $media->id)
         ->assertSeeHtml('value="'.e($media->url()).'"')
         ->assertSeeHtml('data-test="media-details-copy"')
+        ->assertSeeHtml("document.execCommand('copy')")
         ->assertSeeHtml((string) Js::from(__('media.details.copy_failed')));
 });
