@@ -20,8 +20,6 @@
             data-media-folder="{{ $subfolder->id }}"
             class="group/tile relative flex min-w-0 items-center rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
             @if ($canMove)
-                draggable="true"
-                x-on:dragstart="start($event, {{ $subfolder->id }})"
                 x-on:dragover="enter($event, {{ $subfolder->id }})"
                 x-on:dragleave="leave($event)"
                 x-on:drop.prevent="drop($event, {{ $subfolder->id }})"
@@ -39,6 +37,10 @@
                     'pe-1' => $canMove,
                 ])
                 wire:click="$set('folder', '{{ $subfolder->id }}')"
+                @if ($canMove)
+                    draggable="true"
+                    x-on:dragstart="start($event, {{ $subfolder->id }})"
+                @endif
                 x-on:keydown.enter.prevent="$el.click()"
                 x-on:keydown.space.prevent="$el.click()"
                 data-test="media-subfolder-open-{{ $subfolder->id }}"

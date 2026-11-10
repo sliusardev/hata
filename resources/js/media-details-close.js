@@ -51,6 +51,11 @@ export function escapeKey(event, wire) {
 
     const target = event.target;
 
+    // The trigger of a dropdown (Flux closes its menu on this same Escape) or anything inside one.
+    if (target instanceof Element && target.closest('[aria-expanded], [aria-haspopup], ui-dropdown, [data-flux-dropdown]')) {
+        return;
+    }
+
     if (target instanceof Element && target.closest('input, textarea, select, [contenteditable], dialog, [popover], [role="menu"], [role="listbox"], [role="dialog"]')) {
         return;
     }

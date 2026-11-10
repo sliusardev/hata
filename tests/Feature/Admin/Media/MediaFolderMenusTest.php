@@ -141,3 +141,42 @@ it('asks before closing details with unsaved changes when the file leaves view',
 
     expect($file->refresh()->title)->toBeNull();
 });
+
+it('closes the details after saving a folder change that takes the file out of the open folder', function () {
+    $this->actingAs(menuUser(['media.edit']));
+    [$open, $other] = MediaFolder::factory()->count(2)->create();
+    $file = Media::factory()->inFolder($open)->create();
+
+    Livewire::test('pages::admin.media.index', ['folder' => (string) $open->id])
+        ->call('select', $file->id)
+        ->set('details.folder_id', (string) $other->id)
+        ->call('saveDetails')
+        ->assertSet('selectedId', null)
+        ->assertSet('showDiscardModal', false);
+
+    expect($file->refresh()->folder_id)->toBe($other->id);
+});
+
+it('keeps dirty details open silently when a search excludes the file', function () {
+    $this->actingAs(menuUser(['media.edit']));
+    $file = Media::factory()->create(['name' => 'hero-banner.webp']);
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $file->id)
+        ->set('details.title', 'Unsaved')
+        ->set('search', 'zzz-nothing')
+        ->assertSet('selectedId', $file->id)
+        ->assertSet('showDiscardModal', false);
+});
+
+it('drags subfolder tiles by their open control, not the wrapper holding the menu', function () {
+    $this->actingAs(menuUser(['media.edit']));
+    $parent = MediaFolder::factory()->create();
+    $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
+
+    $html = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])->html();
+
+    expect($html)->toContain('data-test="media-subfolder-open-'.$child->id.'"');
+    preg_match('/<div[^>]*data-test="media-subfolder-'.$child->id.'"[^>]*>/s', $html, $wrapper);
+    expect($wrapper[0])->not->toContain('draggable');
+});

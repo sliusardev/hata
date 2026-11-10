@@ -262,7 +262,7 @@ new #[Title('media.index.title')] class extends Component {
 
         if (in_array($property, self::FILTERS, true)) {
             $this->selected = [];
-            $this->closeDetailsWhenHidden();
+            $this->closeDetailsWhenHidden(askFirst: $property === 'folder');
         }
 
         if ($property === 'selected' || str_starts_with($property, 'selected.')) {
@@ -709,6 +709,8 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         $this->openDetails($media->id);
+        unset($this->media, $this->totals, $this->folders);
+        $this->closeDetailsWhenHidden();
         Flux::toast(variant: 'success', text: __('media.messages.saved'));
     }
 
@@ -1395,12 +1397,16 @@ new #[Title('media.index.title')] class extends Component {
 
     /**
      * Close the open file's details once the file is no longer shown (another folder, a filter that excludes it,
-     * moved out of the open folder). Goes through closeDetails(), so unsaved changes ask first; if the user cancels
+     * moved out of the open folder). Goes through closeDetails(), so unsaved changes ask first, except when $askFirst is false (search and filter keystrokes: the panel then stays open while it has unsaved changes); if the user cancels
      * that dialog the panel stays open on a file that is no longer listed.
      */
-    private function closeDetailsWhenHidden(): void
+    private function closeDetailsWhenHidden(bool $askFirst = true): void
     {
         if ($this->selectedId === null || $this->filteredQuery()->whereKey($this->selectedId)->exists()) {
+            return;
+        }
+
+        if (! $askFirst && $this->hasUnsavedDetails()) {
             return;
         }
 
