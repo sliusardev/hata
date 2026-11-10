@@ -21,12 +21,6 @@ class ZipMedia
     public const int MAX_FILES = 100;
 
     /**
-     * The most bytes (sum of the stored sizes) one archive holds. Livewire sends a download
-     * base64-encoded inside its JSON response, so the archive is held in memory a few times over.
-     */
-    public const int MAX_BYTES = 20 * 1024 * 1024;
-
-    /**
      * Each file is copied from its disk with a stream into a temp file, so remote disks work too.
      * The caller deletes the returned archive once it is sent.
      *

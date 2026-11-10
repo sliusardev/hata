@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MediaZipController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,6 +20,7 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
         Route::view('/', 'dashboard')->name('dashboard');
 
         Route::livewire('media', 'pages::admin.media.index')->name('media.index');
+        Route::get('media/zip', MediaZipController::class)->middleware('can:media.view')->name('media.zip');
 
         Route::livewire('users', 'pages::admin.users.index')->name('users.index');
         Route::livewire('users/create', 'pages::admin.users.create')->name('users.create');

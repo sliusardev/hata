@@ -14,6 +14,7 @@ use App\Livewire\Forms\MediaDetailsForm;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
+use App\Support\Media\MediaIds;
 use Carbon\CarbonImmutable;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -32,7 +33,6 @@ use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Title('media.index.title')] class extends Component {
     use WithFileUploads {
@@ -170,6 +170,11 @@ new #[Title('media.index.title')] class extends Component {
      */
     public ?string $uploadPickedExtension = null;
 
+    /**
+     * The folder that was open when the file was queued (null = no folder), so switching folders mid-queue doesn't move it.
+     */
+    public ?int $uploadFolderId = null;
+
     public function mount(): void
     {
         $this->authorize('viewAny', Media::class);
@@ -201,7 +206,7 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         if ($property === 'selected' || str_starts_with($property, 'selected.')) {
-            $this->selected = $this->existingIds($this->selected);
+            $this->selected = MediaIds::existing($this->selected);
         }
     }
 
@@ -220,7 +225,7 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Turn the file the upload queue just sent into a library file in the open folder.
+     * Turn the file the upload queue just sent into a library file in the folder it was queued in.
      * A rejected file returns its error text instead of throwing, so the queue shows it on the tile and goes on.
      *
      * @return array{ok: bool, id?: int, name?: string, meta?: string, error?: string}
@@ -232,14 +237,23 @@ new #[Title('media.index.title')] class extends Component {
         $file = $this->upload;
         $pickedSize = $this->uploadPickedSize !== null && $this->uploadPickedSize > 0 ? $this->uploadPickedSize : null;
         $pickedExtension = $this->uploadPickedExtension;
-        $this->reset('upload', 'uploadPickedSize', 'uploadPickedExtension');
+        $folderId = $this->uploadFolderId;
+        $this->reset('upload', 'uploadPickedSize', 'uploadPickedExtension', 'uploadFolderId');
 
         if (! $file instanceof TemporaryUploadedFile) {
             return ['ok' => false, 'error' => __('media.upload.failed')];
         }
 
+        $folder = $folderId === null ? null : MediaFolder::query()->find($folderId);
+
+        if ($folderId !== null && $folder === null) {
+            $file->delete();
+
+            return ['ok' => false, 'error' => __('media.errors.folder_missing')];
+        }
+
         try {
-            $media = $uploadMedia->handle($this->actor(), $file, $this->currentFolder, $pickedSize, $pickedExtension);
+            $media = $uploadMedia->handle($this->actor(), $file, $folder, $pickedSize, $pickedExtension);
         } catch (MediaUploadException $exception) {
             return ['ok' => false, 'error' => $exception->getMessage()];
         } catch (AuthorizationException $exception) {
@@ -278,7 +292,7 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
-        $this->selected = $this->existingIds([...$this->selected, $id]);
+        $this->selected = MediaIds::existing([...$this->selected, $id]);
     }
 
     /**
@@ -290,7 +304,7 @@ new #[Title('media.index.title')] class extends Component {
 
         $this->selected = array_diff($pageIds, $this->selected) === []
             ? array_values(array_diff($this->selected, $pageIds))
-            : $this->existingIds([...$this->selected, ...$pageIds]);
+            : MediaIds::existing([...$this->selected, ...$pageIds]);
     }
 
     public function toggleSelecting(): void
@@ -309,14 +323,20 @@ new #[Title('media.index.title')] class extends Component {
      */
     public function confirmBulkDelete(): void
     {
-        $ids = $this->existingIds($this->selected);
+        $ids = MediaIds::existing($this->selected);
         $this->selected = $ids;
 
         if ($ids === []) {
             return;
         }
 
-        $this->authorize('delete', Media::query()->findOrFail($ids[0]));
+        try {
+            $this->authorize('delete', Media::query()->findOrFail($ids[0]));
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return;
+        }
 
         $this->deletingIds = $ids;
         unset($this->deletingMedia);
@@ -324,46 +344,25 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Download the selected files as one ZIP archive, within ZipMedia's limits.
+     * Download the selected files as one ZIP archive: the browser goes to the admin.media.zip route, which streams it.
      */
-    public function downloadZip(ZipMedia $zipMedia): ?StreamedResponse
+    public function downloadZip(): void
     {
         $this->authorize('viewAny', Media::class);
 
-        if (! class_exists(ZipArchive::class)) {
-            return null;
+        $ids = MediaIds::existing($this->selected);
+
+        if ($ids === [] || ! class_exists(ZipArchive::class)) {
+            return;
         }
 
-        $items = Media::query()->whereKey($this->existingIds($this->selected))->orderBy('name')->get();
+        if (count($ids) > ZipMedia::MAX_FILES) {
+            Flux::toast(variant: 'danger', text: __('media.bulk.zip_too_large', ['files' => ZipMedia::MAX_FILES]));
 
-        if ($items->isEmpty()) {
-            return null;
+            return;
         }
 
-        if ($items->count() > ZipMedia::MAX_FILES || $items->sum('size') > ZipMedia::MAX_BYTES) {
-            Flux::toast(variant: 'danger', text: __('media.bulk.zip_too_large', [
-                'files' => ZipMedia::MAX_FILES,
-                'size' => Media::formatBytes(ZipMedia::MAX_BYTES),
-            ]));
-
-            return null;
-        }
-
-        $path = $zipMedia->handle($this->actor(), $items);
-
-        if ($path === null) {
-            Flux::toast(variant: 'danger', text: __('media.bulk.zip_empty'));
-
-            return null;
-        }
-
-        return response()->streamDownload(function () use ($path): void {
-            try {
-                readfile($path);
-            } finally {
-                @unlink($path);
-            }
-        }, 'media.zip', ['Content-Type' => 'application/zip']);
+        $this->redirect(route('admin.media.zip', ['ids' => $ids]));
     }
 
     public function sort(string $column): void
@@ -544,7 +543,7 @@ new #[Title('media.index.title')] class extends Component {
      */
     public function moveTo(array $ids, ?int $folderId, MoveMedia $moveMedia): void
     {
-        $ids = $this->normalizeIds($ids);
+        $ids = MediaIds::normalize($ids);
 
         $folder = $folderId === null ? null : MediaFolder::query()->find($folderId);
         $items = Media::query()->whereKey($ids)->get();
@@ -843,39 +842,6 @@ new #[Title('media.index.title')] class extends Component {
         return [$start->utc(), $start->endOfMonth()->utc()];
     }
 
-    /**
-     * Ids sent by the client, as unique positive integers, at most GRID_MAX of them.
-     *
-     * @param  array<array-key, mixed>  $ids
-     * @return array<int, int>
-     */
-    private function normalizeIds(array $ids): array
-    {
-        return array_slice(array_values(array_unique(array_map('intval', array_filter(
-            $ids,
-            fn (mixed $id): bool => is_int($id) || (is_string($id) && ctype_digit($id)),
-        )))), 0, self::GRID_MAX);
-    }
-
-    /**
-     * The client ids that belong to existing files, in the order given.
-     *
-     * @param  array<array-key, mixed>  $ids
-     * @return array<int, int>
-     */
-    private function existingIds(array $ids): array
-    {
-        $ids = $this->normalizeIds($ids);
-
-        if ($ids === []) {
-            return [];
-        }
-
-        $existing = Media::query()->whereKey($ids)->pluck('id')->all();
-
-        return array_values(array_intersect($ids, $existing));
-    }
-
     private function actor(): User
     {
         $user = Auth::user();
@@ -1009,6 +975,7 @@ new #[Title('media.index.title')] class extends Component {
     x-on:dragover.window="dragOver($event)"
     x-on:dragleave.window="dragLeave($event)"
     x-on:drop.window="drop($event)"
+    x-on:dragend.window="resetDrag()"
     x-init="
         try {
             const stored = localStorage.getItem('media.view');

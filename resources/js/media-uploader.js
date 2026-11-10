@@ -23,6 +23,9 @@ const PREVIEWABLE = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 
 const JPEG_QUALITY = 0.92;
 
+/** The overlay hides when no dragover arrived for this long (the cursor left the window, the drag was cancelled). */
+const DRAG_TIMEOUT = 300;
+
 function extensionOf(name) {
     const dot = name.lastIndexOf('.');
 
@@ -50,6 +53,7 @@ function hasAlpha(source, width, height) {
     const context = canvas.getContext('2d');
     context.drawImage(source, 0, 0, canvas.width, canvas.height);
     const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    canvas.width = canvas.height = 0;
 
     for (let index = 3; index < pixels.length; index += 4) {
         if (pixels[index] < 255) {
@@ -64,6 +68,7 @@ export default function mediaUploader(config) {
     /** The picked File objects, kept out of Alpine's reactive proxies (createImageBitmap needs the real Blob). */
     const files = new Map();
     let nextId = 1;
+    let dragTimer = null;
 
     return {
         queue: [],
@@ -89,12 +94,13 @@ export default function mediaUploader(config) {
             return replace(config.texts.title, { done: this.doneCount, total: this.queue.length });
         },
 
+        /** Whether the drag carries files from the computer (not tiles dragged onto a folder). */
         hasFiles(event) {
-            return config.canUpload && Array.from(event.dataTransfer?.types ?? []).includes('Files');
+            return Array.from(event.dataTransfer?.types ?? []).includes('Files');
         },
 
         dragEnter(event) {
-            if (!this.hasFiles(event)) {
+            if (!this.hasFiles(event) || !config.canUpload) {
                 return;
             }
 
@@ -102,17 +108,24 @@ export default function mediaUploader(config) {
             this.dragging = true;
         },
 
+        /** Files are never dropped onto the page itself (the browser would open them); only uploaders see the overlay. */
         dragOver(event) {
             if (!this.hasFiles(event)) {
                 return;
             }
 
             event.preventDefault();
-            event.dataTransfer.dropEffect = 'copy';
+            event.dataTransfer.dropEffect = config.canUpload ? 'copy' : 'none';
+
+            if (config.canUpload) {
+                this.dragging = true;
+                clearTimeout(dragTimer);
+                dragTimer = setTimeout(() => this.resetDrag(), DRAG_TIMEOUT);
+            }
         },
 
         dragLeave(event) {
-            if (!this.hasFiles(event)) {
+            if (!this.hasFiles(event) || !config.canUpload) {
                 return;
             }
 
@@ -126,9 +139,17 @@ export default function mediaUploader(config) {
             }
 
             event.preventDefault();
+            this.resetDrag();
+
+            if (config.canUpload) {
+                this.enqueue(event.dataTransfer.files);
+            }
+        },
+
+        resetDrag() {
+            clearTimeout(dragTimer);
             this.dragDepth = 0;
             this.dragging = false;
-            this.enqueue(event.dataTransfer.files);
         },
 
         pick(input) {
@@ -141,6 +162,9 @@ export default function mediaUploader(config) {
                 return;
             }
 
+            // The folder open now, so switching folders while the queue runs doesn't change where files go.
+            const folderId = /^\d+$/.test(String(this.$wire.folder ?? '')) ? Number(this.$wire.folder) : null;
+
             for (const file of Array.from(fileList ?? [])) {
                 const id = nextId++;
                 const extension = extensionOf(file.name);
@@ -151,6 +175,7 @@ export default function mediaUploader(config) {
                     id,
                     name: file.name,
                     extension,
+                    folderId,
                     preview: PREVIEWABLE.includes(extension) ? URL.createObjectURL(file) : null,
                     status: error === null ? 'waiting' : 'failed',
                     percent: 0,
@@ -238,6 +263,7 @@ export default function mediaUploader(config) {
                 item.status = 'compressing';
                 this.$wire.uploadPickedSize = picked.size;
                 this.$wire.uploadPickedExtension = item.extension;
+                this.$wire.uploadFolderId = item.folderId;
                 const result = await this.$wire.storeUpload();
 
                 if (result?.ok) {
@@ -285,6 +311,7 @@ export default function mediaUploader(config) {
                 const keepAlpha = MAY_HAVE_ALPHA.includes(extension) && hasAlpha(canvas, canvas.width, canvas.height);
                 const type = keepAlpha ? 'image/png' : 'image/jpeg';
                 const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, JPEG_QUALITY));
+                canvas.width = canvas.height = 0;
 
                 if (!blob) {
                     return file;

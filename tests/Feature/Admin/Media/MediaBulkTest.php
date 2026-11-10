@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Media\ZipMedia;
 use App\Models\Media;
 use App\Models\MediaUsage;
 use App\Models\User;
@@ -52,7 +53,10 @@ it('refuses a bulk delete without media.delete', function () {
         ->set('selected', [$media->id])
         ->assertDontSeeHtml('data-test="media-bulk-delete"')
         ->call('confirmBulkDelete')
-        ->assertForbidden();
+        ->assertOk()
+        ->assertSet('showDeleteModal', false)
+        ->assertSet('deletingIds', [])
+        ->assertDispatched('toast-show');
 
     $this->assertModelExists($media);
 });
@@ -93,38 +97,25 @@ it('clears the selection when the filters change', function () {
         ->assertSet('selected', []);
 });
 
-it('downloads the selected files as a zip', function () {
+it('sends the zip download to the zip route with the selected ids', function () {
     $this->actingAs(mediaManager());
-    $first = mediaWithFiles(['name' => 'a.webp']);
-    $second = mediaWithFiles(['name' => 'b.pdf']);
-    Storage::disk('local')->put($first->path, 'first-bytes');
+    $first = Media::factory()->create();
+    $second = Media::factory()->create();
 
-    $component = Livewire::test('pages::admin.media.index')
+    Livewire::test('pages::admin.media.index')
         ->set('selected', [$first->id, $second->id])
         ->assertSeeHtml('data-test="media-bulk-zip"')
         ->call('downloadZip')
-        ->assertFileDownloaded('media.zip');
-
-    $path = tempnam(sys_get_temp_dir(), 'zip');
-    file_put_contents($path, base64_decode($component->effects['download']['content']));
-    $zip = new ZipArchive;
-    $zip->open($path);
-
-    expect($zip->numFiles)->toBe(2)
-        ->and($zip->getFromName('a.webp'))->toBe('first-bytes')
-        ->and($zip->getFromName('b.pdf'))->toBe('data');
-
-    $zip->close();
-    unlink($path);
+        ->assertRedirect(route('admin.media.zip', ['ids' => [$first->id, $second->id]]));
 })->skip(! class_exists(ZipArchive::class), 'ZipArchive is not installed.');
 
-it('refuses a zip over the size cap', function () {
+it('refuses a zip with more files than the cap', function () {
     $this->actingAs(mediaManager());
-    $media = mediaWithFiles(['size' => 30 * 1024 * 1024]);
+    $ids = Media::factory()->count(ZipMedia::MAX_FILES + 1)->create()->modelKeys();
 
     Livewire::test('pages::admin.media.index')
-        ->set('selected', [$media->id])
+        ->set('selected', $ids)
         ->call('downloadZip')
-        ->assertNoFileDownloaded()
+        ->assertNoRedirect()
         ->assertDispatched('toast-show');
 })->skip(! class_exists(ZipArchive::class), 'ZipArchive is not installed.');

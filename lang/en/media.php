@@ -146,8 +146,7 @@ return [
         'done_selecting' => 'Done',
         'select_page' => 'Select all on this page',
         'select_file' => 'Select :name',
-        'zip_too_large' => 'A ZIP can hold up to :files files and :size in total. Select fewer files.',
-        'zip_empty' => 'None of the selected files could be read.',
+        'zip_too_large' => 'A ZIP can hold up to :files files. Select fewer files.',
     ],
 
     'messages' => [
@@ -160,6 +159,7 @@ return [
     ],
 
     'errors' => [
+        'folder_missing' => 'The folder this file was meant for no longer exists.',
         'forbidden' => 'You don’t have permission to do this.',
         'unsupported' => 'The file ":name" is not supported.',
         'too_large' => 'File is too large: :size MB, the limit is :limit MB.',

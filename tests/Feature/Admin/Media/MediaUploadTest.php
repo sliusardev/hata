@@ -66,16 +66,43 @@ it('returns the error text for a rejected file', function () {
     ])->and(Media::query()->count())->toBe(0);
 });
 
-it('stores uploads in the open folder', function () {
+it('stores uploads in the folder that was open when the file was queued', function () {
     $this->actingAs(mediaUploader());
-    $folder = MediaFolder::factory()->create();
+    [$open, $queuedIn] = MediaFolder::factory()->count(2)->create()->all();
 
     Livewire::test('pages::admin.media.index')
-        ->set('folder', (string) $folder->id)
+        ->set('folder', (string) $open->id)
         ->set('upload', livewireUpload('a.jpg', makeImage()))
+        ->set('uploadFolderId', $queuedIn->id)
+        ->call('storeUpload')
+        ->assertSet('uploadFolderId', null);
+
+    expect(Media::query()->sole()->folder_id)->toBe($queuedIn->id);
+});
+
+it('stores uploads queued outside a folder without a folder', function () {
+    $this->actingAs(mediaUploader());
+    $open = MediaFolder::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->set('folder', (string) $open->id)
+        ->set('upload', livewireUpload('a.jpg', makeImage()))
+        ->set('uploadFolderId', null)
         ->call('storeUpload');
 
-    expect(Media::query()->sole()->folder_id)->toBe($folder->id);
+    expect(Media::query()->sole()->folder_id)->toBeNull();
+});
+
+it('refuses an upload into a folder that no longer exists', function () {
+    $this->actingAs(mediaUploader());
+
+    $component = Livewire::test('pages::admin.media.index')
+        ->set('upload', livewireUpload('a.jpg', makeImage()))
+        ->set('uploadFolderId', 999_999)
+        ->call('storeUpload');
+
+    expect($component->effects['returns'][0])->toBe(['ok' => false, 'error' => __('media.errors.folder_missing')])
+        ->and(Media::query()->count())->toBe(0);
 });
 
 it('is forbidden to upload without media.upload', function () {
