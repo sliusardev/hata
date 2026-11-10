@@ -15,6 +15,7 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
 use App\Support\Media\MediaIds;
+use App\Support\Media\MediaTypes;
 use Carbon\CarbonImmutable;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -809,6 +810,39 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
+     * Config of the mediaUploader Alpine component (see resources/js/media-uploader.js).
+     *
+     * Browser resizing only runs while optimization is on.
+     *
+     * @return array<string, mixed>
+     */
+    #[Computed]
+    public function uploaderConfig(): array
+    {
+        return [
+            'canUpload' => $this->actor()->can('create', Media::class),
+            'clientResize' => config('media.optimize.enabled') && config('media.optimize.client_resize'),
+            'clientSide' => (int) config('media.client_side'),
+            'accept' => array_keys(MediaTypes::ALLOWED),
+            'types' => array_map(fn (array $type): string => $type['kind']->value, MediaTypes::ALLOWED),
+            'limits' => collect(MediaKind::cases())
+                ->mapWithKeys(fn (MediaKind $kind): array => [$kind->value => MediaTypes::limitBytes($kind)])
+                ->all(),
+            'locale' => str_replace('_', '-', app()->getLocale()),
+            'texts' => [
+                'too_large' => __('media.errors.too_large'),
+                'unsupported' => __('media.errors.unsupported'),
+                'failed' => __('media.upload.failed'),
+                'title' => __('media.upload.title'),
+                'waiting' => __('media.upload.waiting'),
+                'preparing' => __('media.upload.preparing'),
+                'progress' => __('media.upload.progress'),
+                'compressing' => __('media.upload.compressing'),
+            ],
+        ];
+    }
+
+    /**
      * @return Builder<Media>
      */
     private function filteredQuery(): Builder
@@ -944,28 +978,7 @@ new #[Title('media.index.title')] class extends Component {
 @php
     $canManageFolders = auth()->user()->can('manageFolders', App\Models\Media::class);
     $canUpload = auth()->user()->can('create', App\Models\Media::class);
-    $accept = array_keys(App\Support\Media\MediaTypes::ALLOWED);
-    $uploaderConfig = [
-        'canUpload' => $canUpload,
-        'clientResize' => (bool) config('media.optimize.client_resize'),
-        'clientSide' => (int) config('media.client_side'),
-        'accept' => $accept,
-        'types' => array_map(fn (array $type): string => $type['kind']->value, App\Support\Media\MediaTypes::ALLOWED),
-        'limits' => collect(App\Enums\MediaKind::cases())
-            ->mapWithKeys(fn (App\Enums\MediaKind $kind): array => [$kind->value => App\Support\Media\MediaTypes::limitBytes($kind)])
-            ->all(),
-        'locale' => str_replace('_', '-', app()->getLocale()),
-        'texts' => [
-            'too_large' => __('media.errors.too_large'),
-            'unsupported' => __('media.errors.unsupported'),
-            'failed' => __('media.upload.failed'),
-            'title' => __('media.upload.title'),
-            'waiting' => __('media.upload.waiting'),
-            'preparing' => __('media.upload.preparing'),
-            'progress' => __('media.upload.progress'),
-            'compressing' => __('media.upload.compressing'),
-        ],
-    ];
+    $uploaderConfig = $this->uploaderConfig;
 @endphp
 
 <section
@@ -1000,7 +1013,7 @@ new #[Title('media.index.title')] class extends Component {
                 type="file"
                 multiple
                 x-ref="uploadInput"
-                accept="{{ collect($accept)->map(fn (string $extension): string => '.'.$extension)->implode(',') }}"
+                accept="{{ collect($uploaderConfig['accept'])->map(fn (string $extension): string => '.'.$extension)->implode(',') }}"
                 class="hidden"
                 x-on:change="pick($event.target)"
             />

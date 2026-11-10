@@ -119,3 +119,16 @@ it('is forbidden to upload without media.upload', function () {
 
     expect(Media::query()->count())->toBe(0);
 });
+
+it('turns browser resizing off when optimization is off', function (bool $optimize, bool $clientResize, bool $expected) {
+    config(['media.optimize.enabled' => $optimize, 'media.optimize.client_resize' => $clientResize]);
+    $this->actingAs(mediaUploader());
+
+    $config = Livewire::test('pages::admin.media.index')->instance()->uploaderConfig;
+
+    expect($config['clientResize'])->toBe($expected);
+})->with([
+    'both on' => [true, true, true],
+    'optimize off' => [false, true, false],
+    'resize off' => [true, false, false],
+]);

@@ -191,3 +191,12 @@ it('rejects heic whenever the optimizer could not convert it', function (Optimiz
     'stored as heic' => fn () => new OptimizedImage('heic', 'image/heic', 'heic', 640, 480, optimized: true, fingerprint: 'webp:2560:80:exif0'),
     'heif' => fn () => new OptimizedImage('heif', 'image/heif', 'heif', 640, 480, optimized: true, fingerprint: 'webp:2560:80:exif0'),
 ]);
+
+it('keeps no original when optimization is off', function () {
+    config(['media.optimize.enabled' => false, 'media.optimize.keep_originals' => true]);
+
+    $media = app(UploadMedia::class)->handle($this->actor, uploadedImage('a.jpg', makeImage()));
+
+    expect($media->original_path)->toBeNull()
+        ->and(Storage::disk('local')->allFiles())->toHaveCount(2);
+});

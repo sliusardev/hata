@@ -65,7 +65,7 @@ class UploadMedia
         $storage = Storage::disk($disk);
         $key = (string) Str::ulid();
         $path = sprintf('media/%s/%s.%s', now()->format('Y/m'), $key, $extension);
-        $originalPath = isset($original) && config('media.optimize.keep_originals')
+        $originalPath = isset($original) && config('media.optimize.enabled') && config('media.optimize.keep_originals')
             ? sprintf('media/originals/%s.%s', $key, $type['ext'])
             : null;
         $thumbPath = $thumbnail === null ? null : "media/thumbs/{$key}.webp";
