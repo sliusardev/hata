@@ -15,6 +15,8 @@ return [
     'administration' => 'Адміністрування',
     'users' => 'Користувачі',
     'site_settings' => 'Налаштування сайту',
+    'content' => 'Контент',
+    'media' => 'Медіа',
     'roles' => 'Ролі',
 
 ];

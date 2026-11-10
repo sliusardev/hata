@@ -18,6 +18,8 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
     ->group(function () {
         Route::view('/', 'dashboard')->name('dashboard');
 
+        Route::livewire('media', 'pages::admin.media.index')->name('media.index');
+
         Route::livewire('users', 'pages::admin.users.index')->name('users.index');
         Route::livewire('users/create', 'pages::admin.users.create')->name('users.create');
         Route::livewire('users/{user}/edit', 'pages::admin.users.edit')->name('users.edit');

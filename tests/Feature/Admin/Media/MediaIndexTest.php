@@ -1,0 +1,178 @@
+<?php
+
+use App\Models\Media;
+use App\Models\MediaFolder;
+use App\Models\MediaUsage;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
+
+beforeEach(fn () => seedRolesAndPermissions());
+
+function mediaViewer(): User
+{
+    return User::factory()->withPermissions(['admin.access', 'media.view'])->create();
+}
+
+function markMediaUsed(Media $media): void
+{
+    MediaUsage::query()->create([
+        'media_id' => $media->id,
+        'usable_type' => User::class,
+        'usable_id' => 1,
+        'field' => 'cover',
+    ]);
+}
+
+it('shows the library to users with media.view', function () {
+    $this->actingAs(mediaViewer());
+    Media::factory()->create(['name' => 'hero-kyiv-autumn.webp']);
+    Media::factory()->document()->create(['name' => 'price-list.pdf']);
+
+    $this->get(route('admin.media.index'))
+        ->assertOk()
+        ->assertSee('hero-kyiv-autumn.webp')
+        ->assertSee('price-list.pdf');
+});
+
+it('is forbidden without media.view', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
+
+    $this->get(route('admin.media.index'))->assertForbidden();
+});
+
+it('shows the content group in the sidebar only with media.view', function () {
+    $this->actingAs(mediaViewer());
+    $this->get(route('admin.dashboard'))
+        ->assertSee(__('navigation.content'))
+        ->assertSee(route('admin.media.index'));
+
+    $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
+    $this->get(route('admin.dashboard'))
+        ->assertDontSee(__('navigation.content'))
+        ->assertDontSee(route('admin.media.index'));
+});
+
+it('filters by folder, no folder, type, month, unused and search', function (string $filter) {
+    $this->actingAs(mediaViewer());
+    config(['admin.timezone' => 'Europe/Kyiv']);
+
+    [$params, $visible, $hidden] = match ($filter) {
+        'folder' => (function () {
+            $folder = MediaFolder::factory()->create();
+            Media::factory()->inFolder($folder)->create(['name' => 'in-folder.webp']);
+            Media::factory()->create(['name' => 'outside.webp']);
+
+            return [['folder' => (string) $folder->id], 'in-folder.webp', 'outside.webp'];
+        })(),
+        'no folder' => (function () {
+            Media::factory()->inFolder(MediaFolder::factory()->create())->create(['name' => 'in-folder.webp']);
+            Media::factory()->create(['name' => 'loose.webp']);
+
+            return [['folder' => 'none'], 'loose.webp', 'in-folder.webp'];
+        })(),
+        'type' => (function () {
+            Media::factory()->document()->create(['name' => 'price-list.pdf']);
+            Media::factory()->image()->create(['name' => 'photo.webp']);
+
+            return [['type' => 'document'], 'price-list.pdf', 'photo.webp'];
+        })(),
+        'month' => (function () {
+            // 01:30 on 1 October in Kyiv, 22:30 on 30 September in UTC.
+            Media::factory()->create(['name' => 'october.webp', 'created_at' => '2026-09-30 22:30:00']);
+            // 00:30 on 1 November in Kyiv, still 31 October in UTC.
+            Media::factory()->create(['name' => 'november.webp', 'created_at' => '2026-10-31 22:30:00']);
+
+            return [['month' => '2026-10'], 'october.webp', 'november.webp'];
+        })(),
+        'unused' => (function () {
+            Media::factory()->create(['name' => 'never-placed.webp']);
+            markMediaUsed(Media::factory()->create(['name' => 'in-use.webp']));
+
+            return [['unused' => true], 'never-placed.webp', 'in-use.webp'];
+        })(),
+        'search' => (function () {
+            Media::factory()->create(['name' => 'kyiv.webp', 'alt' => ['uk' => 'Осінній Київ']]);
+            Media::factory()->create(['name' => 'lviv.webp', 'alt' => ['uk' => 'Львів']]);
+
+            return [['search' => 'КИЇВ'], 'kyiv.webp', 'lviv.webp'];
+        })(),
+    };
+
+    Livewire::test('pages::admin.media.index')
+        ->assertSee($hidden)
+        ->set($params)
+        ->assertSee($visible)
+        ->assertDontSee($hidden);
+})->with(['folder', 'no folder', 'type', 'month', 'unused', 'search']);
+
+it('falls back to all files when the open folder no longer exists', function () {
+    $this->actingAs(mediaViewer());
+    Media::factory()->create(['name' => 'anywhere.webp']);
+
+    Livewire::withQueryParams(['folder' => '999'])
+        ->test('pages::admin.media.index')
+        ->assertSet('folder', null)
+        ->assertSee('anywhere.webp');
+});
+
+it('shows 40 tiles and more on demand', function () {
+    $this->actingAs(mediaViewer());
+    Media::factory()->count(45)->create();
+
+    $component = Livewire::test('pages::admin.media.index');
+    expect(substr_count($component->html(), 'data-test="media-tile"'))->toBe(40);
+
+    $component->call('showMore');
+    expect(substr_count($component->html(), 'data-test="media-tile"'))->toBe(45);
+});
+
+it('sorts the list by size', function () {
+    $this->actingAs(mediaViewer());
+    Media::factory()->create(['name' => 'large.webp', 'size' => 300_000]);
+    Media::factory()->create(['name' => 'small.webp', 'size' => 100_000]);
+    Media::factory()->create(['name' => 'medium.webp', 'size' => 200_000]);
+
+    Livewire::test('pages::admin.media.index')
+        ->set('view', 'list')
+        ->call('sort', 'size')
+        ->assertSeeInOrder(['small.webp', 'medium.webp', 'large.webp'])
+        ->call('sort', 'size')
+        ->assertSeeInOrder(['large.webp', 'medium.webp', 'small.webp']);
+});
+
+it('keeps filters in the url', function () {
+    $this->actingAs(mediaViewer());
+    Media::factory()->document()->create(['name' => 'price-list.pdf']);
+    Media::factory()->image()->create(['name' => 'photo.webp']);
+
+    Livewire::withQueryParams(['type' => 'document'])
+        ->test('pages::admin.media.index')
+        ->assertSet('type', 'document')
+        ->assertSee('price-list.pdf')
+        ->assertDontSee('photo.webp');
+});
+
+it('does not run a query per tile', function (string $view) {
+    $this->actingAs(mediaViewer());
+    $folder = MediaFolder::factory()->create();
+
+    $countQueries = function () use ($view): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        Livewire::withQueryParams(['view' => $view])->test('pages::admin.media.index');
+        DB::disableQueryLog();
+
+        return count(DB::getQueryLog());
+    };
+
+    markMediaUsed(Media::factory()->inFolder($folder)->create(['alt' => ['en' => 'Alt']]));
+    $countQueries();
+    $withOne = $countQueries();
+
+    Media::factory()->count(12)->inFolder($folder)->create();
+    Media::factory()->count(12)->document()->create();
+    $withMany = $countQueries();
+
+    expect($withMany)->toBe($withOne);
+})->with(['grid', 'list']);

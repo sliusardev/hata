@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
 /**
@@ -112,6 +113,22 @@ class Media extends Model
     public function isImage(): bool
     {
         return $this->kind === MediaKind::Image;
+    }
+
+    /**
+     * The file extension in upper case, e.g. "PDF".
+     */
+    public function extension(): string
+    {
+        return Str::upper(pathinfo($this->name, PATHINFO_EXTENSION));
+    }
+
+    /**
+     * The file size in binary units with the current locale's decimal separator, e.g. "1,2 MB".
+     */
+    public function humanSize(): string
+    {
+        return (string) Number::withLocale(app()->getLocale(), fn () => Number::fileSize($this->size, maxPrecision: 1));
     }
 
     public function altFor(string $locale): string

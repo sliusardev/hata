@@ -22,6 +22,14 @@
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 
+                    @can('media.view')
+                        <flux:sidebar.group :heading="__('navigation.content')" :class="$groupClasses">
+                            <flux:sidebar.item icon="photo" :icon:variant="request()->routeIs('admin.media.*') ? 'solid' : 'outline'" :href="route('admin.media.index')" :current="request()->routeIs('admin.media.*')" wire:navigate>
+                                {{ __('navigation.media') }}
+                            </flux:sidebar.item>
+                        </flux:sidebar.group>
+                    @endcan
+
                     @canany(['users.view', 'roles.view', 'settings.edit'])
                         <flux:sidebar.group :heading="__('navigation.administration')" :class="$groupClasses">
                             @can('users.view')
