@@ -173,18 +173,18 @@ class Media extends Model
     }
 
     /**
-     * Alt text in the given language. An empty translation falls back to the primary language
+     * Alt text in the given language, trimmed. An empty (or whitespace-only) translation falls back to the primary language
      * unless $fallback is false (the edit form needs the stored value).
      */
     public function altFor(string $locale, bool $fallback = true): string
     {
-        $text = (string) ($this->alt[$locale] ?? '');
+        $text = trim((string) ($this->alt[$locale] ?? ''));
 
         if ($text !== '' || ! $fallback) {
             return $text;
         }
 
-        return (string) ($this->alt[self::primaryAltLocale()] ?? '');
+        return trim((string) ($this->alt[self::primaryAltLocale()] ?? ''));
     }
 
     /**

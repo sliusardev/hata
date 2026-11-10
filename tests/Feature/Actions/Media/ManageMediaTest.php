@@ -50,6 +50,14 @@ it('stores an empty title as null', function () {
     expect(app(UpdateMedia::class)->handle($this->actor, $media, ['title' => '  ']))->title->toBeNull();
 });
 
+it('trims alt text, so whitespace-only alt is stored empty', function () {
+    $media = Media::factory()->create();
+
+    $result = app(UpdateMedia::class)->handle($this->actor, $media, ['alt' => ['en' => "  A sunset \n", 'uk' => '   ']]);
+
+    expect($result->refresh()->alt)->toBe(['en' => 'A sunset', 'uk' => '']);
+});
+
 it('requires media.edit to update', function () {
     $actor = User::factory()->withPermissions(['admin.access', 'media.view'])->create();
 

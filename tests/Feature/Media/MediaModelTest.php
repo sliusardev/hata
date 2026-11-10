@@ -57,6 +57,18 @@ it('falls back to the primary language for an empty alt translation', function (
     expect(Media::primaryAltLocale())->toBe('en');
 });
 
+it('treats a whitespace-only alt as empty for the fallback', function () {
+    config(['app.locale' => 'uk', 'app.available_locales' => ['en' => 'English', 'uk' => 'Українська']]);
+    $media = Media::factory()->make(['alt' => ['uk' => 'Каша', 'en' => "  \t"]]);
+
+    expect($media->altFor('en'))->toBe('Каша')
+        ->and($media->altFor('en', fallback: false))->toBe('');
+
+    $media->alt = ['uk' => '   ', 'en' => 'Porridge'];
+
+    expect($media->altFor('pl'))->toBe('');
+});
+
 it('lists folder descendants at any depth', function () {
     $a = MediaFolder::factory()->create();
     $b = MediaFolder::factory()->create(['parent_id' => $a->id]);
