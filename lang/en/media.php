@@ -175,6 +175,11 @@ return [
         'folder_name' => 'Folder name must be 1–100 characters.',
         'limit_above_server' => 'The limit cannot be higher than the server allows (:size).',
         'folder_exists' => 'A folder with this name already exists here.',
+        'not_editable' => 'This file can’t be cropped, rotated or flipped.',
+        'too_large_to_edit' => 'This image is too large to edit on this server.',
+        'no_original' => 'There is no original to restore.',
+        'invalid_crop' => 'The crop area is outside the image.',
+        'invalid_edit' => 'The edit settings are not valid.',
     ],
 
 ];
