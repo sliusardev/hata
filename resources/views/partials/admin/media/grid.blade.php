@@ -7,7 +7,7 @@
     Drawing a box on empty space selects the tiles it touches (resources/js/media-marquee.js).
 --}}
 <div
-    class="relative space-y-6 select-none"
+    class="relative -m-4 min-h-[50vh] space-y-6 p-4 pb-24 select-none"
     x-data="mediaMarquee"
     x-on:pointerdown="begin($event)"
     data-test="media-grid"
@@ -20,7 +20,7 @@
         aria-hidden="true"
     ></div>
 
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    <div class="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         @foreach ($media as $item)
             @php $isPicked = in_array($item->id, $selected, true); @endphp
             <button
