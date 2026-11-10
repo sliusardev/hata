@@ -2,6 +2,7 @@
 
 namespace App\Actions\Media;
 
+use App\Support\Media\MediaTypes;
 use App\Support\Media\MemoryGuard;
 use App\Support\Media\OptimizedImage;
 use App\Support\Media\StripMetadata;
@@ -9,6 +10,8 @@ use finfo;
 use Illuminate\Image\Image as PendingImage;
 use Illuminate\Image\ImageException;
 use Illuminate\Support\Facades\Image;
+use Imagick;
+use ImagickException;
 use Intervention\Image\Drivers\Imagick\Modifiers\StripMetaModifier;
 use Intervention\Image\Interfaces\ImageInterface;
 
@@ -18,19 +21,11 @@ use Intervention\Image\Interfaces\ImageInterface;
 class OptimizeImage
 {
     /**
-     * Raster MIME types the optimizer re-encodes, with the extension used for each.
+     * Raster MIME types the optimizer re-encodes.
      *
-     * @var array<string, string>
+     * @var list<string>
      */
-    private const array RASTER = [
-        'image/jpeg' => 'jpg',
-        'image/png' => 'png',
-        'image/webp' => 'webp',
-        'image/gif' => 'gif',
-        'image/avif' => 'avif',
-        'image/heic' => 'heic',
-        'image/heif' => 'heif',
-    ];
+    private const array RASTER = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif'];
 
     public function __construct(private MemoryGuard $memory) {}
 
@@ -39,16 +34,15 @@ class OptimizeImage
      */
     public function handle(string $contents, string $mime, ?array $edits = null): OptimizedImage
     {
-        $extension = self::RASTER[$mime] ?? null;
-        $size = $extension === null ? false : @getimagesizefromstring($contents);
-        $width = $size === false ? null : $size[0];
-        $height = $size === false ? null : $size[1];
+        $raster = in_array($mime, self::RASTER, true);
+        $size = $raster ? $this->dimensions($contents, $mime) : null;
+        [$width, $height] = $size ?? [null, null];
 
-        if ($extension === null || ! config('media.optimize.enabled') || $this->isAnimatedGif($contents, $mime)) {
+        if (! $raster || ! config('media.optimize.enabled') || $this->isAnimated($contents, $mime)) {
             return $this->unchanged($contents, $mime, $width, $height);
         }
 
-        if ($size === false || $size[0] < 1 || $size[1] < 1) {
+        if ($size === null) {
             return $this->unchanged($contents, $mime, $width, $height, 'unreadable');
         }
 
@@ -59,11 +53,12 @@ class OptimizeImage
         $format = (string) config('media.optimize.format');
         $quality = $this->quality();
         $maxSide = config('media.optimize.max_side');
+        $scaled = is_int($maxSide) && $maxSide > 0 && max($size) > $maxSide;
 
         try {
             $image = Image::fromBytes($contents)->orient();
 
-            if (is_int($maxSide) && $maxSide > 0 && max($width, $height) > $maxSide) {
+            if ($scaled) {
                 $image = $image->scale($maxSide, $maxSide);
             }
 
@@ -73,8 +68,12 @@ class OptimizeImage
             return $this->unchanged($contents, $mime, $width, $height, 'unreadable');
         }
 
-        if (strlen($output) >= strlen($contents) && ! (config('media.optimize.strip_exif') && $this->hasMetadata($contents))) {
-            return new OptimizedImage($contents, $mime, $extension, $width, $height, optimized: true, fingerprint: $this->fingerprint());
+        $keepInput = ! $scaled
+            && strlen($output) >= strlen($contents)
+            && ! (config('media.optimize.strip_exif') && $this->hasMetadata($contents, $mime));
+
+        if ($keepInput) {
+            return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: true, fingerprint: $this->fingerprint());
         }
 
         $outputSize = @getimagesizefromstring($output);
@@ -83,7 +82,7 @@ class OptimizeImage
         return new OptimizedImage(
             $output,
             $outputMime,
-            self::RASTER[$outputMime] ?? $format,
+            $this->extensionFor($outputMime),
             $outputSize === false ? null : $outputSize[0],
             $outputSize === false ? null : $outputSize[1],
             optimized: true,
@@ -96,9 +95,9 @@ class OptimizeImage
      */
     public function thumbnail(string $contents): ?string
     {
-        $size = @getimagesizefromstring($contents);
+        $size = $this->dimensions($contents, (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($contents));
 
-        if ($size === false || $size[0] < 1 || $size[1] < 1 || ! $this->memory->canDecode($size[0], $size[1])) {
+        if ($size === null || ! $this->memory->canDecode($size[0], $size[1])) {
             return null;
         }
 
@@ -107,7 +106,7 @@ class OptimizeImage
         try {
             $image = Image::fromBytes($contents)->orient();
 
-            if (max($size[0], $size[1]) > $side) {
+            if (max($size) > $side) {
                 $image = $image->scale($side, $side);
             }
 
@@ -138,7 +137,49 @@ class OptimizeImage
      */
     private function unchanged(string $contents, string $mime, ?int $width, ?int $height, ?string $failure = null): OptimizedImage
     {
-        return new OptimizedImage($contents, $mime, self::RASTER[$mime] ?? '', $width, $height, optimized: false, failure: $failure);
+        return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: false, failure: $failure);
+    }
+
+    private function extensionFor(string $mime): string
+    {
+        return MediaTypes::extensionFor($mime) ?? 'bin';
+    }
+
+    /**
+     * Width and height from the file header, without decoding the pixels.
+     *
+     * getimagesize() doesn't read HEIC/HEIF; on Imagick servers those are pinged instead (header only).
+     *
+     * @return array{0: int<1, max>, 1: int<1, max>}|null
+     */
+    private function dimensions(string $contents, string $mime): ?array
+    {
+        $size = @getimagesizefromstring($contents);
+
+        if ($size !== false) {
+            return $this->validDimensions($size[0], $size[1]);
+        }
+
+        if (! in_array($mime, ['image/heic', 'image/heif'], true) || config('images.default') !== 'imagick' || ! extension_loaded('imagick')) {
+            return null;
+        }
+
+        try {
+            $imagick = new Imagick;
+            $imagick->pingImageBlob($contents);
+
+            return $this->validDimensions($imagick->getImageWidth(), $imagick->getImageHeight());
+        } catch (ImagickException) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array{0: int<1, max>, 1: int<1, max>}|null
+     */
+    private function validDimensions(int $width, int $height): ?array
+    {
+        return $width > 0 && $height > 0 ? [$width, $height] : null;
     }
 
     /**
@@ -165,18 +206,90 @@ class OptimizeImage
     }
 
     /**
-     * Whether the contents carry an EXIF block (JPEG APP1, PNG eXIf chunk, WebP EXIF chunk, HEIF/AVIF Exif item).
+     * Whether the contents carry an EXIF block: a JPEG APP1 Exif segment, a PNG eXIf chunk or a WebP EXIF chunk.
      */
-    private function hasMetadata(string $contents): bool
+    private function hasMetadata(string $contents, string $mime): bool
     {
-        return str_contains($contents, 'eXIf') || str_contains($contents, 'EXIF') || str_contains($contents, 'Exif');
+        return match ($mime) {
+            'image/jpeg' => preg_match('/\xFF\xE1..Exif\x00\x00/s', $contents) === 1,
+            'image/png' => in_array('eXIf', $this->pngChunks($contents), true),
+            'image/webp' => in_array('EXIF', $this->webpChunks($contents), true),
+            default => false,
+        };
     }
 
     /**
-     * A GIF with more than one graphic control extension block has several frames.
+     * Animated GIF (more than one graphic control extension), animated WebP (VP8X animation flag or an ANIM chunk)
+     * or APNG (an acTL chunk before the first IDAT). These are never re-encoded, which would keep one frame.
      */
-    private function isAnimatedGif(string $contents, string $mime): bool
+    private function isAnimated(string $contents, string $mime): bool
     {
-        return $mime === 'image/gif' && substr_count($contents, "\x21\xF9\x04") > 1;
+        return match ($mime) {
+            'image/gif' => substr_count($contents, "\x21\xF9\x04") > 1,
+            'image/webp' => (substr($contents, 12, 4) === 'VP8X' && (ord($contents[20] ?? "\0") & 0x02) !== 0)
+                || in_array('ANIM', $this->webpChunks($contents), true),
+            'image/png' => in_array('acTL', $this->pngChunks($contents), true),
+            default => false,
+        };
+    }
+
+    /**
+     * Chunk types of a PNG up to the first IDAT (metadata and animation control come before the image data).
+     *
+     * @return list<string>
+     */
+    private function pngChunks(string $contents): array
+    {
+        $types = [];
+        $offset = 8;
+
+        while ($offset + 8 <= strlen($contents)) {
+            $header = unpack('Nlength', $contents, $offset);
+
+            if ($header === false) {
+                break;
+            }
+
+            $length = (int) $header['length'];
+            $type = substr($contents, $offset + 4, 4);
+
+            if ($type === 'IDAT' || $type === 'IEND') {
+                break;
+            }
+
+            $types[] = $type;
+            $offset += 12 + $length;
+        }
+
+        return $types;
+    }
+
+    /**
+     * Chunk types of a RIFF/WEBP container.
+     *
+     * @return list<string>
+     */
+    private function webpChunks(string $contents): array
+    {
+        if (substr($contents, 0, 4) !== 'RIFF' || substr($contents, 8, 4) !== 'WEBP') {
+            return [];
+        }
+
+        $types = [];
+        $offset = 12;
+
+        while ($offset + 8 <= strlen($contents)) {
+            $header = unpack('Vlength', $contents, $offset + 4);
+
+            if ($header === false) {
+                break;
+            }
+
+            $length = (int) $header['length'];
+            $types[] = substr($contents, $offset, 4);
+            $offset += 8 + $length + ($length % 2);
+        }
+
+        return $types;
     }
 }

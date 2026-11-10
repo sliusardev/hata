@@ -105,6 +105,22 @@ final class MediaTypes
         return substr($head, 4, 4) === 'ftyp' && in_array(substr($head, 8, 4), $brands, true);
     }
 
+    /**
+     * The extension for a MIME type: the first whitelist entry whose canonical MIME matches, else any entry listing it.
+     */
+    public static function extensionFor(string $mime): ?string
+    {
+        foreach ([true, false] as $canonicalOnly) {
+            foreach (self::ALLOWED as $extension => $type) {
+                if ($canonicalOnly ? $type['mimes'][0] === $mime : in_array($mime, $type['mimes'], true)) {
+                    return $extension;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public static function limitBytes(MediaKind $kind): int
     {
         $megabytes = $kind === MediaKind::Image
