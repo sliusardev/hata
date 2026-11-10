@@ -58,14 +58,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Thumbnails And Pagination
+    | Thumbnails
     |--------------------------------------------------------------------------
+    |
+    | Long side of the WebP preview in pixels. Page sizes of the library are
+    | constants of the page (GRID_STEP, GRID_MAX, LIST_PER_PAGE).
+    |
     */
 
     'thumb_side' => 400,
-
-    'grid_per_page' => 40,
-
-    'list_per_page' => 25,
 
 ];

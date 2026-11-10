@@ -56,6 +56,11 @@ new #[Title('media.index.title')] class extends Component {
      */
     public const int GRID_MAX = 400;
 
+    /**
+     * Files per page of the list view.
+     */
+    public const int LIST_PER_PAGE = 25;
+
     private const array FILTERS = ['folder', 'search', 'type', 'month', 'unused'];
 
     /**
@@ -729,7 +734,7 @@ new #[Title('media.index.title')] class extends Component {
             ->orderBy('id', $direction);
 
         return $this->view === 'list'
-            ? $query->paginate(25)
+            ? $query->paginate(self::LIST_PER_PAGE)
             : $query->paginate(min(max($this->gridLimit, self::GRID_STEP), self::GRID_MAX), page: 1);
     }
 
