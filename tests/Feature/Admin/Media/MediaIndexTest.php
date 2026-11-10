@@ -239,3 +239,29 @@ it('drags the tile, not its thumbnail image, so the uploader does not take it fo
     Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
         ->assertSeeHtml('loading="lazy" draggable="false"');
 });
+
+it('marks the open and the selected files in the grid and the list', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.edit'])->create());
+    [$open, $picked, $other] = Media::factory()->count(3)->create(['thumb_path' => 'media/thumbs/x.webp'])->all();
+
+    $grid = Livewire::test('pages::admin.media.index')
+        ->call('select', $open->id)
+        ->set('selected', [$picked->id])
+        ->html();
+
+    $active = fn (string $html, Media $media, string $attribute): bool => (bool) preg_match(
+        '/'.preg_quote($attribute.'="'.$media->id.'"', '/').'[^>]*data-active="true"|data-active="true"[^>]*'.preg_quote($attribute.'="'.$media->id.'"', '/').'/',
+        $html,
+    );
+
+    expect($active($grid, $open, 'data-media-id'))->toBeTrue()
+        ->and($active($grid, $picked, 'data-media-id'))->toBeTrue()
+        ->and($active($grid, $other, 'data-media-id'))->toBeFalse()
+        ->and($grid)->toContain('outline-accent');
+
+    $list = Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
+        ->call('select', $open->id)
+        ->html();
+
+    expect(substr_count($list, 'data-active="true"'))->toBe(1);
+});

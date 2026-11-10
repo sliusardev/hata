@@ -38,7 +38,13 @@
                     @php $dragIds = $isPicked ? array_values($selected) : [$item->id]; @endphp
                     x-on:dragstart="mediaDragStart($event, @js($dragIds), @js(trans_choice('media.bulk.dragging', count($dragIds))))"
                 @endif
-                class="group min-w-0 text-start focus:outline-none"
+                @class([
+                    'group min-w-0 rounded-xl p-1.5 text-start transition-colors focus:outline-none',
+                    'hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-accent dark:hover:bg-white/5',
+                    'data-[boxed=true]:bg-zinc-200/70 data-[boxed=true]:outline-2 data-[boxed=true]:outline-accent dark:data-[boxed=true]:bg-white/10',
+                    'bg-zinc-200/70! outline-2 outline-accent dark:bg-white/10!' => $isPicked || (! $selecting && $selectedId === $item->id),
+                ])
+                data-active="{{ $isPicked || (! $selecting && $selectedId === $item->id) ? 'true' : 'false' }}"
                 aria-label="{{ $item->name }}"
                 @if ($selecting)
                     aria-pressed="{{ $isPicked ? 'true' : 'false' }}"
@@ -49,9 +55,7 @@
             >
                 <div @class([
                     'relative aspect-square overflow-hidden rounded-lg bg-zinc-100 ring-1 ring-black/5 ring-inset transition dark:bg-white/5 dark:ring-white/10',
-                    'group-hover:ring-zinc-300 group-focus-visible:ring-2 group-focus-visible:ring-accent dark:group-hover:ring-white/20',
-                    'ring-2! ring-accent!' => $isPicked || (! $selecting && $selectedId === $item->id),
-                    'group-data-[boxed=true]:ring-2! group-data-[boxed=true]:ring-accent!',
+                    'group-hover:ring-zinc-300 dark:group-hover:ring-white/20',
                 ])>
                     @if ($thumbUrl = $item->thumbUrl())
                         <img src="{{ $thumbUrl }}" alt="{{ $item->altFor(app()->getLocale()) }}" loading="lazy" draggable="false" class="size-full object-cover" />

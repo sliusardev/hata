@@ -1253,6 +1253,7 @@ new #[Title('media.index.title')] class extends Component {
             @elseif ($view === 'list')
                 @include('partials.admin.media.list', [
                     'media' => $this->media,
+                    'selectedId' => $selectedId,
                     'selected' => $selected,
                     'sortBy' => $sortBy,
                     'sortDirection' => $sortDirection,

@@ -1,6 +1,7 @@
 {{--
     List view of the media library: flux:table, 25 per page, sortable by name, size and date.
     Expects: $media (paginator), $sortBy, $sortDirection, $selected (ids picked for bulk actions),
+    $selectedId (the file open in the details panel),
     $canMove (rows can be dragged onto a folder in the tree).
 --}}
 @php
@@ -35,9 +36,12 @@
             @php
                 $alt = $item->altFor(app()->getLocale());
                 $dragIds = in_array($item->id, $selected, true) ? array_values($selected) : [$item->id];
+                $isActive = $selectedId === $item->id || in_array($item->id, $selected, true);
             @endphp
             <flux:table.row
                 :key="$item->id"
+                :class="$isActive ? 'bg-zinc-100 dark:bg-white/10' : null"
+                :data-active="$isActive ? 'true' : 'false'"
                 :draggable="$canMove ? 'true' : null"
                 :x-on:dragstart="$canMove ? 'mediaDragStart($event, '.\Illuminate\Support\Js::from($dragIds).', '.\Illuminate\Support\Js::from(trans_choice('media.bulk.dragging', count($dragIds))).')' : null"
             >
