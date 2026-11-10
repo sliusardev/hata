@@ -126,13 +126,31 @@
                 @endforelse
             </div>
 
-            <div class="flex gap-2" x-data="{ url: @js($media->url()) }">
-                <flux:input size="sm" readonly :value="$media->url()" :aria-label="__('media.details.url')" class="min-w-0 flex-1" />
-                <flux:button
-                    size="sm"
-                    icon="link"
-                    x-on:click="navigator.clipboard.writeText(url).then(() => $flux.toast({ text: @js(__('media.details.copied')), variant: 'success' }))"
-                >{{ __('media.details.copy') }}</flux:button>
+            {{-- The clipboard API needs HTTPS; without it the link is selected in the field and a toast says why. --}}
+            <div
+                class="flex gap-2"
+                x-data="{
+                    url: @js($media->url()),
+                    copy() {
+                        if (! navigator.clipboard?.writeText) {
+                            return this.selectInstead();
+                        }
+
+                        navigator.clipboard.writeText(this.url).then(
+                            () => this.$flux.toast({ text: @js(__('media.details.copied')), variant: 'success' }),
+                            () => this.selectInstead(),
+                        );
+                    },
+                    selectInstead() {
+                        const field = this.$root.querySelector('input');
+                        field?.focus();
+                        field?.select();
+                        this.$flux.toast({ text: @js(__('media.details.copy_failed')), variant: 'danger' });
+                    },
+                }"
+            >
+                <flux:input size="sm" readonly :value="$media->url()" :aria-label="__('media.details.url')" class="min-w-0 flex-1" x-on:focus="$event.target.select()" />
+                <flux:button size="sm" icon="link" x-on:click="copy()" data-test="media-details-copy">{{ __('media.details.copy') }}</flux:button>
             </div>
         </div>
 

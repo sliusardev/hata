@@ -7,6 +7,7 @@ use App\Models\MediaUsage;
 use App\Models\User;
 use App\Support\Media\MemoryGuard;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Js;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
@@ -244,4 +245,15 @@ it('clears a pending confirmation when the dialog is cancelled', function () {
 
     $this->assertModelExists($media);
     $this->assertModelExists($folder);
+});
+
+it('shows the file url in a selectable field with a copy fallback for plain http', function () {
+    $this->actingAs(mediaEditor());
+    $media = Media::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->assertSeeHtml('value="'.e($media->url()).'"')
+        ->assertSeeHtml('data-test="media-details-copy"')
+        ->assertSeeHtml((string) Js::from(__('media.details.copy_failed')));
 });
