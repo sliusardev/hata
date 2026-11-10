@@ -94,6 +94,7 @@ Built storage-agnostic from the start, so moving to S3 / Cloudflare R2 / Backbla
 - Limits from the Media tab (default images 30 MB, documents and other 20 MB), capped by PHP `upload_max_filesize`/`post_max_size` (the tab shows the server cap). The Livewire temporary upload rule is raised to match.
 - New files go into the folder that's open (or "No folder" for "All files"), appear first in the grid with progress, and show errors on the tile itself with a reason ("PSD format is not supported", "File is too large: 34 MB, the limit is 30 MB"). The queue panel (screen 3) lists done/in progress/failed; failed ones can be removed from the queue.
 - File names are slugged (`Str::slug`, transliterated), kept unique within the library by adding `-2`, `-3`.
+- `UploadMedia` (`App\Actions\Media\UploadMedia`, `media.upload`) does it all: detect the type, check the limit against the larger of the picked and the received size (binary MB; the error shows both in MB with one decimal), optimize, write the files (`media/{Y}/{m}/{key}.{ext}`, originals in `media/originals/`, thumbnails in `media/thumbs/`), then insert the row; if the insert fails the files are deleted. Names are slugged with Ukrainian transliteration (`MediaNames::unique`, fallback `file`) and carry the extension of the stored result (`a.jpg` becomes `a.webp`). Rejections throw `MediaUploadException` (`media.errors.unsupported|too_large|heic_unsupported`).
 
 ### Optimization on upload
 
