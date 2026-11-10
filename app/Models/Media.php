@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MediaKind;
 use App\Models\Concerns\HasSearchIndex;
+use App\Support\Media\MediaTypes;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
@@ -53,6 +55,8 @@ class Media extends Model
     use HasFactory, HasSearchIndex;
 
     protected $table = 'media';
+
+    private ?bool $editable = null;
 
     protected static function booted(): void
     {
@@ -117,6 +121,26 @@ class Media extends Model
     public function isImage(): bool
     {
         return $this->kind === MediaKind::Image;
+    }
+
+    /**
+     * Whether the image can be cropped, rotated or flipped: a raster image that isn't animated. SVG, animated
+     * GIF/WebP/APNG, documents and files missing from the disk can't. The file is read once per instance.
+     */
+    public function isEditable(): bool
+    {
+        if ($this->editable !== null) {
+            return $this->editable;
+        }
+
+        if (! $this->isImage() || $this->mime === 'image/svg+xml') {
+            return $this->editable = false;
+        }
+
+        $disk = Storage::disk($this->disk);
+
+        return $this->editable = $disk->exists($this->path)
+            && ! MediaTypes::isAnimated((string) $disk->get($this->path), $this->mime);
     }
 
     /**

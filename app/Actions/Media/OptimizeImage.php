@@ -2,6 +2,7 @@
 
 namespace App\Actions\Media;
 
+use App\Support\Media\ImageEdits;
 use App\Support\Media\MediaTypes;
 use App\Support\Media\MemoryGuard;
 use App\Support\Media\OptimizedImage;
@@ -14,6 +15,7 @@ use Imagick;
 use ImagickException;
 use Intervention\Image\Drivers\Imagick\Modifiers\StripMetaModifier;
 use Intervention\Image\Interfaces\ImageInterface;
+use InvalidArgumentException;
 
 /**
  * Scales, re-encodes and strips raster images according to the media.optimize settings.
@@ -38,7 +40,10 @@ class OptimizeImage
     public function __construct(private MemoryGuard $memory) {}
 
     /**
-     * @param  array<string, mixed>|null  $edits  Reserved for the image editor; ignored for now.
+     * @param  array<string, mixed>|null  $edits  The image editor's crop/rotate/flip (see ImageEdits). They are always applied,
+     *                                            even with optimization off, after orienting and before the max-side scale.
+     *
+     * @throws InvalidArgumentException when the edits are malformed
      */
     public function handle(string $contents, string $mime, ?array $edits = null): OptimizedImage
     {
@@ -47,8 +52,15 @@ class OptimizeImage
         [$width, $height] = $size ?? [null, null];
         $enabled = (bool) config('media.optimize.enabled');
         $mustConvert = in_array($mime, self::MUST_CONVERT, true);
+        $imageEdits = ImageEdits::fromArray($edits);
+        $imageEdits = $imageEdits?->isEmpty() ? null : $imageEdits;
+        $animated = $raster && MediaTypes::isAnimated($contents, $mime);
 
-        if (! $raster || (! $enabled && ! $mustConvert) || $this->isAnimated($contents, $mime)) {
+        if ($imageEdits !== null && (! $raster || $animated)) {
+            return $this->unchanged($contents, $mime, $width, $height, 'not_editable');
+        }
+
+        if (! $raster || (! $enabled && ! $mustConvert && $imageEdits === null) || $animated) {
             return $this->unchanged($contents, $mime, $width, $height);
         }
 
@@ -63,10 +75,14 @@ class OptimizeImage
         $format = $this->targetFormat($mime, $enabled);
         $quality = $this->quality();
         $maxSide = config('media.optimize.max_side');
-        $scaled = $enabled && is_int($maxSide) && $maxSide > 0 && max($size) > $maxSide;
+        $scaled = $enabled && is_int($maxSide) && $maxSide > 0 && ($imageEdits !== null || max($size) > $maxSide);
 
         try {
             $image = Image::fromBytes($contents)->orient();
+
+            if ($imageEdits !== null) {
+                $image = $imageEdits->apply($image);
+            }
 
             if ($scaled) {
                 $image = $image->scale($maxSide, $maxSide);
@@ -83,6 +99,7 @@ class OptimizeImage
         }
 
         $keepInput = ! $mustConvert
+            && $imageEdits === null
             && ! $scaled
             && strlen($output) >= strlen($contents)
             && ! (config('media.optimize.strip_exif') && $this->hasMetadata($contents, $mime));
@@ -137,15 +154,15 @@ class OptimizeImage
     }
 
     /**
-     * The encoder format: the format setting, WebP when optimization is off (only images that must be converted
-     * get here), and JPEG instead of "original" for a format browsers can't show.
+     * The encoder format: the format setting; with optimization off, WebP for images that must be converted and
+     * the source format for edited ones; and JPEG instead of "original" for a format browsers can't show.
      */
     private function targetFormat(string $mime, bool $enabled): string
     {
         $format = (string) config('media.optimize.format');
 
         if (! $enabled) {
-            return 'webp';
+            return in_array($mime, self::MUST_CONVERT, true) ? 'webp' : 'original';
         }
 
         return $format === 'original' && in_array($mime, self::MUST_CONVERT, true) ? 'jpg' : $format;
@@ -171,7 +188,7 @@ class OptimizeImage
     }
 
     /**
-     * @param  'too_large'|'unreadable'|null  $failure
+     * @param  'too_large'|'unreadable'|'not_editable'|null  $failure
      */
     private function unchanged(string $contents, string $mime, ?int $width, ?int $height, ?string $failure = null): OptimizedImage
     {
@@ -250,84 +267,9 @@ class OptimizeImage
     {
         return match ($mime) {
             'image/jpeg' => preg_match('/\xFF\xE1..Exif\x00\x00/s', $contents) === 1,
-            'image/png' => in_array('eXIf', $this->pngChunks($contents), true),
-            'image/webp' => in_array('EXIF', $this->webpChunks($contents), true),
+            'image/png' => in_array('eXIf', MediaTypes::pngChunks($contents), true),
+            'image/webp' => in_array('EXIF', MediaTypes::webpChunks($contents), true),
             default => false,
         };
-    }
-
-    /**
-     * Animated GIF (more than one graphic control extension), animated WebP (VP8X animation flag or an ANIM chunk)
-     * or APNG (an acTL chunk before the first IDAT). These are never re-encoded, which would keep one frame.
-     */
-    private function isAnimated(string $contents, string $mime): bool
-    {
-        return match ($mime) {
-            'image/gif' => substr_count($contents, "\x21\xF9\x04") > 1,
-            'image/webp' => (substr($contents, 12, 4) === 'VP8X' && (ord($contents[20] ?? "\0") & 0x02) !== 0)
-                || in_array('ANIM', $this->webpChunks($contents), true),
-            'image/png' => in_array('acTL', $this->pngChunks($contents), true),
-            default => false,
-        };
-    }
-
-    /**
-     * Chunk types of a PNG up to the first IDAT (metadata and animation control come before the image data).
-     *
-     * @return list<string>
-     */
-    private function pngChunks(string $contents): array
-    {
-        $types = [];
-        $offset = 8;
-
-        while ($offset + 8 <= strlen($contents)) {
-            $header = unpack('Nlength', $contents, $offset);
-
-            if ($header === false) {
-                break;
-            }
-
-            $length = (int) $header['length'];
-            $type = substr($contents, $offset + 4, 4);
-
-            if ($type === 'IDAT' || $type === 'IEND') {
-                break;
-            }
-
-            $types[] = $type;
-            $offset += 12 + $length;
-        }
-
-        return $types;
-    }
-
-    /**
-     * Chunk types of a RIFF/WEBP container.
-     *
-     * @return list<string>
-     */
-    private function webpChunks(string $contents): array
-    {
-        if (substr($contents, 0, 4) !== 'RIFF' || substr($contents, 8, 4) !== 'WEBP') {
-            return [];
-        }
-
-        $types = [];
-        $offset = 12;
-
-        while ($offset + 8 <= strlen($contents)) {
-            $header = unpack('Vlength', $contents, $offset + 4);
-
-            if ($header === false) {
-                break;
-            }
-
-            $length = (int) $header['length'];
-            $types[] = substr($contents, $offset, 4);
-            $offset += 8 + $length + ($length % 2);
-        }
-
-        return $types;
     }
 }

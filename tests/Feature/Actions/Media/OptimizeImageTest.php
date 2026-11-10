@@ -287,3 +287,73 @@ it('converts heic to webp even when optimization is disabled', function () {
         ->and($result->failure)->toBeNull()
         ->and([$result->width, $result->height])->toBe([640, 480]);
 });
+
+function redCornerPng(): string
+{
+    $image = imagecreatetruecolor(4, 2);
+    imagefill($image, 0, 0, imagecolorallocate($image, 255, 255, 255));
+    imagesetpixel($image, 0, 0, imagecolorallocate($image, 255, 0, 0));
+
+    ob_start();
+    imagepng($image);
+
+    return (string) ob_get_clean();
+}
+
+it('rotates clockwise', function (string $driver) {
+    useImageDriver($driver);
+    config(['media.optimize.enabled' => false]);
+
+    $result = app(OptimizeImage::class)->handle(redCornerPng(), 'image/png', ['rotate' => 90]);
+    $image = imagecreatefromstring($result->contents);
+    $topRight = imagecolorsforindex($image, imagecolorat($image, 1, 0));
+
+    expect($result->width)->toBe(2)->and($result->height)->toBe(4)
+        ->and($topRight['red'])->toBeGreaterThan(200)
+        ->and($topRight['green'])->toBeLessThan(60);
+})->with('drivers');
+
+it('crops in the rotated frame', function (string $driver) {
+    useImageDriver($driver);
+
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 800, 600), 'image/jpeg', [
+        'rotate' => 90,
+        'crop' => ['x' => 0, 'y' => 0, 'w' => 300, 'h' => 400],
+    ]);
+
+    expect($result->width)->toBe(300)->and($result->height)->toBe(400);
+})->with('drivers');
+
+it('applies edits even with optimization off and keeps the format', function (string $driver) {
+    useImageDriver($driver);
+    config(['media.optimize.enabled' => false]);
+
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 800, 600), 'image/jpeg', ['flip_h' => true, 'rotate' => 90]);
+
+    expect($result->mime)->toBe('image/jpeg')
+        ->and($result->extension)->toBe('jpg')
+        ->and($result->width)->toBe(600)->and($result->height)->toBe(800)
+        ->and($result->failure)->toBeNull();
+})->with('drivers');
+
+it('scales to max side after the crop', function (string $driver) {
+    useImageDriver($driver);
+
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 4000, 1500), 'image/jpeg', [
+        'crop' => ['x' => 0, 'y' => 0, 'w' => 4000, 'h' => 1000],
+    ]);
+
+    expect($result->width)->toBe(2560)
+        ->and($result->height)->toBeGreaterThanOrEqual(639)->toBeLessThanOrEqual(641);
+})->with('drivers');
+
+it('refuses to edit an animated gif', function (string $driver) {
+    useImageDriver($driver);
+
+    $gif = "GIF89a\x01\x00\x01\x00\x00\x00\x00\x21\xF9\x04\x00\x00\x00\x00\x00\x21\xF9\x04\x00\x00\x00\x00\x00;";
+    $result = app(OptimizeImage::class)->handle($gif, 'image/gif', ['rotate' => 90]);
+
+    expect($result->failure)->toBe('not_editable')
+        ->and($result->contents)->toBe($gif)
+        ->and($result->optimized)->toBeFalse();
+})->with('drivers');

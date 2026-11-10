@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\MediaKind;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\MediaUsage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -130,4 +132,21 @@ it('computes the saved percentage', function () {
 
     expect($media->savedPercent())->toBe(99)
         ->and(Media::factory()->make(['original_size' => null])->savedPercent())->toBeNull();
+});
+
+it('knows which files can be edited', function () {
+    Storage::fake('local');
+    $gif = "GIF89a\x01\x00\x01\x00\x00\x00\x00\x21\xF9\x04\x00\x00\x00\x00\x00\x21\xF9\x04\x00\x00\x00\x00\x00;";
+    Storage::disk('local')->put('a.jpg', makeImage('jpg', 20, 20));
+    Storage::disk('local')->put('a.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    Storage::disk('local')->put('a.gif', $gif);
+    Storage::disk('local')->put('a.pdf', '%PDF-1.4');
+
+    $make = fn (string $path, string $mime, MediaKind $kind) => Media::factory()->create(['disk' => 'local', 'path' => $path, 'mime' => $mime, 'kind' => $kind]);
+
+    expect($make('a.jpg', 'image/jpeg', MediaKind::Image)->isEditable())->toBeTrue()
+        ->and($make('a.svg', 'image/svg+xml', MediaKind::Image)->isEditable())->toBeFalse()
+        ->and($make('a.gif', 'image/gif', MediaKind::Image)->isEditable())->toBeFalse()
+        ->and($make('a.pdf', 'application/pdf', MediaKind::Document)->isEditable())->toBeFalse()
+        ->and($make('missing.jpg', 'image/jpeg', MediaKind::Image)->isEditable())->toBeFalse();
 });

@@ -150,4 +150,79 @@ final class MediaTypes
     {
         return in_array($mime, ['text/csv', 'text/plain'], true) ? 'text/plain; charset=UTF-8' : $mime;
     }
+
+    /**
+     * Animated GIF (more than one graphic control extension), animated WebP (VP8X animation flag or an ANIM chunk)
+     * or APNG (an acTL chunk before the first IDAT). These are never re-encoded, which would keep one frame.
+     */
+    public static function isAnimated(string $contents, string $mime): bool
+    {
+        return match ($mime) {
+            'image/gif' => substr_count($contents, "\x21\xF9\x04") > 1,
+            'image/webp' => (substr($contents, 12, 4) === 'VP8X' && (ord($contents[20] ?? "\0") & 0x02) !== 0)
+                || in_array('ANIM', self::webpChunks($contents), true),
+            'image/png' => in_array('acTL', self::pngChunks($contents), true),
+            default => false,
+        };
+    }
+
+    /**
+     * Chunk types of a PNG up to the first IDAT (metadata and animation control come before the image data).
+     *
+     * @return list<string>
+     */
+    public static function pngChunks(string $contents): array
+    {
+        $types = [];
+        $offset = 8;
+
+        while ($offset + 8 <= strlen($contents)) {
+            $header = unpack('Nlength', $contents, $offset);
+
+            if ($header === false) {
+                break;
+            }
+
+            $length = (int) $header['length'];
+            $type = substr($contents, $offset + 4, 4);
+
+            if ($type === 'IDAT' || $type === 'IEND') {
+                break;
+            }
+
+            $types[] = $type;
+            $offset += 12 + $length;
+        }
+
+        return $types;
+    }
+
+    /**
+     * Chunk types of a RIFF/WEBP container.
+     *
+     * @return list<string>
+     */
+    public static function webpChunks(string $contents): array
+    {
+        if (substr($contents, 0, 4) !== 'RIFF' || substr($contents, 8, 4) !== 'WEBP') {
+            return [];
+        }
+
+        $types = [];
+        $offset = 12;
+
+        while ($offset + 8 <= strlen($contents)) {
+            $header = unpack('Vlength', $contents, $offset + 4);
+
+            if ($header === false) {
+                break;
+            }
+
+            $length = (int) $header['length'];
+            $types[] = substr($contents, $offset, 4);
+            $offset += 8 + $length + ($length % 2);
+        }
+
+        return $types;
+    }
 }
