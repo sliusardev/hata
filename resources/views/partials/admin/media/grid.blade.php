@@ -1,11 +1,13 @@
 {{--
     Grid view of the media library: square thumbnails, the first $gridLimit files with "Show more".
     Expects: $media (paginator), $selectedId (the file open in the details panel),
-    $selected (ids picked for bulk actions), $selecting (a click picks the tile instead of opening it),
+    $selected (ids picked for bulk actions), $selecting (a click picks the tile instead of opening it; a click also picks while anything is selected),
     $gridStep (files added by "Show more"), $canShowMore (false once the grid reached its cap; then a hint points to the list),
     $canMove (tiles can be dragged onto a folder in the tree).
     Drawing a box on empty space selects the tiles it touches (resources/js/media-marquee.js).
 --}}
+@php $clickPicks = $selecting || $selected !== []; @endphp
+
 <div
     class="relative -m-4 min-h-[50vh] space-y-6 p-4 pb-24 select-none"
     x-data="mediaMarquee"
@@ -34,7 +36,7 @@
                 x-on:click="
                     if ($event.shiftKey) { $wire.pick({{ $item->id }}, 'range') }
                     else if ($event.metaKey || $event.ctrlKey) { $wire.pick({{ $item->id }}, 'toggle') }
-                    else { $wire.{{ $selecting ? 'toggleSelected' : 'select' }}({{ $item->id }}) }
+                    else { $wire.{{ $clickPicks ? 'toggleSelected' : 'select' }}({{ $item->id }}) }
                 "
                 @if ($canMove)
                     draggable="true"
@@ -72,7 +74,7 @@
                         <div class="absolute end-2 top-2 flex size-6 items-center justify-center rounded-full bg-zinc-800 text-white ring-2 ring-white dark:bg-white dark:text-zinc-800 dark:ring-zinc-900" data-test="media-tile-picked">
                             <flux:icon name="check" variant="micro" class="size-4" />
                         </div>
-                    @elseif ($selecting)
+                    @elseif ($clickPicks)
                         <div class="absolute end-2 top-2 size-6 rounded-full bg-white/80 ring-2 ring-zinc-400 dark:bg-zinc-900/60"></div>
                     @endif
 
