@@ -6,6 +6,7 @@ return [
         'admin' => 'Admin panel',
         'users' => 'Users',
         'roles' => 'Roles',
+        'media' => 'Media library',
         'settings' => 'Site settings',
     ],
 
@@ -24,6 +25,12 @@ return [
             'create' => 'Create roles',
             'edit' => 'Edit roles and their permissions',
             'delete' => 'Delete roles',
+        ],
+        'media' => [
+            'view' => 'View the media library',
+            'upload' => 'Upload files',
+            'edit' => 'Edit files and folders',
+            'delete' => 'Delete files and folders',
         ],
         'settings' => [
             'edit' => 'Editing site settings',

@@ -15,6 +15,7 @@ Admin panel starter kit (users, roles, permissions; later pages, posts, themes).
 | pestphp/pest | 5.3 |
 | larastan/larastan | 3.14, level 7 (`composer types:check`) |
 | laravel/pint | 1.32 |
+| intervention/image | 4.2 (image driver for `Illuminate\Image`; imagick if loaded, else gd) |
 | Tailwind | 4, built by vite-plus (`npm run build`) |
 
 ## Starter kit structure
@@ -99,6 +100,7 @@ Short specs for each section of the site. Read the relevant one before changing 
 - [Users page](docs/specs/users.md): list, create/edit form, user actions and protection rules
 - [Roles and permissions page](docs/specs/roles.md): permission registry, system roles, permission matrix, role actions
 - [Site settings page](docs/specs/site-settings.md): site name, language, timezone, registration, default role, email, logo, colors
+- [Media library](docs/specs/media.md): files and folders, upload, image optimization, permissions
 
 ===
 

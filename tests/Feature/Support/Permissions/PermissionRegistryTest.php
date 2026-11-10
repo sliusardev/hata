@@ -9,6 +9,7 @@ test('it loads the permissions from the configuration', function () {
         'admin' => ['admin.access'],
         'users' => ['users.view', 'users.create', 'users.edit', 'users.delete'],
         'roles' => ['roles.view', 'roles.create', 'roles.edit', 'roles.delete'],
+        'media' => ['media.view', 'media.upload', 'media.edit', 'media.delete'],
         'settings' => ['settings.edit'],
     ]);
 });

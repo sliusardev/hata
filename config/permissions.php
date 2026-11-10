@@ -22,6 +22,7 @@ return [
         'admin' => ['access'],
         'users' => ['view', 'create', 'edit', 'delete'],
         'roles' => ['view', 'create', 'edit', 'delete'],
+        'media' => ['view', 'upload', 'edit', 'delete'],
         'settings' => ['edit'],
     ],
 
@@ -39,7 +40,7 @@ return [
 
     'roles' => [
         'admin' => ['*'],
-        'editor' => ['admin.access'],
+        'editor' => ['admin.access', 'media.view', 'media.upload', 'media.edit', 'media.delete'],
         'author' => ['admin.access'],
     ],
 

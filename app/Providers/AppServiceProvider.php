@@ -35,9 +35,25 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->app->make(SiteSettings::class)->apply();
+        $this->configureMedia();
         $this->configureDefaults();
         $this->configureTranslations();
         $this->configureAuthorization();
+    }
+
+    /**
+     * Pick the image driver and let Livewire accept the largest media file.
+     */
+    protected function configureMedia(): void
+    {
+        config([
+            'images.default' => extension_loaded('imagick') ? 'imagick' : 'gd',
+            'livewire.temporary_file_upload.rules' => [
+                'required',
+                'file',
+                'max:'.(max((int) config('media.limits.image_mb'), (int) config('media.limits.document_mb')) * 1024),
+            ],
+        ]);
     }
 
     /**

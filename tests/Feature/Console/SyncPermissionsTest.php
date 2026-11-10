@@ -8,6 +8,10 @@ test('it creates every registered permission', function () {
 
     expect(Permission::pluck('name')->sort()->values()->all())->toBe([
         'admin.access',
+        'media.delete',
+        'media.edit',
+        'media.upload',
+        'media.view',
         'roles.create',
         'roles.delete',
         'roles.edit',
@@ -25,7 +29,7 @@ test('running it again does not duplicate permissions', function () {
 
     $this->artisan('permissions:sync')->assertSuccessful();
 
-    expect(Permission::count())->toBe(10);
+    expect(Permission::count())->toBe(14);
 });
 
 test('it creates permissions registered by modules', function () {

@@ -1,0 +1,196 @@
+# Media library
+
+> **Status: design, not built yet** (2026-11-10). Approved mockup: https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4 (8 screens). When the code lands, this spec describes what was built and loses this banner.
+
+A WordPress-like library of images and documents for pages, posts and themes. On top of WordPress: folders, crop, per-language alt text, "where is it used", automatic optimization on upload, and re-optimizing files already uploaded. It must work on shared hosting: no queue worker, no SSH, often no `storage:link`, PHP `memory_limit` 128 MB, GD only (Imagick may be missing).
+
+## Why
+
+Pages and posts (next stages) need cover images, inline images and downloadable files. Building media first means uploads are done once. The user's concrete case: someone uploads a 20 MB phone photo, and the site should store about 150 KB without them doing anything.
+
+**Goals:** fast to find and reuse a file; nobody has to think about file size; nothing on the public site breaks when a file is optimized, cropped or moved.
+**Non-goals (this stage):** video, responsive `srcset` sizes (themes stage), image filters/brightness, sharing folders per user, a public upload API.
+**Anti-goals:** a slow page with hundreds of thumbnails at full size; a server crash (memory) on a big photo; URLs in published content that change after optimization.
+
+## Pages
+
+| Page | Route | Name | Permission |
+|---|---|---|---|
+| Library (grid / list) | `/admin/media` | `admin.media.index` | `media.view` |
+| Crop | `/admin/media/{media}/crop` | `admin.media.crop` | `media.edit` |
+| Optimize existing files | `/admin/media/optimize` | `admin.media.optimize` | `media.edit` |
+| Site settings → Media tab | `/admin/settings?tab=media` | `admin.settings.edit` | `settings.edit` |
+| File (public) | `/media/{key}/{name}` | `media.show` | none |
+
+New sidebar group "Content" with the item "Media" (shown with `media.view`). Pages and posts join this group later.
+
+## Permissions
+
+`config/permissions.php` → `media: view, upload, edit, delete`. Labels in `lang/*/permissions.php`. The `admin` role gets them through `*`; `editor` gets all four (RoleSeeder only adds).
+
+- `media.upload`: upload files, "Save as copy" in crop.
+- `media.edit`: alt/title, move between folders, create/rename/delete folders, crop, replace file, restore original, run optimization of existing files.
+- `media.delete`: delete files (single and bulk).
+
+## Data
+
+**`media_folders`**: `id`, `parent_id` (nullable, self FK, cascade handled in code), `name` (≤100), timestamps. Unique (`parent_id`, `name`). Any depth; the UI indents the tree.
+
+**`media`**:
+
+| Column | Notes |
+|---|---|
+| `id`, timestamps | |
+| `key` | unique ULID, the public URL key (not guessable, user's decision 2026-11-10); never changes |
+| `folder_id` | nullable FK → `media_folders`, `null` = "No folder" |
+| `uploaded_by` | nullable FK → `users`, `nullOnDelete` |
+| `disk`, `path` | current file (after optimization/crop) |
+| `original_path` | nullable; untouched upload, kept when "Keep originals" is on |
+| `thumb_path` | nullable; 400 px WebP thumbnail for images (grid, list, picker) |
+| `name` | display file name with extension, e.g. `hero-kyiv-autumn.webp`; part of the public URL |
+| `mime`, `size` | current file |
+| `width`, `height` | nullable (documents, SVG without size) |
+| `original_size` | nullable; size of the upload, for "18.4 MB → 164 KB" |
+| `optimized_with` | nullable string: fingerprint of the settings used (`webp:2560:80:exif0`), `null` = never optimized |
+| `edits` | nullable JSON: the user's crop/rotate/flip (`{crop: {x, y, w, h}` in original pixels, `rotate`, `flip_h`, `flip_v`, `size: {w, h}}`), re-applied every time the file is rebuilt from the original |
+| `title` | nullable string |
+| `alt` | JSON `{uk: "...", en: "..."}` |
+| `search_index` | `HasSearchIndex`: name + title + all alts |
+
+**`media_usages`**: `media_id`, `usable_type`, `usable_id`, `field` (unique together). Filled by pages/posts later through `MediaUsage::sync(Model $usable, string $field, array $mediaIds)`. In this stage the table exists and stays empty, so "Where it's used" shows "Nowhere" and the "unused" filter lists everything.
+
+## Public URLs and serving
+
+`/media/{key}/{name}` (e.g. `/media/01JD8X4R…/price-list.pdf`) served by `MediaController` from the media disk (default `local`, private), like the logo (decision 39): works without `storage:link`. The key is a random ULID, so the library can't be listed by counting ids; anyone who has a link can open that file. No "private file" flag in this stage.
+
+- The URL is stable: optimizing, cropping or replacing a file keeps `key`. If the extension changes (JPG → WebP) the old `{name}` 301-redirects to the current one, so links pasted before optimization keep working.
+- `Cache-Control: public, max-age=604800` plus `ETag`/`Last-Modified` (`304` on match). Not `immutable`, since the content behind a URL can change after crop.
+- SVG gets the same `Content-Security-Policy … sandbox` and `nosniff` as the logo. PDF is `inline`; DOCX/XLSX are `attachment`.
+- `?thumb=1` serves the thumbnail (admin views).
+- Content in pages/posts should store the media id, not the URL (decided in those specs).
+
+## Storage disks (local now, S3-compatible later)
+
+Built storage-agnostic from the start, so moving to S3 / Cloudflare R2 / Backblaze B2 / DigitalOcean Spaces / MinIO later needs no rework:
+
+- All file access goes through `Storage::disk($media->disk)`; no `storage_path()` or local paths in media code. Each `media` row stores its own `disk`, so old files can stay on `local` while new ones go to S3.
+- New uploads go to `config('media.disk')`.
+- Image processing reads the file into memory or a local temp file and writes the result back through the disk.
+- Serving: for a local disk, `MediaController` streams the file (as above). For a cloud disk it **302-redirects** to the file's URL: the public bucket/CDN URL when `media.cloud_url` is set, otherwise a signed `temporaryUrl()` (1 hour). The public `/media/{key}/{name}` URL in content never changes, whichever disk the file is on.
+- S3 needs `league/flysystem-aws-s3-v3`, added only when S3 is actually turned on (the S3 disk itself is already in `config/filesystems.php`).
+- Moving existing files between disks: the "Optimize existing" batch mechanism gets a second mode, "Move to another disk" (copy, verify size, switch the row, delete from the old disk), plus `media:move-disk {to}` for SSH.
+- **S3 settings live in the Media tab** (user's decision 2026-11-10): storage `local` / `s3`, endpoint (empty = AWS), region, bucket, access key, secret key (encrypted with `APP_KEY` like the SMTP password, never shown back), "path-style endpoint" (MinIO), public/CDN URL. "Test connection" writes, reads and deletes a small file. Saving switches only where **new** uploads go; existing files move only through "Move to another disk". `SiteSettings` writes these over `filesystems.disks.s3.*` and `media.disk`.
+- This part is built as the last step of the stage, together with `league/flysystem-aws-s3-v3`.
+
+## Upload
+
+- Anywhere on the library page: drag-and-drop overlay (screen 2), the "Upload files" button, or the "Upload new" tab in the picker. Many files at once, sequentially (one at a time, so the hosting isn't hit in parallel).
+- Allowed (user's decision 2026-11-10), checked by extension **and** detected MIME type:
+  - **Images:** JPG, PNG, WebP, GIF, SVG, AVIF, HEIC/HEIF. HEIC is converted to WebP in the browser (Safari) or on the server (Imagick with HEIC support); if neither can, the upload fails with "HEIC can't be converted on this server, export the photo as JPG". AVIF is stored as is when the driver can't decode it (no thumbnail, an icon instead).
+  - **Documents:** PDF, DOCX, XLSX, PPTX, DOC, XLS, PPT, ODT, ODS, ODP, TXT, CSV, RTF.
+  - **Other:** ZIP, MP3. Stored and served for download only, no processing.
+  - The type filter in the library: all / images / documents / other.
+- Serving per type: images and PDF `inline`; MP3 `inline` (plays in the browser); everything else `attachment`. TXT/CSV are sent as `text/plain` attachments with `nosniff`, so a file can never run as a page.
+- Limits from the Media tab (default images 30 MB, documents and other 20 MB), capped by PHP `upload_max_filesize`/`post_max_size` (the tab shows the server cap). The Livewire temporary upload rule is raised to match.
+- New files go into the folder that's open (or "No folder" for "All files"), appear first in the grid with progress, and show errors on the tile itself with a reason ("PSD format is not supported", "File is too large: 34 MB, the limit is 30 MB"). The queue panel (screen 3) lists done/in progress/failed; failed ones can be removed from the queue.
+- File names are slugged (`Str::slug`, transliterated), kept unique within the library by adding `-2`, `-3`.
+
+### Optimization on upload
+
+Two steps, because a 6000×4000 photo needs ~100+ MB of memory to decode on the server:
+
+1. **In the browser** (when "Compress in the browser" is on): JPG/PNG/WebP (and HEIC when the browser can decode it, i.e. Safari) are drawn to a canvas with EXIF orientation applied and scaled down to **3840 px** on the long side (not to `max_side`, so the kept original still allows 4K and better crops), then exported as JPEG/WebP at quality 0.92 (light, the server does the real compression). GIF and SVG are sent as they are. If the browser can't do it, the original file is sent. The browser also sends the size of the file the user picked; it's stored as `original_size` (the "18.4 MB" in "18.4 MB → 164 KB").
+   - The size limits (30 MB / 20 MB) apply to the file the user picked and are checked in the browser first (instant error on the tile); the server checks what arrives against the same limit and against PHP's `upload_max_filesize`.
+2. **On the server** (`OptimizeImage`, built on Laravel's own `Illuminate\Image` / `Image` facade, e.g. `Image::fromUpload($file)->orient()->scale(2560, 2560)->optimize('webp', 80)`; driver `images.default` set to `imagick` when the extension is loaded, else `gd`; the framework's GD/Imagick drivers run on `intervention/image` ^4.2): orient, scale down to max side, encode to WebP (or keep JPG/PNG when the setting says so) at the chosen quality, strip metadata when "Remove EXIF" is on. If the result isn't smaller than the input, the input is kept. Animated GIF and SVG are never re-encoded. Before decoding, the server estimates the memory needed (width × height × 4 × overhead, from the header without decoding) against what's left under `memory_limit`. If it won't fit, the file is **stored as it is** (user's decision 2026-11-10): `optimized_with = null`, the upload tile and the details panel say "Not optimized: too large for the server to process", and it stays a candidate on the "Optimize existing" page, which skips it with the same reason while memory is still short. Any other decoding error is handled the same way.
+3. A 400 px WebP thumbnail is made for every raster image.
+
+If "Keep originals" is on, the uploaded file (after the browser step) is stored as `original_path`.
+
+## Library screen (screen 1)
+
+- Header: title, description, "Upload files" (with `media.upload`).
+- Toolbar: search (name, title, alt; 300 ms debounce), type filter (all / images / documents / other), month filter, usage filter (all / unused), "Select several", grid/list switch. Filters, folder and view are in the URL (`#[Url]`), the view also in `localStorage`.
+- Folder tree on the left: "All files", "No folder", then folders with counts. "+" creates a folder in the current one. Folder "⋮": rename, delete. **Deleting a folder deletes everything in it**: its files and all subfolders with their files (user's decision 2026-11-10). It needs `media.edit` and `media.delete`. The confirmation states how many files and subfolders will be deleted and how many of those files are used somewhere (with a link to see them), and asks to type the folder name when it holds more than 10 files. Files are moved by dragging tiles onto a folder or with the "Folder" select in the details panel. A file is in exactly one folder.
+- Breadcrumb above the grid: "All files / Marketing / Banners · 12 files".
+- Grid: square thumbnails (`object-fit: cover`), name and size under each; documents show an icon and the extension; "unused" badge. 40 per page with "Show more" (no infinite scroll).
+- Details panel on click: preview, name, type ("WebP (uploaded as JPG)"), size and dimensions, uploaded date/by, green "Optimized: 18.4 MB → 164 KB (−99%)" when applicable, alt text with UA/EN switch (all `available_locales`), title, folder, "Where it's used" (links), public URL with "Copy", and actions: Save, Download, Replace, Crop, Delete. Unsaved changes in the panel are guarded like the site settings tabs when another file is clicked.
+- Delete: **every delete is confirmed first** (`<x-confirm-modal>`): a single file, a bulk selection and a folder. The dialog names the file (or the count) and, if any file is used, lists where; deleting is still allowed (the content will show a missing image). There is no trash/undo. Deleting removes the file, thumbnail and original from the disk the file is on.
+- **Replace:** upload a new file of the same kind (image → image); goes through optimization; `id` and URL stay, `name` follows the new file.
+
+## List view (screen 4)
+
+`flux:table` with checkbox, thumbnail + name + alt (or "No alt text" in amber), type, size, "Where it's used" badge (amber "Nowhere"), uploaded date, "⋮" row actions (decision 35). 25 per page, sortable by name, size, date. Selecting rows shows the bulk bar: count, "Clear selection", "Download ZIP" (hidden when `ZipArchive` is missing), "Delete selected" (with `media.delete`, confirmation states how many are in use). "Select several" in the grid gives the same bulk bar.
+
+## Picker (screen 5)
+
+A Livewire component `<livewire:media-picker>` that forms put next to a field (`wire:model` holds the media id or ids). Opens in `flux:modal`. Tabs "Library" / "Upload new". Props: `accept` (`image` / `document` / `any`), `multiple`. Same search, month filter and folders (compact) as the library; selected file preview and its alt text (editing it changes the file in the library, the modal says so). Double click selects and closes. Built now with a demo-free test page only in tests; first real use is the post cover.
+
+## Crop (screen 6)
+
+- Full-screen page, Cropper.js for the selection (see Dependencies). Ratios: free, 1:1, 4:3, 3:2, 16:9, "Social" (1200×630). Optional exact output size (never upscaled). Rotate left/right, flip horizontal/vertical. Shows the estimated result.
+- The crop is applied on the server from the original when it's kept (better quality), otherwise from the current file; coordinates are sent relative to the image shown and mapped to the source size. The result is optimized with the current settings.
+- With an original kept, the crop/rotate/flip is stored in `edits` and re-applied whenever the file is rebuilt (optimizing existing files, a settings change), so re-optimizing never undoes a crop. Without an original, the crop is baked into the file and `edits` stays empty. "Restore original" clears `edits`.
+- "Apply" changes the file in place (same id and URL; the page warns how many places use it). "Save as copy" creates a new media item in the same folder (`media.upload`). "Restore original" in the details panel (when an original is kept) undoes crops and re-optimizes.
+
+## Site settings → Media tab (screen 7)
+
+A sixth tab `?tab=media`, saved like the others (`SiteSettingsForm::SECTIONS`, unsaved-changes guard).
+
+| Setting | Config | Default |
+|---|---|---|
+| `media_optimize` | `media.optimize.enabled` | `true` |
+| `media_max_side` | `media.optimize.max_side` | `2560` (choices 1920, 2560, 3840, none) |
+| `media_quality` | `media.optimize.quality` | `80` (50–100) |
+| `media_format` | `media.optimize.format` | `webp` (`webp` / `original`; `avif` shown disabled when the driver can't encode it) |
+| `media_strip_exif` | `media.optimize.strip_exif` | `true` |
+| `media_client_resize` | `media.optimize.client_resize` | `true` |
+| `media_keep_originals` | `media.optimize.keep_originals` | `true` |
+| `media_max_image_mb`, `media_max_document_mb` | `media.limits.*` | `30`, `20` |
+
+A new `config/media.php` holds these and `media.disk` (`MEDIA_DISK`, default `local`). The side card shows how many images don't match the current fingerprint and the estimated saving (estimate: 85% of their size for never-optimized files, 20% otherwise), with "Optimize existing" → screen 8.
+
+## Optimize existing files (screen 8)
+
+- Candidates: raster images (not animated GIF, not SVG) whose `optimized_with` differs from the current settings fingerprint.
+- No queue worker, so the page processes them in batches while it's open: `wire:poll` calls `processBatch()`, which handles files for at most ~5 seconds per request. Progress (cursor = last processed id, counts, bytes saved, skipped) is stored in the `settings` table under `media_optimization_run`, so closing the tab and coming back resumes where it stopped. Pause stops polling; Stop clears the run.
+- Each file: from the original if kept, else from the current file; skipped when the result isn't smaller ("already optimal"). URL and id stay.
+- Shows: processed / total, time left (from the average so far), MB saved, average saving, skipped count, the last files with before → after.
+- An artisan command `media:optimize` does the same for anyone with SSH (output in English, decision 17).
+
+## Actions (`app/Actions/Media`)
+
+| Action | Permission | Notes |
+|---|---|---|
+| `UploadMedia` | `media.upload` | validates type/size, stores original (if kept), optimizes, makes thumbnail, unique name, in a transaction with file cleanup on failure |
+| `UpdateMedia` | `media.edit` | title, alt, folder |
+| `ReplaceMediaFile` | `media.edit` | same kind only |
+| `CropMedia` | `media.edit` (in place) / `media.upload` (copy) | |
+| `RestoreOriginal` | `media.edit` | |
+| `DeleteMedia` | `media.delete` | one or many; removes all files |
+| `CreateFolder`, `RenameFolder`, `MoveMedia` | `media.edit` | a folder can't move into itself or its descendant |
+| `DeleteFolder` | `media.edit` + `media.delete` | deletes the folder, all subfolders and all their files (via `DeleteMedia`), in a transaction; files are removed from disk after commit |
+| `OptimizeImage` | none (service used by the actions above and the batch) | |
+
+Actions take `User $actor` and call `Gate::forUser($actor)->authorize()` (decision 25). `MediaPolicy` maps abilities to permissions.
+
+## Dependencies
+
+- Image processing: Laravel 13's built-in `Illuminate\Image` (`Image` facade: orient, scale, crop, rotate, flip, `optimize()`/`toWebp()`, `quality()`, `dimensions()`). Its GD and Imagick drivers need `intervention/image` ^4.2 (adding it approved by the user, 2026-11-10); the app code talks only to the Laravel API. EXIF stripping under Imagick, if the encoder keeps metadata, is done through `Image::transformUsing()` (GD drops metadata on re-encode anyway).
+- `cropperjs` (npm) for the crop selection (approved by the user, 2026-11-10), loaded only on the crop page.
+
+## Tests
+
+`tests/Feature/Actions/Media/*` (upload with real small images generated by GD: resize, WebP, EXIF stripped, not-larger rule, animated GIF/SVG untouched, thumbnail, unique names, permissions), `tests/Feature/Admin/Media/*` (pages, access, filters, folders, bulk delete, picker, settings tab, batch optimization resume), `MediaControllerTest` (headers, 304, redirect on old name, SVG CSP, private disk). Browser-side resizing is not covered by PHP tests.
+
+## Calls made without the user (check these)
+
+- Folders nest to any depth; one folder per file. No trash: deletion is final after the confirmation.
+- Files are served through a route from a private disk (works without `storage:link`) at the cost of PHP handling each image request.
+- Old URL after JPG → WebP redirects (301) instead of keeping the `.jpg` name. Any other `{name}` for a valid key also redirects to the current one.
+- Originals kept by default; "Apply" crop edits the file everywhere it's used.
+- Only a 400 px thumbnail now; responsive sizes wait for the themes stage.
+- 40 per page with "Show more" in the grid, 25 in the list.
+- Uploads go one at a time.
+- Crops are stored as parameters and re-applied when a file is rebuilt from its original.
+- The browser scales to 3840 px before upload; that file is the kept "original". Full camera resolution is not kept.
+- `original_size` is the size of the file the user picked (reported by the browser); limits apply to that file.
