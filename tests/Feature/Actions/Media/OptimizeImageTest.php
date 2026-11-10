@@ -134,32 +134,37 @@ it('leaves animated webp and apng untouched', function () {
         ->and($apngResult->extension)->toBe('png');
 });
 
-it('converts heic on imagick and reports it unreadable on gd', function () {
+it('converts heic to webp on imagick', function () {
     if (! extension_loaded('imagick') || Imagick::queryFormats('HEIC') === []) {
         $this->markTestSkipped('Imagick without HEIC support.');
     }
 
-    try {
-        $imagick = new Imagick;
-        $imagick->newImage(640, 480, 'red');
-        $imagick->setImageFormat('heic');
-        $heic = $imagick->getImageBlob();
-    } catch (ImagickException) {
-        $this->markTestSkipped('Imagick can read HEIC here but not write it.');
-    }
-
     config(['images.default' => 'imagick']);
-    $converted = app(OptimizeImage::class)->handle($heic, 'image/heic');
+    $heic = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
 
+    $result = app(OptimizeImage::class)->handle($heic, 'image/heic');
+    $thumbnail = getimagesizefromstring((string) app(OptimizeImage::class)->thumbnail($heic));
+
+    expect($result->mime)->toBe('image/webp')
+        ->and($result->extension)->toBe('webp')
+        ->and([$result->width, $result->height])->toBe([640, 480])
+        ->and($result->optimized)->toBeTrue()
+        ->and($result->failure)->toBeNull()
+        ->and($thumbnail['mime'])->toBe('image/webp')
+        ->and([$thumbnail[0], $thumbnail[1]])->toBe([400, 300]);
+});
+
+it('reports heic unreadable on gd', function () {
     config(['images.default' => 'gd']);
-    $unreadable = app(OptimizeImage::class)->handle($heic, 'image/heic');
+    $heic = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
 
-    expect($converted->mime)->toBe('image/webp')
-        ->and([$converted->width, $converted->height])->toBe([640, 480])
-        ->and($converted->optimized)->toBeTrue()
-        ->and($unreadable->failure)->toBe('unreadable')
-        ->and($unreadable->contents)->toBe($heic)
-        ->and($unreadable->extension)->toBe('heic');
+    $result = app(OptimizeImage::class)->handle($heic, 'image/heic');
+
+    expect($result->failure)->toBe('unreadable')
+        ->and($result->optimized)->toBeFalse()
+        ->and($result->contents)->toBe($heic)
+        ->and($result->extension)->toBe('heic')
+        ->and(app(OptimizeImage::class)->thumbnail($heic))->toBeNull();
 });
 
 it('returns the scaled image even when it is larger than the input', function (string $driver) {
