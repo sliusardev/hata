@@ -5,6 +5,8 @@ namespace App\Actions\Media;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -21,19 +23,28 @@ class MoveFolder
     {
         Gate::forUser($actor)->authorize('manageFolders', Media::class);
 
-        if ($target !== null && ($target->id === $folder->id || in_array($target->id, $folder->descendantIds(), true))) {
-            throw ValidationException::withMessages(['folder' => __('media.errors.folder_into_itself')]);
-        }
+        return DB::transaction(function () use ($folder, $target): MediaFolder {
+            $folder = MediaFolder::query()->lockForUpdate()->findOrFail($folder->id);
+            $target = $target === null ? null : MediaFolder::query()->lockForUpdate()->findOrFail($target->id);
 
-        if ($folder->parent_id === $target?->id) {
+            if ($target !== null && ($target->id === $folder->id || in_array($target->id, $folder->descendantIds(), true))) {
+                throw ValidationException::withMessages(['folder' => __('media.errors.folder_into_itself')]);
+            }
+
+            if ($folder->parent_id === $target?->id) {
+                return $folder;
+            }
+
+            $this->names->validate($folder->name, $target?->id, $folder->id);
+
+            try {
+                $folder->parent_id = $target?->id;
+                $folder->save();
+            } catch (UniqueConstraintViolationException) {
+                throw ValidationException::withMessages(['name' => __('media.errors.folder_exists')]);
+            }
+
             return $folder;
-        }
-
-        $this->names->validate($folder->name, $target?->id, $folder->id);
-
-        $folder->parent_id = $target?->id;
-        $folder->save();
-
-        return $folder;
+        });
     }
 }

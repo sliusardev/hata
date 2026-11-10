@@ -26,6 +26,14 @@ class MediaFolder extends Model
     use HasFactory;
 
     /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return ['parent_id' => 'integer'];
+    }
+
+    /**
      * @return BelongsTo<MediaFolder, $this>
      */
     public function parent(): BelongsTo
@@ -78,6 +86,10 @@ class MediaFolder extends Model
             $current = array_shift($queue);
 
             foreach ($byParent[$current] ?? [] as $child) {
+                if ($child->id === $this->id || in_array($child->id, $ids, true)) {
+                    continue;
+                }
+
                 $ids[] = $child->id;
                 $queue[] = $child->id;
             }

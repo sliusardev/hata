@@ -5,6 +5,7 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -78,4 +79,33 @@ it('requires media.edit', function () {
 
     expect(fn () => app(MoveFolder::class)->handle($viewer, $a, $b))->toThrow(AuthorizationException::class);
     expect($a->refresh()->parent_id)->toBeNull();
+});
+
+it('finds descendants of a folder that sits in a cycle and lets the cycle be broken', function () {
+    $a = MediaFolder::factory()->create(['name' => 'A']);
+    $b = MediaFolder::factory()->create(['name' => 'B', 'parent_id' => $a->id]);
+    MediaFolder::query()->whereKey($a->id)->update(['parent_id' => $b->id]);
+
+    expect($a->refresh()->descendantIds())->toBe([$b->id])
+        ->and($b->refresh()->descendantIds())->toBe([$a->id]);
+
+    app(MoveFolder::class)->handle($this->actor, $a->refresh(), null);
+
+    expect($a->refresh()->parent_id)->toBeNull()
+        ->and($b->refresh()->parent_id)->toBe($a->id);
+});
+
+it('turns a unique name violation raised while saving into the name error', function () {
+    $target = MediaFolder::factory()->create();
+    MediaFolder::factory()->create(['parent_id' => $target->id, 'name' => 'Same']);
+    $folder = MediaFolder::factory()->create(['name' => 'Same']);
+
+    MediaFolder::saving(function (MediaFolder $saving) use ($folder): void {
+        if ($saving->is($folder)) {
+            throw new UniqueConstraintViolationException('sqlite', 'insert', [], new Exception('duplicate'));
+        }
+    });
+
+    expect(fn () => app(MoveFolder::class)->handle($this->actor, $folder, $target))
+        ->toThrow(ValidationException::class);
 });

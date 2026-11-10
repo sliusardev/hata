@@ -932,6 +932,7 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
+        $this->expandFolderId = $target?->id;
         unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
         Flux::toast(variant: 'success', text: __('media.messages.folder_moved'));
     }
@@ -1561,9 +1562,9 @@ new #[Title('media.index.title')] class extends Component {
                         @endif
                         @foreach ($this->breadcrumb as $crumb)
                             @if ($loop->last)
-                                <flux:breadcrumbs.item wire:key="crumb-{{ $crumb->id }}">{{ $crumb->name }}</flux:breadcrumbs.item>
+                                <flux:breadcrumbs.item wire:key="crumb-{{ $crumb->id }}" title="{{ $crumb->name }}">{{ $crumb->name }}</flux:breadcrumbs.item>
                             @else
-                                <flux:breadcrumbs.item href="#" wire:click.prevent="$set('folder', '{{ $crumb->id }}')" wire:key="crumb-{{ $crumb->id }}">{{ $crumb->name }}</flux:breadcrumbs.item>
+                                <flux:breadcrumbs.item href="#" wire:click.prevent="$set('folder', '{{ $crumb->id }}')" wire:key="crumb-{{ $crumb->id }}" title="{{ $crumb->name }}">{{ $crumb->name }}</flux:breadcrumbs.item>
                             @endif
                         @endforeach
                     @endif

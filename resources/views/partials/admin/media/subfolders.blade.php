@@ -20,6 +20,7 @@
             role="button"
             tabindex="0"
             data-media-folder="{{ $subfolder->id }}"
+            title="{{ $subfolder->name }}"
             class="flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-start hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dashed focus-visible:outline-zinc-500 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:focus-visible:outline-zinc-300"
             wire:click="$set('folder', '{{ $subfolder->id }}')"
             x-on:keydown.enter.prevent="$el.click()"

@@ -255,14 +255,47 @@ it('renders chevrons for parents, full-name titles and draggable folders only wi
 
 it('ignores a missing folder or target when moving a folder', function () {
     $this->actingAs(folderManager());
-    $a = MediaFolder::factory()->create();
+    $parent = MediaFolder::factory()->create();
+    $a = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
     Livewire::test('pages::admin.media.index')
         ->call('moveFolder', $a->id, 9999)
         ->call('moveFolder', 9999, null)
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertNotDispatched('toast-show');
+
+    expect($a->refresh()->parent_id)->toBe($parent->id);
+});
+
+it('refuses a crafted folder move without media.edit', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
+    $a = MediaFolder::factory()->create();
+    $b = MediaFolder::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('moveFolder', $a->id, $b->id)
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger');
 
     expect($a->refresh()->parent_id)->toBeNull();
+});
+
+it('expands the target after a folder is moved into it', function () {
+    $this->actingAs(folderManager());
+    $a = MediaFolder::factory()->create();
+    $b = MediaFolder::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('moveFolder', $a->id, $b->id)
+        ->assertSet('expandFolderId', $b->id)
+        ->call('moveFolder', $a->id, null)
+        ->assertSet('expandFolderId', null);
+});
+
+it('casts parent_id to an integer', function () {
+    $a = MediaFolder::factory()->create();
+    $b = MediaFolder::factory()->create(['parent_id' => $a->id]);
+
+    expect(MediaFolder::query()->find($b->id)->parent_id)->toBeInt();
 });
 
 it('moves a folder from the dialog without offering the folder or its descendants', function () {
@@ -324,7 +357,10 @@ it('lists the direct subfolders of the open folder by name with their counts', f
         ->and($tiles->first()->children_count)->toBe(1)
         ->and($tiles->last()->children_count)->toBe(0);
 
-    $component->assertSeeHtml('data-test="media-subfolder-'.$zeta->id.'"');
+    $component->assertSeeHtml('data-test="media-subfolder-'.$zeta->id.'"')
+        ->assertSeeHtml('title="Zeta"')
+        ->assertSeeHtml('data-test="media-folder-'.$zeta->id.'"')
+        ->assertSeeHtml('title="Marketing"');
 });
 
 it('shows no subfolder tiles for all files, no folder or while a filter is active', function () {

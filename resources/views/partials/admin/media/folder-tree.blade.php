@@ -218,6 +218,7 @@
                 role="button"
                 tabindex="0"
                 class="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 text-start"
+                title="{{ $row['folder']->name }}"
                 wire:click="$set('folder', '{{ $id }}')"
                 x-on:keydown.enter.prevent="$el.click()"
                 x-on:keydown.space.prevent="$el.click()"
