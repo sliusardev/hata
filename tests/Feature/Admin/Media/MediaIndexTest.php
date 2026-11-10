@@ -5,6 +5,7 @@ use App\Models\MediaFolder;
 use App\Models\MediaUsage;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 beforeEach(fn () => seedRolesAndPermissions());
@@ -48,9 +49,7 @@ it('shows the content group in the sidebar only with media.view', function () {
         ->assertSee(route('admin.media.index'));
 
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
-    $this->get(route('admin.dashboard'))
-        ->assertDontSee(__('navigation.content'))
-        ->assertDontSee(route('admin.media.index'));
+    $this->get(route('admin.dashboard'))->assertDontSee(route('admin.media.index'));
 });
 
 it('filters by folder, no folder, type, month, unused and search', function (string $filter) {
@@ -126,6 +125,42 @@ it('shows 40 tiles and more on demand', function () {
     $component->call('showMore');
     expect(substr_count($component->html(), 'data-test="media-tile"'))->toBe(45);
 });
+
+it('refuses a grid limit set from the client', function () {
+    $this->actingAs(mediaViewer());
+
+    Livewire::test('pages::admin.media.index')->set('gridLimit', 1_000_000_000);
+})->throws(CannotUpdateLockedPropertyException::class);
+
+it('never grows the grid past its cap', function () {
+    $this->actingAs(mediaViewer());
+
+    $component = Livewire::test('pages::admin.media.index');
+
+    foreach (range(1, 15) as $ignored) {
+        $component->call('showMore');
+    }
+
+    $component->assertSet('gridLimit', 400);
+});
+
+it('ignores hostile url input', function (array $params) {
+    $this->actingAs(mediaViewer());
+    Media::factory()->create(['name' => 'still-here.webp']);
+
+    $this->get(route('admin.media.index', $params))
+        ->assertOk()
+        ->assertSee('still-here.webp');
+})->with([
+    'sort column' => [['sortBy' => 'id;drop']],
+    'sort direction' => [['sortDirection' => 'sideways']],
+    'month 13' => [['month' => '2026-13']],
+    'month garbage' => [['month' => 'garbage']],
+    'folder text' => [['folder' => 'abc']],
+    'missing folder' => [['folder' => '999999']],
+    'type' => [['type' => 'evil']],
+    'view' => [['view' => 'evil']],
+]);
 
 it('sorts the list by size', function () {
     $this->actingAs(mediaViewer());

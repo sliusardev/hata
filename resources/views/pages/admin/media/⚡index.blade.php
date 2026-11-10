@@ -9,6 +9,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -21,7 +22,15 @@ new #[Title('media.index.title')] class extends Component {
 
     private const array VIEWS = ['grid', 'list'];
 
-    private const int GRID_STEP = 40;
+    /**
+     * Files the grid shows at first and adds on "Show more".
+     */
+    public const int GRID_STEP = 40;
+
+    /**
+     * The most files the grid shows at once; past this, the list view pages through them.
+     */
+    public const int GRID_MAX = 400;
 
     private const array FILTERS = ['folder', 'search', 'type', 'month', 'unused'];
 
@@ -55,6 +64,7 @@ new #[Title('media.index.title')] class extends Component {
     #[Url(except: 'desc')]
     public string $sortDirection = 'desc';
 
+    #[Locked]
     public int $gridLimit = self::GRID_STEP;
 
     /**
@@ -74,6 +84,10 @@ new #[Title('media.index.title')] class extends Component {
         $this->authorize('viewAny', Media::class);
 
         $this->forgetMissingFolder();
+
+        if (! in_array($this->view, self::VIEWS, true)) {
+            $this->view = 'grid';
+        }
     }
 
     public function updated(string $property): void
@@ -110,7 +124,7 @@ new #[Title('media.index.title')] class extends Component {
 
     public function showMore(): void
     {
-        $this->gridLimit += self::GRID_STEP;
+        $this->gridLimit = min($this->gridLimit + self::GRID_STEP, self::GRID_MAX);
     }
 
     /**
@@ -131,7 +145,7 @@ new #[Title('media.index.title')] class extends Component {
 
         return $this->view === 'list'
             ? $query->paginate(25)
-            : $query->paginate($this->gridLimit, page: 1);
+            : $query->paginate(min(max($this->gridLimit, self::GRID_STEP), self::GRID_MAX), page: 1);
     }
 
     /**
@@ -158,7 +172,7 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Months that have uploads, newest first, as Y-m => label in the admin timezone.
+     * Every month from the oldest upload to now, newest first, as Y-m => label in the admin timezone.
      *
      * @return array<string, string>
      */
@@ -387,6 +401,8 @@ new #[Title('media.index.title')] class extends Component {
                 @include('partials.admin.media.grid', [
                     'media' => $this->media,
                     'selectedId' => $selectedId,
+                    'gridStep' => $this::GRID_STEP,
+                    'canShowMore' => $gridLimit < $this::GRID_MAX,
                 ])
             @endif
         </div>

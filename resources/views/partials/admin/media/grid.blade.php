@@ -1,6 +1,7 @@
 {{--
     Grid view of the media library: square thumbnails, the first $gridLimit files with "Show more".
-    Expects: $media (paginator), $selectedId (the file open in the details panel).
+    Expects: $media (paginator), $selectedId (the file open in the details panel),
+    $gridStep (files added by "Show more"), $canShowMore (false once the grid reached its cap).
 --}}
 <div class="space-y-6">
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
@@ -41,10 +42,10 @@
         @endforeach
     </div>
 
-    @if ($media->hasMorePages())
+    @if ($canShowMore && $media->hasMorePages())
         <div class="flex justify-center">
             <flux:button wire:click="showMore" data-test="media-show-more">
-                {{ __('media.index.show_more', ['count' => min(40, $media->total() - $media->count())]) }}
+                {{ __('media.index.show_more', ['count' => min($gridStep, $media->total() - $media->count())]) }}
             </flux:button>
         </div>
     @endif
