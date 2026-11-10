@@ -158,3 +158,21 @@ it('rejects heic the server cannot read', function () {
     expect(Media::count())->toBe(0)
         ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
+
+it('records the extension the user picked when the browser converted the file', function (?string $picked, string $stored) {
+    $media = app(UploadMedia::class)->handle(
+        $this->actor,
+        uploadedImage('photo.jpg', makeImage()),
+        pickedSize: 5_000_000,
+        pickedExtension: $picked,
+    );
+
+    expect($media->uploaded_extension)->toBe($stored);
+})->with([
+    'heic picked' => ['HEIC', 'heic'],
+    'png picked' => ['png', 'png'],
+    'jpeg is stored as jpg' => ['jpeg', 'jpg'],
+    'not on the whitelist' => ['psd', 'jpg'],
+    'junk' => ['../x<script>', 'jpg'],
+    'none' => [null, 'jpg'],
+]);

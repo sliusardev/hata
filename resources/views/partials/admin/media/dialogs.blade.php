@@ -14,12 +14,13 @@
 @php
     $deleting = $this->deletingMedia;
     $deletingUsages = $deleting->flatMap->usages;
+    $deletingUsedFiles = $deleting->filter(fn ($media) => $media->usages->isNotEmpty())->count();
 @endphp
 
 <x-confirm-modal
     wire:model.self="showDeleteModal"
     wire:close="cancelPending"
-    :heading="__('media.delete.heading')"
+    :heading="$deleting->count() > 1 ? __('media.delete.heading_many') : __('media.delete.heading')"
     :confirm-label="__('media.delete.confirm')"
     confirm-action="deleteConfirmed"
 >
@@ -32,12 +33,17 @@
     @if ($deletingUsages->isNotEmpty())
         <x-slot:extra>
             <div class="space-y-1.5 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">
-                <div class="font-medium">{{ trans_choice('media.delete.used', $deletingUsages->count()) }}</div>
-                <ul class="list-disc space-y-0.5 ps-5">
-                    @foreach ($deletingUsages as $usage)
-                        <li wire:key="deleting-usage-{{ $usage->id }}">{{ __('media.details.usage_item', ['type' => class_basename($usage->usable_type), 'id' => $usage->usable_id]) }}</li>
-                    @endforeach
-                </ul>
+                @if ($deleting->count() > 1)
+                    {{-- A bulk selection states how many files are used; their places are listed in each file's details. --}}
+                    <div class="font-medium">{{ trans_choice('media.delete.used_files', $deletingUsedFiles, ['total' => $deleting->count()]) }}</div>
+                @else
+                    <div class="font-medium">{{ trans_choice('media.delete.used', $deletingUsages->count()) }}</div>
+                    <ul class="list-disc space-y-0.5 ps-5">
+                        @foreach ($deletingUsages as $usage)
+                            <li wire:key="deleting-usage-{{ $usage->id }}">{{ __('media.details.usage_item', ['type' => class_basename($usage->usable_type), 'id' => $usage->usable_id]) }}</li>
+                        @endforeach
+                    </ul>
+                @endif
                 <div>{{ __('media.delete.used_warning') }}</div>
             </div>
         </x-slot:extra>

@@ -1,0 +1,94 @@
+<?php
+
+use App\Models\Media;
+use App\Models\MediaFolder;
+use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
+
+beforeEach(function () {
+    Storage::fake('local');
+    seedRolesAndPermissions();
+});
+
+/**
+ * A file for Livewire's test upload, which needs the fake file's name property. In tests the temporary
+ * upload reports the MIME type from the extension; content sniffing is covered by UploadMediaTest.
+ */
+function livewireUpload(string $name, string $bytes): UploadedFile
+{
+    return UploadedFile::fake()->createWithContent($name, $bytes);
+}
+
+function mediaUploader(): User
+{
+    return User::factory()->withPermissions(['admin.access', 'media.view', 'media.upload'])->create();
+}
+
+it('stores an uploaded file through the component and returns its tile data', function () {
+    $this->actingAs(mediaUploader());
+
+    $component = Livewire::test('pages::admin.media.index')
+        ->assertSeeHtml('data-test="media-upload"')
+        ->set('upload', livewireUpload('Hero photo.jpg', makeImage('jpg', 1200, 800)))
+        ->set('uploadPickedSize', 9_000_000)
+        ->set('uploadPickedExtension', 'heic')
+        ->call('storeUpload');
+
+    $media = Media::query()->sole();
+    $result = $component->effects['returns'][0];
+
+    expect($result)->toMatchArray(['ok' => true, 'id' => $media->id, 'name' => 'hero-photo.webp'])
+        ->and($result['meta'])->toBe(__('media.upload.done_compressed', [
+            'before' => Media::formatBytes(9_000_000),
+            'after' => $media->humanSize(),
+        ]))
+        ->and($media->original_size)->toBe(9_000_000)
+        ->and($media->uploaded_extension)->toBe('heic');
+
+    $component->assertSet('upload', null)
+        ->assertSet('uploadPickedSize', null)
+        ->assertSet('uploadPickedExtension', null)
+        ->assertSee('hero-photo.webp');
+});
+
+it('returns the error text for a rejected file', function () {
+    $this->actingAs(mediaUploader());
+
+    $component = Livewire::test('pages::admin.media.index')
+        ->set('upload', livewireUpload('x.psd', '8BPS fake photoshop file'))
+        ->call('storeUpload');
+
+    expect($component->effects['returns'][0])->toBe([
+        'ok' => false,
+        'error' => __('media.errors.unsupported', ['name' => 'x.psd']),
+    ])->and(Media::query()->count())->toBe(0);
+});
+
+it('stores uploads in the open folder', function () {
+    $this->actingAs(mediaUploader());
+    $folder = MediaFolder::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->set('folder', (string) $folder->id)
+        ->set('upload', livewireUpload('a.jpg', makeImage()))
+        ->call('storeUpload');
+
+    expect(Media::query()->sole()->folder_id)->toBe($folder->id);
+});
+
+it('is forbidden to upload without media.upload', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
+
+    Livewire::test('pages::admin.media.index')
+        ->assertDontSeeHtml('data-test="media-upload"')
+        ->call('_startUpload', 'upload', [['name' => 'a.jpg', 'size' => 100, 'type' => 'image/jpeg']], false)
+        ->assertForbidden();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('storeUpload')
+        ->assertForbidden();
+
+    expect(Media::query()->count())->toBe(0);
+});

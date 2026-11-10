@@ -21,10 +21,12 @@ class UploadMedia
 
     /**
      * @param  int|null  $pickedSize  Size of the file the user picked, when the browser shrank it before upload.
+     * @param  string|null  $pickedExtension  Extension of the file the user picked, when the browser converted it (e.g. HEIC to JPEG).
+     *                                        It comes from the client: used only when it is on the whitelist.
      *
      * @throws MediaUploadException
      */
-    public function handle(User $actor, UploadedFile $file, ?MediaFolder $folder = null, ?int $pickedSize = null): Media
+    public function handle(User $actor, UploadedFile $file, ?MediaFolder $folder = null, ?int $pickedSize = null, ?string $pickedExtension = null): Media
     {
         Gate::forUser($actor)->authorize('create', Media::class);
 
@@ -92,7 +94,7 @@ class UploadMedia
                 'width' => $width,
                 'height' => $height,
                 'original_size' => $pickedSize ?? $uploadedSize,
-                'uploaded_extension' => $type['ext'],
+                'uploaded_extension' => self::pickedExtension($pickedExtension) ?? $type['ext'],
                 'optimized_with' => $fingerprint,
                 'optimize_failure' => $failure,
             ]);
@@ -109,5 +111,16 @@ class UploadMedia
         }
 
         return $media;
+    }
+
+    /**
+     * The client-reported extension, lowercased, when it is one the library accepts.
+     */
+    private static function pickedExtension(?string $extension): ?string
+    {
+        $extension = strtolower(trim((string) $extension));
+        $extension = $extension === 'jpeg' ? 'jpg' : $extension;
+
+        return array_key_exists($extension, MediaTypes::ALLOWED) ? $extension : null;
     }
 }

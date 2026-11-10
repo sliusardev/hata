@@ -6,7 +6,10 @@ use App\Actions\Media\DeleteMedia;
 use App\Actions\Media\MoveMedia;
 use App\Actions\Media\RenameFolder;
 use App\Actions\Media\UpdateMedia;
+use App\Actions\Media\UploadMedia;
+use App\Actions\Media\ZipMedia;
 use App\Enums\MediaKind;
+use App\Exceptions\MediaUploadException;
 use App\Livewire\Forms\MediaDetailsForm;
 use App\Models\Media;
 use App\Models\MediaFolder;
@@ -26,9 +29,15 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Title('media.index.title')] class extends Component {
+    use WithFileUploads {
+        _startUpload as startTemporaryUpload;
+    }
     use WithPagination;
 
     private const array SORTABLE = ['created_at', 'name', 'size'];
@@ -135,11 +144,31 @@ new #[Title('media.index.title')] class extends Component {
     public bool $showFolderDeleteModal = false;
 
     /**
-     * Files picked for bulk actions.
+     * Files picked for bulk actions. Ids come from the client, so every use re-checks them.
      *
      * @var array<int, int>
      */
     public array $selected = [];
+
+    /**
+     * Whether a click on a grid tile selects it for bulk actions instead of opening its details.
+     */
+    public bool $selecting = false;
+
+    /**
+     * The file the upload queue just sent with $wire.upload(); storeUpload() turns it into a library file.
+     */
+    public ?TemporaryUploadedFile $upload = null;
+
+    /**
+     * Size of the file the user picked, before the browser shrank it.
+     */
+    public ?int $uploadPickedSize = null;
+
+    /**
+     * Extension of the file the user picked, before the browser converted it (e.g. HEIC to JPEG).
+     */
+    public ?string $uploadPickedExtension = null;
 
     public function mount(): void
     {
@@ -166,6 +195,175 @@ new #[Title('media.index.title')] class extends Component {
             $this->resetPage();
             $this->gridLimit = self::GRID_STEP;
         }
+
+        if (in_array($property, self::FILTERS, true)) {
+            $this->selected = [];
+        }
+
+        if ($property === 'selected' || str_starts_with($property, 'selected.')) {
+            $this->selected = $this->existingIds($this->selected);
+        }
+    }
+
+    /**
+     * Only the "upload" property takes temporary uploads, one file at a time, and only with media.upload.
+     *
+     * @param  array<int, mixed>  $fileInfo
+     */
+    public function _startUpload(string $name, array $fileInfo, bool $isMultiple): void
+    {
+        $this->authorize('create', Media::class);
+
+        abort_unless($name === 'upload' && ! $isMultiple, 403);
+
+        $this->startTemporaryUpload($name, $fileInfo, $isMultiple);
+    }
+
+    /**
+     * Turn the file the upload queue just sent into a library file in the open folder.
+     * A rejected file returns its error text instead of throwing, so the queue shows it on the tile and goes on.
+     *
+     * @return array{ok: bool, id?: int, name?: string, meta?: string, error?: string}
+     */
+    public function storeUpload(UploadMedia $uploadMedia): array
+    {
+        $this->authorize('create', Media::class);
+
+        $file = $this->upload;
+        $pickedSize = $this->uploadPickedSize !== null && $this->uploadPickedSize > 0 ? $this->uploadPickedSize : null;
+        $pickedExtension = $this->uploadPickedExtension;
+        $this->reset('upload', 'uploadPickedSize', 'uploadPickedExtension');
+
+        if (! $file instanceof TemporaryUploadedFile) {
+            return ['ok' => false, 'error' => __('media.upload.failed')];
+        }
+
+        try {
+            $media = $uploadMedia->handle($this->actor(), $file, $this->currentFolder, $pickedSize, $pickedExtension);
+        } catch (MediaUploadException $exception) {
+            return ['ok' => false, 'error' => $exception->getMessage()];
+        } catch (AuthorizationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return ['ok' => false, 'error' => __('media.upload.failed')];
+        } finally {
+            $file->delete();
+        }
+
+        unset($this->media, $this->totals, $this->folders, $this->months);
+
+        return [
+            'ok' => true,
+            'id' => $media->id,
+            'name' => $media->name,
+            'meta' => $media->savedBytes() === null
+                ? __('media.upload.done', ['size' => $media->humanSize()])
+                : __('media.upload.done_compressed', [
+                    'before' => Media::formatBytes((int) $media->original_size),
+                    'after' => $media->humanSize(),
+                ]),
+        ];
+    }
+
+    /**
+     * Add a file to the bulk selection or take it out ("Select several" in the grid).
+     */
+    public function toggleSelected(int $id): void
+    {
+        if (in_array($id, $this->selected, true)) {
+            $this->selected = array_values(array_diff($this->selected, [$id]));
+
+            return;
+        }
+
+        $this->selected = $this->existingIds([...$this->selected, $id]);
+    }
+
+    /**
+     * Select every file shown on this page, or unselect them when all of them already are.
+     */
+    public function togglePageSelection(): void
+    {
+        $pageIds = $this->media->getCollection()->modelKeys();
+
+        $this->selected = array_diff($pageIds, $this->selected) === []
+            ? array_values(array_diff($this->selected, $pageIds))
+            : $this->existingIds([...$this->selected, ...$pageIds]);
+    }
+
+    public function toggleSelecting(): void
+    {
+        $this->selecting = ! $this->selecting;
+    }
+
+    public function clearSelection(): void
+    {
+        $this->selected = [];
+        $this->selecting = false;
+    }
+
+    /**
+     * Ask before deleting the selected files; deleteConfirmed() then deletes them.
+     */
+    public function confirmBulkDelete(): void
+    {
+        $ids = $this->existingIds($this->selected);
+        $this->selected = $ids;
+
+        if ($ids === []) {
+            return;
+        }
+
+        $this->authorize('delete', Media::query()->findOrFail($ids[0]));
+
+        $this->deletingIds = $ids;
+        unset($this->deletingMedia);
+        $this->showDeleteModal = true;
+    }
+
+    /**
+     * Download the selected files as one ZIP archive, within ZipMedia's limits.
+     */
+    public function downloadZip(ZipMedia $zipMedia): ?StreamedResponse
+    {
+        $this->authorize('viewAny', Media::class);
+
+        if (! class_exists(ZipArchive::class)) {
+            return null;
+        }
+
+        $items = Media::query()->whereKey($this->existingIds($this->selected))->orderBy('name')->get();
+
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        if ($items->count() > ZipMedia::MAX_FILES || $items->sum('size') > ZipMedia::MAX_BYTES) {
+            Flux::toast(variant: 'danger', text: __('media.bulk.zip_too_large', [
+                'files' => ZipMedia::MAX_FILES,
+                'size' => Media::formatBytes(ZipMedia::MAX_BYTES),
+            ]));
+
+            return null;
+        }
+
+        $path = $zipMedia->handle($this->actor(), $items);
+
+        if ($path === null) {
+            Flux::toast(variant: 'danger', text: __('media.bulk.zip_empty'));
+
+            return null;
+        }
+
+        return response()->streamDownload(function () use ($path): void {
+            try {
+                readfile($path);
+            } finally {
+                @unlink($path);
+            }
+        }, 'media.zip', ['Content-Type' => 'application/zip']);
     }
 
     public function sort(string $column): void
@@ -346,10 +544,7 @@ new #[Title('media.index.title')] class extends Component {
      */
     public function moveTo(array $ids, ?int $folderId, MoveMedia $moveMedia): void
     {
-        $ids = array_slice(array_values(array_unique(array_map('intval', array_filter(
-            $ids,
-            fn (mixed $id): bool => is_int($id) || (is_string($id) && ctype_digit($id)),
-        )))), 0, self::GRID_MAX);
+        $ids = $this->normalizeIds($ids);
 
         $folder = $folderId === null ? null : MediaFolder::query()->find($folderId);
         $items = Media::query()->whereKey($ids)->get();
@@ -648,6 +843,39 @@ new #[Title('media.index.title')] class extends Component {
         return [$start->utc(), $start->endOfMonth()->utc()];
     }
 
+    /**
+     * Ids sent by the client, as unique positive integers, at most GRID_MAX of them.
+     *
+     * @param  array<array-key, mixed>  $ids
+     * @return array<int, int>
+     */
+    private function normalizeIds(array $ids): array
+    {
+        return array_slice(array_values(array_unique(array_map('intval', array_filter(
+            $ids,
+            fn (mixed $id): bool => is_int($id) || (is_string($id) && ctype_digit($id)),
+        )))), 0, self::GRID_MAX);
+    }
+
+    /**
+     * The client ids that belong to existing files, in the order given.
+     *
+     * @param  array<array-key, mixed>  $ids
+     * @return array<int, int>
+     */
+    private function existingIds(array $ids): array
+    {
+        $ids = $this->normalizeIds($ids);
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $existing = Media::query()->whereKey($ids)->pluck('id')->all();
+
+        return array_values(array_intersect($ids, $existing));
+    }
+
     private function actor(): User
     {
         $user = Auth::user();
@@ -749,11 +977,38 @@ new #[Title('media.index.title')] class extends Component {
 
 @php
     $canManageFolders = auth()->user()->can('manageFolders', App\Models\Media::class);
+    $canUpload = auth()->user()->can('create', App\Models\Media::class);
+    $accept = array_keys(App\Support\Media\MediaTypes::ALLOWED);
+    $uploaderConfig = [
+        'canUpload' => $canUpload,
+        'clientResize' => (bool) config('media.optimize.client_resize'),
+        'clientSide' => (int) config('media.client_side'),
+        'accept' => $accept,
+        'types' => array_map(fn (array $type): string => $type['kind']->value, App\Support\Media\MediaTypes::ALLOWED),
+        'limits' => collect(App\Enums\MediaKind::cases())
+            ->mapWithKeys(fn (App\Enums\MediaKind $kind): array => [$kind->value => App\Support\Media\MediaTypes::limitBytes($kind)])
+            ->all(),
+        'locale' => str_replace('_', '-', app()->getLocale()),
+        'texts' => [
+            'too_large' => __('media.errors.too_large'),
+            'unsupported' => __('media.errors.unsupported'),
+            'failed' => __('media.upload.failed'),
+            'title' => __('media.upload.title'),
+            'waiting' => __('media.upload.waiting'),
+            'preparing' => __('media.upload.preparing'),
+            'progress' => __('media.upload.progress'),
+            'compressing' => __('media.upload.compressing'),
+        ],
+    ];
 @endphp
 
 <section
     class="w-full space-y-6"
-    x-data
+    x-data="mediaUploader(@js($uploaderConfig))"
+    x-on:dragenter.window="dragEnter($event)"
+    x-on:dragover.window="dragOver($event)"
+    x-on:dragleave.window="dragLeave($event)"
+    x-on:drop.window="drop($event)"
     x-init="
         try {
             const stored = localStorage.getItem('media.view');
@@ -770,7 +1025,19 @@ new #[Title('media.index.title')] class extends Component {
             <flux:subheading>{{ __('media.index.description') }}</flux:subheading>
         </div>
 
-        {{-- Task 11: the "Upload files" button (with media.upload) goes here. --}}
+        @if ($canUpload)
+            <flux:button variant="primary" icon="arrow-up-tray" x-on:click="$refs.uploadInput.click()" data-test="media-upload">
+                {{ __('media.upload.button') }}
+            </flux:button>
+            <input
+                type="file"
+                multiple
+                x-ref="uploadInput"
+                accept="{{ collect($accept)->map(fn (string $extension): string => '.'.$extension)->implode(',') }}"
+                class="hidden"
+                x-on:change="pick($event.target)"
+            />
+        @endif
     </div>
 
     <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -807,7 +1074,18 @@ new #[Title('media.index.title')] class extends Component {
 
         <flux:spacer class="max-lg:hidden" />
 
-        {{-- Task 11: the "Select several" button goes here. --}}
+        @if ($view === 'grid' && $this->media->isNotEmpty())
+            <flux:button
+                icon="check-circle"
+                :variant="$selecting ? 'filled' : 'outline'"
+                wire:click="toggleSelecting"
+                :aria-pressed="$selecting ? 'true' : 'false'"
+                class="self-start lg:self-auto"
+                data-test="media-select-several"
+            >
+                {{ $selecting ? __('media.bulk.done_selecting') : __('media.bulk.select_several') }}
+            </flux:button>
+        @endif
 
         <flux:button.group :aria-label="__('media.index.views.label')" class="self-start lg:self-auto">
             <flux:button
@@ -867,6 +1145,14 @@ new #[Title('media.index.title')] class extends Component {
                 @endif
             </div>
 
+            @if ($selected !== [])
+                @include('partials.admin.media.bulk-bar', ['count' => count($selected)])
+            @endif
+
+            @if ($canUpload)
+                @include('partials.admin.media.upload-tiles')
+            @endif
+
             @if ($this->media->isEmpty())
                 <x-admin.empty-state
                     icon="photo"
@@ -876,6 +1162,7 @@ new #[Title('media.index.title')] class extends Component {
             @elseif ($view === 'list')
                 @include('partials.admin.media.list', [
                     'media' => $this->media,
+                    'selected' => $selected,
                     'sortBy' => $sortBy,
                     'sortDirection' => $sortDirection,
                     'canMove' => $canManageFolders,
@@ -884,6 +1171,8 @@ new #[Title('media.index.title')] class extends Component {
                 @include('partials.admin.media.grid', [
                     'media' => $this->media,
                     'selectedId' => $selectedId,
+                    'selected' => $selected,
+                    'selecting' => $selecting,
                     'gridStep' => $this::GRID_STEP,
                     'canShowMore' => $gridLimit < $this::GRID_MAX,
                     'canMove' => $canManageFolders,
@@ -900,7 +1189,12 @@ new #[Title('media.index.title')] class extends Component {
         </div>
     </div>
 
-    {{-- Task 11: the bulk actions bar for $selected goes here. --}}
-
     @include('partials.admin.media.dialogs')
+
+    @if ($canUpload)
+        @include('partials.admin.media.upload-queue', [
+            'imageMb' => (int) config('media.limits.image_mb'),
+            'documentMb' => (int) config('media.limits.document_mb'),
+        ])
+    @endif
 </section>

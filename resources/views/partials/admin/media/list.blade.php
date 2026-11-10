@@ -1,10 +1,27 @@
 {{--
     List view of the media library: flux:table, 25 per page, sortable by name, size and date.
-    Expects: $media (paginator), $sortBy, $sortDirection, $canMove (rows can be dragged onto a folder in the tree).
+    Expects: $media (paginator), $sortBy, $sortDirection, $selected (ids picked for bulk actions),
+    $canMove (rows can be dragged onto a folder in the tree).
 --}}
+@php
+    $checkboxClasses = 'size-4 rounded border-zinc-300 accent-zinc-800 dark:border-white/20 dark:accent-white';
+    $pageIds = $media->getCollection()->modelKeys();
+    $allOnPage = $pageIds !== [] && array_diff($pageIds, $selected) === [];
+@endphp
 <flux:table :paginate="$media">
     <flux:table.columns>
-        {{-- Task 11: the "select all on this page" checkbox column goes here. --}}
+        <flux:table.column class="w-10">
+            {{-- Re-keyed on change, so the browser's own checked state never drifts from the server's. --}}
+            <input
+                type="checkbox"
+                wire:key="media-select-page-{{ $allOnPage ? 'on' : 'off' }}"
+                wire:click="togglePageSelection"
+                @checked($allOnPage)
+                class="{{ $checkboxClasses }}"
+                aria-label="{{ __('media.bulk.select_page') }}"
+                data-test="media-select-page"
+            />
+        </flux:table.column>
         <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">{{ __('media.index.columns.file') }}</flux:table.column>
         <flux:table.column class="max-md:hidden">{{ __('media.index.columns.type') }}</flux:table.column>
         <flux:table.column sortable :sorted="$sortBy === 'size'" :direction="$sortDirection" wire:click="sort('size')">{{ __('media.index.columns.size') }}</flux:table.column>
@@ -21,6 +38,15 @@
                 :draggable="$canMove ? 'true' : null"
                 :x-on:dragstart="$canMove ? 'event.dataTransfer.effectAllowed = \'move\'; event.dataTransfer.setData(\'application/x-media-ids\', JSON.stringify(['.$item->id.']))' : null"
             >
+                <flux:table.cell>
+                    <input
+                        type="checkbox"
+                        wire:model.live="selected"
+                        value="{{ $item->id }}"
+                        class="{{ $checkboxClasses }}"
+                        aria-label="{{ __('media.bulk.select_file', ['name' => $item->name]) }}"
+                    />
+                </flux:table.cell>
                 <flux:table.cell>
                     <div class="flex items-center gap-3">
                         <div class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-zinc-100 ring-1 ring-black/5 ring-inset dark:bg-white/5 dark:ring-white/10">
