@@ -9,6 +9,7 @@ return [
         'file_count' => ':count file|:count files',
         'unused' => 'unused',
         'show_more' => 'Show :count more',
+        'grid_capped' => 'Showing :shown of :total — switch to the list to see all',
         'no_alt' => 'No alt text',
         'nowhere' => 'Nowhere',
         'used_count' => ':count place|:count places',

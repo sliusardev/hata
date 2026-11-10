@@ -144,6 +144,23 @@ it('never grows the grid past its cap', function () {
     $component->assertSet('gridLimit', 400);
 });
 
+it('tells the user to switch to the list once the grid reached its cap', function () {
+    $this->actingAs(mediaViewer());
+    Media::factory()->count(401)->create();
+
+    $component = Livewire::test('pages::admin.media.index')
+        ->assertDontSeeHtml('data-test="media-grid-capped"');
+
+    foreach (range(1, 9) as $ignored) {
+        $component->call('showMore');
+    }
+
+    $component->assertSet('gridLimit', 400)
+        ->assertDontSeeHtml('data-test="media-show-more"')
+        ->assertSeeHtml('data-test="media-grid-capped"')
+        ->assertSee(__('media.index.grid_capped', ['shown' => 400, 'total' => 401]));
+});
+
 it('ignores hostile url input', function (array $params) {
     $this->actingAs(mediaViewer());
     Media::factory()->create(['name' => 'still-here.webp']);

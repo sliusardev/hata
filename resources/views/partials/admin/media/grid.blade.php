@@ -2,7 +2,7 @@
     Grid view of the media library: square thumbnails, the first $gridLimit files with "Show more".
     Expects: $media (paginator), $selectedId (the file open in the details panel),
     $selected (ids picked for bulk actions), $selecting (a click picks the tile instead of opening it),
-    $gridStep (files added by "Show more"), $canShowMore (false once the grid reached its cap),
+    $gridStep (files added by "Show more"), $canShowMore (false once the grid reached its cap; then a hint points to the list),
     $canMove (tiles can be dragged onto a folder in the tree).
 --}}
 <div class="space-y-6">
@@ -60,11 +60,17 @@
         @endforeach
     </div>
 
-    @if ($canShowMore && $media->hasMorePages())
+    @if ($media->hasMorePages())
         <div class="flex justify-center">
-            <flux:button wire:click="showMore" data-test="media-show-more">
-                {{ __('media.index.show_more', ['count' => min($gridStep, $media->total() - $media->count())]) }}
-            </flux:button>
+            @if ($canShowMore)
+                <flux:button wire:click="showMore" data-test="media-show-more">
+                    {{ __('media.index.show_more', ['count' => min($gridStep, $media->total() - $media->count())]) }}
+                </flux:button>
+            @else
+                <flux:text data-test="media-grid-capped">
+                    {{ __('media.index.grid_capped', ['shown' => $media->count(), 'total' => $media->total()]) }}
+                </flux:text>
+            @endif
         </div>
     @endif
 </div>

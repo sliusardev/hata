@@ -9,6 +9,7 @@ return [
         'file_count' => ':count файл|:count файли|:count файлів',
         'unused' => 'не використовується',
         'show_more' => 'Показати ще :count',
+        'grid_capped' => 'Показано :shown з :total — перейдіть до списку, щоб побачити всі',
         'no_alt' => 'Без alt-тексту',
         'nowhere' => 'Ніде',
         'used_count' => ':count місце|:count місця|:count місць',
