@@ -7,6 +7,7 @@ use App\Support\Media\MediaTypes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class MediaController extends Controller
@@ -17,23 +18,22 @@ class MediaController extends Controller
      */
     public function __invoke(Request $request, string $key, string $name): Response
     {
-        $media = Media::query()->where('key', $key)->firstOrFail();
+        $media = Media::query()->where('key', Str::upper($key))->firstOrFail();
         $thumb = $request->boolean('thumb');
 
+        abort_if($thumb && $media->thumb_path === null, 404);
+
         if ($name !== $media->name) {
-            return redirect($thumb ? ($media->thumbUrl() ?? $media->url()) : $media->url(), 301)
-                ->withHeaders(['X-Content-Type-Options' => 'nosniff']);
+            return $this->uncacheableRedirect($thumb ? (string) $media->thumbUrl() : $media->url(), 301);
         }
 
-        $path = $thumb ? $media->thumb_path : $media->path;
+        $path = $thumb ? (string) $media->thumb_path : $media->path;
 
-        abort_if($path === null, 404);
+        if (config("filesystems.disks.{$media->disk}.driver") !== 'local') {
+            return $this->uncacheableRedirect(Storage::disk($media->disk)->url($path), 302);
+        }
 
         $disk = Storage::disk($media->disk);
-
-        if ($media->disk !== 'local') {
-            return $this->redirectToDisk($media->disk, $path);
-        }
 
         abort_unless($disk->exists($path), 404);
 
@@ -58,11 +58,15 @@ class MediaController extends Controller
     }
 
     /**
-     * Cloud disks serve the file themselves; this is the stub that Part 5 completes.
+     * Redirects must never be cached: a rename A to B and back to A would otherwise
+     * leave browsers in a redirect loop. Cloud disks (any non-local driver) use this
+     * too; Part 5 completes that branch.
      */
-    private function redirectToDisk(string $diskName, string $path): RedirectResponse
+    private function uncacheableRedirect(string $url, int $status): RedirectResponse
     {
-        return redirect()->away(Storage::disk($diskName)->url($path))
-            ->withHeaders(['X-Content-Type-Options' => 'nosniff']);
+        return redirect()->away($url, $status)->withHeaders([
+            'Cache-Control' => 'no-cache, must-revalidate, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

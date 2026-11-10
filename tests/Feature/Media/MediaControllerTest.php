@@ -49,7 +49,8 @@ it('redirects an old name to the current one', function () {
     $this->get('/media/'.$media->key.'/hero.jpg')
         ->assertStatus(301)
         ->assertRedirect('/media/'.$media->key.'/hero.webp')
-        ->assertHeader('X-Content-Type-Options', 'nosniff');
+        ->assertHeader('X-Content-Type-Options', 'nosniff')
+        ->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-cache, private');
 
     $media->thumb_path = 'media/thumbs/x.webp';
     $media->save();
@@ -109,9 +110,43 @@ it('needs no login', function () {
 
 it('redirects files on a cloud disk to the disk url', function () {
     Storage::fake('cdn', ['url' => 'https://cdn.example.test']);
+    config(['filesystems.disks.cdn.driver' => 's3']);
     $media = Media::factory()->create(['disk' => 'cdn']);
 
     $this->get($media->url())
         ->assertRedirect(Storage::disk('cdn')->url($media->path))
         ->assertHeader('X-Content-Type-Options', 'nosniff');
+});
+
+it('serves a local-driver disk that is not named local', function () {
+    Storage::fake('media');
+    config(['filesystems.disks.media.driver' => 'local']);
+    $media = Media::factory()->create(['disk' => 'media']);
+    Storage::disk('media')->put($media->path, 'body');
+
+    $this->get($media->url())->assertOk();
+});
+
+it('returns 404 for a thumbnail request without a thumbnail before any rename redirect', function () {
+    $media = storedMedia(['name' => 'hero.webp']);
+
+    $this->get('/media/'.$media->key.'/old.jpg?thumb=1')->assertNotFound();
+});
+
+it('accepts a lowercase key', function () {
+    $media = storedMedia();
+
+    $this->get('/media/'.strtolower($media->key).'/'.$media->name)->assertOk();
+});
+
+it('gives the thumbnail its own etag', function () {
+    $media = storedMedia(['thumb_path' => 'media/thumbs/t.webp']);
+    Storage::disk('local')->put('media/thumbs/t.webp', 'thumb-body');
+
+    $mainEtag = $this->get($media->url())->headers->get('ETag');
+    $thumbEtag = $this->get($media->thumbUrl())->headers->get('ETag');
+
+    expect($thumbEtag)->not->toBe($mainEtag);
+
+    $this->get($media->thumbUrl(), ['If-None-Match' => $thumbEtag])->assertStatus(304);
 });
