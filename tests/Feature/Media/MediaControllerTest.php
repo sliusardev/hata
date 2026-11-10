@@ -48,7 +48,7 @@ it('redirects an old name to the current one', function () {
 
     $this->get('/media/'.$media->key.'/hero.jpg')
         ->assertStatus(301)
-        ->assertRedirect('/media/'.$media->key.'/hero.webp')
+        ->assertRedirect('/media/'.$media->key.'/hero.webp?v=1')
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-cache, private');
 
@@ -56,7 +56,49 @@ it('redirects an old name to the current one', function () {
     $media->save();
 
     $this->get('/media/'.$media->key.'/hero.jpg?thumb=1')
-        ->assertRedirect('/media/'.$media->key.'/hero.webp?thumb=1');
+        ->assertRedirect('/media/'.$media->key.'/hero.webp?thumb=1&v=1');
+});
+
+it('keeps v on the old-name redirect', function () {
+    $media = storedMedia(['name' => 'hero.webp', 'version' => 4]);
+
+    $this->get('/media/'.$media->key.'/hero.jpg?v=4')
+        ->assertStatus(301)
+        ->assertRedirect('/media/'.$media->key.'/hero.webp?v=4');
+
+    $this->get('/media/'.$media->key.'/hero.jpg?v=2')
+        ->assertRedirect('/media/'.$media->key.'/hero.webp?v=2');
+});
+
+it('caches the current version for a week', function () {
+    $media = storedMedia(['version' => 3]);
+
+    $response = $this->get($media->url())->assertOk();
+
+    expect($response->headers->get('Cache-Control'))->toContain('public', 'max-age=604800');
+});
+
+it('does not cache a stale or missing version', function () {
+    $media = storedMedia(['version' => 2]);
+    $stale = route('media.show', [$media->key, $media->name, 'v' => 1]);
+    $missing = route('media.show', [$media->key, $media->name]);
+
+    foreach ([$stale, $missing] as $url) {
+        $response = $this->get($url)->assertOk();
+
+        expect($response->headers->get('Cache-Control'))->toContain('no-cache')
+            ->not->toContain('max-age=604800')
+            ->and($response->headers->get('ETag'))->toStartWith('"');
+    }
+});
+
+it('changes the etag when the version changes', function () {
+    $media = storedMedia(['version' => 1]);
+    $before = $this->get($media->url())->headers->get('ETag');
+
+    $media->forceFill(['version' => 2])->saveQuietly();
+
+    expect($this->get($media->fresh()->url())->headers->get('ETag'))->not->toBe($before);
 });
 
 it('sends svg with a sandbox csp', function () {
@@ -90,7 +132,7 @@ it('serves the thumbnail', function () {
 
     $media->update(['thumb_path' => null]);
 
-    $this->get($media->url().'?thumb=1')->assertNotFound();
+    $this->get($media->url().'&thumb=1')->assertNotFound();
 });
 
 it('returns 404 for an unknown key and when the file is missing', function () {

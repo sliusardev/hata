@@ -35,6 +35,7 @@ use Illuminate\Support\Str;
  * @property string|null $optimized_with
  * @property string|null $optimize_failure 'too_large' or 'unreadable' when an image was stored without optimizing
  * @property array<string, mixed>|null $edits
+ * @property int $version Bumped whenever the file's content changes; part of the public URL so caches refresh
  * @property string|null $title
  * @property array<string, string>|null $alt
  * @property string|null $search_index
@@ -43,7 +44,7 @@ use Illuminate\Support\Str;
  */
 #[Fillable([
     'folder_id', 'uploaded_by', 'disk', 'path', 'original_path', 'thumb_path', 'name', 'kind', 'mime', 'size',
-    'width', 'height', 'original_size', 'uploaded_extension', 'optimized_with', 'optimize_failure', 'edits', 'title', 'alt',
+    'width', 'height', 'original_size', 'uploaded_extension', 'optimized_with', 'optimize_failure', 'edits', 'version', 'title', 'alt',
 ])]
 #[Hidden(['search_index'])]
 class Media extends Model
@@ -71,6 +72,7 @@ class Media extends Model
             'alt' => 'array',
             'edits' => 'array',
             'kind' => MediaKind::class,
+            'version' => 'integer',
         ];
     }
 
@@ -100,7 +102,7 @@ class Media extends Model
 
     public function url(): string
     {
-        return route('media.show', [$this->key, $this->name]);
+        return route('media.show', [$this->key, $this->name, 'v' => $this->version]);
     }
 
     public function thumbUrl(): ?string
@@ -109,7 +111,7 @@ class Media extends Model
             return null;
         }
 
-        return route('media.show', [$this->key, $this->name, 'thumb' => 1]);
+        return route('media.show', [$this->key, $this->name, 'thumb' => 1, 'v' => $this->version]);
     }
 
     public function isImage(): bool

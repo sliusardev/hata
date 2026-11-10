@@ -20,12 +20,19 @@ it('generates a ulid key on create', function () {
 it('builds the public url from key and name', function () {
     $media = Media::factory()->create(['name' => 'hero.webp']);
 
-    expect($media->url())->toEndWith('/media/'.$media->key.'/hero.webp')
+    expect($media->url())->toEndWith('/media/'.$media->key.'/hero.webp?v=1')
         ->and($media->thumbUrl())->toBeNull();
 
     $media->thumb_path = 'media/thumbs/x.webp';
 
-    expect($media->thumbUrl())->toEndWith('/media/'.$media->key.'/hero.webp?thumb=1');
+    expect($media->thumbUrl())->toEndWith('/media/'.$media->key.'/hero.webp?thumb=1&v=1');
+});
+
+it('puts the version in the file and thumbnail urls', function () {
+    $media = Media::factory()->create(['name' => 'hero.webp', 'version' => 3, 'thumb_path' => 'media/thumbs/x.webp']);
+
+    expect($media->url())->toEndWith('?v=3')
+        ->and($media->thumbUrl())->toContain('thumb=1', 'v=3');
 });
 
 it('indexes name, title and every alt for search', function () {

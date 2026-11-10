@@ -24,7 +24,7 @@ class MediaController extends Controller
         abort_if($thumb && $media->thumb_path === null, 404);
 
         if ($name !== $media->name) {
-            return $this->uncacheableRedirect($thumb ? (string) $media->thumbUrl() : $media->url(), 301);
+            return $this->uncacheableRedirect($this->currentNameUrl($request, $media, $thumb), 301);
         }
 
         $path = $thumb ? (string) $media->thumb_path : $media->path;
@@ -40,7 +40,9 @@ class MediaController extends Controller
         $mime = $thumb ? 'image/webp' : $media->mime;
         $headers = [
             'Content-Type' => MediaTypes::responseMime($mime),
-            'Cache-Control' => 'public, max-age=604800',
+            'Cache-Control' => $request->query('v') === (string) $media->version
+                ? 'public, max-age=604800'
+                : 'no-cache',
             'X-Content-Type-Options' => 'nosniff',
         ];
 
@@ -50,11 +52,25 @@ class MediaController extends Controller
 
         $response = $disk->response($path, $media->name, $headers, $thumb ? 'inline' : MediaTypes::disposition($mime));
 
-        $response->setEtag(md5($path.$media->size.$media->updated_at?->getTimestamp()));
+        $response->setEtag(md5($path.$media->size.$media->version.$media->updated_at?->getTimestamp()));
         $response->setLastModified($media->updated_at);
         $response->isNotModified($request);
 
         return $response;
+    }
+
+    /**
+     * The URL under the current name, keeping the request's version and thumb flag.
+     */
+    private function currentNameUrl(Request $request, Media $media, bool $thumb): string
+    {
+        $version = $request->query('v');
+        $parameters = [
+            ...($thumb ? ['thumb' => 1] : []),
+            'v' => is_string($version) && $version !== '' ? $version : $media->version,
+        ];
+
+        return route('media.show', [$media->key, $media->name, ...$parameters]);
     }
 
     /**

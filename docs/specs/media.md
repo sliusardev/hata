@@ -66,7 +66,9 @@ New sidebar group "Content" with the item "Media" (shown with `media.view`). Pag
 `/media/{key}/{name}` (e.g. `/media/01JD8X4R…/price-list.pdf`) served by `MediaController` from the media disk (default `local`, private), like the logo (decision 39): works without `storage:link`. The key is a random ULID, so the library can't be listed by counting ids; anyone who has a link can open that file. No "private file" flag in this stage.
 
 - The URL is stable: optimizing, cropping or replacing a file keeps `key`. If the extension changes (JPG → WebP) the old `{name}` 301-redirects to the current one, so links pasted before optimization keep working.
-- `Cache-Control: public, max-age=604800` plus `ETag`/`Last-Modified` (`304` on match). Not `immutable`, since the content behind a URL can change after crop.
+- Every generated URL carries `?v={version}` (`Media::url()`, `thumbUrl()`; `media.version`, starts at 1, bumped when the file's content changes through crop or replace). The `?v=` is how a changed file gets past browser caches while `{key}` stays the same.
+- `Cache-Control: public, max-age=604800` only when `?v=` equals the current version. A stale or missing `v` gets `Cache-Control: no-cache` (always revalidated). Both carry `ETag` (path, size, version, updated_at) and `Last-Modified` (`304` on match). Not `immutable`.
+- The old-name 301 keeps `v` (as sent, else the current version) and `thumb`.
 - SVG gets the same `Content-Security-Policy … sandbox` and `nosniff` as the logo. PDF is `inline`; DOCX/XLSX are `attachment`.
 - `?thumb=1` serves the thumbnail (admin views).
 - Content in pages/posts should store the media id, not the URL (decided in those specs).
