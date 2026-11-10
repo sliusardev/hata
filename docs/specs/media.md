@@ -141,7 +141,7 @@ A sixth tab `?tab=media`, saved like the others (`SiteSettingsForm::SECTIONS`, u
 | Setting | Config | Default |
 |---|---|---|
 | `media_optimize` | `media.optimize.enabled` | `true` |
-| `media_max_side` | `media.optimize.max_side` | `2560` (choices 1920, 2560, 3840, none) |
+| `media_max_side` | `media.optimize.max_side` | `2560` (choices 1920, 2560, 3840, none; "none" is stored as `0`, see site-settings.md → Media) |
 | `media_quality` | `media.optimize.quality` | `80` (50–100) |
 | `media_format` | `media.optimize.format` | `webp` (`webp` / `original`; `avif` shown disabled when the driver can't encode it) |
 | `media_strip_exif` | `media.optimize.strip_exif` | `true` |

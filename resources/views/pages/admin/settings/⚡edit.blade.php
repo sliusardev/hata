@@ -370,7 +370,7 @@ new #[Title('site_settings.title')] class extends Component {
     </div>
 
     <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 dark:border-zinc-700" data-test="site-settings-tabs">
-        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch', 'media' => 'photo'] as $section => $icon)
+        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch', 'media' => 'adjustments-horizontal'] as $section => $icon)
             <flux:navbar.item
                 :icon="$icon"
                 :current="$tab === $section"
@@ -540,12 +540,12 @@ new #[Title('site_settings.title')] class extends Component {
                     @endforeach
                 </flux:select>
 
-                <flux:field x-data>
+                <flux:field x-data="{ quality: $wire.form.media_quality }">
                     <div class="flex items-center justify-between">
-                        <flux:label>{{ __('site_settings.media.quality') }}</flux:label>
-                        <span class="text-sm font-medium tabular-nums text-zinc-800 dark:text-white" data-test="media-quality-value">{{ $form->media_quality }}</span>
+                        <label for="media-quality" class="text-sm font-medium text-zinc-800 dark:text-white">{{ __('site_settings.media.quality') }}</label>
+                        <span class="text-sm font-medium tabular-nums text-zinc-800 dark:text-white" data-test="media-quality-value" x-text="quality">{{ $form->media_quality }}</span>
                     </div>
-                    <input type="range" min="50" max="100" step="1" wire:model.live.debounce.150ms="form.media_quality" class="w-full accent-accent" aria-label="{{ __('site_settings.media.quality') }}" />
+                    <input id="media-quality" type="range" min="50" max="100" step="1" wire:model="form.media_quality" x-model="quality" class="w-full accent-accent" />
                     <div class="flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
                         <span>{{ __('site_settings.media.quality_smaller') }}</span>
                         <span>{{ __('site_settings.media.quality_better') }}</span>

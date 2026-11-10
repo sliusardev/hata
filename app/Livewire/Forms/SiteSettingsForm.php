@@ -226,17 +226,22 @@ class SiteSettingsForm extends Form
             'media_strip_exif' => ['boolean'],
             'media_client_resize' => ['boolean'],
             'media_keep_originals' => ['boolean'],
-            'media_max_image_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap()],
-            'media_max_document_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap()],
+            'media_max_image_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap('media.limits.image_mb')],
+            'media_max_document_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap('media.limits.document_mb')],
         ];
     }
 
     /**
-     * Refuses a limit above what PHP accepts (upload_max_filesize, post_max_size).
+     * Refuses a limit above what PHP accepts (upload_max_filesize, post_max_size), but only when
+     * the value differs from the one in effect, so untouched defaults never block a save.
      */
-    private function withinServerCap(): Closure
+    private function withinServerCap(string $configPath): Closure
     {
-        return function (string $attribute, mixed $value, Closure $fail): void {
+        return function (string $attribute, mixed $value, Closure $fail) use ($configPath): void {
+            if ((int) $value === (int) config($configPath)) {
+                return;
+            }
+
             $cap = app(ServerCapabilities::class)->uploadCapBytes();
 
             if ($cap !== null && (int) $value * 1024 * 1024 > $cap) {

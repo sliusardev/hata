@@ -43,7 +43,7 @@ it('shows the media tab', function () {
     Livewire::withQueryParams(['tab' => 'media'])
         ->test('pages::admin.settings.edit')
         ->assertSet('tab', 'media')
-        ->assertSeeHtml('data-test="media-quality-value">80<')
+        ->assertSeeHtml('x-text="quality">80<')
         ->assertSee('64 MB');
 });
 
@@ -115,4 +115,31 @@ it('keeps other tabs untouched', function () {
 
     expect(Setting::query()->where('key', 'site_name')->exists())->toBeFalse()
         ->and(Setting::query()->where('key', 'media_quality')->exists())->toBeTrue();
+});
+
+it('lets untouched limits pass on a server with a low cap', function () {
+    fakeServerCap(2 * 1024 * 1024);
+
+    Livewire::withQueryParams(['tab' => 'media'])
+        ->test('pages::admin.settings.edit')
+        ->set('form.media_quality', '65')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(config('media.optimize.quality'))->toBe(65);
+});
+
+it('checks a changed limit against a low cap', function () {
+    fakeServerCap(2 * 1024 * 1024);
+
+    Livewire::withQueryParams(['tab' => 'media'])
+        ->test('pages::admin.settings.edit')
+        ->set('form.media_max_image_mb', '40')
+        ->call('save')
+        ->assertHasErrors(['form.media_max_image_mb'])
+        ->set('form.media_max_image_mb', '1')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(config('media.limits.image_mb'))->toBe(1);
 });

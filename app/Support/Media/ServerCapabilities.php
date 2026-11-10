@@ -30,7 +30,7 @@ class ServerCapabilities
      */
     public function supportsAvif(): bool
     {
-        return Cache::rememberForever('media.avif_supported', function (): bool {
+        return Cache::remember('media.avif_supported', now()->addDay(), function (): bool {
             try {
                 $pixel = (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==');
 
