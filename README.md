@@ -105,7 +105,7 @@ The site settings page also holds the site name, default language, timezone, ema
 
 Admin → Media stores images and documents on a private disk and serves them through the app, so `php artisan storage:link` is not needed.
 
-- **Image extension:** PHP needs GD or Imagick, with WebP support, to optimize uploaded images. AVIF and HEIC need an Imagick build that supports them. Without it, AVIF is stored as it is, and a HEIC that the browser could not convert (Safari converts it) is refused with a hint to export it as JPG.
+- **Image extension:** PHP needs GD or Imagick, with WebP support, to optimize uploaded images. AVIF and HEIC need an Imagick build that can decode them. HEIC is never stored as HEIC: Safari converts it to JPEG in the browser, otherwise the server converts it to WebP (JPEG when the format setting keeps the original). Without such an Imagick, AVIF is stored as it is, and a HEIC the browser could not convert is refused with a hint to export it as JPG.
 - **Upload limits:** the default limits are 30 MB per image and 20 MB per document (`config/media.php`). Set `upload_max_filesize` and `post_max_size` in `php.ini` to at least `32M`, or uploads fail before the app sees them. The Media tab shows the cap the server actually allows.
 - **Memory:** very large photos that don't fit in `memory_limit` are stored without optimization, with a note in the file details.
 

@@ -176,3 +176,18 @@ it('records the extension the user picked when the browser converted the file', 
     'junk' => ['../x<script>', 'jpg'],
     'none' => [null, 'jpg'],
 ]);
+
+it('rejects heic whenever the optimizer could not convert it', function (OptimizedImage $result) {
+    $bytes = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
+    $this->mock(OptimizeImage::class)->shouldReceive('handle')->andReturn($result);
+
+    expect(fn () => app(UploadMedia::class)->handle($this->actor, uploadedImage('IMG_1.heic', $bytes)))
+        ->toThrow(MediaUploadException::class, __('media.errors.heic_unsupported'));
+
+    expect(Media::count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
+})->with([
+    'too large' => fn () => new OptimizedImage('heic', 'image/heic', 'heic', 640, 480, optimized: false, failure: 'too_large'),
+    'stored as heic' => fn () => new OptimizedImage('heic', 'image/heic', 'heic', 640, 480, optimized: true, fingerprint: 'webp:2560:80:exif0'),
+    'heif' => fn () => new OptimizedImage('heif', 'image/heif', 'heif', 640, 480, optimized: true, fingerprint: 'webp:2560:80:exif0'),
+]);

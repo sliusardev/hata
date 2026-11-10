@@ -243,3 +243,47 @@ it('lets the memory guard pass everything when memory is unlimited', function ()
     expect((new MemoryGuard(limitBytes: -1))->canDecode(20000, 20000))->toBeTrue()
         ->and((new MemoryGuard(limitBytes: 1024 * 1024))->canDecode(2000, 2000))->toBeFalse();
 });
+
+/**
+ * Skip unless the local Imagick can decode the HEIC fixture, and switch the driver to it.
+ */
+function useHeicDecodingImagick(): string
+{
+    $heic = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
+
+    try {
+        if (! extension_loaded('imagick') || ! (new Imagick)->readImageBlob($heic)) {
+            test()->markTestSkipped('Imagick without HEIC decoding.');
+        }
+    } catch (ImagickException) {
+        test()->markTestSkipped('Imagick without HEIC decoding.');
+    }
+
+    config(['images.default' => 'imagick']);
+
+    return $heic;
+}
+
+it('converts heic to jpeg when the format setting keeps the original', function () {
+    $heic = useHeicDecodingImagick();
+    config(['media.optimize.format' => 'original']);
+
+    $result = app(OptimizeImage::class)->handle($heic, 'image/heic');
+
+    expect($result->mime)->toBe('image/jpeg')
+        ->and($result->extension)->toBe('jpg')
+        ->and($result->failure)->toBeNull()
+        ->and(getimagesizefromstring($result->contents)['mime'])->toBe('image/jpeg');
+});
+
+it('converts heic to webp even when optimization is disabled', function () {
+    $heic = useHeicDecodingImagick();
+    config(['media.optimize.enabled' => false, 'media.optimize.max_side' => 320]);
+
+    $result = app(OptimizeImage::class)->handle($heic, 'image/heic');
+
+    expect($result->mime)->toBe('image/webp')
+        ->and($result->extension)->toBe('webp')
+        ->and($result->failure)->toBeNull()
+        ->and([$result->width, $result->height])->toBe([640, 480]);
+});

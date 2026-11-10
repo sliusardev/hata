@@ -27,6 +27,14 @@ class OptimizeImage
      */
     private const array RASTER = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif'];
 
+    /**
+     * MIME types browsers can't show, so they are always converted: to WebP, or to JPEG when the format
+     * setting keeps the original. This happens even with optimization off, and the input is never kept.
+     *
+     * @var list<string>
+     */
+    public const array MUST_CONVERT = ['image/heic', 'image/heif'];
+
     public function __construct(private MemoryGuard $memory) {}
 
     /**
@@ -37,8 +45,10 @@ class OptimizeImage
         $raster = in_array($mime, self::RASTER, true);
         $size = $raster ? $this->dimensions($contents, $mime) : null;
         [$width, $height] = $size ?? [null, null];
+        $enabled = (bool) config('media.optimize.enabled');
+        $mustConvert = in_array($mime, self::MUST_CONVERT, true);
 
-        if (! $raster || ! config('media.optimize.enabled') || $this->isAnimated($contents, $mime)) {
+        if (! $raster || (! $enabled && ! $mustConvert) || $this->isAnimated($contents, $mime)) {
             return $this->unchanged($contents, $mime, $width, $height);
         }
 
@@ -50,10 +60,10 @@ class OptimizeImage
             return $this->unchanged($contents, $mime, $width, $height, 'too_large');
         }
 
-        $format = (string) config('media.optimize.format');
+        $format = $this->targetFormat($mime, $enabled);
         $quality = $this->quality();
         $maxSide = config('media.optimize.max_side');
-        $scaled = is_int($maxSide) && $maxSide > 0 && max($size) > $maxSide;
+        $scaled = $enabled && is_int($maxSide) && $maxSide > 0 && max($size) > $maxSide;
 
         try {
             $image = Image::fromBytes($contents)->orient();
@@ -63,12 +73,17 @@ class OptimizeImage
             }
 
             $image = $format === 'original' ? $image->quality($quality) : $image->optimize($format, $quality);
-            $output = $this->stripped($image)->toBytes();
+            $output = ($enabled ? $this->stripped($image) : $image)->toBytes();
         } catch (ImageException) {
             return $this->unchanged($contents, $mime, $width, $height, 'unreadable');
         }
 
-        $keepInput = ! $scaled
+        if (! $enabled) {
+            return $this->converted($output, optimized: false, fingerprint: null);
+        }
+
+        $keepInput = ! $mustConvert
+            && ! $scaled
             && strlen($output) >= strlen($contents)
             && ! (config('media.optimize.strip_exif') && $this->hasMetadata($contents, $mime));
 
@@ -76,18 +91,7 @@ class OptimizeImage
             return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: true, fingerprint: $this->fingerprint());
         }
 
-        $outputSize = @getimagesizefromstring($output);
-        $outputMime = $format === 'original' ? $mime : (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($output);
-
-        return new OptimizedImage(
-            $output,
-            $outputMime,
-            $this->extensionFor($outputMime),
-            $outputSize === false ? null : $outputSize[0],
-            $outputSize === false ? null : $outputSize[1],
-            optimized: true,
-            fingerprint: $this->fingerprint(),
-        );
+        return $this->converted($output, optimized: true, fingerprint: $this->fingerprint(), mime: $format === 'original' ? $mime : null);
     }
 
     /**
@@ -129,6 +133,40 @@ class OptimizeImage
             is_int($maxSide) && $maxSide > 0 ? $maxSide : 'none',
             config('media.optimize.quality'),
             config('media.optimize.strip_exif') ? 0 : 1,
+        );
+    }
+
+    /**
+     * The encoder format: the format setting, WebP when optimization is off (only images that must be converted
+     * get here), and JPEG instead of "original" for a format browsers can't show.
+     */
+    private function targetFormat(string $mime, bool $enabled): string
+    {
+        $format = (string) config('media.optimize.format');
+
+        if (! $enabled) {
+            return 'webp';
+        }
+
+        return $format === 'original' && in_array($mime, self::MUST_CONVERT, true) ? 'jpg' : $format;
+    }
+
+    /**
+     * An encoded result; its MIME is sniffed from the bytes unless given.
+     */
+    private function converted(string $output, bool $optimized, ?string $fingerprint, ?string $mime = null): OptimizedImage
+    {
+        $outputSize = @getimagesizefromstring($output);
+        $outputMime = $mime ?? (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($output);
+
+        return new OptimizedImage(
+            $output,
+            $outputMime,
+            $this->extensionFor($outputMime),
+            $outputSize === false ? null : $outputSize[0],
+            $outputSize === false ? null : $outputSize[1],
+            optimized: $optimized,
+            fingerprint: $fingerprint,
         );
     }
 

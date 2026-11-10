@@ -51,7 +51,7 @@ class UploadMedia
         if ($type['kind'] === MediaKind::Image) {
             $result = $this->optimizer->handle($contents, $mime);
 
-            if ($result->failure === 'unreadable' && in_array($type['ext'], ['heic', 'heif'], true)) {
+            if (in_array($result->mime, OptimizeImage::MUST_CONVERT, true)) {
                 throw MediaUploadException::heicUnsupported();
             }
 
