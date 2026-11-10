@@ -3,6 +3,7 @@
 use App\Actions\Media\CreateFolder;
 use App\Actions\Media\DeleteFolder;
 use App\Actions\Media\DeleteMedia;
+use App\Actions\Media\MoveFolder;
 use App\Actions\Media\MoveMedia;
 use App\Actions\Media\RenameFolder;
 use App\Actions\Media\ReplaceMediaFile;
@@ -147,6 +148,16 @@ new #[Title('media.index.title')] class extends Component {
     public ?int $renamingFolderId = null;
 
     public bool $showFolderModal = false;
+
+    #[Locked]
+    public ?int $movingFolderId = null;
+
+    /**
+     * The folder the "Move to…" dialog picked as the new parent; '' is the top level.
+     */
+    public string $moveFolderTarget = '';
+
+    public bool $showMoveFolderModal = false;
 
     #[Locked]
     public ?int $deletingFolderId = null;
@@ -764,6 +775,9 @@ new #[Title('media.index.title')] class extends Component {
         $this->deletingIds = [];
         $this->showFolderDeleteModal = false;
         $this->deletingFolderId = null;
+        $this->showMoveFolderModal = false;
+        $this->movingFolderId = null;
+        $this->moveFolderTarget = '';
         $this->confirmName = '';
         $this->resetErrorBag('confirmName');
         $this->showReplaceModal = false;
@@ -877,6 +891,101 @@ new #[Title('media.index.title')] class extends Component {
         $this->runFolderAction(function () use ($folder, $name): void {
             app(RenameFolder::class)->handle($this->actor(), $folder, $name);
         }, __('media.messages.folder_renamed'));
+    }
+
+    /**
+     * Move a folder under another one (null = top level); dropping a folder onto a folder calls this.
+     */
+    public function moveFolder(int $id, ?int $targetId): void
+    {
+        $folder = MediaFolder::query()->find($id);
+        $target = $targetId === null ? null : MediaFolder::query()->find($targetId);
+
+        if ($folder === null || ($targetId !== null && $target === null)) {
+            unset($this->folders, $this->currentFolder, $this->breadcrumb);
+
+            return;
+        }
+
+        try {
+            app(MoveFolder::class)->handle($this->actor(), $folder, $target);
+        } catch (ValidationException $exception) {
+            Flux::toast(variant: 'danger', text: collect($exception->errors())->flatten()->first() ?? __('media.errors.folder_into_itself'));
+
+            return;
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return;
+        }
+
+        unset($this->folders, $this->currentFolder, $this->breadcrumb);
+        Flux::toast(variant: 'success', text: __('media.messages.folder_moved'));
+    }
+
+    public function openMoveFolder(int $id): void
+    {
+        if (! $this->authorizedOrToast('manageFolders', Media::class)) {
+            return;
+        }
+
+        $folder = MediaFolder::query()->find($id);
+
+        if ($folder === null) {
+            return;
+        }
+
+        $this->movingFolderId = $folder->id;
+        $this->moveFolderTarget = $folder->parent_id === null ? '' : (string) $folder->parent_id;
+        unset($this->moveFolderTargets);
+        $this->showMoveFolderModal = true;
+    }
+
+    /**
+     * Submit the "Move to…" dialog of a folder.
+     */
+    public function moveFolderConfirmed(): void
+    {
+        $id = $this->movingFolderId;
+
+        if ($id === null) {
+            $this->showMoveFolderModal = false;
+
+            return;
+        }
+
+        $targetId = $this->moveFolderTarget === '' ? null : (int) $this->moveFolderTarget;
+
+        $this->moveFolder($id, $targetId);
+        $this->showMoveFolderModal = false;
+        $this->movingFolderId = null;
+        $this->moveFolderTarget = '';
+    }
+
+    /**
+     * Where the folder of the "Move to…" dialog can go: every folder but itself and its descendants, indented by depth.
+     *
+     * @return array<int, string> Folder id => label.
+     */
+    #[Computed]
+    public function moveFolderTargets(): array
+    {
+        $moving = $this->movingFolderId === null ? null : MediaFolder::query()->find($this->movingFolderId);
+
+        if ($moving === null) {
+            return [];
+        }
+
+        $excluded = [$moving->id, ...$moving->descendantIds()];
+        $targets = [];
+
+        foreach ($this->folders as $row) {
+            if (! in_array($row['folder']->id, $excluded, true)) {
+                $targets[$row['folder']->id] = str_repeat("\u{00A0}\u{00A0}", $row['depth']).$row['folder']->name;
+            }
+        }
+
+        return $targets;
     }
 
     public function confirmFolderDelete(int $id): void
@@ -1426,6 +1535,7 @@ new #[Title('media.index.title')] class extends Component {
                 @if ($this->currentFolder && $canManageFolders)
                     <x-admin.row-actions :label="__('media.folders.actions')" data-test="media-folder-actions">
                         <flux:menu.item icon="pencil-square" wire:click="openRenameFolder({{ $this->currentFolder->id }})">{{ __('media.folders.rename') }}</flux:menu.item>
+                        <flux:menu.item icon="folder-arrow-down" wire:click="openMoveFolder({{ $this->currentFolder->id }})">{{ __('media.folders.move') }}</flux:menu.item>
                         @can('deleteFolders', App\Models\Media::class)
                             <flux:menu.item icon="trash" variant="danger" wire:click="confirmFolderDelete({{ $this->currentFolder->id }})">{{ __('common.actions.delete') }}</flux:menu.item>
                         @endcan

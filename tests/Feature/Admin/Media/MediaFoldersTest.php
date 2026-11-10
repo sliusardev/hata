@@ -177,3 +177,87 @@ it('takes the dropped files out of the selection', function () {
         ->call('moveTo', [(string) $moved->id], $folder->id)
         ->assertSet('selected', [$kept->id]);
 });
+
+it('moves a folder through the page and updates the tree order', function () {
+    $this->actingAs(folderManager());
+    $a = MediaFolder::factory()->create(['name' => 'A']);
+    $b = MediaFolder::factory()->create(['name' => 'B']);
+
+    $component = Livewire::test('pages::admin.media.index')
+        ->call('moveFolder', $b->id, $a->id)
+        ->assertHasNoErrors();
+
+    expect($b->refresh()->parent_id)->toBe($a->id);
+
+    $rows = collect($component->get('folders'))->map(fn ($row) => [$row['folder']->id, $row['depth']])->all();
+    expect($rows)->toBe([[$a->id, 0], [$b->id, 1]]);
+
+    $component->call('moveFolder', $b->id, null);
+    expect($b->refresh()->parent_id)->toBeNull();
+});
+
+it('shows a danger toast when a folder is moved into its descendant', function () {
+    $this->actingAs(folderManager());
+    $a = MediaFolder::factory()->create();
+    $b = MediaFolder::factory()->create(['parent_id' => $a->id]);
+
+    Livewire::test('pages::admin.media.index')
+        ->call('moveFolder', $a->id, $b->id)
+        ->assertDispatched('toast-show');
+
+    expect($a->refresh()->parent_id)->toBeNull();
+});
+
+it('ignores a missing folder or target when moving a folder', function () {
+    $this->actingAs(folderManager());
+    $a = MediaFolder::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('moveFolder', $a->id, 9999)
+        ->call('moveFolder', 9999, null)
+        ->assertHasNoErrors();
+
+    expect($a->refresh()->parent_id)->toBeNull();
+});
+
+it('moves a folder from the dialog without offering the folder or its descendants', function () {
+    $this->actingAs(folderManager());
+    $a = MediaFolder::factory()->create(['name' => 'Alpha']);
+    $child = MediaFolder::factory()->create(['parent_id' => $a->id, 'name' => 'Child']);
+    $other = MediaFolder::factory()->create(['name' => 'Omega']);
+
+    $component = Livewire::test('pages::admin.media.index')
+        ->call('openMoveFolder', $a->id)
+        ->assertSet('showMoveFolderModal', true);
+
+    expect($component->get('moveFolderTargets'))->toHaveKey($other->id)
+        ->not->toHaveKey($a->id)
+        ->not->toHaveKey($child->id);
+
+    $component->set('moveFolderTarget', (string) $other->id)
+        ->call('moveFolderConfirmed')
+        ->assertSet('showMoveFolderModal', false)
+        ->assertSet('movingFolderId', null);
+
+    expect($a->refresh()->parent_id)->toBe($other->id);
+});
+
+it('forgets the folder being moved when the dialog is cancelled', function () {
+    $this->actingAs(folderManager());
+    $a = MediaFolder::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('openMoveFolder', $a->id)
+        ->call('cancelPending')
+        ->assertSet('movingFolderId', null)
+        ->assertSet('showMoveFolderModal', false);
+});
+
+it('does not open the move dialog without media.edit', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
+    $a = MediaFolder::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('openMoveFolder', $a->id)
+        ->assertSet('showMoveFolderModal', false);
+});

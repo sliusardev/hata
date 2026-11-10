@@ -67,6 +67,26 @@
     </form>
 </flux:modal>
 
+<flux:modal wire:model.self="showMoveFolderModal" wire:close="cancelPending" class="max-w-md md:min-w-md">
+    <form wire:submit="moveFolderConfirmed" class="space-y-6">
+        <flux:heading size="lg">{{ __('media.folders.move_heading') }}</flux:heading>
+
+        <flux:select wire:model="moveFolderTarget" :label="__('media.folders.move_target')" data-test="media-folder-move-target">
+            <flux:select.option value="">{{ __('media.folders.top_level') }}</flux:select.option>
+            @foreach ($this->moveFolderTargets as $id => $label)
+                <flux:select.option :value="$id" wire:key="move-folder-{{ $id }}">{{ $label }}</flux:select.option>
+            @endforeach
+        </flux:select>
+
+        <div class="flex justify-end gap-3">
+            <flux:modal.close>
+                <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
+            </flux:modal.close>
+            <flux:button type="submit" variant="primary">{{ __('media.folders.move_confirm') }}</flux:button>
+        </div>
+    </form>
+</flux:modal>
+
 @php
     $deletingFolder = $this->deletingFolder;
     $summary = $this->folderDeletionSummary;

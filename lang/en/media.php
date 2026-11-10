@@ -111,6 +111,11 @@ return [
         'create' => 'Create',
         'rename' => 'Rename',
         'rename_heading' => 'Rename folder',
+        'move' => 'Move to…',
+        'move_heading' => 'Move folder',
+        'move_target' => 'Move to',
+        'top_level' => 'Top level',
+        'move_confirm' => 'Move',
         'actions' => 'Folder actions',
         'move_hint' => 'Drag files onto a folder to move them. A file is in one folder.',
         'delete' => [
@@ -223,6 +228,7 @@ return [
         'moved' => ':count file moved.|:count files moved.',
         'folder_created' => 'Folder created.',
         'folder_renamed' => 'Folder renamed.',
+        'folder_moved' => 'Folder moved.',
         'folder_deleted' => 'Folder deleted.',
     ],
 
@@ -235,6 +241,7 @@ return [
         'folder_name' => 'Folder name must be 1–100 characters.',
         'limit_above_server' => 'The limit cannot be higher than the server allows (:size).',
         'folder_exists' => 'A folder with this name already exists here.',
+        'folder_into_itself' => 'A folder can’t be moved into itself or one of its subfolders.',
         'not_editable' => 'This file can’t be cropped, rotated or flipped.',
         'too_large_to_edit' => 'This image is too large to edit on this server.',
         'no_original' => 'There is no original to restore.',
