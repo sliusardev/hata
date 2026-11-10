@@ -1,6 +1,6 @@
 # Media library
 
-> **Status: design, not built yet** (2026-11-10). Approved mockup: https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4 (8 screens). When the code lands, this spec describes what was built and loses this banner.
+> **Status: Part 1 built** (2026-11-10): library grid/list, search and filters, folders, uploads with browser resize and server optimization, details, bulk actions and ZIP download, served by route with ULID keys. Crop, optimize existing, picker, S3: not yet. Approved mockup: https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4 (8 screens). Sections marked "Built" describe the code; the rest is still design.
 
 A WordPress-like library of images and documents for pages, posts and themes. On top of WordPress: folders, crop, per-language alt text, "where is it used", automatic optimization on upload, and re-optimizing files already uploaded. It must work on shared hosting: no queue worker, no SSH, often no `storage:link`, PHP `memory_limit` 128 MB, GD only (Imagick may be missing).
 
