@@ -4,14 +4,29 @@
     $selected (ids picked for bulk actions), $selecting (a click picks the tile instead of opening it),
     $gridStep (files added by "Show more"), $canShowMore (false once the grid reached its cap; then a hint points to the list),
     $canMove (tiles can be dragged onto a folder in the tree).
+    Drawing a box on empty space selects the tiles it touches (resources/js/media-marquee.js).
 --}}
-<div class="space-y-6">
+<div
+    class="relative space-y-6 select-none"
+    x-data="mediaMarquee"
+    x-on:pointerdown="begin($event)"
+    data-test="media-grid"
+>
+    <div
+        x-show="box"
+        x-cloak
+        x-bind:style="boxStyle()"
+        class="pointer-events-none fixed z-30 rounded-sm border border-accent bg-accent/10"
+        aria-hidden="true"
+    ></div>
+
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         @foreach ($media as $item)
             @php $isPicked = in_array($item->id, $selected, true); @endphp
             <button
                 type="button"
                 wire:key="media-tile-{{ $item->id }}"
+                data-media-id="{{ $item->id }}"
                 x-on:mousedown="if ($event.shiftKey) $event.preventDefault()"
                 x-on:click="
                     if ($event.shiftKey) { $wire.pick({{ $item->id }}, 'range') }
@@ -36,6 +51,7 @@
                     'relative aspect-square overflow-hidden rounded-lg bg-zinc-100 ring-1 ring-black/5 ring-inset transition dark:bg-white/5 dark:ring-white/10',
                     'group-hover:ring-zinc-300 group-focus-visible:ring-2 group-focus-visible:ring-accent dark:group-hover:ring-white/20',
                     'ring-2! ring-accent!' => $isPicked || (! $selecting && $selectedId === $item->id),
+                    'group-data-[boxed=true]:ring-2! group-data-[boxed=true]:ring-accent!',
                 ])>
                     @if ($thumbUrl = $item->thumbUrl())
                         <img src="{{ $thumbUrl }}" alt="{{ $item->altFor(app()->getLocale()) }}" loading="lazy" draggable="false" class="size-full object-cover" />

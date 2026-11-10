@@ -218,3 +218,20 @@ it('anchors the shift range at a checkbox ticked in the list', function () {
         ->call('pick', $c->id, 'range')
         ->assertSet('selected', [$a->id, $b->id, $c->id]);
 });
+
+it('selects the files touched by the mouse box, replacing or adding with a modifier', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    [$a, $b, $c, $d] = Media::factory()->count(4)->create()->all();
+
+    Livewire::test('pages::admin.media.index')
+        ->assertSeeHtml('x-data="mediaMarquee"')
+        ->assertSeeHtml('data-media-id="'.$a->id.'"')
+        ->set('selected', [$d->id])
+        ->call('selectBox', [$a->id, (string) $b->id, 'junk', 999999])
+        ->assertSet('selected', [$a->id, $b->id])
+        ->call('selectBox', [$c->id], true)
+        ->assertSet('selected', [$a->id, $b->id, $c->id])
+        ->assertSet('selectionAnchor', $c->id)
+        ->call('selectBox', [], false)
+        ->assertSet('selected', []);
+});

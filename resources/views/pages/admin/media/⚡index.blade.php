@@ -321,6 +321,23 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
+     * The mouse box in the grid: selects the files it touched, added to the selection with
+     * Shift or Ctrl/Cmd held, otherwise in place of it.
+     *
+     * @param  array<int|string>  $ids
+     */
+    public function selectBox(array $ids, bool $add = false): void
+    {
+        $ids = MediaIds::normalize($ids);
+
+        $this->selected = MediaIds::existing($add ? [...$this->selected, ...$ids] : $ids);
+
+        if ($ids !== []) {
+            $this->selectionAnchor = end($ids);
+        }
+    }
+
+    /**
      * A list checkbox ticked or unticked by hand becomes the anchor for the next Shift + click.
      *
      * @param  mixed  $value  the whole new selection (a nested "selected.N" update is ignored)
