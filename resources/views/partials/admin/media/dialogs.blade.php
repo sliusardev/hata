@@ -73,7 +73,7 @@
         $moveTargets = $this->moveFolderTargets;
         $currentParentId = $movingFolder?->parent_id;
         $currentParentName = collect($moveTargets)->firstWhere('id', $currentParentId)['name'] ?? null;
-        $pickerRowClasses = 'flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-start text-sm text-zinc-700 hover:bg-zinc-800/5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:checked]:bg-accent/10 has-[:checked]:font-medium has-[:checked]:text-zinc-900 has-[:checked]:ring-1 has-[:checked]:ring-accent has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:disabled]:hover:bg-transparent dark:text-zinc-300 dark:hover:bg-white/10 dark:has-[:checked]:text-white';
+        $pickerRowClasses = 'flex h-9 w-full cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 text-start text-sm text-zinc-700 hover:bg-zinc-800/5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:checked]:bg-accent/10 has-[:checked]:font-medium has-[:checked]:text-zinc-900 has-[:checked]:ring-1 has-[:checked]:ring-accent has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:disabled]:hover:bg-transparent dark:text-zinc-300 dark:hover:bg-white/10 dark:has-[:checked]:text-white';
     @endphp
 
     <form
@@ -118,7 +118,7 @@
         </div>
 
         @if (count($moveTargets) > 8)
-            <flux:input icon="magnifying-glass" clearable x-model="query" :placeholder="__('media.folders.move_search')" :aria-label="__('media.folders.move_search')" data-test="media-folder-move-search" />
+            <flux:input icon="magnifying-glass" clearable x-model="query" x-on:keydown.enter.prevent :placeholder="__('media.folders.move_search')" :aria-label="__('media.folders.move_search')" data-test="media-folder-move-search" />
         @endif
 
         <div
@@ -128,7 +128,7 @@
             data-test="media-folder-move-list"
         >
             <label x-show="topShown" class="{{ $pickerRowClasses }}" x-on:dblclick="@if ($currentParentId !== null) choose('top') @endif" data-test="media-folder-move-top">
-                <input type="radio" class="sr-only" wire:model="moveFolderTarget" value="top" @disabled($currentParentId === null) />
+                <input type="radio" name="move-folder-target" class="sr-only" wire:model="moveFolderTarget" value="top" @disabled($currentParentId === null) />
                 <flux:icon name="home" variant="outline" class="size-4 shrink-0 text-zinc-400" />
                 <span class="flex-1 truncate">{{ __('media.folders.top_level') }}</span>
                 @if ($currentParentId === null)
@@ -149,7 +149,7 @@
                     @unless ($isCurrentParent) x-on:dblclick="choose('{{ $target['id'] }}')" @endunless
                     data-test="media-folder-move-{{ $target['id'] }}"
                 >
-                    <input type="radio" class="sr-only" wire:model="moveFolderTarget" value="{{ $target['id'] }}" @disabled($isCurrentParent) />
+                    <input type="radio" name="move-folder-target" class="sr-only" wire:model="moveFolderTarget" value="{{ $target['id'] }}" @disabled($isCurrentParent) />
                     <flux:icon name="folder" variant="outline" class="size-4 shrink-0 text-zinc-400" />
                     <span class="flex-1 truncate" title="{{ $target['name'] }}">{{ $target['name'] }}</span>
                     @if ($isCurrentParent)
