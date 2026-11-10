@@ -82,6 +82,35 @@ it('saves alt text per language and the title', function () {
         ->and($media->folder_id)->toBe($folder->id);
 });
 
+it('shows the primary alt text and folds the other languages into translations', function () {
+    config([
+        'app.locale' => 'uk',
+        'app.available_locales' => ['en' => 'English', 'uk' => 'Українська', 'pl' => 'Polski', 'de' => 'Deutsch'],
+    ]);
+    $this->actingAs(mediaEditor());
+    $media = Media::factory()->create(['alt' => ['uk' => 'Каша в мисці', 'pl' => 'Kaszka w misce']]);
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->assertSet('details.alt.uk', 'Каша в мисці')
+        ->assertSet('details.alt.de', '')
+        ->assertSeeHtml('id="alt-uk"')
+        ->assertSeeHtml('data-test="alt-translations"')
+        ->assertSee(__('media.details.translations_filled', ['filled' => 1, 'total' => 3]))
+        ->assertSeeHtml('placeholder="Каша в мисці"');
+});
+
+it('shows no translations block with a single language', function () {
+    config(['app.locale' => 'en', 'app.available_locales' => ['en' => 'English']]);
+    $this->actingAs(mediaEditor());
+    $media = Media::factory()->create(['alt' => ['en' => 'Bowl']]);
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->assertSeeHtml('id="alt-en"')
+        ->assertDontSeeHtml('data-test="alt-translations"');
+});
+
 it('shows a field error for an invalid title', function () {
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create();

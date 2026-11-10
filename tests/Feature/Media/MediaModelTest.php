@@ -39,7 +39,22 @@ it('indexes name, title and every alt for search', function () {
     expect(Media::search('дніпро')->pluck('id')->all())->toBe([$media->id])
         ->and(Media::search('autumn dnipro')->count())->toBe(1)
         ->and($media->altFor('uk'))->toBe('Осінній Дніпро')
-        ->and($media->altFor('fr'))->toBe('');
+        ->and($media->altFor('fr', fallback: false))->toBe('');
+});
+
+it('falls back to the primary language for an empty alt translation', function () {
+    config(['app.locale' => 'uk', 'app.available_locales' => ['en' => 'English', 'uk' => 'Українська', 'pl' => 'Polski']]);
+    $media = Media::factory()->make(['alt' => ['uk' => 'Каша', 'en' => '']]);
+
+    expect(Media::primaryAltLocale())->toBe('uk')
+        ->and($media->altFor('pl'))->toBe('Каша')
+        ->and($media->altFor('en'))->toBe('Каша')
+        ->and($media->altFor('en', fallback: false))->toBe('')
+        ->and($media->altFor('uk'))->toBe('Каша');
+
+    config(['app.locale' => 'fr']);
+
+    expect(Media::primaryAltLocale())->toBe('en');
 });
 
 it('lists folder descendants at any depth', function () {

@@ -160,9 +160,31 @@ class Media extends Model
         return $original !== '' && $normalize($original) !== $normalize($this->extension()) ? $original : null;
     }
 
-    public function altFor(string $locale): string
+    /**
+     * The language whose alt text is always shown and used when a translation is empty:
+     * the site's default language, or the first available one.
+     */
+    public static function primaryAltLocale(): string
     {
-        return (string) ($this->alt[$locale] ?? '');
+        $locales = (array) config('app.available_locales');
+        $default = (string) config('app.locale');
+
+        return array_key_exists($default, $locales) ? $default : (string) array_key_first($locales);
+    }
+
+    /**
+     * Alt text in the given language. An empty translation falls back to the primary language
+     * unless $fallback is false (the edit form needs the stored value).
+     */
+    public function altFor(string $locale, bool $fallback = true): string
+    {
+        $text = (string) ($this->alt[$locale] ?? '');
+
+        if ($text !== '' || ! $fallback) {
+            return $text;
+        }
+
+        return (string) ($this->alt[self::primaryAltLocale()] ?? '');
     }
 
     /**

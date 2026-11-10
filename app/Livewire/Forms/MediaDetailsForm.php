@@ -30,7 +30,7 @@ class MediaDetailsForm extends Form
         $this->alt = [];
 
         foreach (array_keys((array) config('app.available_locales')) as $locale) {
-            $this->alt[(string) $locale] = $media->altFor((string) $locale);
+            $this->alt[(string) $locale] = $media->altFor((string) $locale, fallback: false);
         }
 
         $this->folder_id = $media->folder_id === null ? '' : (string) $media->folder_id;

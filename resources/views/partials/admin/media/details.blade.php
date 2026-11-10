@@ -5,7 +5,15 @@
 @php
     $canEdit = auth()->user()->can('update', $media);
     $locales = (array) config('app.available_locales');
-    $currentLocale = array_key_exists(app()->getLocale(), $locales) ? app()->getLocale() : array_key_first($locales);
+    $primaryLocale = \App\Models\Media::primaryAltLocale();
+    $translationLocales = array_diff_key($locales, [$primaryLocale => true]);
+    $primaryAlt = $media->altFor($primaryLocale, fallback: false);
+    $translationsFilled = count(array_filter(
+        array_keys($translationLocales),
+        fn (string $locale): bool => trim($media->altFor($locale, fallback: false)) !== '',
+    ));
+    $translationErrors = collect(array_keys($translationLocales))
+        ->contains(fn (string $locale): bool => $errors->has('details.alt.'.$locale));
     $uploaded = $media->created_at?->tz(config('admin.timezone'))->isoFormat('LL');
     $convertedFrom = $media->convertedFrom();
     $folderPaths = [];
@@ -77,40 +85,62 @@
                 @endforeach
             </flux:select>
 
-            <div x-data="{ locale: @js($currentLocale) }" class="space-y-2">
-                <div class="flex items-center justify-between gap-2">
-                    <flux:label>{{ __('media.details.alt') }}</flux:label>
-                    @if (count($locales) > 1)
-                        <div role="tablist" aria-label="{{ __('media.details.alt_language') }}" class="flex rounded-md bg-zinc-100 p-0.5 dark:bg-white/10">
-                            @foreach ($locales as $locale => $language)
-                                <button
-                                    type="button"
-                                    role="tab"
-                                    wire:key="alt-tab-{{ $locale }}"
-                                    title="{{ $language }}"
-                                    x-on:click="locale = @js($locale)"
-                                    x-bind:aria-selected="locale === @js($locale) ? 'true' : 'false'"
-                                    x-bind:class="locale === @js($locale) ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'"
-                                    class="h-6 rounded px-2.5 text-xs font-medium"
-                                >{{ $locale === 'uk' ? 'UA' : Str::upper($locale) }}</button>
+            <div class="space-y-2">
+                <flux:label for="alt-{{ $primaryLocale }}">
+                    {{ __('media.details.alt') }}@if (count($locales) > 1) ({{ $locales[$primaryLocale] }})@endif
+                </flux:label>
+                <flux:textarea
+                    id="alt-{{ $primaryLocale }}"
+                    wire:model="details.alt.{{ $primaryLocale }}"
+                    rows="2"
+                    :disabled="! $canEdit"
+                />
+                <flux:error name="details.alt.{{ $primaryLocale }}" />
+                <flux:text size="sm">{{ __('media.details.alt_hint') }}</flux:text>
+
+                @if ($translationLocales !== [])
+                    <div
+                        x-data="{
+                            open: @js($translationErrors),
+                            locales: @js(array_keys($translationLocales)),
+                            get filled() { return this.locales.filter((locale) => String($wire.details.alt?.[locale] ?? '').trim() !== '').length },
+                        }"
+                        data-test="alt-translations"
+                    >
+                        <button
+                            type="button"
+                            x-on:click="open = ! open"
+                            x-bind:aria-expanded="open ? 'true' : 'false'"
+                            aria-controls="alt-translations"
+                            class="flex w-full items-center gap-1.5 rounded-md py-1 text-start text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
+                        >
+                            <flux:icon.chevron-right variant="micro" class="transition-transform" x-bind:class="open && 'rotate-90'" />
+                            <span>{{ __('media.details.translations') }}</span>
+                            <span class="text-zinc-400 dark:text-zinc-500">·</span>
+                            <span
+                                class="text-zinc-500 dark:text-zinc-400"
+                                x-text="@js(__('media.details.translations_filled', ['filled' => '__FILLED__', 'total' => count($translationLocales)])).replace('__FILLED__', filled)"
+                            >{{ __('media.details.translations_filled', ['filled' => $translationsFilled, 'total' => count($translationLocales)]) }}</span>
+                        </button>
+
+                        <div id="alt-translations" x-show="open" x-cloak class="mt-2 space-y-3 border-s border-zinc-200 ps-3 dark:border-white/10">
+                            <flux:text size="sm">{{ __('media.details.translations_hint') }}</flux:text>
+                            @foreach ($translationLocales as $locale => $language)
+                                <div wire:key="alt-field-{{ $locale }}" class="space-y-1">
+                                    <flux:label for="alt-{{ $locale }}">{{ $language }}</flux:label>
+                                    <flux:textarea
+                                        id="alt-{{ $locale }}"
+                                        wire:model="details.alt.{{ $locale }}"
+                                        rows="2"
+                                        :placeholder="$primaryAlt"
+                                        :disabled="! $canEdit"
+                                    />
+                                    <flux:error name="details.alt.{{ $locale }}" />
+                                </div>
                             @endforeach
                         </div>
-                    @endif
-                </div>
-
-                @foreach ($locales as $locale => $language)
-                    <div x-show="locale === @js($locale)" wire:key="alt-field-{{ $locale }}">
-                        <flux:textarea
-                            wire:model="details.alt.{{ $locale }}"
-                            rows="2"
-                            :aria-label="__('media.details.alt').' ('.$language.')'"
-                            :disabled="! $canEdit"
-                        />
-                        <flux:error name="details.alt.{{ $locale }}" />
                     </div>
-                @endforeach
-
-                <flux:text size="sm">{{ __('media.details.alt_hint') }}</flux:text>
+                @endif
             </div>
 
             <flux:input wire:model="details.title" :label="__('media.details.title')" :disabled="! $canEdit" />
