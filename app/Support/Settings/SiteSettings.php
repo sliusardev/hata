@@ -45,7 +45,41 @@ class SiteSettings
         'color_accent' => 'admin.colors.accent',
         'color_gray' => 'admin.colors.gray',
         'color_tint_sidebar' => 'admin.colors.tint_sidebar',
+        'media_optimize' => 'media.optimize.enabled',
+        'media_max_side' => 'media.optimize.max_side',
+        'media_quality' => 'media.optimize.quality',
+        'media_format' => 'media.optimize.format',
+        'media_strip_exif' => 'media.optimize.strip_exif',
+        'media_client_resize' => 'media.optimize.client_resize',
+        'media_keep_originals' => 'media.optimize.keep_originals',
+        'media_max_image_mb' => 'media.limits.image_mb',
+        'media_max_document_mb' => 'media.limits.document_mb',
     ];
+
+    /**
+     * Settings that must reach config as a given type (the code checks with is_int()/is_bool()).
+     *
+     * @var array<string, 'int'|'bool'>
+     */
+    public const array CASTS = [
+        'registration_enabled' => 'bool',
+        'color_tint_sidebar' => 'bool',
+        'mail_port' => 'int',
+        'media_optimize' => 'bool',
+        'media_max_side' => 'int',
+        'media_quality' => 'int',
+        'media_strip_exif' => 'bool',
+        'media_client_resize' => 'bool',
+        'media_keep_originals' => 'bool',
+        'media_max_image_mb' => 'int',
+        'media_max_document_mb' => 'int',
+    ];
+
+    /**
+     * "Do not scale" is stored as 0, because a null value would remove the setting
+     * and bring back the default from config/media.php. In config it is null.
+     */
+    public const string NO_MAX_SIDE = 'media_max_side';
 
     /**
      * Settings stored encrypted with the application key.
@@ -112,8 +146,19 @@ class SiteSettings
                 $this->defaults[$path] = config($path);
             }
 
-            config([$path => $value]);
+            config([$path => $this->cast($key, $value)]);
         }
+    }
+
+    private function cast(string $key, mixed $value): mixed
+    {
+        $value = match (self::CASTS[$key] ?? null) {
+            'int' => is_numeric($value) ? (int) $value : $value,
+            'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN),
+            default => $value,
+        };
+
+        return $key === self::NO_MAX_SIDE && $value === 0 ? null : $value;
     }
 
     /**

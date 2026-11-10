@@ -29,11 +29,13 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 | `mail_host`, `mail_port`, `mail_scheme`, `mail_username`, `mail_password` | `mail.mailers.smtp.*` | Email |
 | `mail_from_address`, `mail_from_name` | `mail.from.*` | Email |
 | `color_scheme`, `color_accent`, `color_gray`, `color_tint_sidebar` | `admin.colors.*` | Colors |
+| `media_optimize`, `media_max_side`, `media_quality`, `media_format`, `media_strip_exif`, `media_client_resize`, `media_keep_originals` | `media.optimize.*` | Media |
+| `media_max_image_mb`, `media_max_document_mb` | `media.limits.image_mb`, `media.limits.document_mb` | Media |
 | `logo_light`, `logo_dark` | `admin.logo.light`, `admin.logo.dark` (paths on `admin.logo.disk`) | Logo |
 
 ## Tabs
 
-The page has five tabs, "General", "Access", "Email", "Logo" and "Colors" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail|logo|colors`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
+The page has six tabs, "General", "Access", "Email", "Logo", "Colors" and "Media" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail|logo|colors|media`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
 
 Switching tabs while the open one has unsaved changes (compared with the values loaded on mount; a typed SMTP password always counts) opens a confirmation (`<x-confirm-modal>`): "Cancel" stays on the tab, "Switch without saving" restores that tab's fields and opens the other one. Leaving the page with unsaved changes is guarded in the browser (Alpine compares `$wire.form` with `savedValues`, so it also sees edits not yet sent to the server): a `wire:navigate` link (the sidebar) is cancelled through the `livewire:navigate` event and a confirmation "Leave without saving" opens; closing or reloading the tab and plain links get the browser's own `beforeunload` dialog. The browser's Back button is not guarded (`livewire:navigate` with `history: true` arrives after the URL has already changed). A successful save marks the form clean before its redirect.
 
@@ -67,6 +69,15 @@ Switching tabs while the open one has unsaved changes (compared with the values 
 - **Rules:** light accent = the company color; light accent text = the first of it or steps 600–900 with 4.5:1 on white. Dark accent = the company color if it is already light (OKLCH L ≥ step 500), otherwise step 500; dark accent text = the first readable (4.5:1) on gray 800. Text on accent buttons = white while contrast ≥ 3:1 (WCAG for UI), otherwise step 950.
 - **Role badges** in the user list use the accent (`bg-accent/10`, `text-accent-content`); super-admin stays amber.
 - **Preview:** the Colors tab renders the form's scheme in an inline `<style>` (including the stock values, so "Neutral" previews over a saved scheme). Saved with the tab's Save button, guarded by the unsaved-changes warnings like the other tabs.
+
+## Media
+
+Details of the settings and their defaults are in [the media spec](media.md#site-settings--media-tab-screen-7).
+
+- **Types in config:** `SiteSettings::CASTS` makes int settings ints and boolean settings real bools when they are applied to config (`OptimizeImage` checks `is_int(max_side)`). "Do not scale" is stored as `0` (a `null` would delete the row and bring back the default 2560) and applied as `null`.
+- **Fields:** switches for the booleans, a native select for the longest side (1920, 2560, 3840, none), a range input for quality (50-100) with its value shown, radios for the format. The optimization options are hidden while "Optimize images" is off.
+- **Format:** only `webp` and `original` can be saved. AVIF is listed disabled in Part 1: "not supported by the server" when the driver can't encode it (`ServerCapabilities::supportsAvif()`, a 1x1 test encode remembered in `Cache::rememberForever('media.avif_supported')`), otherwise "not available yet".
+- **Limits:** 1-512 MB each. The tab shows the server cap, `min(upload_max_filesize, post_max_size)` from `ServerCapabilities::uploadCapBytes()` (bound in the container, tests replace it). A limit above the cap is a field error (`media.errors.limit_above_server`). No cap is shown when PHP sets none.
 
 ## Action (`app/Actions/Settings`)
 

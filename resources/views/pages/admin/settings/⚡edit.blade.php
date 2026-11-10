@@ -8,6 +8,7 @@ use App\Exceptions\ProtectedActionException;
 use App\Livewire\Forms\SiteSettingsForm;
 use App\Support\ColorScheme\ColorScheme;
 use App\Models\Role;
+use App\Support\Media\ServerCapabilities;
 use App\Support\Settings\SiteLogo;
 use App\Support\Settings\SiteSettings;
 use App\Support\Toast;
@@ -17,6 +18,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Number;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -269,6 +271,23 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     #[Computed]
+    public function avifSupported(): bool
+    {
+        return app(ServerCapabilities::class)->supportsAvif();
+    }
+
+    /**
+     * The server upload cap as text, null when PHP sets none.
+     */
+    #[Computed]
+    public function serverCap(): ?string
+    {
+        $bytes = app(ServerCapabilities::class)->uploadCapBytes();
+
+        return $bytes === null ? null : Number::fileSize($bytes);
+    }
+
+    #[Computed]
     public function hasStoredMailPassword(): bool
     {
         return app(SiteSettings::class)->has('mail_password');
@@ -351,7 +370,7 @@ new #[Title('site_settings.title')] class extends Component {
     </div>
 
     <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 dark:border-zinc-700" data-test="site-settings-tabs">
-        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch'] as $section => $icon)
+        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch', 'media' => 'photo'] as $section => $icon)
             <flux:navbar.item
                 :icon="$icon"
                 :current="$tab === $section"
@@ -509,6 +528,60 @@ new #[Title('site_settings.title')] class extends Component {
             </div>
 
             <flux:text class="text-xs">{{ __('site_settings.logo.requirements') }}</flux:text>
+        @elseif ($tab === 'media')
+            <flux:heading level="2">{{ __('site_settings.media.optimize_section') }}</flux:heading>
+
+            <flux:switch wire:model.live="form.media_optimize" :label="__('site_settings.media.optimize')" :description="__('site_settings.media.optimize_description')" align="left" />
+
+            @if ($form->media_optimize)
+                <flux:select wire:model="form.media_max_side" :label="__('site_settings.media.max_side')" :description="__('site_settings.media.max_side_description')" class="max-w-xs">
+                    @foreach (App\Livewire\Forms\SiteSettingsForm::MEDIA_MAX_SIDES as $side)
+                        <flux:select.option :value="$side" wire:key="max-side-{{ $side }}">{{ __("site_settings.media.max_side_{$side}") }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:field x-data>
+                    <div class="flex items-center justify-between">
+                        <flux:label>{{ __('site_settings.media.quality') }}</flux:label>
+                        <span class="text-sm font-medium tabular-nums text-zinc-800 dark:text-white" data-test="media-quality-value">{{ $form->media_quality }}</span>
+                    </div>
+                    <input type="range" min="50" max="100" step="1" wire:model.live.debounce.150ms="form.media_quality" class="w-full accent-accent" aria-label="{{ __('site_settings.media.quality') }}" />
+                    <div class="flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                        <span>{{ __('site_settings.media.quality_smaller') }}</span>
+                        <span>{{ __('site_settings.media.quality_better') }}</span>
+                    </div>
+                    <flux:error name="form.media_quality" />
+                </flux:field>
+
+                <flux:radio.group wire:model="form.media_format" :label="__('site_settings.media.format')">
+                    <flux:radio value="webp" :label="__('site_settings.media.format_webp')" :description="__('site_settings.media.format_webp_description')" />
+                    <flux:radio value="original" :label="__('site_settings.media.format_original')" />
+                    {{-- AVIF is display-only for now: OptimizeImage accepts webp and original. --}}
+                    <flux:radio
+                        value="avif"
+                        disabled
+                        :label="__('site_settings.media.format_avif')"
+                        :description="$this->avifSupported ? __('site_settings.media.format_avif_later') : __('site_settings.media.format_avif_unsupported')"
+                    />
+                </flux:radio.group>
+
+                <flux:switch wire:model="form.media_strip_exif" :label="__('site_settings.media.strip_exif')" :description="__('site_settings.media.strip_exif_description')" align="left" />
+                <flux:switch wire:model="form.media_client_resize" :label="__('site_settings.media.client_resize')" :description="__('site_settings.media.client_resize_description')" align="left" />
+                <flux:switch wire:model="form.media_keep_originals" :label="__('site_settings.media.keep_originals')" :description="__('site_settings.media.keep_originals_description')" align="left" />
+            @endif
+
+            <flux:separator />
+
+            <flux:heading level="2">{{ __('site_settings.media.limits_section') }}</flux:heading>
+
+            <div class="grid gap-6 sm:grid-cols-2">
+                <flux:input wire:model="form.media_max_image_mb" type="number" min="1" max="512" :label="__('site_settings.media.max_image_mb')" required />
+                <flux:input wire:model="form.media_max_document_mb" type="number" min="1" max="512" :label="__('site_settings.media.max_document_mb')" required />
+            </div>
+
+            @if ($this->serverCap !== null)
+                <flux:text class="text-xs" data-test="media-server-cap">{{ __('site_settings.media.server_cap', ['size' => $this->serverCap]) }}</flux:text>
+            @endif
         @else
             <div class="grid gap-6 sm:grid-cols-2">
                 <flux:input wire:model="form.mail_from_address" type="email" :label="__('site_settings.mail.from_address')" required />

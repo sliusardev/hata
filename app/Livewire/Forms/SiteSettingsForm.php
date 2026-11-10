@@ -4,7 +4,10 @@ namespace App\Livewire\Forms;
 
 use App\Enums\SystemRole;
 use App\Support\ColorScheme\ColorScheme;
+use App\Support\Media\ServerCapabilities;
 use App\Support\Settings\SiteSettings;
+use Closure;
+use Illuminate\Support\Number;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
 
@@ -59,6 +62,35 @@ class SiteSettingsForm extends Form
 
     public bool $color_tint_sidebar = true;
 
+    public bool $media_optimize = true;
+
+    /**
+     * One of MEDIA_MAX_SIDES: a size in pixels or "none".
+     */
+    public string $media_max_side = '2560';
+
+    public string $media_quality = '80';
+
+    /**
+     * "webp" or "original". AVIF is shown in the tab but not selectable yet.
+     */
+    public string $media_format = 'webp';
+
+    public bool $media_strip_exif = true;
+
+    public bool $media_client_resize = true;
+
+    public bool $media_keep_originals = true;
+
+    public string $media_max_image_mb = '30';
+
+    public string $media_max_document_mb = '20';
+
+    /**
+     * @var list<string>
+     */
+    public const array MEDIA_MAX_SIDES = ['1920', '2560', '3840', 'none'];
+
     /**
      * Fill the form with the values in effect (stored settings over .env).
      */
@@ -76,6 +108,15 @@ class SiteSettingsForm extends Form
         $this->color_accent = ColorScheme::isHexColor(config('admin.colors.accent')) ? (string) config('admin.colors.accent') : '#2563eb';
         $this->color_gray = (string) config('admin.colors.gray');
         $this->color_tint_sidebar = (bool) config('admin.colors.tint_sidebar');
+        $this->media_optimize = (bool) config('media.optimize.enabled');
+        $this->media_max_side = is_int(config('media.optimize.max_side')) ? (string) config('media.optimize.max_side') : 'none';
+        $this->media_quality = (string) config('media.optimize.quality');
+        $this->media_format = (string) config('media.optimize.format');
+        $this->media_strip_exif = (bool) config('media.optimize.strip_exif');
+        $this->media_client_resize = (bool) config('media.optimize.client_resize');
+        $this->media_keep_originals = (bool) config('media.optimize.keep_originals');
+        $this->media_max_image_mb = (string) config('media.limits.image_mb');
+        $this->media_max_document_mb = (string) config('media.limits.document_mb');
 
         if ($this->mail_mailer === 'smtp') {
             $this->mail_host = (string) config('mail.mailers.smtp.host');
@@ -97,6 +138,7 @@ class SiteSettingsForm extends Form
         // Logos are uploaded and removed right away, without the Save button.
         'logo' => [],
         'colors' => ['color_scheme', 'color_accent', 'color_gray', 'color_tint_sidebar'],
+        'media' => ['media_optimize', 'media_max_side', 'media_quality', 'media_format', 'media_strip_exif', 'media_client_resize', 'media_keep_originals', 'media_max_image_mb', 'media_max_document_mb'],
     ];
 
     /**
@@ -142,7 +184,9 @@ class SiteSettingsForm extends Form
             $value = $validated[$field] ?? null;
 
             $data[$field] = match (true) {
-                $field === 'registration_enabled', $field === 'color_tint_sidebar' => (bool) $value,
+                in_array($field, ['registration_enabled', 'color_tint_sidebar', 'media_optimize', 'media_strip_exif', 'media_client_resize', 'media_keep_originals'], true) => (bool) $value,
+                $field === 'media_max_side' => $value === 'none' ? 0 : (int) $value,
+                in_array($field, ['media_quality', 'media_max_image_mb', 'media_max_document_mb'], true) => (int) $value,
                 $field === 'color_accent' => filled($value) ? strtolower((string) $value) : null,
                 $field === 'mail_port' => filled($value) ? (int) $value : null,
                 default => filled($value) ? $value : null,
@@ -175,6 +219,29 @@ class SiteSettingsForm extends Form
             'color_accent' => ['nullable', 'required_if:color_scheme,'.ColorScheme::CUSTOM, 'regex:/^#[0-9a-fA-F]{6}$/'],
             'color_gray' => ['required', Rule::in(array_keys(ColorScheme::GRAYS))],
             'color_tint_sidebar' => ['boolean'],
+            'media_optimize' => ['boolean'],
+            'media_max_side' => ['required', Rule::in(self::MEDIA_MAX_SIDES)],
+            'media_quality' => ['required', 'integer', 'between:50,100'],
+            'media_format' => ['required', Rule::in(['webp', 'original'])],
+            'media_strip_exif' => ['boolean'],
+            'media_client_resize' => ['boolean'],
+            'media_keep_originals' => ['boolean'],
+            'media_max_image_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap()],
+            'media_max_document_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap()],
         ];
+    }
+
+    /**
+     * Refuses a limit above what PHP accepts (upload_max_filesize, post_max_size).
+     */
+    private function withinServerCap(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $cap = app(ServerCapabilities::class)->uploadCapBytes();
+
+            if ($cap !== null && (int) $value * 1024 * 1024 > $cap) {
+                $fail(__('media.errors.limit_above_server', ['size' => Number::fileSize($cap)]));
+            }
+        };
     }
 }
