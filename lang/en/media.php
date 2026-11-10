@@ -84,6 +84,8 @@ return [
         'copy_failed' => 'The browser didn\'t allow copying. The link is selected: press Ctrl+C (⌘C on a Mac) to copy it.',
         'download' => 'Download to your computer',
         'crop' => 'Crop',
+        'replace' => 'Replace file',
+        'restore' => 'Restore original',
         'open' => 'Open in a new tab',
         'unsaved' => [
             'heading' => 'Unsaved changes',
@@ -195,6 +197,23 @@ return [
             'applied' => 'Crop applied.',
             'copied' => 'Copy saved as “:name”.',
         ],
+    ],
+
+    'replace' => [
+        'heading' => 'Replace “:name”?',
+        'body' => 'The file will be replaced with “:new”. Its name, size and link version change.',
+        'confirm' => 'Replace',
+        'working' => 'Uploading the new file…',
+        'done' => 'File replaced.',
+        'failed' => 'The file couldn’t be replaced.',
+    ],
+
+    'restore' => [
+        'heading' => 'Restore the original of “:name”?',
+        'body' => 'Every crop and edit is dropped and the file is rebuilt from the original.',
+        'confirm' => 'Restore',
+        'done' => 'Original restored.',
+        'failed' => 'The original couldn’t be restored.',
     ],
 
     'messages' => [

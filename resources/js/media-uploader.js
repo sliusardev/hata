@@ -5,6 +5,8 @@
  * sent with $wire.upload('upload', ...), then stored with $wire.storeUpload(). A file
  * that fails shows its error on its tile and the queue goes on with the next one.
  *
+ * The details panel's "Replace file" reuses prepareFile() and sends the file as the "replacement" property.
+ *
  * Config (from the page): canUpload, clientResize, clientSide (px), accept (extensions), types ({ext: kind}),
  * limits ({kind: bytes}), uploadCap (PHP's upload cap in bytes, null = none), locale and texts
  * (translated strings with :placeholders).
@@ -65,6 +67,53 @@ function hasAlpha(source, width, height) {
     return false;
 }
 
+/**
+ * Shrink a photo to config.clientSide px on its long side (and convert HEIC) before upload.
+ * Any failure returns the picked file, so the server gets the original.
+ */
+export async function prepareFile(file, config) {
+    const extension = extensionOf(file.name);
+
+    if (!config.clientResize || !RESIZABLE.includes(extension) || typeof createImageBitmap !== 'function') {
+        return file;
+    }
+
+    let bitmap;
+
+    try {
+        bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        const longSide = Math.max(bitmap.width, bitmap.height);
+        const scale = longSide > config.clientSide ? config.clientSide / longSide : 1;
+
+        if (scale === 1 && !ALWAYS_CONVERT.includes(extension)) {
+            return file;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+        const keepAlpha = MAY_HAVE_ALPHA.includes(extension) && hasAlpha(canvas, canvas.width, canvas.height);
+        const type = keepAlpha ? 'image/png' : 'image/jpeg';
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, JPEG_QUALITY));
+        canvas.width = canvas.height = 0;
+
+        if (!blob) {
+            return file;
+        }
+
+        return new File([blob], `${baseName(file.name)}.${keepAlpha ? 'png' : 'jpg'}`, {
+            type,
+            lastModified: file.lastModified,
+        });
+    } catch (error) {
+        return file;
+    } finally {
+        bitmap?.close?.();
+    }
+}
+
 export default function mediaUploader(config) {
     /** The picked File objects, kept out of Alpine's reactive proxies (createImageBitmap needs the real Blob). */
     const files = new Map();
@@ -77,6 +126,7 @@ export default function mediaUploader(config) {
         dragging: false,
         dragDepth: 0,
         collapsed: false,
+        replacing: false,
 
         get doneCount() {
             return this.queue.filter((item) => item.status === 'done').length;
@@ -257,7 +307,7 @@ export default function mediaUploader(config) {
 
             try {
                 item.status = 'preparing';
-                const file = await this.shrink(picked, item.extension);
+                const file = await prepareFile(picked, config);
                 const capError = this.sizeError(file.size, this.capped(Infinity));
 
                 if (capError !== null) {
@@ -310,48 +360,59 @@ export default function mediaUploader(config) {
         },
 
         /**
-         * Shrink a photo to clientSide px on its long side (and convert HEIC) before upload.
-         * Any failure returns the picked file, so the server gets the original.
+         * "Replace file" in the details panel: shrink the picked file like an upload, send it as the
+         * "replacement" property, then ask the server to open the confirmation dialog.
          */
-        async shrink(file, extension) {
-            if (!config.clientResize || !RESIZABLE.includes(extension) || typeof createImageBitmap !== 'function') {
-                return file;
+        async replaceFile(input) {
+            const picked = input.files?.[0];
+            input.value = '';
+
+            if (!picked || this.replacing) {
+                return;
             }
 
-            let bitmap;
+            this.replacing = true;
 
             try {
-                bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-                const longSide = Math.max(bitmap.width, bitmap.height);
-                const scale = longSide > config.clientSide ? config.clientSide / longSide : 1;
+                const error = this.precheck(picked, extensionOf(picked.name));
 
-                if (scale === 1 && !ALWAYS_CONVERT.includes(extension)) {
-                    return file;
+                if (error !== null) {
+                    this.toastError(error);
+
+                    return;
                 }
 
-                const canvas = document.createElement('canvas');
-                canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-                canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-                canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+                const file = await prepareFile(picked, config);
+                const capError = this.sizeError(file.size, this.capped(Infinity));
 
-                const keepAlpha = MAY_HAVE_ALPHA.includes(extension) && hasAlpha(canvas, canvas.width, canvas.height);
-                const type = keepAlpha ? 'image/png' : 'image/jpeg';
-                const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, JPEG_QUALITY));
-                canvas.width = canvas.height = 0;
+                if (capError !== null) {
+                    this.toastError(capError);
 
-                if (!blob) {
-                    return file;
+                    return;
                 }
 
-                return new File([blob], `${baseName(file.name)}.${keepAlpha ? 'png' : 'jpg'}`, {
-                    type,
-                    lastModified: file.lastModified,
+                const sent = await new Promise((resolve) => {
+                    this.$wire.upload('replacement', file, () => resolve(true), () => resolve(false), () => {}, () => resolve(false));
                 });
+
+                if (!sent) {
+                    this.toastError(config.texts.failed);
+
+                    return;
+                }
+
+                this.$wire.replacementPickedSize = picked.size;
+                this.$wire.replacementPickedExtension = extensionOf(picked.name);
+                await this.$wire.confirmReplace();
             } catch (error) {
-                return file;
+                this.toastError(config.texts.failed);
             } finally {
-                bitmap?.close?.();
+                this.replacing = false;
             }
+        },
+
+        toastError(text) {
+            this.$flux.toast({ text, variant: 'danger' });
         },
 
         statusText(item) {

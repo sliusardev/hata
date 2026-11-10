@@ -201,6 +201,29 @@
                     {{ __('media.details.crop') }}
                 </flux:button>
             @endif
+            @if ($canEdit)
+                <flux:button
+                    size="sm"
+                    icon="arrow-path"
+                    x-on:click="$refs.replaceInput.click()"
+                    x-bind:disabled="replacing"
+                    data-test="media-details-replace"
+                >
+                    <span x-text="replacing ? @js(__('media.replace.working')) : @js(__('media.details.replace'))">{{ __('media.details.replace') }}</span>
+                </flux:button>
+                <input
+                    type="file"
+                    x-ref="replaceInput"
+                    accept="{{ collect(App\Support\Media\MediaTypes::ALLOWED)->filter(fn (array $type): bool => $type['kind'] === $media->kind)->keys()->map(fn (string $extension): string => '.'.$extension)->implode(',') }}"
+                    class="hidden"
+                    x-on:change="replaceFile($event.target)"
+                />
+                @if ($media->original_path)
+                    <flux:button size="sm" icon="arrow-uturn-left" wire:click="confirmRestore" data-test="media-details-restore">
+                        {{ __('media.details.restore') }}
+                    </flux:button>
+                @endif
+            @endif
             <flux:spacer />
             @can('delete', $media)
                 <flux:button size="sm" variant="ghost" icon="trash" class="text-red-600! dark:text-red-400!" wire:click="confirmDelete({{ $media->id }})" data-test="media-details-delete">

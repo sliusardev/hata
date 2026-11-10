@@ -5,6 +5,8 @@ use App\Actions\Media\DeleteFolder;
 use App\Actions\Media\DeleteMedia;
 use App\Actions\Media\MoveMedia;
 use App\Actions\Media\RenameFolder;
+use App\Actions\Media\ReplaceMediaFile;
+use App\Actions\Media\RestoreOriginal;
 use App\Actions\Media\UpdateMedia;
 use App\Actions\Media\UploadMedia;
 use App\Actions\Media\ZipMedia;
@@ -188,6 +190,31 @@ new #[Title('media.index.title')] class extends Component {
      */
     public ?int $uploadFolderId = null;
 
+    /**
+     * The file the details panel's "Replace" just sent with $wire.upload(); replaceConfirmed() puts it in place of the open file.
+     */
+    public ?TemporaryUploadedFile $replacement = null;
+
+    public ?int $replacementPickedSize = null;
+
+    public ?string $replacementPickedExtension = null;
+
+    /**
+     * The file the open replace confirmation is about.
+     */
+    #[Locked]
+    public ?int $replacingId = null;
+
+    public bool $showReplaceModal = false;
+
+    /**
+     * The file the open restore confirmation is about.
+     */
+    #[Locked]
+    public ?int $restoringId = null;
+
+    public bool $showRestoreModal = false;
+
     public function mount(): void
     {
         $this->authorize('viewAny', Media::class);
@@ -224,15 +251,23 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Only the "upload" property takes temporary uploads, one file at a time, and only with media.upload.
+     * Only the "upload" property (with media.upload) and the "replacement" property (with media.edit on the open file)
+     * take temporary uploads, one file at a time.
      *
      * @param  array<int, mixed>  $fileInfo
      */
     public function _startUpload(string $name, array $fileInfo, bool $isMultiple): void
     {
-        $this->authorize('create', Media::class);
+        abort_unless(in_array($name, ['upload', 'replacement'], true) && ! $isMultiple, 403);
 
-        abort_unless($name === 'upload' && ! $isMultiple, 403);
+        if ($name === 'replacement') {
+            $media = $this->selectedMedia;
+
+            abort_if($media === null, 403);
+            $this->authorize('update', $media);
+        } else {
+            $this->authorize('create', Media::class);
+        }
 
         $this->startTemporaryUpload($name, $fileInfo, $isMultiple);
     }
@@ -292,6 +327,119 @@ new #[Title('media.index.title')] class extends Component {
                     'after' => $media->humanSize(),
                 ]),
         ];
+    }
+
+    /**
+     * Ask before replacing the open file with the one just uploaded; replaceConfirmed() then does it.
+     */
+    public function confirmReplace(): void
+    {
+        $media = $this->selectedMedia;
+
+        if ($media === null || ! $this->replacement instanceof TemporaryUploadedFile) {
+            return;
+        }
+
+        if (! $this->authorizedOrToast('update', $media)) {
+            $this->forgetReplacement();
+
+            return;
+        }
+
+        $this->replacingId = $media->id;
+        $this->showReplaceModal = true;
+    }
+
+    /**
+     * Replace the file of the open confirmation. Errors come back as a danger toast and in the result.
+     *
+     * @return array{ok: bool, error?: string}
+     */
+    public function replaceConfirmed(ReplaceMediaFile $replaceMediaFile): array
+    {
+        $file = $this->replacement;
+        $media = $this->replacingId === null ? null : Media::query()->find($this->replacingId);
+        $pickedSize = $this->replacementPickedSize !== null && $this->replacementPickedSize > 0 ? $this->replacementPickedSize : null;
+        $pickedExtension = $this->replacementPickedExtension;
+
+        $this->showReplaceModal = false;
+        $this->reset('replacement', 'replacementPickedSize', 'replacementPickedExtension', 'replacingId');
+
+        if (! $file instanceof TemporaryUploadedFile || $media === null) {
+            $file?->delete();
+
+            return ['ok' => false];
+        }
+
+        try {
+            $replaceMediaFile->handle($this->actor(), $media, $file, $pickedSize, $pickedExtension);
+        } catch (MediaUploadException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
+
+            return ['ok' => false, 'error' => $exception->getMessage()];
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return ['ok' => false, 'error' => __('media.errors.forbidden')];
+        } catch (Throwable $exception) {
+            report($exception);
+            Flux::toast(variant: 'danger', text: __('media.replace.failed'));
+
+            return ['ok' => false, 'error' => __('media.replace.failed')];
+        } finally {
+            $file->delete();
+        }
+
+        $this->refreshAfterFileChange();
+        Flux::toast(variant: 'success', text: __('media.replace.done'));
+
+        return ['ok' => true];
+    }
+
+    /**
+     * Ask before restoring the open file's original; restoreConfirmed() then does it.
+     */
+    public function confirmRestore(): void
+    {
+        $media = $this->selectedMedia;
+
+        if ($media === null || ! $this->authorizedOrToast('update', $media)) {
+            return;
+        }
+
+        if ($media->original_path === null || $media->original_path === '') {
+            return;
+        }
+
+        $this->restoringId = $media->id;
+        $this->showRestoreModal = true;
+    }
+
+    public function restoreConfirmed(RestoreOriginal $restoreOriginal): void
+    {
+        $media = $this->restoringId === null ? null : Media::query()->find($this->restoringId);
+
+        $this->showRestoreModal = false;
+        $this->restoringId = null;
+
+        if ($media === null) {
+            return;
+        }
+
+        try {
+            $restoreOriginal->handle($this->actor(), $media);
+        } catch (ValidationException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->errors()['original'][0] ?? __('media.restore.failed'));
+
+            return;
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return;
+        }
+
+        $this->refreshAfterFileChange();
+        Flux::toast(variant: 'success', text: __('media.restore.done'));
     }
 
     /**
@@ -613,6 +761,10 @@ new #[Title('media.index.title')] class extends Component {
         $this->deletingFolderId = null;
         $this->confirmName = '';
         $this->resetErrorBag('confirmName');
+        $this->showReplaceModal = false;
+        $this->forgetReplacement();
+        $this->showRestoreModal = false;
+        $this->restoringId = null;
     }
 
     /**
@@ -1042,6 +1194,28 @@ new #[Title('media.index.title')] class extends Component {
         $this->renamingFolderId = null;
         unset($this->folders, $this->currentFolder, $this->breadcrumb);
         Flux::toast(variant: 'success', text: $success);
+    }
+
+    /**
+     * Drop the pending replacement and delete its temporary upload.
+     */
+    private function forgetReplacement(): void
+    {
+        $file = $this->replacement;
+        $this->reset('replacement', 'replacementPickedSize', 'replacementPickedExtension', 'replacingId');
+
+        if ($file instanceof TemporaryUploadedFile) {
+            $file->delete();
+        }
+    }
+
+    /**
+     * The open file changed on disk (name, size, version): reload what the panel and the lists show.
+     * Unsaved edits of alt text and the like are kept.
+     */
+    private function refreshAfterFileChange(): void
+    {
+        unset($this->selectedMedia, $this->media, $this->totals);
     }
 
     private function hasUnsavedDetails(): bool

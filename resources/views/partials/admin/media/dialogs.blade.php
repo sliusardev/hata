@@ -107,3 +107,34 @@
         </x-slot:extra>
     @endif
 </x-confirm-modal>
+
+@php
+    $replaceTarget = $this->replacingId === null ? null : App\Models\Media::query()->withCount('usages')->find($this->replacingId);
+    $restoreTarget = $this->restoringId === null ? null : App\Models\Media::query()->withCount('usages')->find($this->restoringId);
+@endphp
+
+<x-confirm-modal
+    wire:model.self="showReplaceModal"
+    wire:close="cancelPending"
+    :heading="__('media.replace.heading', ['name' => $replaceTarget?->name])"
+    :confirm-label="__('media.replace.confirm')"
+    confirm-action="replaceConfirmed"
+>
+    {{ __('media.replace.body', ['new' => $this->replacement?->getClientOriginalName()]) }}
+    @if ($replaceTarget)
+        {{ trans_choice('media.crop.confirm.body', $replaceTarget->usages_count) }}
+    @endif
+</x-confirm-modal>
+
+<x-confirm-modal
+    wire:model.self="showRestoreModal"
+    wire:close="cancelPending"
+    :heading="__('media.restore.heading', ['name' => $restoreTarget?->name])"
+    :confirm-label="__('media.restore.confirm')"
+    confirm-action="restoreConfirmed"
+>
+    {{ __('media.restore.body') }}
+    @if ($restoreTarget)
+        {{ trans_choice('media.crop.confirm.body', $restoreTarget->usages_count) }}
+    @endif
+</x-confirm-modal>
