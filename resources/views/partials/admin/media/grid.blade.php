@@ -10,7 +10,9 @@
     class="relative -m-4 min-h-[50vh] space-y-6 p-4 pb-24 select-none"
     x-data="mediaMarquee"
     x-on:pointerdown="begin($event)"
+    data-media-area
     data-test="media-grid"
+    x-on:click="mediaDetailsClose.emptyClick($event, $wire)"
 >
     <div
         x-show="box"

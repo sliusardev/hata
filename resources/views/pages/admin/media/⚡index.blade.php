@@ -262,6 +262,7 @@ new #[Title('media.index.title')] class extends Component {
 
         if (in_array($property, self::FILTERS, true)) {
             $this->selected = [];
+            $this->closeDetailsWhenHidden();
         }
 
         if ($property === 'selected' || str_starts_with($property, 'selected.')) {
@@ -656,6 +657,9 @@ new #[Title('media.index.title')] class extends Component {
         $this->openDetails($id);
     }
 
+    /**
+     * Close the details panel (the × button, a click on empty space, Escape), or ask first when it has unsaved changes.
+     */
     public function closeDetails(): void
     {
         if ($this->hasUnsavedDetails()) {
@@ -827,6 +831,7 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         unset($this->folders, $this->totals, $this->media);
+        $this->closeDetailsWhenHidden();
         Flux::toast(variant: 'success', text: trans_choice('media.messages.moved', $items->count()));
     }
 
@@ -1370,6 +1375,20 @@ new #[Title('media.index.title')] class extends Component {
         unset($this->selectedMedia, $this->media, $this->totals);
     }
 
+    /**
+     * Close the open file's details once the file is no longer shown (another folder, a filter that excludes it,
+     * moved out of the open folder). Goes through closeDetails(), so unsaved changes ask first; if the user cancels
+     * that dialog the panel stays open on a file that is no longer listed.
+     */
+    private function closeDetailsWhenHidden(): void
+    {
+        if ($this->selectedId === null || $this->filteredQuery()->whereKey($this->selectedId)->exists()) {
+            return;
+        }
+
+        $this->closeDetails();
+    }
+
     private function hasUnsavedDetails(): bool
     {
         return $this->selectedId !== null && $this->details->differsFrom($this->savedDetails);
@@ -1443,6 +1462,7 @@ new #[Title('media.index.title')] class extends Component {
     x-on:dragleave.window="dragLeave($event)"
     x-on:drop.window="drop($event)"
     x-on:dragend.window="resetDrag()"
+    x-on:keydown.escape.window="mediaDetailsClose.escapeKey($event, $wire)"
     x-init="
         try {
             const stored = localStorage.getItem('media.view');
@@ -1572,13 +1592,7 @@ new #[Title('media.index.title')] class extends Component {
                 <flux:text size="sm" variant="subtle">· {{ trans_choice('media.index.file_count', $this->media->total()) }}</flux:text>
 
                 @if ($this->currentFolder && $canManageFolders)
-                    <x-admin.row-actions :label="__('media.folders.actions')" data-test="media-folder-actions">
-                        <flux:menu.item icon="pencil-square" wire:click="openRenameFolder({{ $this->currentFolder->id }})">{{ __('media.folders.rename') }}</flux:menu.item>
-                        <flux:menu.item icon="folder-arrow-down" wire:click="openMoveFolder({{ $this->currentFolder->id }})">{{ __('media.folders.move') }}</flux:menu.item>
-                        @can('deleteFolders', App\Models\Media::class)
-                            <flux:menu.item icon="trash" variant="danger" wire:click="confirmFolderDelete({{ $this->currentFolder->id }})">{{ __('common.actions.delete') }}</flux:menu.item>
-                        @endcan
-                    </x-admin.row-actions>
+                    @include('partials.admin.media.folder-menu', ['folderId' => $this->currentFolder->id, 'testId' => 'media-folder-actions'])
                 @endif
             </div>
 
@@ -1604,6 +1618,7 @@ new #[Title('media.index.title')] class extends Component {
                     :description="$this->totals['all'] > 0 ? __('media.index.no_results.description') : __('media.index.empty.description')"
                 />
             @elseif ($view === 'list')
+                <div data-media-area x-on:click="mediaDetailsClose.emptyClick($event, $wire)">
                 @include('partials.admin.media.list', [
                     'media' => $this->media,
                     'selectedId' => $selectedId,
@@ -1612,6 +1627,7 @@ new #[Title('media.index.title')] class extends Component {
                     'sortDirection' => $sortDirection,
                     'canMove' => $canManageFolders,
                 ])
+                </div>
             @else
                 @include('partials.admin.media.grid', [
                     'media' => $this->media,

@@ -30,6 +30,7 @@
     aria-label="{{ __('media.details.heading') }}"
     class="w-full shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-white xl:w-80 2xl:w-96 dark:border-white/10 dark:bg-zinc-900"
     wire:key="media-details-{{ $media->id }}"
+    data-media-details
     data-test="media-details"
 >
     <div class="flex items-center justify-between border-b border-zinc-200 py-2 ps-4 pe-2 dark:border-white/10">

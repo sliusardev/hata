@@ -138,6 +138,7 @@ export default function mediaMarquee() {
                     .filter(({ rect }) => this.touches(rect))
                     .map(({ tile }) => Number(tile.dataset.mediaId));
 
+                window.mediaMarqueeEndedAt = Date.now();
                 this.$wire.selectBox(ids, this.add);
             }
 

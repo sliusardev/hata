@@ -189,7 +189,7 @@
         @endphp
         <div
             wire:key="folder-{{ $id }}"
-            @class([$rowClasses, $currentClasses => $isCurrent])
+            @class(['group/row', $rowClasses, $currentClasses => $isCurrent])
             x-cloak
             style="padding-inline-start: {{ 0.625 + min($row['depth'], 4) * 0.75 }}rem"
             x-show="shown({{ $id }})"
@@ -233,6 +233,14 @@
                 <span class="flex-1 truncate" title="{{ $row['folder']->name }}">{{ $row['folder']->name }}</span>
                 <span class="text-xs text-zinc-400 tabular-nums">{{ $row['folder']->media_count }}</span>
             </div>
+            @if ($canManageFolders)
+                @include('partials.admin.media.folder-menu', [
+                    'folderId' => $id,
+                    'testId' => 'media-folder-actions-'.$id,
+                    'stop' => true,
+                    'class' => 'opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 [&:has([aria-expanded=true])]:opacity-100',
+                ])
+            @endif
         </div>
     @endforeach
 
