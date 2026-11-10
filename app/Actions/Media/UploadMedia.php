@@ -8,7 +8,7 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
 use App\Support\Media\MediaNames;
-use App\Support\Media\MediaTypes;
+use App\Support\Media\MediaUploadChecks;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -30,18 +30,8 @@ class UploadMedia
     {
         Gate::forUser($actor)->authorize('create', Media::class);
 
-        $type = MediaTypes::detect($file);
-
-        if ($type === null) {
-            throw MediaUploadException::unsupported($file->getClientOriginalName());
-        }
-
+        $type = MediaUploadChecks::validate($file, $pickedSize);
         $uploadedSize = (int) $file->getSize();
-        $checkedSize = max($pickedSize ?? 0, $uploadedSize);
-
-        if ($checkedSize > MediaTypes::limitBytes($type['kind'])) {
-            throw MediaUploadException::tooLarge($checkedSize, MediaTypes::limitBytes($type['kind']));
-        }
 
         $contents = (string) file_get_contents($file->getRealPath());
         $extension = $type['ext'];
@@ -94,7 +84,7 @@ class UploadMedia
                 'width' => $width,
                 'height' => $height,
                 'original_size' => $pickedSize ?? $uploadedSize,
-                'uploaded_extension' => self::pickedExtension($pickedExtension) ?? $type['ext'],
+                'uploaded_extension' => MediaUploadChecks::pickedExtension($pickedExtension) ?? $type['ext'],
                 'optimized_with' => $fingerprint,
                 'optimize_failure' => $failure,
             ]);
@@ -111,16 +101,5 @@ class UploadMedia
         }
 
         return $media;
-    }
-
-    /**
-     * The client-reported extension, lowercased, when it is one the library accepts.
-     */
-    private static function pickedExtension(?string $extension): ?string
-    {
-        $extension = strtolower(trim((string) $extension));
-        $extension = $extension === 'jpeg' ? 'jpg' : $extension;
-
-        return array_key_exists($extension, MediaTypes::ALLOWED) ? $extension : null;
     }
 }

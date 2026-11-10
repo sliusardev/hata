@@ -8,6 +8,7 @@ use App\Models\Media;
 use App\Support\Media\ImageEdits;
 use App\Support\Media\MediaNames;
 use App\Support\Media\MediaTypes;
+use Closure;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -30,7 +31,8 @@ class RebuildMediaFile
      * @param  string  $mime  The canonical MIME of $contents.
      * @param  array<string, mixed>|null  $edits  Crop/rotate/flip/size (see ImageEdits), applied to images. Non-empty edits that
      *                                            can't be applied throw MediaEditException and write nothing.
-     * @param  string|null  $newName  The file name to store; by default the name changes only when the extension does.
+     * @param  string|(Closure(string): string)|null  $newName  The file name to store, or a closure that gets the extension of the result and returns it;
+     *                                                          by default the name changes only when the extension does.
      * @param  string|null  $newOriginal  Bytes to keep as the new original at media/originals/{key}.{ext}; null keeps the current one.
      * @param  bool  $keepEdits  False stores `edits` as null although they were applied (baked into a file with no original).
      * @param  bool  $dropOriginal  Clear `original_path` and delete the old original after commit. Can't be combined with $newOriginal.
@@ -45,7 +47,7 @@ class RebuildMediaFile
         string $contents,
         string $mime,
         ?array $edits,
-        ?string $newName = null,
+        string|Closure|null $newName = null,
         ?string $newOriginal = null,
         bool $keepEdits = true,
         bool $dropOriginal = false,
@@ -88,7 +90,7 @@ class RebuildMediaFile
             default => $media->original_path,
         };
 
-        $name = $newName ?? (strtolower(pathinfo($media->name, PATHINFO_EXTENSION)) === $extension
+        $name = ($newName instanceof Closure ? $newName($extension) : $newName) ?? (strtolower(pathinfo($media->name, PATHINFO_EXTENSION)) === $extension
             ? $media->name
             : MediaNames::unique($media->name, $extension, ignoreId: $media->id));
 

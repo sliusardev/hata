@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Enums\MediaKind;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Number;
 
@@ -26,6 +27,11 @@ class MediaUploadException extends AuthorizationException
     public static function heicUnsupported(): self
     {
         return new self(__('media.errors.heic_unsupported'));
+    }
+
+    public static function otherKind(MediaKind $current): self
+    {
+        return new self(__('media.errors.other_kind', ['kind' => __("media.errors.kinds.{$current->value}")]));
     }
 
     private static function megabytes(int $bytes): string

@@ -180,6 +180,12 @@ return [
         'no_original' => 'There is no original to restore.',
         'invalid_crop' => 'The crop area is outside the image.',
         'invalid_edit' => 'The edit settings are not valid.',
+        'other_kind' => 'This file is :kind, so it can only be replaced with a file of the same type.',
+        'kinds' => [
+            'image' => 'an image',
+            'document' => 'a document',
+            'other' => 'a file of another type',
+        ],
     ],
 
 ];
