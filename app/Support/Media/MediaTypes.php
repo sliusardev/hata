@@ -22,9 +22,9 @@ final class MediaTypes
         'webp' => ['mimes' => ['image/webp'], 'kind' => MediaKind::Image],
         'gif' => ['mimes' => ['image/gif'], 'kind' => MediaKind::Image],
         'svg' => ['mimes' => ['image/svg+xml', 'text/xml', 'application/xml'], 'kind' => MediaKind::Image],
-        'avif' => ['mimes' => ['image/avif'], 'kind' => MediaKind::Image],
-        'heic' => ['mimes' => ['image/heic', 'image/heif'], 'kind' => MediaKind::Image],
-        'heif' => ['mimes' => ['image/heif', 'image/heic'], 'kind' => MediaKind::Image],
+        'avif' => ['mimes' => ['image/avif', 'application/octet-stream'], 'kind' => MediaKind::Image],
+        'heic' => ['mimes' => ['image/heic', 'image/heif', 'application/octet-stream'], 'kind' => MediaKind::Image],
+        'heif' => ['mimes' => ['image/heif', 'image/heic', 'application/octet-stream'], 'kind' => MediaKind::Image],
         'pdf' => ['mimes' => ['application/pdf'], 'kind' => MediaKind::Document],
         'docx' => ['mimes' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/octet-stream'], 'kind' => MediaKind::Document],
         'xlsx' => ['mimes' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip', 'application/octet-stream'], 'kind' => MediaKind::Document],
@@ -61,7 +61,48 @@ final class MediaTypes
             return null;
         }
 
+        if (! self::contentMatches($ext, $detected, self::readHead($file))) {
+            return null;
+        }
+
         return ['ext' => $ext, 'mime' => $type['mimes'][0], 'kind' => $type['kind']];
+    }
+
+    private static function readHead(UploadedFile $file): string
+    {
+        $path = $file->getRealPath();
+        $head = $path === false ? false : file_get_contents($path, false, null, 0, 1024);
+
+        return $head === false ? '' : $head;
+    }
+
+    /**
+     * Magic-byte checks for types whose MIME may be reported generically, and for SVG.
+     */
+    private static function contentMatches(string $ext, string $detected, string $head): bool
+    {
+        $generic = in_array($detected, ['application/octet-stream', 'application/zip', 'application/vnd.ms-office'], true);
+
+        return match ($ext) {
+            'docx', 'xlsx', 'pptx', 'odt', 'ods', 'odp' => ! $generic || str_starts_with($head, "PK\x03\x04"),
+            'doc', 'xls', 'ppt' => ! $generic || str_starts_with($head, "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"),
+            'mp3' => $detected !== 'application/octet-stream'
+                || str_starts_with($head, 'ID3')
+                || (strlen($head) > 1 && ord($head[0]) === 0xFF && (ord($head[1]) & 0xE0) === 0xE0),
+            'heic', 'heif' => $detected !== 'application/octet-stream'
+                || self::hasBrand($head, ['heic', 'heix', 'hevc', 'heim', 'heis', 'mif1', 'msf1']),
+            'avif' => $detected !== 'application/octet-stream' || self::hasBrand($head, ['avif', 'avis']),
+            'svg' => preg_match('/^(?:\xEF\xBB\xBF)?\s*(?:<\?xml[^>]*\?>\s*|<!--.*?-->\s*|<!DOCTYPE[^>\[]*(?:\[.*?\])?\s*>\s*)*<svg[\s>]/is', $head) === 1,
+            default => true,
+        };
+    }
+
+    /**
+     * @param  list<string>  $brands
+     */
+    private static function hasBrand(string $head, array $brands): bool
+    {
+        return substr($head, 4, 4) === 'ftyp' && in_array(substr($head, 8, 4), $brands, true);
     }
 
     public static function limitBytes(MediaKind $kind): int

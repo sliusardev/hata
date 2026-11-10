@@ -104,7 +104,18 @@ function animatedGif(): string
  */
 function uploadedImage(string $name, string $bytes): UploadedFile
 {
+    static $registered = false;
+    static $paths = [];
+
+    if (! $registered) {
+        register_shutdown_function(function () use (&$paths): void {
+            array_map(fn (string $path) => @unlink($path), $paths);
+        });
+        $registered = true;
+    }
+
     $path = tempnam(sys_get_temp_dir(), 'upl');
+    $paths[] = $path;
     file_put_contents($path, $bytes);
 
     return new UploadedFile($path, $name, null, null, true);

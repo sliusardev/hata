@@ -35,3 +35,39 @@ it('builds test image helpers', function () {
         ->and(substr_count(animatedGif(), "\x21\xF9\x04"))->toBe(2)
         ->and(MediaTypes::detect(uploadedImage('a.gif', animatedGif()))['ext'])->toBe('gif');
 });
+
+it('rejects binary garbage named docx', function () {
+    expect(MediaTypes::detect(uploadedImage('a.docx', random_bytes(64))))->toBeNull();
+});
+
+it('accepts a zip container named docx', function () {
+    $zip = tempnam(sys_get_temp_dir(), 'zip');
+    $archive = new ZipArchive;
+    $archive->open($zip, ZipArchive::OVERWRITE);
+    $archive->addFromString('[Content_Types].xml', '<Types/>');
+    $archive->close();
+    $bytes = file_get_contents($zip);
+    unlink($zip);
+
+    expect(MediaTypes::detect(uploadedImage('a.docx', $bytes))['ext'] ?? null)->toBe('docx');
+});
+
+it('detects heic by its ftyp brand', function () {
+    $bytes = "\x00\x00\x00\x18ftypheic\x00\x00\x00\x00heicmif1".str_repeat("\0", 32);
+
+    expect(MediaTypes::detect(uploadedImage('a.heic', $bytes))['ext'] ?? null)->toBe('heic');
+    expect(MediaTypes::detect(uploadedImage('a.heic', random_bytes(64))))->toBeNull();
+});
+
+it('rejects xml without an svg root named svg', function () {
+    expect(MediaTypes::detect(uploadedImage('a.svg', '<?xml version="1.0"?><html><body/></html>')))->toBeNull();
+
+    $svg = '<?xml version="1.0"?><!-- c --><svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
+    expect(MediaTypes::detect(uploadedImage('b.svg', $svg))['ext'] ?? null)->toBe('svg');
+});
+
+it('never reports html as an html mime', function () {
+    $detected = MediaTypes::detect(uploadedImage('a.txt', '<html><body>hi</body></html>'));
+
+    expect($detected === null || $detected['mime'] === 'text/plain')->toBeTrue();
+});
