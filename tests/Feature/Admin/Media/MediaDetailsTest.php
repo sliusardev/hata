@@ -1,9 +1,11 @@
 <?php
 
+use App\Actions\Media\UploadMedia;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\MediaUsage;
 use App\Models\User;
+use App\Support\Media\MemoryGuard;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -24,6 +26,7 @@ it('opens the details of a file', function () {
     $media = Media::factory()->create([
         'name' => 'hero-kyiv-autumn.webp',
         'original_path' => 'media/originals/hero.jpg',
+        'uploaded_extension' => 'jpg',
         'uploaded_by' => $uploader->id,
         'size' => 167_936,
         'width' => 2560,
@@ -179,14 +182,65 @@ it('shows the optimization result', function () {
         ->assertSee('18,4 MB → 164 KB (−99%)');
 });
 
-it('says when an image was too large to optimize', function () {
+it('says why an image was not optimized', function () {
     $this->actingAs(mediaEditor());
-    $media = Media::factory()->image()->create(['optimized_with' => null]);
-    $document = Media::factory()->document()->create();
+    $tooLarge = Media::factory()->image()->create(['optimized_with' => null, 'optimize_failure' => 'too_large']);
+    $unreadable = Media::factory()->image()->create(['optimized_with' => null, 'optimize_failure' => 'unreadable']);
+    $animated = Media::factory()->create(['name' => 'spinner.gif', 'mime' => 'image/gif', 'optimized_with' => null, 'optimize_failure' => null]);
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $tooLarge->id)
+        ->assertSee(__('media.details.not_optimized'))
+        ->assertDontSee(__('media.details.unreadable'))
+        ->call('select', $unreadable->id)
+        ->assertSee(__('media.details.unreadable'))
+        ->assertDontSee(__('media.details.not_optimized'))
+        ->call('select', $animated->id)
+        ->assertDontSee(__('media.details.not_optimized'))
+        ->assertDontSee(__('media.details.unreadable'));
+});
+
+it('shows the panel line for an upload the server was too short of memory to optimize', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.upload'])->create());
+    app()->instance(MemoryGuard::class, new MemoryGuard(limitBytes: 1024 * 1024));
+    $media = app(UploadMedia::class)->handle(auth()->user(), uploadedImage('big.jpg', makeImage('jpg', 2000, 2000)));
+
+    expect($media->optimize_failure)->toBe('too_large');
 
     Livewire::test('pages::admin.media.index')
         ->call('select', $media->id)
-        ->assertSee(__('media.details.not_optimized'))
-        ->call('select', $document->id)
-        ->assertDontSee(__('media.details.not_optimized'));
+        ->assertSee(__('media.details.not_optimized'));
+});
+
+it('says which format a file was uploaded as without a kept original', function () {
+    config(['media.optimize.keep_originals' => false]);
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.upload'])->create());
+    $media = app(UploadMedia::class)->handle(auth()->user(), uploadedImage('photo.jpg', makeImage('jpg', 400, 300)));
+
+    expect($media->original_path)->toBeNull()
+        ->and($media->extension())->toBe('WEBP');
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->assertSee(__('media.details.type_converted', ['type' => 'WEBP', 'original' => 'JPG']));
+});
+
+it('clears a pending confirmation when the dialog is cancelled', function () {
+    $this->actingAs(mediaEditor());
+    $media = Media::factory()->create();
+    $folder = MediaFolder::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('confirmDelete', $media->id)
+        ->call('cancelPending')
+        ->assertSet('deletingIds', [])
+        ->assertSet('showDeleteModal', false)
+        ->call('deleteConfirmed')
+        ->call('confirmFolderDelete', $folder->id)
+        ->call('cancelPending')
+        ->assertSet('deletingFolderId', null)
+        ->call('deleteFolder');
+
+    $this->assertModelExists($media);
+    $this->assertModelExists($folder);
 });

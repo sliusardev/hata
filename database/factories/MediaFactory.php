@@ -33,6 +33,8 @@ class MediaFactory extends Factory
             'size' => fake()->numberBetween(10_000, 500_000),
             'width' => 800,
             'height' => 600,
+            'uploaded_extension' => 'webp',
+            'optimize_failure' => null,
             'alt' => [],
         ];
     }
@@ -48,6 +50,7 @@ class MediaFactory extends Factory
                 'name' => fake()->unique()->slug(3).'.webp',
                 'kind' => MediaKind::Image,
                 'mime' => 'image/webp',
+                'uploaded_extension' => 'webp',
                 'width' => $width,
                 'height' => $height,
             ];
@@ -65,6 +68,7 @@ class MediaFactory extends Factory
                 'name' => fake()->unique()->slug(3).'.pdf',
                 'kind' => MediaKind::Document,
                 'mime' => 'application/pdf',
+                'uploaded_extension' => 'pdf',
                 'width' => null,
                 'height' => null,
             ];

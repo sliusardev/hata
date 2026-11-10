@@ -67,6 +67,7 @@ return [
         'uploaded_by' => ':date, :name',
         'optimized' => 'Optimized: :before → :after (−:percent%)',
         'not_optimized' => 'Not optimized: too large for the server to process',
+        'unreadable' => 'Not optimized: the server couldn’t read this image',
         'folder' => 'Folder',
         'alt' => 'Alt text',
         'alt_language' => 'Language',

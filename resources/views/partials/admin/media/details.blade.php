@@ -62,10 +62,10 @@
                             'percent' => $media->savedPercent(),
                         ]) }}</span>
                     </div>
-                @elseif ($media->isImage() && $media->optimized_with === null && $media->mime !== 'image/svg+xml')
+                @elseif (in_array($media->optimize_failure, ['too_large', 'unreadable'], true))
                     <div class="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-2 text-[13px] text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">
                         <flux:icon name="exclamation-triangle" variant="micro" class="shrink-0" />
-                        <span>{{ __('media.details.not_optimized') }}</span>
+                        <span>{{ $media->optimize_failure === 'too_large' ? __('media.details.not_optimized') : __('media.details.unreadable') }}</span>
                     </div>
                 @endif
             </div>

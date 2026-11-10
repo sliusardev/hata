@@ -18,6 +18,7 @@
 
 <x-confirm-modal
     wire:model.self="showDeleteModal"
+    wire:close="cancelPending"
     :heading="__('media.delete.heading')"
     :confirm-label="__('media.delete.confirm')"
     confirm-action="deleteConfirmed"
@@ -68,6 +69,7 @@
 
 <x-confirm-modal
     wire:model.self="showFolderDeleteModal"
+    wire:close="cancelPending"
     :heading="__('media.folders.delete.heading', ['name' => $deletingFolder?->name])"
     :confirm-label="__('media.folders.delete.confirm')"
     confirm-action="deleteFolder"

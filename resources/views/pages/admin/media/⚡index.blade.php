@@ -327,6 +327,19 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
+     * Forget what a closed or cancelled delete dialog was about, so a later call can't act on it.
+     */
+    public function cancelPending(): void
+    {
+        $this->showDeleteModal = false;
+        $this->deletingIds = [];
+        $this->showFolderDeleteModal = false;
+        $this->deletingFolderId = null;
+        $this->confirmName = '';
+        $this->resetErrorBag('confirmName');
+    }
+
+    /**
      * Move files into a folder (null = "No folder"); dropping tiles onto a folder calls this.
      *
      * @param  array<int, mixed>  $ids

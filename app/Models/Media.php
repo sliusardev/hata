@@ -31,7 +31,9 @@ use Illuminate\Support\Str;
  * @property int|null $width
  * @property int|null $height
  * @property int|null $original_size
+ * @property string|null $uploaded_extension
  * @property string|null $optimized_with
+ * @property string|null $optimize_failure 'too_large' or 'unreadable' when an image was stored without optimizing
  * @property array<string, mixed>|null $edits
  * @property string|null $title
  * @property array<string, string>|null $alt
@@ -41,7 +43,7 @@ use Illuminate\Support\Str;
  */
 #[Fillable([
     'folder_id', 'uploaded_by', 'disk', 'path', 'original_path', 'thumb_path', 'name', 'kind', 'mime', 'size',
-    'width', 'height', 'original_size', 'optimized_with', 'edits', 'title', 'alt',
+    'width', 'height', 'original_size', 'uploaded_extension', 'optimized_with', 'optimize_failure', 'edits', 'title', 'alt',
 ])]
 #[Hidden(['search_index'])]
 class Media extends Model
@@ -144,11 +146,15 @@ class Media extends Model
      */
     public function convertedFrom(): ?string
     {
-        if ($this->original_path === null) {
+        // Rows from before uploaded_extension existed fall back to the kept original's extension.
+        $source = $this->uploaded_extension
+            ?? ($this->original_path === null ? null : pathinfo($this->original_path, PATHINFO_EXTENSION));
+
+        if ($source === null) {
             return null;
         }
 
-        $original = Str::upper(pathinfo($this->original_path, PATHINFO_EXTENSION));
+        $original = Str::upper($source);
         $normalize = fn (string $extension): string => $extension === 'JPEG' ? 'JPG' : $extension;
 
         return $original !== '' && $normalize($original) !== $normalize($this->extension()) ? $original : null;

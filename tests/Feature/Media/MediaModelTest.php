@@ -75,15 +75,20 @@ it('maps media abilities to permissions', function () {
 });
 
 it('reports the uploaded extension only when it differs from the current one', function () {
-    $converted = Media::factory()->make(['name' => 'a.webp', 'original_path' => 'media/originals/x.jpg']);
-    $jpeg = Media::factory()->make(['name' => 'a.jpg', 'original_path' => 'media/originals/x.jpeg']);
-    $same = Media::factory()->make(['name' => 'a.webp', 'original_path' => 'media/originals/x.webp']);
-    $none = Media::factory()->make(['name' => 'a.webp', 'original_path' => null]);
+    $legacy = ['uploaded_extension' => null];
+    $converted = Media::factory()->make(['name' => 'a.webp', 'original_path' => 'media/originals/x.jpg', ...$legacy]);
+    $jpeg = Media::factory()->make(['name' => 'a.jpg', 'original_path' => 'media/originals/x.jpeg', ...$legacy]);
+    $same = Media::factory()->make(['name' => 'a.webp', 'original_path' => 'media/originals/x.webp', ...$legacy]);
+    $none = Media::factory()->make(['name' => 'a.webp', 'original_path' => null, ...$legacy]);
+    $stored = Media::factory()->make(['name' => 'a.webp', 'original_path' => null, 'uploaded_extension' => 'png']);
+    $storedWins = Media::factory()->make(['name' => 'a.webp', 'original_path' => 'media/originals/x.jpg', 'uploaded_extension' => 'png']);
 
     expect($converted->convertedFrom())->toBe('JPG')
         ->and($jpeg->convertedFrom())->toBeNull()
         ->and($same->convertedFrom())->toBeNull()
-        ->and($none->convertedFrom())->toBeNull();
+        ->and($none->convertedFrom())->toBeNull()
+        ->and($stored->convertedFrom())->toBe('PNG')
+        ->and($storedWins->convertedFrom())->toBe('PNG');
 });
 
 it('computes the saved percentage', function () {

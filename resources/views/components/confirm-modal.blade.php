@@ -34,7 +34,7 @@
             </flux:modal.close>
 
             @if ($confirmable)
-                <flux:button variant="danger" wire:click="{{ $confirmAction }}" x-bind:disabled="{{ $confirmDisabled ?? 'false' }}" data-test="confirm-modal-button">
+                <flux:button variant="danger" wire:click="{{ $confirmAction }}" :x-bind:disabled="$confirmDisabled" data-test="confirm-modal-button">
                     {{ $confirmLabel }}
                 </flux:button>
             @endif

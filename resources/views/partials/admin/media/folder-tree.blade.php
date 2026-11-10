@@ -37,7 +37,7 @@
         @if ($folder === 'none') aria-current="page" @endif
         @if ($canManageFolders)
             x-on:dragover="enter($event, 'none')"
-            x-on:dragleave="over = null"
+            x-on:dragleave="if (! $el.contains($event.relatedTarget)) over = null"
             x-on:drop.prevent="drop($event, null)"
             x-bind:class="over === 'none' && 'ring-2 ring-accent ring-inset'"
         @endif
@@ -67,7 +67,7 @@
             @if ($isCurrent) aria-current="page" @endif
             @if ($canManageFolders)
                 x-on:dragover="enter($event, {{ $row['folder']->id }})"
-                x-on:dragleave="over = null"
+                x-on:dragleave="if (! $el.contains($event.relatedTarget)) over = null"
                 x-on:drop.prevent="drop($event, {{ $row['folder']->id }})"
                 x-bind:class="over === {{ $row['folder']->id }} && 'ring-2 ring-accent ring-inset'"
             @endif

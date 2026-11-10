@@ -44,7 +44,7 @@ class UploadMedia
         $contents = (string) file_get_contents($file->getRealPath());
         $extension = $type['ext'];
         $mime = $type['mime'];
-        $width = $height = $fingerprint = $thumbnail = null;
+        $width = $height = $fingerprint = $thumbnail = $failure = null;
 
         if ($type['kind'] === MediaKind::Image) {
             $result = $this->optimizer->handle($contents, $mime);
@@ -56,7 +56,7 @@ class UploadMedia
             $thumbnail = $this->optimizer->thumbnail($result->contents);
             $original = $contents;
             [$contents, $mime, $extension] = [$result->contents, $result->mime, $result->extension];
-            [$width, $height, $fingerprint] = [$result->width, $result->height, $result->fingerprint];
+            [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
         }
 
         $disk = (string) config('media.disk');
@@ -92,7 +92,9 @@ class UploadMedia
                 'width' => $width,
                 'height' => $height,
                 'original_size' => $pickedSize ?? $uploadedSize,
+                'uploaded_extension' => $type['ext'],
                 'optimized_with' => $fingerprint,
+                'optimize_failure' => $failure,
             ]);
             $media->key = $key;
             $media->save();

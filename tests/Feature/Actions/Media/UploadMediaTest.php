@@ -26,6 +26,8 @@ it('uploads and optimizes a photo', function () {
     expect($media->name)->toBe('foto-vidpustky-1.webp')
         ->and($media->original_size)->toBe(18_400_000)
         ->and($media->optimized_with)->toBe('webp:2560:80:exif0')
+        ->and($media->optimize_failure)->toBeNull()
+        ->and($media->uploaded_extension)->toBe('jpg')
         ->and($media->kind)->toBe(MediaKind::Image)
         ->and($media->mime)->toBe('image/webp')
         ->and($media->width)->toBe(2560)
@@ -84,6 +86,8 @@ it('stores an image the server cannot process as it is', function () {
     $media = app(UploadMedia::class)->handle($this->actor, uploadedImage('big.jpg', $bytes));
 
     expect($media->optimized_with)->toBeNull()
+        ->and($media->optimize_failure)->toBe('too_large')
+        ->and($media->uploaded_extension)->toBe('jpg')
         ->and($media->name)->toBe('big.jpg')
         ->and($media->thumb_path)->toBeNull()
         ->and(Storage::disk('local')->get($media->path))->toBe($bytes);
