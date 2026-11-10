@@ -17,7 +17,7 @@ class FolderNameValidator
      */
     public function validate(string $name, ?int $parentId, ?int $ignoreId = null): string
     {
-        $name = trim($name);
+        $name = (string) preg_replace('/^[\s\x{00A0}\x{200B}]+|[\s\x{00A0}\x{200B}]+$/u', '', $name);
 
         if ($name === '' || mb_strlen($name) > 100) {
             throw ValidationException::withMessages(['name' => __('media.errors.folder_name')]);

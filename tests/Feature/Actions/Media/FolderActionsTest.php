@@ -8,6 +8,7 @@ use App\Models\MediaFolder;
 use App\Models\MediaUsage;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -31,6 +32,29 @@ it('creates nested folders and refuses a duplicate sibling name', function () {
     expect(fn () => $create->handle($this->actor, 'Summer', $a))->toThrow(ValidationException::class);
     expect(fn () => $create->handle($this->actor, '   ', $a))->toThrow(ValidationException::class);
     expect(fn () => $create->handle($this->actor, str_repeat('a', 101), $a))->toThrow(ValidationException::class);
+});
+
+it('refuses a duplicate folder name at the root', function () {
+    app(CreateFolder::class)->handle($this->actor, 'Photos', null);
+
+    expect(fn () => app(CreateFolder::class)->handle($this->actor, 'Photos', null))->toThrow(ValidationException::class);
+});
+
+it('rejects a folder name made only of non-breaking spaces', function () {
+    expect(fn () => app(CreateFolder::class)->handle($this->actor, "\u{00A0}\u{00A0}", null))->toThrow(ValidationException::class);
+});
+
+it('deletes a folder with many files in a bounded number of queries', function () {
+    $folder = MediaFolder::factory()->create();
+    Media::factory()->count(30)->inFolder($folder)->create();
+
+    DB::enableQueryLog();
+    app(DeleteFolder::class)->handle($this->actor, $folder);
+    $deletes = collect(DB::getQueryLog())->filter(fn ($q) => str_starts_with(strtolower($q['query']), 'delete'))->count();
+    DB::disableQueryLog();
+
+    expect(Media::query()->count())->toBe(0)
+        ->and($deletes)->toBeLessThan(5);
 });
 
 it('renames a folder', function () {

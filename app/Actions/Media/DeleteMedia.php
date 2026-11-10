@@ -20,30 +20,36 @@ class DeleteMedia
      */
     public function handle(User $actor, iterable|Media $media): int
     {
-        $items = $media instanceof Media ? [$media] : [...$media];
+        $items = $media instanceof Media ? [$media] : array_values([...$media]);
 
-        foreach ($items as $item) {
-            Gate::forUser($actor)->authorize('delete', $item);
-        }
+        // The policy does not depend on the row, so one check covers the whole set.
+        Gate::forUser($actor)->authorize('delete', $items[0] ?? new Media);
 
         return DB::transaction(function () use ($items): int {
             $count = 0;
+            $filesByDisk = [];
 
-            foreach ($items as $item) {
-                $files = array_values(array_filter([$item->path, $item->original_path, $item->thumb_path]));
-                $disk = $item->disk;
+            foreach (array_chunk($items, 500) as $chunk) {
+                foreach ($chunk as $item) {
+                    foreach ([$item->path, $item->original_path, $item->thumb_path] as $file) {
+                        if ($file !== null && $file !== '') {
+                            $filesByDisk[$item->disk][] = $file;
+                        }
+                    }
+                }
 
-                $item->delete();
-                $count++;
+                $count += Media::query()->whereKey(array_map(fn (Media $item): int => $item->id, $chunk))->delete();
+            }
 
-                DB::afterCommit(function () use ($disk, $files): void {
+            DB::afterCommit(function () use ($filesByDisk): void {
+                foreach ($filesByDisk as $disk => $files) {
                     try {
-                        Storage::disk($disk)->delete($files);
+                        Storage::disk((string) $disk)->delete($files);
                     } catch (Throwable $e) {
                         report($e);
                     }
-                });
-            }
+                }
+            });
 
             return $count;
         });

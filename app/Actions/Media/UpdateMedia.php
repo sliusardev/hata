@@ -16,18 +16,21 @@ class UpdateMedia
     {
         Gate::forUser($actor)->authorize('update', $media);
 
-        $locales = array_keys((array) config('app.available_locales'));
-
-        if (array_key_exists('alt', $data)) {
-            $data['alt'] = array_intersect_key($data['alt'], array_flip($locales));
-        }
-
         $validated = Validator::make($data, [
             'title' => ['nullable', 'string', 'max:255'],
             'alt' => ['array'],
             'alt.*' => ['nullable', 'string', 'max:500'],
             'folder_id' => ['nullable', 'integer', 'exists:media_folders,id'],
         ])->validate();
+
+        if (array_key_exists('alt', $validated)) {
+            $locales = array_keys((array) config('app.available_locales'));
+            $validated['alt'] = array_intersect_key($validated['alt'], array_flip($locales));
+        }
+
+        if (array_key_exists('title', $validated)) {
+            $validated['title'] = $validated['title'] === null || trim($validated['title']) === '' ? null : $validated['title'];
+        }
 
         $media->fill($validated)->save();
 

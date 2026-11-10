@@ -22,11 +22,17 @@ class DeleteFolder
         return DB::transaction(function () use ($actor, $folder): array {
             $ids = [$folder->id, ...$folder->descendantIds()];
 
-            $files = $this->deleteMedia->handle($actor, Media::query()->whereIn('folder_id', $ids)->get());
+            $items = Media::query()
+                ->whereIn('folder_id', $ids)
+                ->select(['id', 'disk', 'path', 'original_path', 'thumb_path'])
+                ->lazyById(500)
+                ->all();
+
+            $files = $this->deleteMedia->handle($actor, $items);
 
             // Descendant ids come breadth-first, so the reverse order removes the deepest first.
-            foreach (array_reverse($ids) as $id) {
-                MediaFolder::query()->whereKey($id)->delete();
+            foreach (array_chunk(array_reverse($ids), 500) as $chunk) {
+                MediaFolder::query()->whereKey($chunk)->delete();
             }
 
             return ['folders' => count($ids), 'files' => $files];

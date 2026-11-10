@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     Storage::fake('local');
@@ -37,6 +38,16 @@ it('ignores alt for locales that are not available', function () {
     $result = app(UpdateMedia::class)->handle($this->actor, $media, ['alt' => ['en' => 'Hi', 'de' => 'Hallo']]);
 
     expect($result->alt)->toBe(['en' => 'Hi']);
+});
+
+it('rejects a non-array alt with a validation error', function () {
+    app(UpdateMedia::class)->handle($this->actor, Media::factory()->create(), ['alt' => 'text']);
+})->throws(ValidationException::class);
+
+it('stores an empty title as null', function () {
+    $media = Media::factory()->create(['title' => 'Old']);
+
+    expect(app(UpdateMedia::class)->handle($this->actor, $media, ['title' => '  ']))->title->toBeNull();
 });
 
 it('requires media.edit to update', function () {
