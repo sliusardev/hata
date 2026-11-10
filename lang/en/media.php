@@ -83,6 +83,7 @@ return [
         'copied' => 'Link copied.',
         'copy_failed' => 'The browser didn\'t allow copying. The link is selected: press Ctrl+C (⌘C on a Mac) to copy it.',
         'download' => 'Download to your computer',
+        'crop' => 'Crop',
         'open' => 'Open in a new tab',
         'unsaved' => [
             'heading' => 'Unsaved changes',
@@ -155,6 +156,45 @@ return [
         'select_page' => 'Select all on this page',
         'select_file' => 'Select :name',
         'zip_too_large' => 'A ZIP can hold up to :files files. Select fewer files.',
+    ],
+
+    'crop' => [
+        'title' => 'Crop',
+        'back' => 'Back to the media library',
+        'apply' => 'Apply',
+        'save_copy' => 'Save as copy',
+        'canvas' => 'Crop area',
+        'options' => 'Crop settings',
+        'load_failed' => 'The image couldn’t be loaded for editing.',
+        'ratio' => 'Aspect ratio',
+        'ratios' => [
+            'free' => 'Free',
+            'social' => 'Social',
+        ],
+        'social_hint' => '“Social” = 1200 × 630, a cover for Facebook, Telegram, LinkedIn.',
+        'size' => 'Result size, px',
+        'width' => 'Width',
+        'height' => 'Height',
+        'size_hint' => 'Empty = the size of the selected area. Images are never enlarged.',
+        'transform' => 'Rotate and flip',
+        'rotate_left' => 'Rotate left',
+        'rotate_right' => 'Rotate right',
+        'flip_h' => 'Flip horizontally',
+        'flip_v' => 'Flip vertically',
+        'result' => 'Result',
+        'result_size' => ':width × :height px',
+        'used_in' => 'The file is used in :count place, so “Apply” changes it there too.|The file is used in :count places, so “Apply” changes it there too.',
+        'copy_hint' => '“Save as copy” creates a new file.',
+        'original_kept' => 'The original is kept, so the crop can always be undone.',
+        'no_original' => 'No original is kept, so “Apply” changes the file for good.',
+        'confirm' => [
+            'heading' => 'Apply the crop to “:name”?',
+            'body' => 'The file changes everywhere it’s used (:count place).|The file changes everywhere it’s used (:count places).',
+        ],
+        'messages' => [
+            'applied' => 'Crop applied.',
+            'copied' => 'Copy saved as “:name”.',
+        ],
     ],
 
     'messages' => [

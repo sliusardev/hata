@@ -196,6 +196,11 @@
             @endif
             <flux:button size="sm" icon="arrow-top-right-on-square" :href="$media->url()" target="_blank" rel="noopener" :aria-label="__('media.details.open')" :tooltip="__('media.details.open')" data-test="media-details-open" />
             <flux:button size="sm" icon="arrow-down-tray" :href="$media->url()" download="{{ $media->name }}" :aria-label="__('media.details.download')" :tooltip="__('media.details.download')" />
+            @if ($canEdit && $media->isEditable())
+                <flux:button size="sm" icon="scissors" :href="route('admin.media.crop', $media)" wire:navigate data-test="media-details-crop">
+                    {{ __('media.details.crop') }}
+                </flux:button>
+            @endif
             <flux:spacer />
             @can('delete', $media)
                 <flux:button size="sm" variant="ghost" icon="trash" class="text-red-600! dark:text-red-400!" wire:click="confirmDelete({{ $media->id }})" data-test="media-details-delete">

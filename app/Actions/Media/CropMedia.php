@@ -166,6 +166,28 @@ class CropMedia
     }
 
     /**
+     * A crop given as fractions of the rotated frame, in pixels of the rotated frame of a source of the given
+     * (oriented) size. The crop page uses it for the result size, so the two always agree.
+     *
+     * @param  array{x: float, y: float, w: float, h: float}  $crop
+     * @return array{x: int, y: int, w: int, h: int}
+     */
+    public static function cropPixels(array $crop, int $rotate, int $sourceWidth, int $sourceHeight): array
+    {
+        [$width, $height] = $rotate % 180 === 90 ? [$sourceHeight, $sourceWidth] : [$sourceWidth, $sourceHeight];
+
+        $x = min((int) round($crop['x'] * $width), $width - 1);
+        $y = min((int) round($crop['y'] * $height), $height - 1);
+
+        return [
+            'x' => $x,
+            'y' => $y,
+            'w' => max(1, min((int) round($crop['w'] * $width), $width - $x)),
+            'h' => max(1, min((int) round($crop['h'] * $height), $height - $y)),
+        ];
+    }
+
+    /**
      * The edits with the crop in pixels of the oriented, rotated source.
      *
      * @param  array{crop: array{x: float, y: float, w: float, h: float}|null, rotate: int, flip_h: bool, flip_v: bool, size: array{w: int, h: int}|null}  $data
@@ -177,19 +199,7 @@ class CropMedia
 
         if ($data['crop'] !== null) {
             [$width, $height] = $source->orientedSize();
-
-            if ($data['rotate'] % 180 === 90) {
-                [$width, $height] = [$height, $width];
-            }
-
-            $x = min((int) round($data['crop']['x'] * $width), $width - 1);
-            $y = min((int) round($data['crop']['y'] * $height), $height - 1);
-            $crop = [
-                'x' => $x,
-                'y' => $y,
-                'w' => max(1, min((int) round($data['crop']['w'] * $width), $width - $x)),
-                'h' => max(1, min((int) round($data['crop']['h'] * $height), $height - $y)),
-            ];
+            $crop = self::cropPixels($data['crop'], $data['rotate'], $width, $height);
         }
 
         return [
