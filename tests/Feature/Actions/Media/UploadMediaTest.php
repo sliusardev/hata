@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Media\OptimizeImage;
 use App\Actions\Media\UploadMedia;
 use App\Enums\MediaKind;
 use App\Exceptions\MediaUploadException;
@@ -7,6 +8,7 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
 use App\Support\Media\MemoryGuard;
+use App\Support\Media\OptimizedImage;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Storage;
 
@@ -68,10 +70,11 @@ it('enforces the size limit using the picked size', function () {
         app(UploadMedia::class)->handle($this->actor, $file, pickedSize: 2 * 1024 * 1024);
         $this->fail('Expected MediaUploadException.');
     } catch (MediaUploadException $e) {
-        expect($e->getMessage())->toContain('2.0')->toContain('1');
+        expect($e->getMessage())->toBe(__('media.errors.too_large', ['size' => '2.0', 'limit' => '1.0']));
     }
 
-    expect(Media::count())->toBe(0);
+    expect(Media::count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
 
 it('stores an image the server cannot process as it is', function () {
@@ -121,4 +124,33 @@ it('requires the upload permission', function () {
 
     expect(fn () => app(UploadMedia::class)->handle($actor, uploadedImage('a.jpg', makeImage())))
         ->toThrow(AuthorizationException::class);
+
+    try {
+        app(UploadMedia::class)->handle($actor, uploadedImage('a.jpg', makeImage()));
+    } catch (AuthorizationException $e) {
+        expect($e)->not->toBeInstanceOf(MediaUploadException::class);
+    }
+});
+
+it('deletes written files when the insert fails', function () {
+    Media::creating(fn () => throw new RuntimeException('boom'));
+
+    expect(fn () => app(UploadMedia::class)->handle($this->actor, uploadedImage('a.jpg', makeImage())))
+        ->toThrow(RuntimeException::class, 'boom');
+
+    expect(Storage::disk('local')->allFiles())->toBe([])
+        ->and(Media::count())->toBe(0);
+});
+
+it('rejects heic the server cannot read', function () {
+    $bytes = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
+    $this->mock(OptimizeImage::class)
+        ->shouldReceive('handle')
+        ->andReturn(new OptimizedImage($bytes, 'image/heic', 'heic', null, null, optimized: false, failure: 'unreadable'));
+
+    expect(fn () => app(UploadMedia::class)->handle($this->actor, uploadedImage('IMG_1.heic', $bytes)))
+        ->toThrow(MediaUploadException::class, __('media.errors.heic_unsupported'));
+
+    expect(Media::count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
 });

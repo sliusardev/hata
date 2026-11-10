@@ -71,8 +71,8 @@ class UploadMedia
         $written = [];
 
         try {
-            foreach ([$path => $contents, $originalPath => $original ?? null, $thumbPath => $thumbnail] as $target => $bytes) {
-                if ($target !== '' && $bytes !== null) {
+            foreach ([[$path, $contents], [$originalPath, $original ?? null], [$thumbPath, $thumbnail]] as [$target, $bytes]) {
+                if ($target !== null && $bytes !== null) {
                     $storage->put($target, $bytes);
                     $written[] = $target;
                 }
@@ -97,7 +97,11 @@ class UploadMedia
             $media->key = $key;
             $media->save();
         } catch (Throwable $e) {
-            $storage->delete($written);
+            try {
+                $storage->delete($written);
+            } catch (Throwable) {
+                // The original exception matters more than a failed cleanup.
+            }
 
             throw $e;
         }
