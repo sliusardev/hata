@@ -43,6 +43,12 @@ final class MediaTypes
     ];
 
     /**
+     * Bytes read from the start of a file for the magic-byte checks; enough for an SVG root after a long
+     * XML declaration, comment or DOCTYPE.
+     */
+    private const int HEAD_BYTES = 8192;
+
+    /**
      * @return array{ext: string, mime: string, kind: MediaKind}|null
      */
     public static function detect(UploadedFile $file): ?array
@@ -71,7 +77,7 @@ final class MediaTypes
     private static function readHead(UploadedFile $file): string
     {
         $path = $file->getRealPath();
-        $head = $path === false ? false : file_get_contents($path, false, null, 0, 1024);
+        $head = $path === false ? false : file_get_contents($path, false, null, 0, self::HEAD_BYTES);
 
         return $head === false ? '' : $head;
     }

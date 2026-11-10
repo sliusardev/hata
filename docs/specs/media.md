@@ -87,7 +87,7 @@ Built storage-agnostic from the start, so moving to S3 / Cloudflare R2 / Backbla
 ## Upload
 
 - Anywhere on the library page: drag-and-drop overlay (screen 2), the "Upload files" button, or the "Upload new" tab in the picker. Many files at once, sequentially (one at a time, so the hosting isn't hit in parallel).
-- Allowed (user's decision 2026-11-10), checked by extension **and** detected MIME type:
+- Allowed (user's decision 2026-11-10), checked by extension **and** detected MIME type (plus magic bytes in the first 8 KB for generically detected types; an SVG must have an `<svg` root after any XML declaration, comments or DOCTYPE within those 8 KB):
   - **Images:** JPG, PNG, WebP, GIF, SVG, AVIF, HEIC/HEIF. HEIC is converted to JPEG in the browser (Safari) or on the server (Imagick that can decode HEIC: to WebP, or JPEG when the format setting keeps the original, even with optimization off); it is never stored as HEIC, because browsers can't show it. If neither can convert it (or it is too large for the server's memory), the upload fails with "HEIC can't be converted on this server, export the photo as JPG". AVIF is stored as is when the driver can't decode it (no thumbnail, an icon instead).
   - **Documents:** PDF, DOCX, XLSX, PPTX, DOC, XLS, PPT, ODT, ODS, ODP, TXT, CSV, RTF.
   - **Other:** ZIP, MP3. Stored and served for download only, no processing.

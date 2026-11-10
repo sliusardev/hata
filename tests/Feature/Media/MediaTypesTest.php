@@ -71,3 +71,10 @@ it('never reports html as an html mime', function () {
 
     expect($detected === null || $detected['mime'] === 'text/plain')->toBeTrue();
 });
+
+it('finds the svg root after a long leading comment', function () {
+    $svg = '<?xml version="1.0"?><!-- '.str_repeat('Exported by an editor. ', 200).'--><svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
+
+    expect(strpos($svg, '<svg'))->toBeGreaterThan(1024)->toBeLessThan(8192)
+        ->and(MediaTypes::detect(uploadedImage('long.svg', $svg))['ext'] ?? null)->toBe('svg');
+});
