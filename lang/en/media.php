@@ -147,6 +147,8 @@ return [
         'clear' => 'Clear selection',
         'zip' => 'Download ZIP',
         'delete' => 'Delete selected',
+        'move' => 'Move to…',
+        'dragging' => 'Dragging :count file|Dragging :count files',
         'select_several' => 'Select several',
         'done_selecting' => 'Done',
         'select_page' => 'Select all on this page',

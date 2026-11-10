@@ -2,9 +2,11 @@
 
 use App\Actions\Media\ZipMedia;
 use App\Models\Media;
+use App\Models\MediaFolder;
 use App\Models\MediaUsage;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Js;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -119,3 +121,56 @@ it('refuses a zip with more files than the cap', function () {
         ->assertNoRedirect()
         ->assertDispatched('toast-show');
 })->skip(! class_exists(ZipArchive::class), 'ZipArchive is not installed.');
+
+it('moves the selected files with "Move to…" and clears the selection', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    $folder = MediaFolder::factory()->create(['name' => 'Products']);
+    [$first, $second] = Media::factory()->count(2)->create();
+    $untouched = Media::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->set('selected', [$first->id, $second->id])
+        ->assertSeeHtml('data-test="media-bulk-move"')
+        ->assertSee('Products')
+        ->call('moveSelected', $folder->id)
+        ->assertSet('selected', [])
+        ->assertDispatched('toast-show');
+
+    expect($first->refresh()->folder_id)->toBe($folder->id)
+        ->and($second->refresh()->folder_id)->toBe($folder->id)
+        ->and($untouched->refresh()->folder_id)->toBeNull();
+
+    Livewire::test('pages::admin.media.index')
+        ->set('selected', [$first->id])
+        ->call('moveSelected', null);
+
+    expect($first->refresh()->folder_id)->toBeNull();
+});
+
+it('hides "Move to…" without media.edit', function () {
+    $this->actingAs(mediaManager());
+    $media = Media::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->set('selected', [$media->id])
+        ->assertSeeHtml('data-test="media-bulk-bar"')
+        ->assertDontSeeHtml('data-test="media-bulk-move"');
+});
+
+it('drags the whole selection when a selected tile is dragged', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    [$first, $second, $other] = Media::factory()->count(3)->create();
+    $dragging = fn (array $ids): string => 'mediaDragStart($event, '.Js::from($ids).', '.Js::from(trans_choice('media.bulk.dragging', count($ids))).')';
+
+    Livewire::test('pages::admin.media.index')
+        ->set('selected', [$first->id, $second->id])
+        ->assertSeeHtml($dragging([$first->id, $second->id]))
+        ->assertSeeHtml($dragging([$other->id]));
+
+    $list = Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
+        ->set('selected', [$first->id, $second->id])
+        ->html();
+
+    expect(html_entity_decode($list, ENT_QUOTES))->toContain($dragging([$first->id, $second->id]))
+        ->toContain($dragging([$other->id]));
+});

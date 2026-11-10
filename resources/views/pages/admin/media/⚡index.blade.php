@@ -565,6 +565,8 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
+        $this->selected = array_values(array_diff($this->selected, $items->modelKeys()));
+
         if ($this->selectedId !== null && in_array($this->selectedId, $ids, true)) {
             $folderValue = $folder === null ? '' : (string) $folder->id;
             $this->details->folder_id = $folderValue;
@@ -573,6 +575,14 @@ new #[Title('media.index.title')] class extends Component {
 
         unset($this->folders, $this->totals, $this->media);
         Flux::toast(variant: 'success', text: trans_choice('media.messages.moved', $items->count()));
+    }
+
+    /**
+     * "Move to…" in the bulk bar: moves every selected file into the folder (null = no folder).
+     */
+    public function moveSelected(?int $folderId, MoveMedia $moveMedia): void
+    {
+        $this->moveTo($this->selected, $folderId, $moveMedia);
     }
 
     public function openNewFolder(): void
@@ -1153,7 +1163,7 @@ new #[Title('media.index.title')] class extends Component {
             </div>
 
             @if ($selected !== [])
-                @include('partials.admin.media.bulk-bar', ['count' => count($selected)])
+                @include('partials.admin.media.bulk-bar', ['count' => count($selected), 'canMove' => $canManageFolders, 'folders' => $this->folders])
             @endif
 
             @if ($canUpload)

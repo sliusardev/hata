@@ -15,7 +15,8 @@
                 wire:click="{{ $selecting ? 'toggleSelected' : 'select' }}({{ $item->id }})"
                 @if ($canMove)
                     draggable="true"
-                    x-on:dragstart="event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('application/x-media-ids', JSON.stringify([{{ $item->id }}]))"
+                    @php $dragIds = $isPicked ? array_values($selected) : [$item->id]; @endphp
+                    x-on:dragstart="mediaDragStart($event, @js($dragIds), @js(trans_choice('media.bulk.dragging', count($dragIds))))"
                 @endif
                 class="group min-w-0 text-start focus:outline-none"
                 aria-label="{{ $item->name }}"

@@ -32,11 +32,14 @@
 
     <flux:table.rows>
         @foreach ($media as $item)
-            @php $alt = $item->altFor(app()->getLocale()); @endphp
+            @php
+                $alt = $item->altFor(app()->getLocale());
+                $dragIds = in_array($item->id, $selected, true) ? array_values($selected) : [$item->id];
+            @endphp
             <flux:table.row
                 :key="$item->id"
                 :draggable="$canMove ? 'true' : null"
-                :x-on:dragstart="$canMove ? 'event.dataTransfer.effectAllowed = \'move\'; event.dataTransfer.setData(\'application/x-media-ids\', JSON.stringify(['.$item->id.']))' : null"
+                :x-on:dragstart="$canMove ? 'mediaDragStart($event, '.\Illuminate\Support\Js::from($dragIds).', '.\Illuminate\Support\Js::from(trans_choice('media.bulk.dragging', count($dragIds))).')' : null"
             >
                 <flux:table.cell>
                     <input
