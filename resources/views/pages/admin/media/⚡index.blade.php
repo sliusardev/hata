@@ -955,8 +955,8 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         $this->movingFolderId = $folder->id;
-        $this->moveFolderTarget = $folder->parent_id === null ? '' : (string) $folder->parent_id;
-        unset($this->moveFolderTargets);
+        $this->moveFolderTarget = '';
+        unset($this->moveFolderTargets, $this->movingFolder);
         $this->showMoveFolderModal = true;
     }
 
@@ -973,7 +973,11 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
-        $targetId = $this->moveFolderTarget === '' ? null : (int) $this->moveFolderTarget;
+        if ($this->moveFolderTarget === '') {
+            return;
+        }
+
+        $targetId = $this->moveFolderTarget === 'top' ? null : (int) $this->moveFolderTarget;
 
         $this->moveFolder($id, $targetId);
         $this->showMoveFolderModal = false;
@@ -982,14 +986,23 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Where the folder of the "Move to…" dialog can go: every folder but itself and its descendants, indented by depth.
+     * The folder of the "Move to…" dialog.
+     */
+    #[Computed]
+    public function movingFolder(): ?MediaFolder
+    {
+        return $this->movingFolderId === null ? null : MediaFolder::query()->find($this->movingFolderId);
+    }
+
+    /**
+     * Where the folder of the "Move to…" dialog can go: every folder but itself and its descendants, in tree order.
      *
-     * @return array<int, string> Folder id => label.
+     * @return list<array{id: int, name: string, depth: int, parent: int|null}>
      */
     #[Computed]
     public function moveFolderTargets(): array
     {
-        $moving = $this->movingFolderId === null ? null : MediaFolder::query()->find($this->movingFolderId);
+        $moving = $this->movingFolder;
 
         if ($moving === null) {
             return [];
@@ -1000,7 +1013,12 @@ new #[Title('media.index.title')] class extends Component {
 
         foreach ($this->folders as $row) {
             if (! in_array($row['folder']->id, $excluded, true)) {
-                $targets[$row['folder']->id] = str_repeat("\u{00A0}\u{00A0}", $row['depth']).$row['folder']->name;
+                $targets[] = [
+                    'id' => $row['folder']->id,
+                    'name' => $row['folder']->name,
+                    'depth' => $row['depth'],
+                    'parent' => $row['folder']->parent_id,
+                ];
             }
         }
 

@@ -308,9 +308,12 @@ it('moves a folder from the dialog without offering the folder or its descendant
         ->call('openMoveFolder', $a->id)
         ->assertSet('showMoveFolderModal', true);
 
-    expect($component->get('moveFolderTargets'))->toHaveKey($other->id)
-        ->not->toHaveKey($a->id)
-        ->not->toHaveKey($child->id);
+    $ids = array_column($component->get('moveFolderTargets'), 'id');
+    expect($ids)->toContain($other->id)->not->toContain($a->id)->not->toContain($child->id);
+
+    $component->assertSet('moveFolderTarget', '')
+        ->assertSee('Move “Alpha”', false)
+        ->assertSee('Top level');
 
     $component->set('moveFolderTarget', (string) $other->id)
         ->call('moveFolderConfirmed')
@@ -318,6 +321,27 @@ it('moves a folder from the dialog without offering the folder or its descendant
         ->assertSet('movingFolderId', null);
 
     expect($a->refresh()->parent_id)->toBe($other->id);
+});
+
+it('marks the current parent in the move dialog and does not move without a choice', function () {
+    $this->actingAs(folderManager());
+    $parent = MediaFolder::factory()->create(['name' => 'Parent']);
+    $a = MediaFolder::factory()->create(['parent_id' => $parent->id, 'name' => 'Alpha']);
+
+    $component = Livewire::test('pages::admin.media.index')
+        ->call('openMoveFolder', $a->id)
+        ->assertSee('Now in: Parent')
+        ->assertSeeHtml('data-test="media-folder-move-'.$parent->id.'"')
+        ->assertSeeHtml('value="'.$parent->id.'" disabled')
+        ->assertSee('current')
+        ->call('moveFolderConfirmed')
+        ->assertSet('showMoveFolderModal', true);
+
+    expect($a->refresh()->parent_id)->toBe($parent->id);
+
+    $component->set('moveFolderTarget', 'top')->call('moveFolderConfirmed');
+
+    expect($a->refresh()->parent_id)->toBeNull();
 });
 
 it('forgets the folder being moved when the dialog is cancelled', function () {

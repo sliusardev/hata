@@ -68,21 +68,105 @@
 </flux:modal>
 
 <flux:modal wire:model.self="showMoveFolderModal" wire:close="cancelPending" class="max-w-md md:min-w-md">
-    <form wire:submit="moveFolderConfirmed" class="space-y-6">
-        <flux:heading size="lg">{{ __('media.folders.move_heading') }}</flux:heading>
+    @php
+        $movingFolder = $this->movingFolder;
+        $moveTargets = $this->moveFolderTargets;
+        $currentParentId = $movingFolder?->parent_id;
+        $currentParentName = collect($moveTargets)->firstWhere('id', $currentParentId)['name'] ?? null;
+        $pickerRowClasses = 'flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-start text-sm text-zinc-700 hover:bg-zinc-800/5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent has-[:checked]:bg-accent/10 has-[:checked]:font-medium has-[:checked]:text-zinc-900 has-[:checked]:ring-1 has-[:checked]:ring-accent has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:disabled]:hover:bg-transparent dark:text-zinc-300 dark:hover:bg-white/10 dark:has-[:checked]:text-white';
+    @endphp
 
-        <flux:select wire:model="moveFolderTarget" :label="__('media.folders.move_target')" data-test="media-folder-move-target">
-            <flux:select.option value="">{{ __('media.folders.top_level') }}</flux:select.option>
-            @foreach ($this->moveFolderTargets as $id => $label)
-                <flux:select.option :value="$id" wire:key="move-folder-{{ $id }}">{{ $label }}</flux:select.option>
+    <form
+        wire:submit="moveFolderConfirmed"
+        class="space-y-4"
+        wire:key="move-folder-picker-{{ $movingFolder?->id }}"
+        x-data="{
+            rows: @js($moveTargets),
+            query: '',
+            byId() { return Object.fromEntries(this.rows.map((row) => [row.id, row])) },
+            ancestors(id) {
+                const byId = this.byId();
+                const result = [];
+                let parent = byId[id]?.parent;
+                while (parent && byId[parent] && result.length < 1000) {
+                    result.push(parent);
+                    parent = byId[parent].parent;
+                }
+                return result;
+            },
+            get visible() {
+                const needle = this.query.trim().toLocaleLowerCase();
+                if (needle === '') { return null }
+                const set = new Set();
+                this.rows.forEach((row) => {
+                    if (row.name.toLocaleLowerCase().includes(needle)) {
+                        set.add(row.id);
+                        this.ancestors(row.id).forEach((id) => set.add(id));
+                    }
+                });
+                return set;
+            },
+            shows(id) { const set = this.visible; return set === null || set.has(id) },
+            get topShown() { return this.query.trim() === '' },
+            get noMatches() { const set = this.visible; return set !== null && set.size === 0 },
+            choose(value) { $wire.set('moveFolderTarget', value, false).then(() => $wire.moveFolderConfirmed()) },
+        }"
+    >
+        <div class="space-y-1">
+            <flux:heading size="lg">{{ __('media.folders.move_heading', ['name' => $movingFolder?->name]) }}</flux:heading>
+            <flux:text>{{ __('media.folders.move_current', ['name' => $currentParentName ?? __('media.folders.top_level')]) }}</flux:text>
+        </div>
+
+        @if (count($moveTargets) > 8)
+            <flux:input icon="magnifying-glass" clearable x-model="query" :placeholder="__('media.folders.move_search')" :aria-label="__('media.folders.move_search')" data-test="media-folder-move-search" />
+        @endif
+
+        <div
+            role="radiogroup"
+            aria-label="{{ __('media.folders.move_target') }}"
+            class="max-h-80 space-y-0.5 overflow-y-auto rounded-lg border border-zinc-200 p-1 dark:border-white/10"
+            data-test="media-folder-move-list"
+        >
+            <label x-show="topShown" class="{{ $pickerRowClasses }}" x-on:dblclick="@if ($currentParentId !== null) choose('top') @endif" data-test="media-folder-move-top">
+                <input type="radio" class="sr-only" wire:model="moveFolderTarget" value="top" @disabled($currentParentId === null) />
+                <flux:icon name="home" variant="outline" class="size-4 shrink-0 text-zinc-400" />
+                <span class="flex-1 truncate">{{ __('media.folders.top_level') }}</span>
+                @if ($currentParentId === null)
+                    <span class="text-xs text-zinc-400">{{ __('media.folders.move_is_current') }}</span>
+                @endif
+                <flux:icon name="check" variant="micro" class="hidden size-4 shrink-0 text-accent-content in-[label:has(:checked)]:block" />
+            </label>
+
+            @foreach ($moveTargets as $target)
+                @php
+                    $isCurrentParent = $target['id'] === $currentParentId;
+                @endphp
+                <label
+                    wire:key="move-folder-{{ $target['id'] }}"
+                    x-show="shows({{ $target['id'] }})"
+                    class="{{ $pickerRowClasses }}"
+                    style="padding-inline-start: calc(0.625rem + {{ min($target['depth'], 4) * 0.75 }}rem)"
+                    @unless ($isCurrentParent) x-on:dblclick="choose('{{ $target['id'] }}')" @endunless
+                    data-test="media-folder-move-{{ $target['id'] }}"
+                >
+                    <input type="radio" class="sr-only" wire:model="moveFolderTarget" value="{{ $target['id'] }}" @disabled($isCurrentParent) />
+                    <flux:icon name="folder" variant="outline" class="size-4 shrink-0 text-zinc-400" />
+                    <span class="flex-1 truncate" title="{{ $target['name'] }}">{{ $target['name'] }}</span>
+                    @if ($isCurrentParent)
+                        <span class="text-xs text-zinc-400">{{ __('media.folders.move_is_current') }}</span>
+                    @endif
+                    <flux:icon name="check" variant="micro" class="hidden size-4 shrink-0 text-accent-content in-[label:has(:checked)]:block" />
+                </label>
             @endforeach
-        </flux:select>
+
+            <p x-show="noMatches" x-cloak class="px-2.5 py-3 text-sm text-zinc-500">{{ __('media.folders.move_no_match') }}</p>
+        </div>
 
         <div class="flex justify-end gap-3">
             <flux:modal.close>
-                <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
+                <flux:button variant="ghost">{{ __('common.actions.cancel') }}</flux:button>
             </flux:modal.close>
-            <flux:button type="submit" variant="primary">{{ __('media.folders.move_confirm') }}</flux:button>
+            <flux:button type="submit" variant="primary" x-bind:disabled="$wire.moveFolderTarget === ''" data-test="media-folder-move-confirm">{{ __('media.folders.move_confirm') }}</flux:button>
         </div>
     </form>
 </flux:modal>
