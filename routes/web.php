@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\SiteLogoController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,14 @@ Route::get('dashboard', function (Request $request) {
 Route::get('branding/logo/{variant}', SiteLogoController::class)
     ->whereIn('variant', ['light', 'dark'])
     ->name('branding.logo');
+
+/*
+| Public media library files. No auth: the URLs are embedded in site content.
+*/
+Route::get('media/{key}/{name}', MediaController::class)
+    ->where('key', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+    ->where('name', '[^/]+')
+    ->name('media.show');
 
 require __DIR__.'/admin.php';
 require __DIR__.'/settings.php';

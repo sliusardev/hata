@@ -5,16 +5,8 @@ use App\Models\MediaFolder;
 use App\Models\MediaUsage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
-
-beforeEach(function () {
-    if (! Route::has('media.show')) {
-        Route::get('/media/{key}/{name}', fn () => '')->name('media.show');
-        Route::getRoutes()->refreshNameLookups();
-    }
-});
 
 it('generates a ulid key on create', function () {
     $first = Media::factory()->create();
