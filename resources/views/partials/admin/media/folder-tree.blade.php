@@ -6,6 +6,7 @@
 --}}
 @php
     $itemClasses = 'flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-start text-sm text-zinc-700 hover:bg-zinc-800/5 dark:text-zinc-300 dark:hover:bg-white/10';
+    $rowClasses = str_replace('gap-2', 'gap-1', $itemClasses);
     $currentClasses = 'bg-zinc-800/5 font-medium text-zinc-900 dark:bg-white/10 dark:text-white';
     $hasChildren = collect($folders)->pluck('folder.parent_id')->filter()->flip();
     $treeData = collect($folders)->map(fn (array $row): array => [
@@ -24,6 +25,8 @@
         rows: @js($treeData),
         byId: {},
         expanded: [],
+        temporary: [],
+        matchSet: new Set(),
         query: '',
         over: null,
         dragging: null,
@@ -37,6 +40,14 @@
             } catch (error) {
                 this.expanded = [];
             }
+            this.revealCurrent();
+            this.$watch('$wire.folder', () => this.revealCurrent());
+            this.$watch('query', () => this.updateMatches());
+        },
+        revealCurrent() {
+            const current = Number($wire.folder);
+            if (! Number.isInteger(current) || ! this.byId[current]) { return }
+            this.expanded = [...new Set([...this.expanded, ...this.ancestors(current)])];
         },
         ancestors(id) {
             const result = [];
@@ -47,23 +58,21 @@
             }
             return result;
         },
-        get path() {
-            const current = Number($wire.folder);
-            return Number.isInteger(current) && this.byId[current] ? this.ancestors(current) : [];
-        },
         get searching() { return this.query.trim() !== '' },
-        get matchSet() {
+        updateMatches() {
             const needle = this.query.trim().toLocaleLowerCase();
             const set = new Set();
-            this.rows.forEach((row) => {
-                if (row.name.toLocaleLowerCase().includes(needle)) {
-                    set.add(row.id);
-                    this.ancestors(row.id).forEach((id) => set.add(id));
-                }
-            });
-            return set;
+            if (needle !== '') {
+                this.rows.forEach((row) => {
+                    if (row.name.toLocaleLowerCase().includes(needle)) {
+                        set.add(row.id);
+                        this.ancestors(row.id).forEach((id) => set.add(id));
+                    }
+                });
+            }
+            this.matchSet = set;
         },
-        isOpen(id) { return this.expanded.includes(id) || this.path.includes(id) },
+        isOpen(id) { return this.expanded.includes(id) || this.temporary.includes(id) },
         shown(id) {
             if (this.searching) { return this.matchSet.has(id) }
             return this.ancestors(id).every((ancestor) => this.isOpen(ancestor));
@@ -75,7 +84,9 @@
         @if ($canManageFolders)
         accepts(event, target) {
             const types = Array.from(event.dataTransfer?.types ?? []);
-            if (types.includes('application/x-media-folder')) { return target !== 'none' && this.dragging !== target }
+            if (types.includes('application/x-media-folder')) {
+                return target !== 'none' && this.dragging !== target && ! (this.ancestors(target).includes(this.dragging));
+            }
             return types.includes('application/x-media-ids') && target !== 'all';
         },
         enter(event, target) {
@@ -83,17 +94,23 @@
             event.preventDefault();
             event.dataTransfer.dropEffect = 'move';
             this.over = target;
-            if (this.dragging !== null && this.byId[target]?.kids && ! this.isOpen(target)) { this.hoverExpand(target) }
+            if (this.byId[target]?.kids && ! this.isOpen(target)) { this.hoverExpand(target) }
         },
         hoverExpand(target) {
             if (this.hoverId === target) { return }
             clearTimeout(this.hoverTimer);
             this.hoverId = target;
-            this.hoverTimer = setTimeout(() => { if (this.hoverId === target && ! this.isOpen(target)) { this.toggle(target) } }, 700);
+            this.hoverTimer = setTimeout(() => { if (this.hoverId === target && ! this.isOpen(target)) { this.temporary = [...this.temporary, target] } }, 700);
         },
         clearHover() { clearTimeout(this.hoverTimer); this.hoverId = null },
-        leave(event) { if (! event.currentTarget.contains(event.relatedTarget)) { this.over = null; this.clearHover() } },
-        reset() { this.over = null; this.dragging = null; this.clearHover() },
+        leave(event) {
+            const box = event.currentTarget.getBoundingClientRect();
+            const inside = event.relatedTarget
+                ? event.currentTarget.contains(event.relatedTarget)
+                : event.clientX > box.left && event.clientX < box.right && event.clientY > box.top && event.clientY < box.bottom;
+            if (! inside) { this.over = null; this.clearHover() }
+        },
+        reset() { this.over = null; this.dragging = null; this.clearHover(); this.temporary = [] },
         startDrag(event, id) {
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('application/x-media-folder', String(id));
@@ -168,12 +185,11 @@
         @endphp
         <div
             wire:key="folder-{{ $id }}"
-            @class([$itemClasses, 'gap-1', $currentClasses => $isCurrent])
+            @class([$rowClasses, $currentClasses => $isCurrent])
+            x-cloak
             style="padding-inline-start: {{ 0.625 + min($row['depth'], 4) * 0.75 }}rem"
             x-show="shown({{ $id }})"
             @if ($canManageFolders)
-                draggable="true"
-                x-on:dragstart="startDrag($event, {{ $id }})"
                 x-on:dragover="enter($event, {{ $id }})"
                 x-on:dragleave="leave($event)"
                 x-on:drop.prevent="drop($event, {{ $id }})"
@@ -194,17 +210,24 @@
             @else
                 <span class="size-5 shrink-0" aria-hidden="true"></span>
             @endif
-            <button
-                type="button"
-                class="flex h-full min-w-0 flex-1 items-center gap-2 text-start"
+            <div
+                role="button"
+                tabindex="0"
+                class="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 text-start"
                 wire:click="$set('folder', '{{ $id }}')"
+                x-on:keydown.enter.prevent="$el.click()"
+                x-on:keydown.space.prevent="$el.click()"
                 @if ($isCurrent) aria-current="page" @endif
+                @if ($canManageFolders)
+                    draggable="true"
+                    x-on:dragstart="startDrag($event, {{ $id }})"
+                @endif
                 data-test="media-folder-{{ $id }}"
             >
                 <flux:icon name="folder" variant="outline" class="size-4 shrink-0 text-zinc-400" />
                 <span class="flex-1 truncate" title="{{ $row['folder']->name }}">{{ $row['folder']->name }}</span>
                 <span class="text-xs text-zinc-400 tabular-nums">{{ $row['folder']->media_count }}</span>
-            </button>
+            </div>
         </div>
     @endforeach
 
