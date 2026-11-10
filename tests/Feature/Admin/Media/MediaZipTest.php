@@ -50,3 +50,9 @@ it('refuses more files than one archive holds', function () {
 
     $this->get(route('admin.media.zip', ['ids' => $ids]))->assertStatus(422);
 })->skip(! class_exists(ZipArchive::class), 'ZipArchive is not installed.');
+
+it('finds nothing to zip when the zip extension is missing', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
+
+    $this->get(route('admin.media.zip', ['ids' => [mediaWithFiles()->id]]))->assertNotFound();
+})->skip(class_exists(ZipArchive::class), 'Runs only on a PHP without the zip extension.');

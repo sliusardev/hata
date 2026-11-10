@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\Media\MediaIds;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use ZipArchive;
 
 class MediaZipController extends Controller
 {
@@ -19,6 +20,10 @@ class MediaZipController extends Controller
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 403);
+
+        // Without the zip extension there is no archive to build. class_exists() can't be faked,
+        // so this branch is only exercised on a PHP without zip (see MediaZipTest).
+        abort_unless(class_exists(ZipArchive::class), 404);
 
         $ids = $request->query('ids');
         $ids = MediaIds::existing(is_array($ids) ? $ids : []);
