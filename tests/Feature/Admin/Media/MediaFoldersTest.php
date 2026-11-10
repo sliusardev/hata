@@ -166,3 +166,14 @@ it('refuses to move files without media.edit', function () {
 
     expect($media->refresh()->folder_id)->toBeNull();
 });
+
+it('takes the dropped files out of the selection', function () {
+    $this->actingAs(folderManager());
+    $folder = MediaFolder::factory()->create();
+    [$moved, $kept] = Media::factory()->count(2)->create()->all();
+
+    Livewire::test('pages::admin.media.index')
+        ->set('selected', [$moved->id, $kept->id])
+        ->call('moveTo', [(string) $moved->id], $folder->id)
+        ->assertSet('selected', [$kept->id]);
+});

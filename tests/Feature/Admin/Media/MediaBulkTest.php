@@ -240,3 +240,58 @@ it('selects the files touched by the mouse box, replacing or adding with a modif
         ->call('selectBox', [], false)
         ->assertSet('selected', []);
 });
+
+it('forgets the shift anchor when the selection is cleared', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    [$a, $b] = Media::factory()->count(2)->create()->all();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('pick', $a->id, 'toggle')
+        ->assertSet('selectionAnchor', $a->id)
+        ->call('clearSelection')
+        ->assertSet('selected', [])
+        ->assertSet('selectionAnchor', null)
+        ->call('pick', $b->id, 'range')
+        ->assertSet('selected', [$b->id]);
+});
+
+it('toggles the file for a pick mode it does not know', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    $media = Media::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('pick', $media->id, 'whatever')
+        ->assertSet('selected', [$media->id])
+        ->call('pick', $media->id, 'whatever')
+        ->assertSet('selected', []);
+});
+
+it('keeps the shift anchor when several checkboxes change at once', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    [$a, $b, $c] = collect(range(1, 3))
+        ->map(fn (int $day) => Media::factory()->create(['created_at' => now()->subDays($day)]))
+        ->all();
+
+    Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
+        ->set('selected', [(string) $b->id])
+        ->assertSet('selectionAnchor', $b->id)
+        ->set('selected', [(string) $a->id, (string) $b->id, (string) $c->id])
+        ->assertSet('selectionAnchor', $b->id)
+        ->set('selected', [])
+        ->assertSet('selectionAnchor', $b->id);
+});
+
+it('moves nothing from the bulk bar without media.edit', function () {
+    $this->actingAs(mediaManager());
+    $folder = MediaFolder::factory()->create();
+    $media = Media::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->set('selected', [$media->id])
+        ->call('moveSelected', $folder->id)
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
+            && ($params['slots']['text'] ?? null) === __('media.errors.forbidden'))
+        ->assertSet('selected', [$media->id]);
+
+    expect($media->refresh()->folder_id)->toBeNull();
+});

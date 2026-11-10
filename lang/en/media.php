@@ -150,7 +150,7 @@ return [
         'move' => 'Move to…',
         'dragging' => 'Dragging :count file|Dragging :count files',
         'select_several' => 'Select several',
-        'select_keys' => 'Or Ctrl/Cmd + click to add a file, Shift + click to select a range',
+        'select_keys' => 'Or Ctrl + click (Cmd on a Mac) to add a file, Shift + click to select a range',
         'done_selecting' => 'Done',
         'select_page' => 'Select all on this page',
         'select_file' => 'Select :name',

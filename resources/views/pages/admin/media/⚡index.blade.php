@@ -395,6 +395,7 @@ new #[Title('media.index.title')] class extends Component {
     {
         $this->selected = [];
         $this->selecting = false;
+        $this->selectionAnchor = null;
     }
 
     /**

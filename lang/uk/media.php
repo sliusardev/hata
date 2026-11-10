@@ -150,7 +150,7 @@ return [
         'move' => 'Перемістити в…',
         'dragging' => 'Переміщую :count файл|Переміщую :count файли|Переміщую :count файлів',
         'select_several' => 'Вибрати кілька',
-        'select_keys' => 'Або Ctrl/Cmd + клік, щоб додати файл, Shift + клік, щоб вибрати діапазон',
+        'select_keys' => 'Або Ctrl + клік (Cmd на Mac), щоб додати файл, Shift + клік, щоб вибрати діапазон',
         'done_selecting' => 'Готово',
         'select_page' => 'Вибрати всі на сторінці',
         'select_file' => 'Вибрати :name',
