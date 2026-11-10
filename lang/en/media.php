@@ -38,6 +38,10 @@ return [
             'all' => 'All files',
             'none' => 'No folder',
             'heading' => 'Folders',
+            'search' => 'Search folders',
+            'no_match' => 'No folders match',
+            'expand' => 'Expand folder',
+            'collapse' => 'Collapse folder',
             'path' => 'Folder path',
         ],
         'columns' => [
@@ -117,7 +121,7 @@ return [
         'top_level' => 'Top level',
         'move_confirm' => 'Move',
         'actions' => 'Folder actions',
-        'move_hint' => 'Drag files onto a folder to move them. A file is in one folder.',
+        'move_hint' => 'Drag files or folders onto a folder to move them. A file is in one folder.',
         'delete' => [
             'heading' => 'Delete the folder “:name”?',
             'summary' => 'Everything inside is deleted permanently: :files and :folders.',

@@ -147,12 +147,12 @@ export default function mediaUploader(config) {
 
         /**
          * Whether the drag carries files from the computer. A tile dragged onto a folder is not one,
-         * even though Chrome lists "Files" for a dragged image.
+         * even though Chrome lists "Files" for a dragged image; neither is a folder dragged in the tree.
          */
         hasFiles(event) {
             const types = Array.from(event.dataTransfer?.types ?? []);
 
-            return types.includes('Files') && !types.includes('application/x-media-ids');
+            return types.includes('Files') && !types.includes('application/x-media-ids') && !types.includes('application/x-media-folder');
         },
 
         dragEnter(event) {

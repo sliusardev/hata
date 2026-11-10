@@ -203,9 +203,54 @@ it('shows a danger toast when a folder is moved into its descendant', function (
 
     Livewire::test('pages::admin.media.index')
         ->call('moveFolder', $a->id, $b->id)
-        ->assertDispatched('toast-show');
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
+            && ($params['slots']['text'] ?? null) === __('media.errors.folder_into_itself'));
 
     expect($a->refresh()->parent_id)->toBeNull();
+});
+
+it('shows a danger toast when the target already has a folder with that name', function () {
+    $this->actingAs(folderManager());
+    $target = MediaFolder::factory()->create(['name' => 'Target']);
+    MediaFolder::factory()->create(['parent_id' => $target->id, 'name' => 'Same']);
+    $moving = MediaFolder::factory()->create(['name' => 'Same']);
+
+    Livewire::test('pages::admin.media.index')
+        ->call('moveFolder', $moving->id, $target->id)
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
+            && ($params['slots']['text'] ?? null) === __('media.errors.folder_exists'));
+
+    expect($moving->refresh()->parent_id)->toBeNull();
+});
+
+it('does not show a success toast when a folder is moved to its current parent', function () {
+    $this->actingAs(folderManager());
+    $parent = MediaFolder::factory()->create();
+    $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
+
+    Livewire::test('pages::admin.media.index')
+        ->call('moveFolder', $child->id, $parent->id)
+        ->assertNotDispatched('toast-show');
+
+    expect($child->refresh()->parent_id)->toBe($parent->id);
+});
+
+it('renders chevrons for parents, full-name titles and draggable folders only with media.edit', function () {
+    $this->actingAs(folderManager());
+    $parent = MediaFolder::factory()->create(['name' => 'Parent folder']);
+    $child = MediaFolder::factory()->create(['parent_id' => $parent->id, 'name' => 'Child']);
+
+    Livewire::test('pages::admin.media.index')
+        ->assertSeeHtml('data-test="media-folder-toggle-'.$parent->id.'"')
+        ->assertDontSeeHtml('data-test="media-folder-toggle-'.$child->id.'"')
+        ->assertSeeHtml('title="Parent folder"')
+        ->assertSeeHtml('draggable="true"');
+
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
+
+    Livewire::test('pages::admin.media.index')
+        ->assertDontSeeHtml('draggable="true"')
+        ->assertSeeHtml('title="Parent folder"');
 });
 
 it('ignores a missing folder or target when moving a folder', function () {

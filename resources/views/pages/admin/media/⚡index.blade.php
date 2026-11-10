@@ -907,6 +907,10 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
+        if ($folder->parent_id === $target?->id) {
+            return;
+        }
+
         try {
             app(MoveFolder::class)->handle($this->actor(), $folder, $target);
         } catch (ValidationException $exception) {
