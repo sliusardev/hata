@@ -65,6 +65,21 @@ class Media extends Model
                 $media->key = (string) Str::ulid();
             }
         });
+
+        // A rebuild changes the file in place, so a remembered isEditable() answer would be stale.
+        static::saved(function (Media $media): void {
+            $media->editable = null;
+        });
+    }
+
+    /**
+     * Reload the attributes and forget the memoized isEditable() answer.
+     */
+    public function refresh(): static
+    {
+        $this->editable = null;
+
+        return parent::refresh();
     }
 
     /**

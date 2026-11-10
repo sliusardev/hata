@@ -3,6 +3,7 @@
 namespace App\Support\Media;
 
 use App\Enums\MediaKind;
+use finfo;
 use Illuminate\Http\UploadedFile;
 
 /**
@@ -125,6 +126,27 @@ final class MediaTypes
         }
 
         return null;
+    }
+
+    /**
+     * The canonical whitelist MIME of the given bytes, or null when libmagic reports a type outside the whitelist.
+     *
+     * With a path or file name, its extension wins when libmagic's MIME is one listed for it (libmagic may report
+     * a generic type for AVIF/HEIC or Office files); otherwise the first extension the sniffed MIME maps to is used.
+     */
+    public static function sniff(string $contents, ?string $path = null): ?string
+    {
+        $detected = (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($contents);
+        $extension = $path === null ? '' : strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $type = self::ALLOWED[$extension] ?? null;
+
+        if ($type !== null && in_array($detected, $type['mimes'], true)) {
+            return $type['mimes'][0];
+        }
+
+        $extension = self::extensionFor($detected);
+
+        return $extension === null ? null : self::ALLOWED[$extension]['mimes'][0];
     }
 
     public static function limitBytes(MediaKind $kind): int
