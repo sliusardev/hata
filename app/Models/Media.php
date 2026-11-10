@@ -1,0 +1,138 @@
+<?php
+
+namespace App\Models;
+
+use App\Enums\MediaKind;
+use App\Models\Concerns\HasSearchIndex;
+use Database\Factories\MediaFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+
+/**
+ * @property int $id
+ * @property string $key
+ * @property int|null $folder_id
+ * @property int|null $uploaded_by
+ * @property string $disk
+ * @property string $path
+ * @property string|null $original_path
+ * @property string|null $thumb_path
+ * @property string $name
+ * @property MediaKind $kind
+ * @property string $mime
+ * @property int $size
+ * @property int|null $width
+ * @property int|null $height
+ * @property int|null $original_size
+ * @property string|null $optimized_with
+ * @property array<string, mixed>|null $edits
+ * @property string|null $title
+ * @property array<string, string>|null $alt
+ * @property string|null $search_index
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
+#[Fillable([
+    'folder_id', 'uploaded_by', 'disk', 'path', 'original_path', 'thumb_path', 'name', 'kind', 'mime', 'size',
+    'width', 'height', 'original_size', 'optimized_with', 'edits', 'title', 'alt',
+])]
+#[Hidden(['search_index'])]
+class Media extends Model
+{
+    /** @use HasFactory<MediaFactory> */
+    use HasFactory, HasSearchIndex;
+
+    protected $table = 'media';
+
+    protected static function booted(): void
+    {
+        static::creating(function (Media $media): void {
+            if (blank($media->key)) {
+                $media->key = (string) Str::ulid();
+            }
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function casts(): array
+    {
+        return [
+            'alt' => 'array',
+            'edits' => 'array',
+            'kind' => MediaKind::class,
+        ];
+    }
+
+    /**
+     * @return BelongsTo<MediaFolder, $this>
+     */
+    public function folder(): BelongsTo
+    {
+        return $this->belongsTo(MediaFolder::class, 'folder_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function uploader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    /**
+     * @return HasMany<MediaUsage, $this>
+     */
+    public function usages(): HasMany
+    {
+        return $this->hasMany(MediaUsage::class);
+    }
+
+    public function url(): string
+    {
+        return route('media.show', [$this->key, $this->name]);
+    }
+
+    public function thumbUrl(): ?string
+    {
+        if ($this->thumb_path === null) {
+            return null;
+        }
+
+        return route('media.show', [$this->key, $this->name, 'thumb' => 1]);
+    }
+
+    public function isImage(): bool
+    {
+        return $this->kind === MediaKind::Image;
+    }
+
+    public function altFor(string $locale): string
+    {
+        return (string) ($this->alt[$locale] ?? '');
+    }
+
+    /**
+     * Bytes saved by optimization, or null when the file did not shrink.
+     */
+    public function savedBytes(): ?int
+    {
+        if ($this->original_size === null || $this->original_size <= $this->size) {
+            return null;
+        }
+
+        return $this->original_size - $this->size;
+    }
+
+    protected function searchIndexSource(): string
+    {
+        return $this->name.' '.$this->title.' '.implode(' ', $this->alt ?? []);
+    }
+}
