@@ -112,10 +112,29 @@ it('refuses to delete a folder without media.delete', function () {
 
     Livewire::test('pages::admin.media.index')
         ->call('confirmFolderDelete', $folder->id)
-        ->assertForbidden();
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger')
+        ->assertSet('showFolderDeleteModal', false);
 
     $this->assertModelExists($folder);
 });
+
+it('shows a forbidden toast instead of a 403 when a dialog may not open', function (string $method, string $modal) {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
+    $folder = MediaFolder::factory()->create();
+    $media = Media::factory()->create();
+    $argument = ['confirmDelete' => $media->id, 'openNewFolder' => null][$method] ?? $folder->id;
+
+    Livewire::test('pages::admin.media.index')
+        ->call($method, ...array_filter([$argument]))
+        ->assertOk()
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger')
+        ->assertSet($modal, false);
+})->with([
+    ['confirmDelete', 'showDeleteModal'],
+    ['confirmFolderDelete', 'showFolderDeleteModal'],
+    ['openNewFolder', 'showFolderModal'],
+    ['openRenameFolder', 'showFolderModal'],
+]);
 
 it('moves files by drop', function () {
     $this->actingAs(folderManager());

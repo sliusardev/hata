@@ -157,7 +157,8 @@ it('hides delete without media.delete', function () {
         ->call('select', $media->id)
         ->assertDontSeeHtml('data-test="media-details-delete"')
         ->call('confirmDelete', $media->id)
-        ->assertForbidden();
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger')
+        ->assertSet('showDeleteModal', false);
 
     $this->assertModelExists($media);
 });

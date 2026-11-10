@@ -332,11 +332,7 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
-        try {
-            $this->authorize('delete', Media::query()->findOrFail($ids[0]));
-        } catch (AuthorizationException) {
-            $this->toastForbidden();
-
+        if (! $this->authorizedOrToast('delete', Media::query()->findOrFail($ids[0]))) {
             return;
         }
 
@@ -479,7 +475,9 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
-        $this->authorize('delete', $media);
+        if (! $this->authorizedOrToast('delete', $media)) {
+            return;
+        }
 
         $this->deletingIds = [$media->id];
         unset($this->deletingMedia);
@@ -574,7 +572,9 @@ new #[Title('media.index.title')] class extends Component {
 
     public function openNewFolder(): void
     {
-        $this->authorize('manageFolders', Media::class);
+        if (! $this->authorizedOrToast('manageFolders', Media::class)) {
+            return;
+        }
 
         $this->renamingFolderId = null;
         $this->folderName = '';
@@ -584,7 +584,9 @@ new #[Title('media.index.title')] class extends Component {
 
     public function openRenameFolder(int $id): void
     {
-        $this->authorize('manageFolders', Media::class);
+        if (! $this->authorizedOrToast('manageFolders', Media::class)) {
+            return;
+        }
 
         $folder = MediaFolder::query()->find($id);
 
@@ -639,7 +641,9 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
-        $this->authorize('deleteFolders', Media::class);
+        if (! $this->authorizedOrToast('deleteFolders', Media::class)) {
+            return;
+        }
 
         $this->deletingFolderId = $folder->id;
         $this->confirmName = '';
@@ -890,6 +894,22 @@ new #[Title('media.index.title')] class extends Component {
     private function toastForbidden(): void
     {
         Flux::toast(variant: 'danger', text: __('media.errors.forbidden'));
+    }
+
+    /**
+     * Authorize the ability, showing the forbidden toast (instead of a 403 page) when it is denied.
+     */
+    private function authorizedOrToast(string $ability, mixed $arguments): bool
+    {
+        try {
+            $this->authorize($ability, $arguments);
+        } catch (AuthorizationException) {
+            $this->toastForbidden();
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
