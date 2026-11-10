@@ -4,7 +4,7 @@ A Laravel admin panel starter kit with users, roles and permissions, built on th
 
 ## Stack
 
-- Laravel 13, PHP 8.4+
+- Laravel 13, PHP 8.4+ with the `intl` extension (file sizes and numbers are formatted with it)
 - Livewire 4 (single-file components), Flux UI (free), Tailwind CSS 4
 - Laravel Fortify for authentication (login, password reset, 2FA, passkeys)
 - spatie/laravel-permission for roles and permissions
