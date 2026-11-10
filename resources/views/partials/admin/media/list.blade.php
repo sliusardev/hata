@@ -46,6 +46,7 @@
                         type="checkbox"
                         wire:model.live="selected"
                         value="{{ $item->id }}"
+                        x-on:click="if ($event.shiftKey) { $event.preventDefault(); $wire.pick({{ $item->id }}, 'range') }"
                         class="{{ $checkboxClasses }}"
                         aria-label="{{ __('media.bulk.select_file', ['name' => $item->name]) }}"
                     />

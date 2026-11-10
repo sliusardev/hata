@@ -12,7 +12,12 @@
             <button
                 type="button"
                 wire:key="media-tile-{{ $item->id }}"
-                wire:click="{{ $selecting ? 'toggleSelected' : 'select' }}({{ $item->id }})"
+                x-on:mousedown="if ($event.shiftKey) $event.preventDefault()"
+                x-on:click="
+                    if ($event.shiftKey) { $wire.pick({{ $item->id }}, 'range') }
+                    else if ($event.metaKey || $event.ctrlKey) { $wire.pick({{ $item->id }}, 'toggle') }
+                    else { $wire.{{ $selecting ? 'toggleSelected' : 'select' }}({{ $item->id }}) }
+                "
                 @if ($canMove)
                     draggable="true"
                     @php $dragIds = $isPicked ? array_values($selected) : [$item->id]; @endphp

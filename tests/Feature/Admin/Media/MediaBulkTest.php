@@ -174,3 +174,47 @@ it('drags the whole selection when a selected tile is dragged', function () {
     expect(html_entity_decode($list, ENT_QUOTES))->toContain($dragging([$first->id, $second->id]))
         ->toContain($dragging([$other->id]));
 });
+
+it('selects a range with shift and single files with ctrl or cmd', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    // Newest first: $files[0] is shown first.
+    $files = collect(range(1, 6))
+        ->map(fn (int $day) => Media::factory()->create(['created_at' => now()->subDays($day)]))
+        ->values();
+    [$a, $b, $c, $d, $e, $f] = $files->all();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('pick', $b->id, 'toggle')
+        ->assertSet('selected', [$b->id])
+        ->call('pick', $e->id, 'range')
+        ->assertSet('selected', [$b->id, $c->id, $d->id, $e->id])
+        ->call('pick', $c->id, 'toggle')
+        ->assertSet('selected', [$b->id, $d->id, $e->id])
+        ->call('pick', $a->id, 'range')
+        ->assertSet('selected', [$b->id, $d->id, $e->id, $a->id, $c->id]);
+});
+
+it('starts a shift range from the file opened last', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    [$a, $b, $c] = collect(range(1, 3))
+        ->map(fn (int $day) => Media::factory()->create(['created_at' => now()->subDays($day)]))
+        ->all();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $c->id)
+        ->call('pick', $a->id, 'range')
+        ->assertSet('selected', [$a->id, $b->id, $c->id]);
+});
+
+it('anchors the shift range at a checkbox ticked in the list', function () {
+    $this->actingAs(mediaManager(['media.edit']));
+    [$a, $b, $c] = collect(range(1, 3))
+        ->map(fn (int $day) => Media::factory()->create(['created_at' => now()->subDays($day)]))
+        ->all();
+
+    Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
+        ->set('selected', [(string) $a->id])
+        ->assertSet('selectionAnchor', $a->id)
+        ->call('pick', $c->id, 'range')
+        ->assertSet('selected', [$a->id, $b->id, $c->id]);
+});

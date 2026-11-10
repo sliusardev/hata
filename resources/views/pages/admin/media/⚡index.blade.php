@@ -102,6 +102,12 @@ new #[Title('media.index.title')] class extends Component {
     #[Locked]
     public ?int $selectedId = null;
 
+    /**
+     * The file a Shift + click selects from: the one picked last.
+     */
+    #[Locked]
+    public ?int $selectionAnchor = null;
+
     public MediaDetailsForm $details;
 
     /**
@@ -289,10 +295,59 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
+     * Ctrl/Cmd + click ("toggle") adds a file to the selection or takes it out; Shift + click ("range")
+     * selects every file shown between the last clicked one and this one, in the order they're shown.
+     */
+    public function pick(int $id, string $mode): void
+    {
+        if ($mode !== 'range') {
+            $this->toggleSelected($id);
+
+            return;
+        }
+
+        $shown = $this->media->getCollection()->modelKeys();
+        $from = $this->selectionAnchor === null ? false : array_search($this->selectionAnchor, $shown, true);
+        $to = array_search($id, $shown, true);
+
+        if ($from === false || $to === false) {
+            $this->toggleSelected($id);
+
+            return;
+        }
+
+        $range = array_slice($shown, min($from, $to), abs($to - $from) + 1);
+        $this->selected = MediaIds::existing([...$this->selected, ...$range]);
+    }
+
+    /**
+     * A list checkbox ticked or unticked by hand becomes the anchor for the next Shift + click.
+     *
+     * @param  mixed  $value  the whole new selection (a nested "selected.N" update is ignored)
+     */
+    public function updatingSelected(mixed $value, ?string $key = null): void
+    {
+        if ($key !== null || ! is_array($value)) {
+            return;
+        }
+
+        $changed = array_merge(
+            array_diff(MediaIds::normalize($value), $this->selected),
+            array_diff($this->selected, MediaIds::normalize($value)),
+        );
+
+        if (count($changed) === 1) {
+            $this->selectionAnchor = (int) reset($changed);
+        }
+    }
+
+    /**
      * Add a file to the bulk selection or take it out ("Select several" in the grid).
      */
     public function toggleSelected(int $id): void
     {
+        $this->selectionAnchor = $id;
+
         if (in_array($id, $this->selected, true)) {
             $this->selected = array_values(array_diff($this->selected, [$id]));
 
@@ -395,6 +450,7 @@ new #[Title('media.index.title')] class extends Component {
     public function select(int $id): void
     {
         $this->authorize('viewAny', Media::class);
+        $this->selectionAnchor = $id;
 
         if ($id === $this->selectedId || ! Media::query()->whereKey($id)->exists()) {
             return;
@@ -1098,6 +1154,7 @@ new #[Title('media.index.title')] class extends Component {
                 wire:click="toggleSelecting"
                 :aria-pressed="$selecting ? 'true' : 'false'"
                 class="self-start lg:self-auto"
+                :tooltip="__('media.bulk.select_keys')"
                 data-test="media-select-several"
             >
                 {{ $selecting ? __('media.bulk.done_selecting') : __('media.bulk.select_several') }}
