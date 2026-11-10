@@ -162,7 +162,7 @@ it('shows the result size', function () {
     $media = cropPageMedia(makeImage('webp', 2560, 1920), makeImage('jpg', 4000, 3000));
 
     Livewire::test('pages::admin.media.crop', ['media' => $media])
-        ->assertSee('4000 × 3000')
+        ->assertSee('2560 × 1920')
         ->set('edits.crop', ['x' => 0.25, 'y' => 0.25, 'w' => 0.5, 'h' => 0.5])
         ->assertSee('2000 × 1500')
         ->set('width', 1000)
@@ -170,6 +170,34 @@ it('shows the result size', function () {
         ->set('width', '')
         ->assertSet('width', null)
         ->assertSee('2000 × 1500');
+});
+
+it('shows the size after the max-side scale, as the applied file will have it', function (?array $size, string $expected, bool $hint) {
+    $media = cropPageMedia(makeImage('webp', 2560, 1707), makeImage('jpg', 3800, 2500));
+
+    $page = Livewire::test('pages::admin.media.crop', ['media' => $media])
+        ->set('width', $size[0] ?? null)
+        ->set('height', $size[1] ?? null)
+        ->assertSee($expected);
+
+    $hint ? $page->assertSeeHtml('data-test="media-crop-max-side-hint"') : $page->assertDontSeeHtml('data-test="media-crop-max-side-hint"');
+
+    $page->call('apply')->assertHasNoErrors();
+
+    $image = Image::fromBytes((string) Storage::disk('local')->get($media->refresh()->path));
+
+    expect("{$image->width()} × {$image->height()}")->toBe($expected);
+})->with([
+    'default crop of a 3800 px original' => [null, '2560 × 1684', false],
+    'exact size above the cap' => [[3000, 2000], '2560 × 1684', true],
+    'exact size below the cap' => [[1000, 1000], '1000 × 658', false],
+]);
+
+it('shows the uncapped size when max-side scaling is off', function () {
+    config(['media.optimize.max_side' => 0]);
+    $media = cropPageMedia(makeImage('webp', 2560, 1707), makeImage('jpg', 3800, 2500));
+
+    Livewire::test('pages::admin.media.crop', ['media' => $media])->assertSee('3800 × 2500');
 });
 
 it('sets the social size with the social ratio', function () {

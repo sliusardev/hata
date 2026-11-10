@@ -109,7 +109,7 @@ new #[Title('media.crop.title'), Layout('layouts::focus')] class extends Compone
     }
 
     /**
-     * The size the current edits produce, the same way CropMedia and OptimizeImage compute it (before any max-side scaling).
+     * The size the current edits produce, the same way CropMedia and OptimizeImage compute it, including the max-side scale.
      *
      * @return array{int, int}|null
      */
@@ -124,7 +124,37 @@ new #[Title('media.crop.title'), Layout('layouts::focus')] class extends Compone
         $crop = $this->cropFractions();
         $pixels = $crop === null ? null : CropMedia::cropPixels($crop, $rotate, $this->sourceWidth, $this->sourceHeight);
 
-        return (new ImageEdits($rotate, crop: $pixels, size: $this->outputSize()))->outputSize($this->sourceWidth, $this->sourceHeight);
+        [$width, $height] = (new ImageEdits($rotate, crop: $pixels, size: $this->outputSize()))->outputSize($this->sourceWidth, $this->sourceHeight);
+        $maxSide = $this->maxSide();
+
+        if ($maxSide !== null && max($width, $height) > $maxSide) {
+            $factor = $maxSide / max($width, $height);
+            [$width, $height] = [max(1, (int) round($width * $factor)), max(1, (int) round($height * $factor))];
+        }
+
+        return [$width, $height];
+    }
+
+    /**
+     * The longest side OptimizeImage will scale the result to, or null when it doesn't scale.
+     */
+    #[Computed]
+    public function maxSide(): ?int
+    {
+        $maxSide = config('media.optimize.max_side');
+
+        return config('media.optimize.enabled') && is_int($maxSide) && $maxSide > 0 ? $maxSide : null;
+    }
+
+    /**
+     * Whether the exact size asked for is larger than the max-side scale allows.
+     */
+    #[Computed]
+    public function sizeExceedsMaxSide(): bool
+    {
+        $size = $this->outputSize();
+
+        return $this->maxSide !== null && $size !== null && max($size['w'], $size['h']) > $this->maxSide;
     }
 
     public function updatingRatio(mixed $value): void
@@ -418,6 +448,9 @@ new #[Title('media.crop.title'), Layout('layouts::focus')] class extends Compone
                     <flux:error name="height" />
                     <flux:error name="size" />
                     <flux:text size="sm">{{ __('media.crop.size_hint') }}</flux:text>
+                    @if ($this->sizeExceedsMaxSide)
+                        <flux:text size="sm" data-test="media-crop-max-side-hint">{{ __('media.crop.max_side_hint', ['max' => $this->maxSide]) }}</flux:text>
+                    @endif
                 </div>
 
                 <div class="space-y-2.5">

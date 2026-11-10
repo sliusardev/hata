@@ -178,6 +178,7 @@ return [
         'width' => 'Width',
         'height' => 'Height',
         'size_hint' => 'Empty = the size of the selected area. Images are never enlarged.',
+        'max_side_hint' => 'The site scales images down to :max px on the longest side, so the result will be smaller.',
         'transform' => 'Rotate and flip',
         'rotate_left' => 'Rotate left',
         'rotate_right' => 'Rotate right',
