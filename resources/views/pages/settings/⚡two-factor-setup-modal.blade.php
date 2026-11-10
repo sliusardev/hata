@@ -266,14 +266,17 @@ new class extends Component {
                         class="flex items-center space-x-2"
                         x-data="{
                             copied: false,
-                            async copy() {
-                                try {
-                                    await navigator.clipboard.writeText('{{ $manualSetupKey }}');
+                            copy() {
+                                copyText(@js($manualSetupKey)).then((done) => {
+                                    if (! done) {
+                                        console.warn('Could not copy to clipboard');
+
+                                        return;
+                                    }
+
                                     this.copied = true;
                                     setTimeout(() => this.copied = false, 1500);
-                                } catch (e) {
-                                    console.warn('Could not copy to clipboard');
-                                }
+                                });
                             }
                         }"
                     >

@@ -1,7 +1,9 @@
+import copyText from './copy-text.js';
 import mediaDragStart from './media-drag.js';
 import mediaMarquee from './media-marquee.js';
 import mediaUploader from './media-uploader.js';
 
+window.copyText = copyText;
 window.mediaDragStart = mediaDragStart;
 
 document.addEventListener('alpine:init', () => {

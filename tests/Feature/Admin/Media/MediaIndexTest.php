@@ -274,6 +274,10 @@ it('keeps the outline of the open tile when it has focus', function () {
 
     preg_match('/<button[^>]*data-media-id="'.$media->id.'"[^>]*>/', $html, $tile);
 
-    expect($tile[0] ?? '')->toContain('outline-accent')
-        ->not->toContain('focus:outline-none');
+    $classes = preg_match('/class="([^"]*)"/', $tile[0] ?? '', $match) ? explode(' ', $match[1]) : [];
+
+    expect($tile[0] ?? '')->toContain('data-active="true"')
+        ->and($classes)->toContain('outline-2', 'outline-accent')
+        ->not->toContain('focus:outline-none')
+        ->and($classes)->toContain('focus-visible:outline-dashed');
 });

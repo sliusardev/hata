@@ -40,7 +40,7 @@
                 @endif
                 @class([
                     'group min-w-0 rounded-xl p-1.5 text-start transition-colors',
-                    'hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-accent dark:hover:bg-white/5',
+                    'hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dashed focus-visible:outline-zinc-500 dark:hover:bg-white/5 dark:focus-visible:outline-zinc-300',
                     'data-[boxed=true]:bg-zinc-200/70 data-[boxed=true]:outline-2 data-[boxed=true]:outline-accent dark:data-[boxed=true]:bg-white/10',
                     'bg-zinc-200/70! outline-2 outline-accent dark:bg-white/10!' => $isPicked || (! $selecting && $selectedId === $item->id),
                 ])
