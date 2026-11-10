@@ -261,3 +261,28 @@ it('forgets whether the file is editable after a rebuild', function () {
 
     expect($media->isEditable())->toBeTrue();
 });
+
+it('stores the new original with the extension of the source when it is the source itself', function () {
+    $media = rebuildableMedia('old-file');
+    $this->mock(OptimizeImage::class, function ($mock): void {
+        $mock->shouldReceive('handle')->andReturn(new OptimizedImage('webp-bytes', 'image/webp', 'webp', 640, 480, optimized: true, fingerprint: 'fp'));
+        $mock->shouldReceive('thumbnail')->andReturn(null);
+    });
+
+    $rebuilt = app(RebuildMediaFile::class)->handle($media, 'heic-bytes', 'image/heic', null, newOriginal: 'heic-bytes');
+
+    expect($rebuilt->original_path)->toBe("media/originals/{$media->key}.heic");
+    Storage::disk('local')->assertExists("media/originals/{$media->key}.heic");
+});
+
+it('increments the version from the database, not from the instance', function () {
+    $media = rebuildableMedia(makeImage('webp'));
+    $stale = Media::query()->findOrFail($media->id);
+
+    app(RebuildMediaFile::class)->handle($media, makeImage('jpg', 400, 300), 'image/jpeg', null);
+    $rebuilt = app(RebuildMediaFile::class)->handle($stale, makeImage('jpg', 300, 200), 'image/jpeg', null);
+
+    expect($rebuilt->version)->toBe(3)
+        ->and($stale->version)->toBe(3)
+        ->and($media->fresh()->version)->toBe(3);
+});

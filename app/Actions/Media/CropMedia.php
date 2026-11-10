@@ -44,7 +44,9 @@ class CropMedia
         try {
             $source = MediaSource::for($media);
             $edits = $this->pixelEdits($source, $data);
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            report($e);
+
             throw ValidationException::withMessages(['crop' => __('media.errors.not_editable')]);
         }
 

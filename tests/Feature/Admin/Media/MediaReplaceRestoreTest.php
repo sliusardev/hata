@@ -1,9 +1,11 @@
 <?php
 
+use App\Actions\Media\RestoreOriginal;
 use App\Models\Media;
 use App\Models\MediaUsage;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -115,6 +117,20 @@ it('shows a danger toast when the original file is gone', function () {
         ->assertDispatched('toast-show', fn (string $event, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger');
 
     expect($media->refresh()->version)->toBe(1);
+});
+
+it('reports and shows a danger toast when restoring fails unexpectedly', function () {
+    $media = replaceTarget(makeImage('jpg', 900, 600));
+    $this->mock(RestoreOriginal::class)->shouldReceive('handle')->andThrow(new RuntimeException('disk error'));
+    Exceptions::fake();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->call('confirmRestore')
+        ->call('restoreConfirmed')
+        ->assertDispatched('toast-show', fn (string $event, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger');
+
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'disk error');
 });
 
 it('hides restore without an original', function () {

@@ -436,6 +436,11 @@ new #[Title('media.index.title')] class extends Component {
             $this->toastForbidden();
 
             return;
+        } catch (Throwable $exception) {
+            report($exception);
+            Flux::toast(variant: 'danger', text: __('media.restore.failed'));
+
+            return;
         }
 
         $this->refreshAfterFileChange();

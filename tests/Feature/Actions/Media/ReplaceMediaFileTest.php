@@ -81,6 +81,7 @@ it('renames and redirects the old name when the extension changes', function () 
     $result = app(ReplaceMediaFile::class)->handle($this->actor, $media, uploadedImage('cat.png', makeImage('png')));
 
     expect($result->name)->toBe('cat.webp');
+    Storage::disk('local')->assertMissing("media/2020/01/{$key}.jpg");
     $this->get(route('media.show', [$key, $oldName]))
         ->assertRedirect($result->url())
         ->assertStatus(301);

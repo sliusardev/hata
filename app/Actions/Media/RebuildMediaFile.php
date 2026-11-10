@@ -59,6 +59,7 @@ class RebuildMediaFile
 
         $imageEdits = ImageEdits::fromArray($edits);
         $imageEdits = $imageEdits?->isEmpty() ? null : $imageEdits;
+        [$sourceContents, $sourceMime] = [$contents, $mime];
         $width = $height = $fingerprint = $failure = $thumbnail = null;
 
         if ($media->isImage()) {
@@ -86,7 +87,7 @@ class RebuildMediaFile
         $thumbPath = $thumbnail === null ? null : "media/thumbs/{$media->key}.webp";
         $originalPath = match (true) {
             $dropOriginal => null,
-            $newOriginal !== null => sprintf('media/originals/%s.%s', $media->key, $this->originalExtension($newOriginal, $contents === $newOriginal ? $mime : null)),
+            $newOriginal !== null => sprintf('media/originals/%s.%s', $media->key, $this->originalExtension($newOriginal, $sourceContents === $newOriginal ? $sourceMime : null)),
             default => $media->original_path,
         };
 
@@ -123,6 +124,8 @@ class RebuildMediaFile
             }
 
             DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $imageEdits, $keepEdits, $stale): void {
+                $version = (int) Media::query()->whereKey($media->getKey())->lockForUpdate()->value('version');
+
                 $media->fill($attributes)->fill([
                     'path' => $path,
                     'thumb_path' => $thumbPath,
@@ -135,7 +138,7 @@ class RebuildMediaFile
                     'optimized_with' => $fingerprint,
                     'optimize_failure' => $failure,
                     'edits' => $keepEdits ? $imageEdits?->toArray() : null,
-                    'version' => $media->version + 1,
+                    'version' => $version + 1,
                 ]);
                 $media->save();
 
