@@ -83,6 +83,7 @@ return [
         'copied' => 'Link copied.',
         'copy_failed' => 'Copying needs HTTPS. The link is selected: press Ctrl+C (⌘C on a Mac) to copy it.',
         'download' => 'Download to your computer',
+        'open' => 'Open in a new tab',
         'unsaved' => [
             'heading' => 'Unsaved changes',
             'body' => 'The details of “:name” have unsaved changes. If you go on, they will be lost.',

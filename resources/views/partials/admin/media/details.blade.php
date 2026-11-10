@@ -38,14 +38,24 @@
     </div>
 
     <div class="flex aspect-[3/2] items-center justify-center bg-zinc-100 dark:bg-white/5">
-        @if ($thumbUrl = $media->thumbUrl())
-            <img src="{{ $thumbUrl }}" alt="{{ $media->altFor(app()->getLocale()) }}" class="size-full object-contain" />
-        @else
-            <div class="flex flex-col items-center gap-2 text-zinc-400 dark:text-zinc-500">
-                <flux:icon :name="$media->kind->icon()" variant="outline" class="size-12" />
-                <span class="text-xs font-semibold tracking-wide text-zinc-500 dark:text-zinc-400">{{ $media->extension() }}</span>
-            </div>
-        @endif
+        <a
+            href="{{ $media->url() }}"
+            target="_blank"
+            rel="noopener"
+            title="{{ __('media.details.open') }}"
+            class="flex size-full cursor-zoom-in items-center justify-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+            data-test="media-details-preview"
+        >
+            <span class="sr-only">{{ __('media.details.open') }}</span>
+            @if ($thumbUrl = $media->thumbUrl())
+                <img src="{{ $thumbUrl }}" alt="{{ $media->altFor(app()->getLocale()) }}" class="size-full object-contain" />
+            @else
+                <span class="flex flex-col items-center gap-2 text-zinc-400 dark:text-zinc-500">
+                    <flux:icon :name="$media->kind->icon()" variant="outline" class="size-12" />
+                    <span class="text-xs font-semibold tracking-wide text-zinc-500 dark:text-zinc-400">{{ $media->extension() }}</span>
+                </span>
+            @endif
+        </a>
     </div>
 
     <form wire:submit="saveDetails">
@@ -188,6 +198,7 @@
             @if ($canEdit)
                 <flux:button type="submit" variant="primary" size="sm" data-test="media-details-save">{{ __('common.actions.save') }}</flux:button>
             @endif
+            <flux:button size="sm" icon="arrow-top-right-on-square" :href="$media->url()" target="_blank" rel="noopener" :aria-label="__('media.details.open')" :tooltip="__('media.details.open')" data-test="media-details-open" />
             <flux:button size="sm" icon="arrow-down-tray" :href="$media->url()" download="{{ $media->name }}" :aria-label="__('media.details.download')" :tooltip="__('media.details.download')" />
             <flux:spacer />
             @can('delete', $media)

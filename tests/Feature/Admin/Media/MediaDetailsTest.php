@@ -100,6 +100,18 @@ it('shows the primary alt text and folds the other languages into translations',
         ->assertSeeHtml('placeholder="Каша в мисці"');
 });
 
+it('opens the full file in a new tab from the preview and the open button', function () {
+    $this->actingAs(mediaEditor());
+    $media = Media::factory()->create();
+    $url = e($media->url());
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->assertSeeHtmlInOrder(['href="'.$url.'"', 'target="_blank"', 'data-test="media-details-preview"'])
+        ->assertSeeHtmlInOrder(['data-test="media-details-preview"', 'href="'.$url.'"', 'target="_blank"', 'data-test="media-details-open"'])
+        ->assertSee(__('media.details.open'));
+});
+
 it('shows no translations block with a single language', function () {
     config(['app.locale' => 'en', 'app.available_locales' => ['en' => 'English']]);
     $this->actingAs(mediaEditor());
