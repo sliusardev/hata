@@ -306,3 +306,84 @@ it('does not open the move dialog without media.edit', function () {
         ->call('openMoveFolder', $a->id)
         ->assertSet('showMoveFolderModal', false);
 });
+
+it('lists the direct subfolders of the open folder by name with their counts', function () {
+    $this->actingAs(folderManager());
+    $parent = MediaFolder::factory()->create(['name' => 'Marketing']);
+    $zeta = MediaFolder::factory()->create(['parent_id' => $parent->id, 'name' => 'Zeta']);
+    $alpha = MediaFolder::factory()->create(['parent_id' => $parent->id, 'name' => 'Alpha']);
+    MediaFolder::factory()->create(['parent_id' => $alpha->id, 'name' => 'Deep']);
+    Media::factory()->count(2)->inFolder($alpha)->create();
+    Media::factory()->inFolder($parent)->create();
+
+    $component = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id]);
+    $tiles = $component->get('subfolders');
+
+    expect($tiles->pluck('name')->all())->toBe(['Alpha', 'Zeta'])
+        ->and($tiles->first()->media_count)->toBe(2)
+        ->and($tiles->first()->children_count)->toBe(1)
+        ->and($tiles->last()->children_count)->toBe(0);
+
+    $component->assertSeeHtml('data-test="media-subfolder-'.$zeta->id.'"');
+});
+
+it('shows no subfolder tiles for all files, no folder or while a filter is active', function () {
+    $this->actingAs(folderManager());
+    $parent = MediaFolder::factory()->create();
+    MediaFolder::factory()->create(['parent_id' => $parent->id]);
+
+    expect(Livewire::test('pages::admin.media.index')->get('subfolders'))->toBeEmpty()
+        ->and(Livewire::test('pages::admin.media.index', ['folder' => 'none'])->get('subfolders'))->toBeEmpty();
+
+    $open = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id]);
+    expect($open->get('subfolders'))->toHaveCount(1);
+
+    foreach ([['search', 'x'], ['type', 'image'], ['month', '2026-01'], ['unused', true]] as [$property, $value]) {
+        expect($open->set($property, $value)->get('subfolders'))->toBeEmpty();
+        $open->set($property, $property === 'unused' ? false : '');
+    }
+});
+
+it('shows the tiles instead of the empty state in a folder that only has subfolders', function () {
+    $this->actingAs(folderManager());
+    $parent = MediaFolder::factory()->create();
+    $child = MediaFolder::factory()->create(['parent_id' => $parent->id, 'name' => 'Banners']);
+
+    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+        ->assertSee('Banners')
+        ->assertSee(__('media.index.subfolders.no_files'))
+        ->assertDontSee(__('media.index.empty.title'))
+        ->assertDontSee(__('media.index.no_results.title'))
+        ->set('view', 'list')
+        ->assertSeeHtml('data-test="media-subfolder-'.$child->id.'"')
+        ->assertSee(__('media.index.subfolders.no_files'));
+});
+
+it('opens a subfolder from its tile', function () {
+    $this->actingAs(folderManager());
+    $parent = MediaFolder::factory()->create();
+    $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
+
+    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+        ->set('folder', (string) $child->id)
+        ->assertSet('folder', (string) $child->id);
+});
+
+it('expands the open folder in the tree after a subfolder is created in it', function () {
+    $this->actingAs(folderManager());
+    $parent = MediaFolder::factory()->create();
+    $other = MediaFolder::factory()->create();
+
+    $component = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+        ->assertSet('expandFolderId', null)
+        ->call('createFolder', 'Banners')
+        ->assertSet('expandFolderId', $parent->id)
+        ->call('createFolder', ' ')
+        ->assertSet('expandFolderId', $parent->id);
+
+    $component->set('folder', (string) $other->id)->assertSet('expandFolderId', null);
+
+    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+        ->call('createFolder', 'Banners')
+        ->assertSet('expandFolderId', null);
+});

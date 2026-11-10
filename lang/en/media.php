@@ -28,6 +28,12 @@ return [
             'document' => 'Documents',
             'other' => 'Other',
         ],
+        'subfolders' => [
+            'label' => 'Folders in this folder',
+            'no_files' => 'No files here',
+            'files' => ':count file|:count files',
+            'folders' => ':count folder|:count folders',
+        ],
         'views' => [
             'label' => 'View',
             'grid' => 'Grid',

@@ -29,7 +29,7 @@ export default function mediaMarquee() {
                 return;
             }
 
-            if (event.target.closest('[data-media-id], button, a, input, label, select, textarea')) {
+            if (event.target.closest('[data-media-id], [data-media-folder], button, a, input, label, select, textarea')) {
                 return;
             }
 

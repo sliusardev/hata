@@ -28,6 +28,12 @@ return [
             'document' => 'Документи',
             'other' => 'Інше',
         ],
+        'subfolders' => [
+            'label' => 'Папки в цій папці',
+            'no_files' => 'Тут немає файлів',
+            'files' => ':count файл|:count файли|:count файлів',
+            'folders' => ':count папка|:count папки|:count папок',
+        ],
         'views' => [
             'label' => 'Вигляд',
             'grid' => 'Сітка',

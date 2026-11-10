@@ -1,6 +1,7 @@
 {{--
     Folder navigation of the media library.
     Expects: $folder (null, 'none' or a folder id), $folders (rows of folder + depth), $totals (all, none),
+    $expandId (a folder to show expanded, set after a subfolder was created in it),
     $canManageFolders (shows "+", makes the folders draggable and "No folder", "All files" and the folders drop targets).
     Alpine keeps the collapse state (localStorage), the folder search and the drag state; every row is rendered, x-show hides it.
 --}}
@@ -41,6 +42,7 @@
                 this.expanded = [];
             }
             this.revealCurrent();
+            this.expandCreatedIn(@js($expandId));
             this.$watch('$wire.folder', () => this.revealCurrent());
             this.$watch('query', () => this.updateMatches());
         },
@@ -48,6 +50,14 @@
             const current = Number($wire.folder);
             if (! Number.isInteger(current) || ! this.byId[current]) { return }
             this.expanded = [...new Set([...this.expanded, ...this.ancestors(current)])];
+        },
+        expandCreatedIn(id) {
+            if (id === null || ! this.byId[id]?.kids || this.expanded.includes(id)) { return }
+            this.expanded = [...this.expanded, id];
+            this.persist();
+        },
+        persist() {
+            try { localStorage.setItem('media.folders.expanded', JSON.stringify(this.expanded)) } catch (error) {}
         },
         ancestors(id) {
             const result = [];
@@ -79,15 +89,15 @@
         },
         toggle(id) {
             this.expanded = this.expanded.includes(id) ? this.expanded.filter((item) => item !== id) : [...this.expanded, id];
-            try { localStorage.setItem('media.folders.expanded', JSON.stringify(this.expanded)) } catch (error) {}
+            this.persist();
         },
         @if ($canManageFolders)
         accepts(event, target) {
-            const types = Array.from(event.dataTransfer?.types ?? []);
-            if (types.includes('application/x-media-folder')) {
+            const kinds = window.mediaFolderDrag.dragKinds(event);
+            if (kinds.folder) {
                 return target !== 'none' && this.dragging !== target && ! (this.ancestors(target).includes(this.dragging));
             }
-            return types.includes('application/x-media-ids') && target !== 'all';
+            return kinds.files && target !== 'all';
         },
         enter(event, target) {
             if (! this.accepts(event, target)) { return }
@@ -104,26 +114,20 @@
         },
         clearHover() { clearTimeout(this.hoverTimer); this.hoverId = null },
         leave(event) {
-            const box = event.currentTarget.getBoundingClientRect();
-            const inside = event.relatedTarget
-                ? event.currentTarget.contains(event.relatedTarget)
-                : event.clientX > box.left && event.clientX < box.right && event.clientY > box.top && event.clientY < box.bottom;
-            if (! inside) { this.over = null; this.clearHover() }
+            if (window.mediaFolderDrag.leftElement(event)) { this.over = null; this.clearHover() }
         },
         reset() { this.over = null; this.dragging = null; this.clearHover(); this.temporary = [] },
         startDrag(event, id) {
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('application/x-media-folder', String(id));
+            window.mediaFolderDrag.startFolderDrag(event, id);
             this.dragging = id;
         },
         drop(event, target) {
-            const folderId = event.dataTransfer.getData('application/x-media-folder');
-            const ids = event.dataTransfer.getData('application/x-media-ids');
+            const { folderId, ids } = window.mediaFolderDrag.readDrop(event);
             this.reset();
-            if (folderId) {
-                if (Number(folderId) !== target) { $wire.moveFolder(Number(folderId), target === 'all' ? null : target) }
+            if (folderId !== null) {
+                if (folderId !== target) { $wire.moveFolder(folderId, target === 'all' ? null : target) }
             } else if (ids) {
-                $wire.moveTo(JSON.parse(ids), target === 'none' ? null : target);
+                $wire.moveTo(ids, target === 'none' ? null : target);
             }
         },
         @endif

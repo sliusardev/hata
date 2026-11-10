@@ -226,6 +226,13 @@ new #[Title('media.index.title')] class extends Component {
 
     public bool $showRestoreModal = false;
 
+    /**
+     * The open folder after a subfolder was created in it, so the tree expands it and shows the new folder.
+     * Forgotten as soon as another folder is opened.
+     */
+    #[Locked]
+    public ?int $expandFolderId = null;
+
     public function mount(): void
     {
         $this->authorize('viewAny', Media::class);
@@ -240,6 +247,7 @@ new #[Title('media.index.title')] class extends Component {
     public function updated(string $property): void
     {
         if ($property === 'folder') {
+            $this->expandFolderId = null;
             $this->forgetMissingFolder();
         }
 
@@ -877,6 +885,7 @@ new #[Title('media.index.title')] class extends Component {
     {
         $this->runFolderAction(function () use ($name): void {
             app(CreateFolder::class)->handle($this->actor(), $name, $this->currentFolder);
+            $this->expandFolderId = $this->currentFolder?->id;
         }, __('media.messages.folder_created'));
     }
 
@@ -902,7 +911,7 @@ new #[Title('media.index.title')] class extends Component {
         $target = $targetId === null ? null : MediaFolder::query()->find($targetId);
 
         if ($folder === null || ($targetId !== null && $target === null)) {
-            unset($this->folders, $this->currentFolder, $this->breadcrumb);
+            unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
 
             return;
         }
@@ -923,7 +932,7 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
-        unset($this->folders, $this->currentFolder, $this->breadcrumb);
+        unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
         Flux::toast(variant: 'success', text: __('media.messages.folder_moved'));
     }
 
@@ -1051,7 +1060,7 @@ new #[Title('media.index.title')] class extends Component {
             $this->resetPage();
         }
 
-        unset($this->folders, $this->currentFolder, $this->breadcrumb);
+        unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
         $this->forgetDeletedMedia();
         Flux::toast(variant: 'success', text: __('media.messages.folder_deleted'));
     }
@@ -1130,6 +1139,30 @@ new #[Title('media.index.title')] class extends Component {
         $walk(0, 0);
 
         return $rows;
+    }
+
+    /**
+     * Direct subfolders of the open folder, by name, for the tiles above the files. Empty for "All files",
+     * "No folder" and while a filter is active (the list then shows matching files, not the folder's content).
+     *
+     * @return Collection<int, MediaFolder>
+     */
+    #[Computed]
+    public function subfolders(): Collection
+    {
+        $current = $this->currentFolder;
+
+        if ($current === null || $this->search !== '' || $this->type !== '' || $this->month !== '' || $this->unused) {
+            return collect();
+        }
+
+        $rows = collect($this->folders)->pluck('folder');
+        $childCounts = $rows->countBy(fn (MediaFolder $folder): int => $folder->parent_id ?? 0);
+
+        return $rows
+            ->where('parent_id', $current->id)
+            ->each(fn (MediaFolder $folder) => $folder->setAttribute('children_count', $childCounts->get($folder->id, 0)))
+            ->values();
     }
 
     /**
@@ -1310,7 +1343,7 @@ new #[Title('media.index.title')] class extends Component {
         $this->showFolderModal = false;
         $this->folderName = '';
         $this->renamingFolderId = null;
-        unset($this->folders, $this->currentFolder, $this->breadcrumb);
+        unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
         Flux::toast(variant: 'success', text: $success);
     }
 
@@ -1512,6 +1545,7 @@ new #[Title('media.index.title')] class extends Component {
             'folders' => $this->folders,
             'totals' => $this->totals,
             'canManageFolders' => $canManageFolders,
+            'expandId' => $expandFolderId,
         ])
 
         <div class="flex min-w-0 flex-1 flex-col gap-6 xl:flex-row xl:items-start">
@@ -1555,7 +1589,14 @@ new #[Title('media.index.title')] class extends Component {
                 @include('partials.admin.media.upload-tiles')
             @endif
 
-            @if ($this->media->isEmpty())
+            @php $subfolders = $this->subfolders; @endphp
+            @if ($subfolders->isNotEmpty())
+                @include('partials.admin.media.subfolders', ['subfolders' => $subfolders, 'canMove' => $canManageFolders])
+            @endif
+
+            @if ($this->media->isEmpty() && $subfolders->isNotEmpty())
+                <flux:text size="sm" variant="subtle" data-test="media-no-files">{{ __('media.index.subfolders.no_files') }}</flux:text>
+            @elseif ($this->media->isEmpty())
                 <x-admin.empty-state
                     icon="photo"
                     :heading="$this->totals['all'] > 0 ? __('media.index.no_results.title') : __('media.index.empty.title')"
