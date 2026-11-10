@@ -1,0 +1,23 @@
+<?php
+
+namespace App\Actions\Media;
+
+use App\Models\Media;
+use App\Models\MediaFolder;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
+
+class RenameFolder
+{
+    public function __construct(private FolderNameValidator $names) {}
+
+    public function handle(User $actor, MediaFolder $folder, string $name): MediaFolder
+    {
+        Gate::forUser($actor)->authorize('manageFolders', Media::class);
+
+        $folder->name = $this->names->validate($name, $folder->parent_id, $folder->id);
+        $folder->save();
+
+        return $folder;
+    }
+}

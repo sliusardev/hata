@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\Media;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /*
@@ -119,4 +121,23 @@ function uploadedImage(string $name, string $bytes): UploadedFile
     file_put_contents($path, $bytes);
 
     return new UploadedFile($path, $name, null, null, true);
+}
+
+/**
+ * A media row with its three files written to the faked disk.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function mediaWithFiles(array $attributes = []): Media
+{
+    $media = Media::factory()->create($attributes + [
+        'original_path' => 'media/originals/x'.uniqid().'.jpg',
+        'thumb_path' => 'media/thumbs/x'.uniqid().'.webp',
+    ]);
+
+    foreach ([$media->path, $media->original_path, $media->thumb_path] as $path) {
+        Storage::disk('local')->put($path, 'data');
+    }
+
+    return $media;
 }

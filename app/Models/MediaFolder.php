@@ -87,6 +87,23 @@ class MediaFolder extends Model
     }
 
     /**
+     * What deleting this folder removes: itself and its subfolders, their files, and how many of those files are in use.
+     *
+     * @return array{folders: int, files: int, used: int}
+     */
+    public function deletionSummary(): array
+    {
+        $ids = [$this->id, ...$this->descendantIds()];
+        $files = Media::query()->whereIn('folder_id', $ids);
+
+        return [
+            'folders' => count($ids),
+            'files' => (clone $files)->count(),
+            'used' => (clone $files)->whereHas('usages')->count(),
+        ];
+    }
+
+    /**
      * The folder chain from the root down to this folder.
      *
      * @return \Illuminate\Support\Collection<int, MediaFolder>

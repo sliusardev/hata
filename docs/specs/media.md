@@ -164,13 +164,13 @@ A new `config/media.php` holds these and `media.disk` (`MEDIA_DISK`, default `lo
 | Action | Permission | Notes |
 |---|---|---|
 | `UploadMedia` | `media.upload` | validates type/size, stores original (if kept), optimizes, makes thumbnail, unique name, in a transaction with file cleanup on failure |
-| `UpdateMedia` | `media.edit` | title, alt, folder |
+| `UpdateMedia` | `media.edit` | title (≤ 255), alt per available locale (≤ 500; other locales are dropped), folder |
 | `ReplaceMediaFile` | `media.edit` | same kind only |
 | `CropMedia` | `media.edit` (in place) / `media.upload` (copy) | |
 | `RestoreOriginal` | `media.edit` | |
-| `DeleteMedia` | `media.delete` | one or many; removes all files |
-| `CreateFolder`, `RenameFolder`, `MoveMedia` | `media.edit` | a folder can't move into itself or its descendant |
-| `DeleteFolder` | `media.edit` + `media.delete` | deletes the folder, all subfolders and all their files (via `DeleteMedia`), in a transaction; files are removed from disk after commit |
+| `DeleteMedia` | `media.delete` | one or many, in a transaction; the file, original and thumbnail are removed from the row's own disk in `DB::afterCommit` (after the outermost commit, kept on rollback), missing files ignored |
+| `CreateFolder`, `RenameFolder`, `MoveMedia` | `media.edit` | folder name is trimmed, 1–100 characters, unique among siblings (field error on `name`); a folder can't move into itself or its descendant |
+| `DeleteFolder` | `media.edit` + `media.delete` | deletes the folder, all subfolders and all their files (via `DeleteMedia`, which authorizes each file), in one transaction, deepest folders first; `MediaFolder::deletionSummary()` feeds the confirmation dialog; files are removed from disk after commit |
 | `OptimizeImage` | none (service used by the actions above and the batch) | |
 
 Actions take `User $actor` and call `Gate::forUser($actor)->authorize()` (decision 25). `MediaPolicy` maps abilities to permissions.
