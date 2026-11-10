@@ -146,7 +146,7 @@ it('stores the edits it applied, or bakes them in', function () {
 
     expect($kept->width)->toBe(400)
         ->and($kept->height)->toBe(300)
-        ->and($kept->edits)->toBe(['rotate' => 0, 'flip_h' => false, 'flip_v' => false, 'crop' => ['x' => 0, 'y' => 0, 'w' => 400, 'h' => 300], 'size' => null]);
+        ->and($kept->edits)->toEqual(['rotate' => 0, 'flip_h' => false, 'flip_v' => false, 'crop' => ['x' => 0, 'y' => 0, 'w' => 400, 'h' => 300], 'size' => null]);
 
     $baked = app(RebuildMediaFile::class)->handle($media, makeImage('jpg', 800, 600), 'image/jpeg', $edits, keepEdits: false);
 

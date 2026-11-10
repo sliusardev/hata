@@ -109,7 +109,7 @@ it('applies the crop after confirmation and redirects to the library', function 
     $image = Image::fromBytes((string) Storage::disk('local')->get($media->path));
 
     expect($media->version)->toBe(2)
-        ->and($media->edits['crop'])->toBe(['x' => 0, 'y' => 0, 'w' => 1500, 'h' => 1000])
+        ->and($media->edits['crop'])->toEqual(['x' => 0, 'y' => 0, 'w' => 1500, 'h' => 1000])
         ->and([$image->width(), $image->height()])->toBe([1500, 1000])
         ->and(session('toast.text'))->toBe(__('media.crop.messages.applied'));
 });

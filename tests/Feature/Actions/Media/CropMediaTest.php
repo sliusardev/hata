@@ -62,7 +62,7 @@ it('crops from the kept original and stores the edits', function () {
     $result = app(CropMedia::class)->handle($this->actor, $media, cropInput());
 
     expect($result->version)->toBe(2)
-        ->and($result->edits['crop'])->toBe(['x' => 0, 'y' => 0, 'w' => 1500, 'h' => 1000])
+        ->and($result->edits['crop'])->toEqual(['x' => 0, 'y' => 0, 'w' => 1500, 'h' => 1000])
         ->and(storedSize($result))->toBe([1500, 1000]);
 });
 
@@ -73,7 +73,7 @@ it('replaces earlier edits instead of stacking them', function () {
     $action->handle($this->actor, $media, cropInput());
     $result = $action->handle($this->actor, $media->fresh(), cropInput(['x' => 0.5, 'y' => 0.5, 'w' => 0.5, 'h' => 0.5]));
 
-    expect($result->edits['crop'])->toBe(['x' => 1500, 'y' => 1000, 'w' => 1500, 'h' => 1000])
+    expect($result->edits['crop'])->toEqual(['x' => 1500, 'y' => 1000, 'w' => 1500, 'h' => 1000])
         ->and(storedSize($result))->toBe([1500, 1000]);
 });
 
@@ -97,7 +97,7 @@ it('converts the fractions in the rotated frame', function () {
 
     $result = app(CropMedia::class)->handle($this->actor, $media, cropInput(['x' => 0, 'y' => 0, 'w' => 1, 'h' => 0.5], ['rotate' => 90]));
 
-    expect($result->edits['crop'])->toBe(['x' => 0, 'y' => 0, 'w' => 1000, 'h' => 1000])
+    expect($result->edits['crop'])->toEqual(['x' => 0, 'y' => 0, 'w' => 1000, 'h' => 1000])
         ->and($result->edits['rotate'])->toBe(90);
 });
 
@@ -158,7 +158,7 @@ it('saves a cropped copy in the same folder and leaves the source alone', functi
         ->and($copy->folder_id)->toBe($folder->id)
         ->and($copy->uploaded_by)->toBe($this->actor->id)
         ->and($copy->name)->toBe('photo-2.webp')
-        ->and($copy->edits['crop'])->toBe(['x' => 0, 'y' => 0, 'w' => 1500, 'h' => 1000])
+        ->and($copy->edits['crop'])->toEqual(['x' => 0, 'y' => 0, 'w' => 1500, 'h' => 1000])
         ->and($copy->original_path)->not->toBeNull()->not->toBe($media->original_path)
         ->and(storedSize($copy))->toBe([1500, 1000]);
 
