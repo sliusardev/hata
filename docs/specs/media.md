@@ -1,6 +1,6 @@
 # Media library
 
-> **Status: Part 1 built** (2026-11-10): library grid/list, search and filters, folders, uploads with browser resize and server optimization, details, bulk actions and ZIP download, served by route with ULID keys. Part 2 in progress: crop page and replace/restore in the details panel built; optimize existing, picker, S3: not yet. Approved mockup: https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4 (8 screens). Sections marked "Built" describe the code; the rest is still design.
+> **Status: Part 2 built** (2026-11-10): crop, replace, restore original and versioned URLs, on top of Part 1 (library grid/list, search and filters, folders, uploads with browser resize and server optimization, details, bulk actions and ZIP download, served by route with ULID keys). Optimize existing, picker, S3: not yet. Approved mockup: https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4 (8 screens). Sections marked "Built" describe the code; the rest is still design.
 
 A WordPress-like library of images and documents for pages, posts and themes. On top of WordPress: folders, crop, per-language alt text, "where is it used", automatic optimization on upload, and re-optimizing files already uploaded. It must work on shared hosting: no queue worker, no SSH, often no `storage:link`, PHP `memory_limit` 128 MB, GD only (Imagick may be missing).
 
@@ -217,3 +217,11 @@ Actions take `User $actor` and call `Gate::forUser($actor)->authorize()` (decisi
 - "Download ZIP" is capped at 100 files per archive (no size cap; the archive is a temp file sent by a plain route).
 - An upload goes into the folder that was open when the file was queued, even if the user switches folders while the queue runs; if that folder is deleted meanwhile, the file fails with an error instead of landing elsewhere.
 - A PNG or WebP with transparency stays PNG after browser resizing (the plan named only PNG), so WebP transparency isn't lost to JPEG.
+- Crop works on a preview of the source scaled to at most 2048 px; the browser sends fractions and the server converts them to source pixels (`CropMedia::cropPixels`), so a big original never has to reach the browser.
+- A crop without a kept original is baked into the file (`edits` null) and can't be undone; the page says so before Apply.
+- Edits are applied in a fixed order: rotate, flip horizontally, flip vertically, crop, exact size, then the max-side scale.
+- Replace works only within the same kind (image for image), and the name follows the new file; the old name 301-redirects.
+- "Restore original" clears the stored edits, so it also undoes crops and rotation.
+- "Save as copy" needs `media.upload` and isn't confirmed, since it changes nothing that exists; "Apply" and replace are confirmed because they change the file everywhere it's used.
+- The crop page uses a full-screen layout (`layouts::focus`) without the sidebar.
+- Changed files get a new `?v=` instead of a new key, so URLs stored in content stay valid.
