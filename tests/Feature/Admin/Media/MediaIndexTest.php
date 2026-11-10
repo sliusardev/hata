@@ -265,3 +265,15 @@ it('marks the open and the selected files in the grid and the list', function ()
 
     expect(substr_count($list, 'data-active="true"'))->toBe(1);
 });
+
+it('keeps the outline of the open tile when it has focus', function () {
+    $this->actingAs(mediaViewer());
+    $media = Media::factory()->create();
+
+    $html = Livewire::test('pages::admin.media.index')->call('select', $media->id)->html();
+
+    preg_match('/<button[^>]*data-media-id="'.$media->id.'"[^>]*>/', $html, $tile);
+
+    expect($tile[0] ?? '')->toContain('outline-accent')
+        ->not->toContain('focus:outline-none');
+});
