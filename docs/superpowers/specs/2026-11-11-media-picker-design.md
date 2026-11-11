@@ -34,6 +34,7 @@ Like WordPress: wherever an admin form needs an image (or a file), a modal with 
 
 - A Livewire component placed next to a form field; the chosen id(s) go back to the parent's field (`wire:model`-style binding or an event the parent handles — builder's call, but one way used everywhere).
 - Opens in `flux:modal` (Flux free). Tabs as in the spec.
+- Folders in the Library tab look like the library (user's decision, 2026-11-11, after trying the picker): subfolders of the open folder as tiles above the files, a click opens the folder, a breadcrumb leads back; the same semantics as the library page's subfolder tiles (no drag, no folder menus in the picker). Uploads go into the open folder.
 - The form side shows the current choice: thumbnail, name, "Change" and "Remove" (one file), or a list for `multiple`.
 - Permissions are the library's: the modal needs `media.view`; the "Upload new" tab needs `media.upload`; the alt field is read-only without `media.edit`. Without `media.view` the form shows the current choice and "Remove" only, with a hint that choosing needs access to the media library (my call).
 - The parent form must validate the returned id(s) itself on save (exists, kind matches `accept`): the browser can send any id.
