@@ -159,6 +159,13 @@ class SiteSettingsForm extends Form
     }
 
     /**
+     * Storage fields stored only when the admin changes them, so untouched ones keep following .env.
+     *
+     * @var list<string>
+     */
+    public const array STORAGE_FIELDS = ['media_storage', 'media_s3_endpoint', 'media_s3_region', 'media_s3_bucket', 'media_s3_key', 'media_s3_secret', 'media_s3_path_style', 'media_s3_public_url', 'media_s3_prefix'];
+
+    /**
      * Fields of each settings tab, saved independently of each other.
      *
      * @var array<string, list<string>>

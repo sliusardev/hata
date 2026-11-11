@@ -103,6 +103,7 @@ it('refuses a config without a bucket or credentials before any request', functi
         ->and($result['message'])->not->toBeEmpty();
 })->with([
     'no bucket' => [['bucket' => ''], 'bucket'],
+    'no region' => [['region' => ''], 'region'],
     'no key' => [['key' => ''], 'credentials'],
     'no secret' => [['secret' => null], 'credentials'],
 ]);
@@ -121,6 +122,52 @@ it('maps a failure to the step that explains it', function (string $failingAt, T
     'delete denied' => ['delete', UnableToDeleteFile::atLocation('x', 'denied', s3Failure('AccessDenied')), 'delete'],
     'bad key' => ['write', UnableToWriteFile::atLocation('x', 'bad', s3Failure('InvalidAccessKeyId')), 'credentials'],
     'bad signature' => ['write', UnableToWriteFile::atLocation('x', 'bad', s3Failure('SignatureDoesNotMatch')), 'credentials'],
+    'malformed header' => ['write', UnableToWriteFile::atLocation('x', 'bad', s3Failure('AuthorizationHeaderMalformed')), 'region'],
+    'permanent redirect' => ['write', UnableToWriteFile::atLocation('x', 'bad', s3Failure('PermanentRedirect')), 'region'],
+    'wrong location' => ['write', UnableToWriteFile::atLocation('x', 'bad', s3Failure('IllegalLocationConstraintException')), 'region'],
+    'invalid bucket name' => ['write', UnableToWriteFile::atLocation('x', 'bad', s3Failure('InvalidBucketName')), 'bucket'],
     'missing bucket' => ['write', UnableToWriteFile::atLocation('x', 'bad', s3Failure('NoSuchBucket')), 'bucket'],
     'unreachable' => ['write', UnableToWriteFile::atLocation('x', 'bad', new S3Exception('cURL error 7: Failed to connect', new Command('PutObject'))), 'endpoint'],
 ]);
+
+it('still deletes the test object when a later step fails', function (string $failingAt) {
+    $deleted = 0;
+    $listing = new DirectoryListing([]);
+    $driver = Mockery::mock(Filesystem::class);
+    $driver->shouldReceive('listContents')->andReturnUsing(function () use ($failingAt, $listing) {
+        throw_if($failingAt === 'list', new RuntimeException('list failed'));
+
+        return $listing;
+    });
+    $written = null;
+    $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('getDriver')->andReturn($driver);
+    $disk->shouldReceive('put')->andReturnUsing(function (string $path, string $contents) use (&$written) {
+        $written = $contents;
+
+        return true;
+    });
+    $disk->shouldReceive('get')->andReturnUsing(function () use ($failingAt, &$written) {
+        throw_if($failingAt === 'read', new RuntimeException('read failed'));
+
+        return $failingAt === 'mismatch' ? 'something else' : $written;
+    });
+    $disk->shouldReceive('delete')->andReturnUsing(function () use (&$deleted) {
+        $deleted++;
+
+        return true;
+    });
+
+    $result = connectionTestWith($disk)->handle(validS3Config());
+
+    expect($result['ok'])->toBeFalse()
+        ->and($deleted)->toBe(1);
+})->with(['list fails' => ['list'], 'read fails' => ['read'], 'read mismatch' => ['mismatch']]);
+
+it('does not mask the failure when the cleanup delete fails too', function () {
+    $disk = diskFailingAt(['list' => new RuntimeException('list failed'), 'delete' => new RuntimeException('delete failed')]);
+
+    $result = connectionTestWith($disk)->handle(validS3Config());
+
+    expect($result['step'])->toBe('list');
+});

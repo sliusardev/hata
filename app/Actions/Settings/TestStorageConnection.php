@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * @phpstan-type Step 'credentials'|'bucket'|'write'|'read'|'list'|'delete'|'endpoint'
+ * @phpstan-type Step 'credentials'|'bucket'|'region'|'write'|'read'|'list'|'delete'|'endpoint'
  *
  * Checks an S3-compatible storage with a throwaway disk: writes, reads, lists and deletes a small object,
  * and names the step that failed. The secret is only passed to the disk, never logged or returned.
@@ -18,8 +18,12 @@ class TestStorageConnection
 {
     private const array CREDENTIAL_CODES = [
         'InvalidAccessKeyId', 'SignatureDoesNotMatch', 'InvalidToken', 'ExpiredToken', 'TokenRefreshRequired',
-        'AuthorizationHeaderMalformed', 'InvalidSecurity', 'AccountProblem',
+        'InvalidSecurity', 'AccountProblem',
     ];
+
+    private const array REGION_CODES = ['AuthorizationHeaderMalformed', 'PermanentRedirect', 'IllegalLocationConstraintException'];
+
+    private const array BUCKET_CODES = ['NoSuchBucket', 'InvalidBucketName'];
 
     /**
      * @param  array<string, mixed>  $config  S3 disk options: endpoint, region, bucket, key, secret, use_path_style_endpoint, root.
@@ -31,36 +35,52 @@ class TestStorageConnection
             return $this->failed('bucket');
         }
 
+        if (blank($config['region'] ?? null)) {
+            return $this->failed('region');
+        }
+
         if (blank($config['key'] ?? null) || blank($config['secret'] ?? null)) {
             return $this->failed('credentials');
         }
 
         $name = 'hata-connection-test-'.Str::lower((string) Str::ulid()).'.txt';
         $content = 'hata '.Str::random(16);
+        $written = false;
+        $failedStep = null;
         $step = 'write';
+        $disk = null;
 
         try {
             $disk = $this->disk($config);
 
             $disk->put($name, $content);
+            $written = true;
 
             $step = 'read';
             if ($disk->get($name) !== $content) {
-                return $this->failed('read');
+                $failedStep = 'read';
             }
 
-            $step = 'list';
-            foreach ($disk->getDriver()->listContents('', false) as $item) {
-                break;
+            if ($failedStep === null) {
+                $step = 'list';
+                foreach ($disk->getDriver()->listContents('', false) as $item) {
+                    break;
+                }
             }
-
-            $step = 'delete';
-            $disk->delete($name);
         } catch (Throwable $exception) {
-            return $this->failed($this->stepFor($exception, $step));
+            $failedStep = $this->stepFor($exception, $step);
         }
 
-        return ['ok' => true];
+        // Whatever happened after the write, try to leave no test object behind.
+        if ($written && $disk !== null) {
+            try {
+                $disk->delete($name);
+            } catch (Throwable $exception) {
+                $failedStep ??= $this->stepFor($exception, 'delete');
+            }
+        }
+
+        return $failedStep === null ? ['ok' => true] : $this->failed($failedStep);
     }
 
     /**
@@ -98,7 +118,11 @@ class TestStorageConnection
                     return 'credentials';
                 }
 
-                if ($code === 'NoSuchBucket') {
+                if (in_array($code, self::REGION_CODES, true)) {
+                    return 'region';
+                }
+
+                if (in_array($code, self::BUCKET_CODES, true)) {
                     return 'bucket';
                 }
 

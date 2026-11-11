@@ -151,6 +151,7 @@ return [
             'prefix_description' => 'Optional. Lets several sites share one bucket, for example prod or staging.',
             'key' => 'Access key',
             'secret' => 'Secret key',
+            'secret_env' => 'No key is saved here; the key from the server configuration is used while this is empty.',
             'secret_keep' => 'Leave empty to keep the saved key.',
             'path_style' => 'Path-style endpoint',
             'path_style_description' => 'Turn on for MinIO and other storages that do not use bucket.host addresses.',
@@ -165,6 +166,8 @@ return [
             'errors' => [
                 'credentials' => 'The storage refused the access key or the secret key.',
                 'bucket' => 'The bucket was not found. Check its name and the region.',
+                'region' => 'The region does not match the bucket. Check the region name and the endpoint.',
+                'rate_limited' => 'Too many tests. Try again in :seconds seconds.',
                 'endpoint' => 'The storage could not be reached. Check the endpoint and the path-style option.',
                 'write' => 'A test file could not be written. Check that the keys may write to the bucket.',
                 'read' => 'The test file was written but could not be read back. Check that the keys may read from the bucket.',

@@ -26,6 +26,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Number;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -394,7 +395,16 @@ new #[Title('site_settings.title')] class extends Component {
     #[Computed]
     public function hasStoredS3Secret(): bool
     {
-        return app(SiteSettings::class)->has('media_s3_secret') || filled(config('filesystems.disks.s3.secret'));
+        return app(SiteSettings::class)->has('media_s3_secret');
+    }
+
+    /**
+     * A secret key that comes from the server configuration (.env) rather than from a saved setting.
+     */
+    #[Computed]
+    public function hasEnvS3Secret(): bool
+    {
+        return ! $this->hasStoredS3Secret && filled(config('filesystems.disks.s3.secret'));
     }
 
     #[Computed]
@@ -428,6 +438,15 @@ new #[Title('site_settings.title')] class extends Component {
             $this->showS3ChangeModal = true;
 
             return;
+        }
+
+        if ($this->tab === 'media') {
+            // Store a storage field only when the admin changed it; untouched ones keep following .env.
+            foreach (SiteSettingsForm::STORAGE_FIELDS as $field) {
+                if ($field !== 'media_s3_secret' && (string) $this->form->{$field} === (string) ($this->savedValues[$field] ?? '')) {
+                    unset($data[$field]);
+                }
+            }
         }
 
         try {
@@ -470,7 +489,17 @@ new #[Title('site_settings.title')] class extends Component {
             return false;
         }
 
-        return $changed && Media::query()->where('disk', 's3')->exists();
+        // The connection settings belong to the `s3` disk.
+        return $changed && $this->hasS3Files;
+    }
+
+    /**
+     * Whether any media row is on the `s3` disk, the one the connection settings configure.
+     */
+    #[Computed]
+    public function hasS3Files(): bool
+    {
+        return Media::query()->where('disk', 's3')->exists();
     }
 
     /**
@@ -488,6 +517,19 @@ new #[Title('site_settings.title')] class extends Component {
     public function testStorageConnection(TestStorageConnection $connectionTest): void
     {
         $this->authorize('settings.edit');
+
+        $limiterKey = 'storage-test:'.Auth::id();
+
+        if (RateLimiter::tooManyAttempts($limiterKey, 10)) {
+            $this->storageTest = [
+                'ok' => false,
+                'message' => __('site_settings.media.storage.errors.rate_limited', ['seconds' => RateLimiter::availableIn($limiterKey)]),
+            ];
+
+            return;
+        }
+
+        RateLimiter::hit($limiterKey, 60);
 
         $result = $connectionTest->handle(MediaDisks::connectionConfig([
             'media_s3_endpoint' => $this->form->media_s3_endpoint,
@@ -815,6 +857,7 @@ new #[Title('site_settings.title')] class extends Component {
                 </flux:callout>
             @endif
 
+            @if ($form->media_storage === 's3' || $this->hasS3Files)
             <div class="space-y-6" data-test="s3-fields">
                 <div class="grid gap-6 sm:grid-cols-2">
                     <flux:input wire:model="form.media_s3_endpoint" :label="__('site_settings.media.storage.endpoint')" :description="__('site_settings.media.storage.endpoint_description')" placeholder="https://s3.example.com" autocomplete="off" />
@@ -833,7 +876,7 @@ new #[Title('site_settings.title')] class extends Component {
                         type="password"
                         viewable
                         :label="__('site_settings.media.storage.secret')"
-                        :description="$this->hasStoredS3Secret ? __('site_settings.media.storage.secret_keep') : null"
+                        :description="$this->hasStoredS3Secret ? __('site_settings.media.storage.secret_keep') : ($this->hasEnvS3Secret ? __('site_settings.media.storage.secret_env') : null)"
                         autocomplete="new-password"
                     />
                 </div>
@@ -858,6 +901,7 @@ new #[Title('site_settings.title')] class extends Component {
                     </flux:callout>
                 @endif
             </div>
+            @endif
         @else
             <div class="grid gap-6 sm:grid-cols-2">
                 <flux:input wire:model="form.mail_from_address" type="email" :label="__('site_settings.mail.from_address')" required />

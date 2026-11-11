@@ -9,11 +9,14 @@ namespace App\Support\Media;
 class MediaDisks
 {
     /**
-     * Whether the disk is an S3-compatible one.
+     * Whether files on the disk live off this server: the disk's configured driver is anything but `local`.
+     * An unknown disk is not a cloud disk.
      */
     public static function isCloud(string $disk): bool
     {
-        return config("filesystems.disks.{$disk}.driver") === 's3';
+        $driver = config("filesystems.disks.{$disk}.driver");
+
+        return is_string($driver) && $driver !== 'local';
     }
 
     /**

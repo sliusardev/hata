@@ -4,6 +4,7 @@ namespace App\Actions\Settings;
 
 use App\Exceptions\ProtectedActionException;
 use App\Exceptions\StorageSettingsException;
+use App\Livewire\Forms\SiteSettingsForm;
 use App\Models\Media;
 use App\Models\Role;
 use App\Models\User;
@@ -39,7 +40,7 @@ class UpdateSiteSettings
             $data = $this->normalizeMail($data);
         }
 
-        if (array_key_exists('media_storage', $data)) {
+        if (array_intersect_key($data, array_flip(SiteSettingsForm::STORAGE_FIELDS)) !== []) {
             $data = $this->normalizeStorage($data);
         }
 
@@ -47,8 +48,9 @@ class UpdateSiteSettings
     }
 
     /**
-     * An empty secret keeps the stored one. The connection can't be cleared while files are on s3, and choosing s3
-     * needs a passing connection test with the values being saved.
+     * `$data` holds only the storage fields the admin changed (the page leaves the untouched ones out, so they keep
+     * following .env). An empty secret keeps the stored one. The connection can't be cleared while files are on s3,
+     * and a change to the storage or its connection is tested first when s3 is (or still holds files) in use.
      *
      * @param  array<string, string|int|bool|null>  $data
      * @return array<string, string|int|bool|null>
@@ -57,13 +59,14 @@ class UpdateSiteSettings
      */
     private function normalizeStorage(array $data): array
     {
-        $typedSecret = $data['media_s3_secret'] ?? null;
-
-        if (blank($typedSecret)) {
+        if (blank($data['media_s3_secret'] ?? null)) {
             unset($data['media_s3_secret']);
         }
 
-        if (Media::query()->where('disk', 's3')->exists()) {
+        // The S3 connection settings belong to the `s3` disk, so rows on that disk depend on them.
+        $filesOnS3 = Media::query()->where('disk', 's3')->exists();
+
+        if ($filesOnS3) {
             foreach (['media_s3_bucket', 'media_s3_key'] as $field) {
                 if (array_key_exists($field, $data) && blank($data[$field])) {
                     throw StorageSettingsException::on($field, __('site_settings.media.storage.errors.cannot_clear'));
@@ -71,8 +74,10 @@ class UpdateSiteSettings
             }
         }
 
-        if (($data['media_storage'] ?? null) === 's3') {
-            $result = $this->connectionTest->handle(MediaDisks::connectionConfig($data));
+        $effective = [...$this->settingsInEffect(), ...$data];
+
+        if (($effective['media_storage'] === 's3' || $filesOnS3) && array_intersect_key($data, array_flip(SiteSettingsForm::STORAGE_FIELDS)) !== []) {
+            $result = $this->connectionTest->handle(MediaDisks::connectionConfig($effective));
 
             if (! $result['ok']) {
                 throw StorageSettingsException::on('media_storage', __('site_settings.media.storage.not_saved', ['reason' => $result['message'] ?? '']));
@@ -80,6 +85,24 @@ class UpdateSiteSettings
         }
 
         return $data;
+    }
+
+    /**
+     * The storage settings as they are now (stored over .env), keyed like the settings.
+     *
+     * @return array<string, mixed>
+     */
+    private function settingsInEffect(): array
+    {
+        return [
+            'media_storage' => config('media.disk'),
+            'media_s3_endpoint' => config('filesystems.disks.s3.endpoint'),
+            'media_s3_region' => config('filesystems.disks.s3.region'),
+            'media_s3_bucket' => config('filesystems.disks.s3.bucket'),
+            'media_s3_key' => config('filesystems.disks.s3.key'),
+            'media_s3_path_style' => config('filesystems.disks.s3.use_path_style_endpoint'),
+            'media_s3_prefix' => config('filesystems.disks.s3.root'),
+        ];
     }
 
     /**

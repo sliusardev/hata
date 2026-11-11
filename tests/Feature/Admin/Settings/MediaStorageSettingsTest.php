@@ -8,6 +8,7 @@ use App\Support\Media\MediaDisks;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -255,6 +256,12 @@ it('says how many files are on the other disk', function () {
     storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
 });
 
+it('treats any non-local driver as a cloud disk', function () {
+    config(['filesystems.disks.custom' => ['driver' => 'sftp']]);
+
+    expect(MediaDisks::isCloud('custom'))->toBeTrue();
+});
+
 it('knows which disks are cloud disks and their public url', function () {
     config(['filesystems.disks.s3.url' => 'https://cdn.example.com/']);
 
@@ -267,4 +274,108 @@ it('knows which disks are cloud disks and their public url', function () {
     config(['filesystems.disks.s3.url' => '']);
 
     expect(MediaDisks::publicUrl('s3'))->toBeNull();
+});
+
+it('stores no s3 setting the admin did not change, so .env keeps working', function () {
+    config([
+        'filesystems.disks.s3.bucket' => 'env-bucket',
+        'filesystems.disks.s3.key' => 'env-key',
+        'filesystems.disks.s3.secret' => 'env-secret',
+        'filesystems.disks.s3.region' => 'us-east-1',
+    ]);
+    $test = fakeConnectionTest();
+
+    storageTab()
+        ->set('form.media_quality', '60')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Setting::query()->where('key', 'like', 'media_s3_%')->exists())->toBeFalse()
+        ->and(Setting::query()->where('key', 'media_storage')->exists())->toBeFalse()
+        ->and((string) Setting::query()->where('key', 'media_quality')->value('value'))->toBe('60')
+        ->and($test->calls)->toBe([]);
+});
+
+it('stores only the s3 fields the admin changed', function () {
+    config(['filesystems.disks.s3.bucket' => 'env-bucket', 'filesystems.disks.s3.key' => 'env-key']);
+    fakeConnectionTest();
+
+    storageTab()
+        ->set('form.media_s3_prefix', 'prod')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Setting::query()->where('key', 'like', 'media_s3_%')->pluck('key')->all())->toBe(['media_s3_prefix']);
+});
+
+it('never tests the connection on a save that changes no storage field, even with files on s3', function () {
+    $test = fakeConnectionTest(['ok' => false, 'step' => 'credentials', 'message' => 'refused']);
+    Media::factory()->create(['disk' => 's3']);
+
+    storageTab()
+        ->set('form.media_quality', '60')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($test->calls)->toBe([]);
+});
+
+it('tests a changed connection field while files are on s3 even if the storage is local', function () {
+    config(['filesystems.disks.s3.bucket' => 'b', 'filesystems.disks.s3.key' => 'k', 'filesystems.disks.s3.secret' => 's', 'filesystems.disks.s3.region' => 'r']);
+    $test = fakeConnectionTest(['ok' => false, 'step' => 'credentials', 'message' => 'The keys were refused.']);
+    Media::factory()->create(['disk' => 's3']);
+
+    storageTab()
+        ->set('form.media_s3_key', 'broken')
+        ->call('save')
+        ->assertHasErrors('form.media_storage')
+        ->assertSee('The keys were refused.');
+
+    expect($test->calls)->toHaveCount(1)
+        ->and($test->calls[0]['key'])->toBe('broken')
+        ->and($test->calls[0]['bucket'])->toBe('b')
+        ->and($test->calls[0]['secret'])->toBe('s')
+        ->and(Setting::query()->where('key', 'media_s3_key')->exists())->toBeFalse();
+});
+
+it('does not test a changed connection while the storage is local and no file is on s3', function () {
+    $test = fakeConnectionTest(['ok' => false, 'step' => 'bucket', 'message' => 'x']);
+
+    storageTab()->set('form.media_s3_bucket', 'new')->call('save')->assertHasNoErrors();
+
+    expect($test->calls)->toBe([]);
+});
+
+it('limits how often the connection can be tested', function () {
+    fakeConnectionTest();
+    $page = storageTab()->set(s3FormInput());
+
+    foreach (range(1, 10) as $ignored) {
+        $page->call('testStorageConnection');
+    }
+
+    $page->assertSee(__('site_settings.media.storage.test_ok'))->call('testStorageConnection');
+
+    expect($page->get('storageTest')['ok'])->toBeFalse()
+        ->and($page->get('storageTest')['message'])->not->toBe(__('site_settings.media.storage.test_ok'))
+        ->and($page->get('storageTest')['message'])->toStartWith(Str::before(__('site_settings.media.storage.errors.rate_limited'), ':seconds'));
+});
+
+it('says whether the stored secret or only the server configuration provides the key', function () {
+    config(['filesystems.disks.s3.secret' => 'from-env']);
+    storageTab()->set('form.media_storage', 's3')
+        ->assertDontSee(__('site_settings.media.storage.secret_keep'))
+        ->assertSee(__('site_settings.media.storage.secret_env'));
+
+    app(SiteSettings::class)->put(['media_s3_secret' => 'stored']);
+    storageTab()->set('form.media_storage', 's3')->assertSee(__('site_settings.media.storage.secret_keep'));
+});
+
+it('shows the connection fields only for s3 or while files are on s3', function () {
+    storageTab()->assertDontSeeHtml('data-test="s3-fields"')
+        ->set('form.media_storage', 's3')->assertSeeHtml('data-test="s3-fields"');
+
+    Media::factory()->create(['disk' => 's3']);
+
+    storageTab()->assertSeeHtml('data-test="s3-fields"');
 });
