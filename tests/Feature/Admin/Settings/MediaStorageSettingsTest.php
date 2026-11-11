@@ -379,3 +379,17 @@ it('shows the connection fields only for s3 or while files are on s3', function 
 
     storageTab()->assertSeeHtml('data-test="s3-fields"');
 });
+
+it('lets the storage go back to local while files are on s3, without testing the connection', function () {
+    config(['media.disk' => 's3']);
+    $test = fakeConnectionTest(['ok' => false, 'step' => 'credentials', 'message' => 'refused']);
+    Media::factory()->create(['disk' => 's3']);
+
+    storageTab()
+        ->set('form.media_storage', 'local')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($test->calls)->toBe([])
+        ->and(Setting::query()->where('key', 'media_storage')->value('value'))->toBe('local');
+});

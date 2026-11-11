@@ -76,7 +76,12 @@ class UpdateSiteSettings
 
         $effective = [...$this->settingsInEffect(), ...$data];
 
-        if (($effective['media_storage'] === 's3' || $filesOnS3) && array_intersect_key($data, array_flip(SiteSettingsForm::STORAGE_FIELDS)) !== []) {
+        // Switching back to local is never blocked by a broken connection: only a changed connection field,
+        // or a switch to s3, is tested.
+        $connectionChanged = array_intersect_key($data, array_flip(array_diff(SiteSettingsForm::STORAGE_FIELDS, ['media_storage']))) !== [];
+        $switchedToS3 = ($data['media_storage'] ?? null) === 's3';
+
+        if (($effective['media_storage'] === 's3' || $filesOnS3) && ($connectionChanged || $switchedToS3)) {
             $result = $this->connectionTest->handle(MediaDisks::connectionConfig($effective));
 
             if (! $result['ok']) {
