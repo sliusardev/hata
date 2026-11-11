@@ -2,6 +2,9 @@
 
 use App\Actions\Media\OptimizeImage;
 use App\Support\Media\MemoryGuard;
+use Illuminate\Image\Transformations\Orient;
+use Illuminate\Support\Facades\Image;
+use Intervention\Image\Interfaces\ImageInterface;
 
 dataset('drivers', ['gd', 'imagick']);
 
@@ -252,6 +255,76 @@ it('returns a thumbnail and the animated flag for an animated gif', function () 
     expect($result->animated)->toBeTrue()
         ->and($result->thumbnail)->not->toBeNull()
         ->and($result->contents)->toBe(animatedGif());
+});
+
+/**
+ * Count how many times the image pipeline decodes a source (every decode runs the Orient step first) on the GD driver.
+ */
+function countDecodes(): object
+{
+    useImageDriver('gd');
+    $counter = new stdClass;
+    $counter->count = 0;
+    Image::transformUsing('gd', Orient::class, function (ImageInterface $image) use ($counter): ImageInterface {
+        $counter->count++;
+
+        return $image->orient();
+    });
+
+    return $counter;
+}
+
+it('decodes the image once and takes the thumbnail from that decode', function () {
+    $decodes = countDecodes();
+
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 3000, 2000), 'image/jpeg');
+
+    expect($result->thumbnail)->not->toBeNull()
+        ->and($decodes->count)->toBe(1);
+});
+
+it('orients the thumbnail like the image', function (string $driver) {
+    useImageDriver($driver);
+    // 1200 x 600 pixels with EXIF orientation 6 (rotate 90 degrees clockwise): displayed 600 x 1200.
+    $ifd = "II*\0\x08\0\0\0\x01\0\x12\x01\x03\0\x01\0\0\0\x06\0\0\0\0\0\0\0";
+    $jpeg = makeImage('jpg', 1200, 600);
+    $jpeg = substr($jpeg, 0, 2)."\xFF\xE1".pack('n', strlen($ifd) + 8)."Exif\0\0".$ifd.substr($jpeg, 2);
+
+    $result = app(OptimizeImage::class)->handle($jpeg, 'image/jpeg');
+    $thumbnail = getimagesizefromstring((string) $result->thumbnail);
+
+    expect([$result->width, $result->height])->toBe([600, 1200])
+        ->and([$thumbnail[0], $thumbnail[1]])->toBe([200, 400]);
+})->with('drivers');
+
+it('makes the thumbnail from the edited image', function (string $driver) {
+    useImageDriver($driver);
+
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 800, 600), 'image/jpeg', ['crop' => ['x' => 0, 'y' => 0, 'w' => 400, 'h' => 100]]);
+    $thumbnail = getimagesizefromstring((string) $result->thumbnail);
+
+    expect([$result->width, $result->height])->toBe([400, 100])
+        ->and([$thumbnail[0], $thumbnail[1]])->toBe([400, 100]);
+})->with('drivers');
+
+it('falls back to a thumbnail from the result when the capture would not fit in memory', function () {
+    $decodes = countDecodes();
+    // The guard says yes to the main decode, no to the capture's copy, and yes to the fallback.
+    app()->instance(MemoryGuard::class, new class extends MemoryGuard
+    {
+        private int $calls = 0;
+
+        public function canDecode(int $width, int $height): bool
+        {
+            return ++$this->calls !== 2;
+        }
+    });
+
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 3000, 2000), 'image/jpeg');
+    $size = getimagesizefromstring((string) $result->thumbnail);
+
+    expect($size[0])->toBe(400)
+        ->and($decodes->count)->toBe(2);
 });
 
 it('builds the fingerprint from the settings', function () {

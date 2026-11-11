@@ -78,7 +78,7 @@ class OptimizeImage
         $maxSide = config('media.optimize.max_side');
         $scaled = $enabled && is_int($maxSide) && $maxSide > 0 && ($imageEdits !== null || max($size) > $maxSide);
 
-        $capture = new CaptureThumbnail(max(1, (int) config('media.thumb_side')), $this->quality());
+        $capture = new CaptureThumbnail($this->thumbSide(), $this->quality(), strip: (bool) config('media.optimize.strip_exif'), memory: $this->memory);
 
         try {
             $image = Image::fromBytes($contents)->orient();
@@ -98,8 +98,10 @@ class OptimizeImage
             return $this->unchanged($contents, $mime, $width, $height, $animated, 'unreadable');
         }
 
+        $thumbnail = $capture->bytes ?? $this->thumbnail($output);
+
         if (! $enabled) {
-            return $this->converted($output, optimized: false, fingerprint: null, thumbnail: $capture->bytes);
+            return $this->converted($output, optimized: false, fingerprint: null, thumbnail: $thumbnail);
         }
 
         $keepInput = ! $mustConvert
@@ -109,10 +111,10 @@ class OptimizeImage
             && ! (config('media.optimize.strip_exif') && $this->hasMetadata($contents, $mime));
 
         if ($keepInput) {
-            return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: true, fingerprint: $this->fingerprint(), thumbnail: $capture->bytes);
+            return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: true, fingerprint: $this->fingerprint(), thumbnail: $thumbnail);
         }
 
-        return $this->converted($output, optimized: true, fingerprint: $this->fingerprint(), mime: $format === 'original' ? $mime : null, thumbnail: $capture->bytes);
+        return $this->converted($output, optimized: true, fingerprint: $this->fingerprint(), mime: $format === 'original' ? $mime : null, thumbnail: $thumbnail);
     }
 
     /**
@@ -126,7 +128,7 @@ class OptimizeImage
             return null;
         }
 
-        $side = max(1, (int) config('media.thumb_side'));
+        $side = $this->thumbSide();
 
         try {
             $image = Image::fromBytes($contents)->orient();
@@ -139,6 +141,16 @@ class OptimizeImage
         } catch (ImageException) {
             return null;
         }
+    }
+
+    /**
+     * The long side of thumbnails, from media.thumb_side.
+     *
+     * @return int<1, max>
+     */
+    private function thumbSide(): int
+    {
+        return max(1, (int) config('media.thumb_side'));
     }
 
     /**
@@ -259,15 +271,13 @@ class OptimizeImage
      */
     private function capturingThumbnail(PendingImage $image, CaptureThumbnail $capture): PendingImage
     {
-        $strip = (bool) config('media.optimize.strip_exif');
-
         Image::transformUsing('gd', CaptureThumbnail::class, function (ImageInterface $decoded, CaptureThumbnail $step): ImageInterface {
             $step->capture($decoded, fn (ImageInterface $copy): ImageInterface => $copy);
 
             return $decoded;
         });
-        Image::transformUsing('imagick', CaptureThumbnail::class, function (ImageInterface $decoded, CaptureThumbnail $step) use ($strip): ImageInterface {
-            $step->capture($decoded, fn (ImageInterface $copy): ImageInterface => $strip ? $copy->modify(new StripMetaModifier) : $copy);
+        Image::transformUsing('imagick', CaptureThumbnail::class, function (ImageInterface $decoded, CaptureThumbnail $step): ImageInterface {
+            $step->capture($decoded, fn (ImageInterface $copy): ImageInterface => $step->strip ? $copy->modify(new StripMetaModifier) : $copy);
 
             return $decoded;
         });
