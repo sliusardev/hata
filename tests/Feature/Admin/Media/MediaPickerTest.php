@@ -210,24 +210,26 @@ it('ignores ids that are missing or not allowed', function () {
     $document = Media::factory()->document()->create();
     $gif = Media::factory()->image()->create(['name' => 'spinner.gif', 'mime' => 'image/gif']);
     $image = Media::factory()->image()->create();
+    // Past the newest id: MySQL keeps its auto-increment across the rolled-back test transactions, so a fixed id may exist.
+    $missing = $image->id + 1000;
 
     testPicker()
         ->call('openPicker')
         ->call('pick', $document->id)
         ->call('pick', $gif->id)
-        ->call('pick', 999)
+        ->call('pick', $missing)
         ->assertSet('picked', [])
         ->call('pickAndChoose', $document->id)
         ->assertSet('value', null)
         ->set('value', $document->id)
         ->assertSet('value', null)
-        ->set('value', 999)
+        ->set('value', $missing)
         ->assertSet('value', null)
         ->set('value', $image->id)
         ->assertSet('value', $image->id);
 
     testPicker(['multiple' => true, 'value' => []])
-        ->set('value', [$document->id, $image->id, 999, $image->id])
+        ->set('value', [$document->id, $image->id, $missing, $image->id])
         ->assertSet('value', [$image->id]);
 });
 
