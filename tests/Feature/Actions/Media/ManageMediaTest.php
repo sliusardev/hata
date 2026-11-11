@@ -5,6 +5,7 @@ use App\Actions\Media\MoveMedia;
 use App\Actions\Media\UpdateMedia;
 use App\Models\Media;
 use App\Models\MediaFolder;
+use App\Models\MediaPendingDeletion;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -120,4 +121,16 @@ it('keeps the files when an enclosing transaction rolls back', function () {
 
     expect(Media::query()->count())->toBe(1);
     Storage::disk('local')->assertExists($paths);
+});
+
+it('deletes the objects of a cloud file at once instead of deferring them', function () {
+    $disk = fakeCloudDisk();
+    $media = Media::factory()->create(['disk' => 's3', 'path' => 'media/2026/11/a-v3.webp', 'thumb_path' => 'media/thumbs/a-v3.webp']);
+    $disk->put($media->path, 'data');
+    $disk->put((string) $media->thumb_path, 'data');
+
+    app(DeleteMedia::class)->handle($this->actor, $media);
+
+    $disk->assertMissing([$media->path, (string) $media->thumb_path]);
+    expect(MediaPendingDeletion::query()->count())->toBe(0);
 });

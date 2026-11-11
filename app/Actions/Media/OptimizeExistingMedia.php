@@ -27,6 +27,9 @@ class OptimizeExistingMedia
 {
     public const string LOCK = 'media-optimization-batch';
 
+    /** Pending cloud deletions handled at the end of a batch; kept small so the batch's response stays quick. */
+    private const int PRUNE_PER_BATCH = 50;
+
     public function __construct(
         private OptimizeImage $optimizer,
         private RebuildMediaFile $rebuilder,
@@ -198,9 +201,25 @@ class OptimizeExistingMedia
             $run->heartbeatAt = now()->toImmutable();
             $run->driver = $driver;
 
-            return $this->save($run, $savedCursor);
+            $saved = $this->save($run, $savedCursor);
+            $this->pruneDeletions();
+
+            return $saved;
         } finally {
             $lock->release();
+        }
+    }
+
+    /**
+     * Remove replaced cloud objects whose delay is over, a few per batch, so they go even without a scheduler.
+     * A failure here never fails the batch.
+     */
+    private function pruneDeletions(): void
+    {
+        try {
+            app(PruneMediaDeletions::class)->handle(self::PRUNE_PER_BATCH);
+        } catch (Throwable $e) {
+            report($e);
         }
     }
 

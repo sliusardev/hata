@@ -2,10 +2,14 @@
 
 use App\Models\Media;
 use Database\Seeders\RoleSeeder;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\RecordingDisk;
 use Tests\TestCase;
+
+require_once __DIR__.'/fixtures/RecordingDisk.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -140,4 +144,20 @@ function mediaWithFiles(array $attributes = []): Media
     }
 
     return $media;
+}
+
+/**
+ * Fake a cloud disk: the disk keeps a non-local driver in the config (so MediaDisks::isCloud() is true) and its
+ * objects live in a faked local folder that records the options each object was written with.
+ */
+function fakeCloudDisk(string $disk = 's3'): RecordingDisk
+{
+    config(["filesystems.disks.{$disk}.driver" => 's3']);
+
+    /** @var FilesystemAdapter $fake */
+    $fake = Storage::fake($disk);
+    $recording = new RecordingDisk($fake->getDriver(), $fake->getAdapter(), $fake->getConfig());
+    Storage::set($disk, $recording);
+
+    return $recording;
 }

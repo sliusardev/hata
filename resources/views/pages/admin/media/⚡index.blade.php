@@ -5,6 +5,7 @@ use App\Actions\Media\DeleteFolder;
 use App\Actions\Media\DeleteMedia;
 use App\Actions\Media\MoveFolder;
 use App\Actions\Media\MoveMedia;
+use App\Actions\Media\PruneMediaDeletions;
 use App\Actions\Media\RenameFolder;
 use App\Actions\Media\ReplaceMediaFile;
 use App\Actions\Media\RestoreOriginal;
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -233,6 +235,11 @@ new #[Title('media.index.title')] class extends Component {
     public function mount(): void
     {
         $this->authorize('viewAny', Media::class);
+
+        // At most once an hour, after the response is sent: replaced cloud files whose delay is over.
+        if (Cache::add(PruneMediaDeletions::PAGE_GUARD, true, now()->addHour())) {
+            defer(fn () => app(PruneMediaDeletions::class)->handle());
+        }
 
         $this->forgetMissingFolder();
 

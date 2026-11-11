@@ -208,3 +208,21 @@ it('stores whether the uploaded image is animated', function () {
     expect($gif->animated)->toBeTrue()
         ->and($jpeg->animated)->toBeFalse();
 });
+
+it('stores an upload on a cloud disk under versioned paths with its content type and cache header', function () {
+    $disk = fakeCloudDisk();
+    config(['media.disk' => 's3']);
+
+    $media = app(UploadMedia::class)->handle($this->actor, uploadedImage('photo.jpg', makeImage('jpg', 1200, 800)));
+
+    $options = fn (string $mime): array => ['ContentType' => $mime, 'CacheControl' => 'public, max-age=604800'];
+    expect($media->disk)->toBe('s3')
+        ->and($media->version)->toBe(1)
+        ->and($media->path)->toBe('media/'.now()->format('Y/m')."/{$media->key}-v1.webp")
+        ->and($media->thumb_path)->toBe("media/thumbs/{$media->key}-v1.webp")
+        ->and($media->original_path)->toBe("media/originals/{$media->key}-v1.jpg")
+        ->and($disk->options[$media->path])->toBe($options('image/webp'))
+        ->and($disk->options[(string) $media->thumb_path])->toBe($options('image/webp'))
+        ->and($disk->options[(string) $media->original_path])->toBe($options('image/jpeg'));
+    $disk->assertExists([$media->path, (string) $media->thumb_path, (string) $media->original_path]);
+});

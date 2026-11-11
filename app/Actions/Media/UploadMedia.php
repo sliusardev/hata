@@ -8,6 +8,7 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
 use App\Support\Media\MediaNames;
+use App\Support\Media\MediaPaths;
 use App\Support\Media\MediaUploadChecks;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
@@ -76,18 +77,19 @@ class UploadMedia
         $disk = (string) config('media.disk');
         $storage = Storage::disk($disk);
         $key = (string) Str::ulid();
-        $path = sprintf('media/%s/%s.%s', now()->format('Y/m'), $key, $extension);
+        $version = 1;
+        $path = MediaPaths::file($disk, $key, $version, $extension, now());
         $originalPath = isset($original) && config('media.optimize.enabled') && config('media.optimize.keep_originals')
-            ? sprintf('media/originals/%s.%s', $key, $type['ext'])
+            ? MediaPaths::original($disk, $key, $version, $type['ext'])
             : null;
-        $thumbPath = $thumbnail === null ? null : "media/thumbs/{$key}.webp";
+        $thumbPath = $thumbnail === null ? null : MediaPaths::thumb($disk, $key, $version);
 
         $written = [];
 
         try {
-            foreach ([[$path, $contents], [$originalPath, $original ?? null], [$thumbPath, $thumbnail]] as [$target, $bytes]) {
+            foreach ([[$path, $contents, $mime], [$originalPath, $original ?? null, $type['mime']], [$thumbPath, $thumbnail, 'image/webp']] as [$target, $bytes, $targetMime]) {
                 if ($target !== null && $bytes !== null) {
-                    $storage->put($target, $bytes);
+                    $storage->put($target, $bytes, MediaPaths::writeOptions($disk, $targetMime));
                     $written[] = $target;
                 }
             }
@@ -110,6 +112,7 @@ class UploadMedia
                 'optimized_with' => $fingerprint,
                 'optimize_failure' => $failure,
                 'animated' => $animated,
+                'version' => $version,
             ]);
             $media->key = $key;
             $media->save();

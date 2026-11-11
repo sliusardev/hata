@@ -7,6 +7,7 @@ use App\Exceptions\MediaChangedException;
 use App\Exceptions\MediaEditException;
 use App\Exceptions\MediaUploadException;
 use App\Models\Media;
+use App\Models\MediaPendingDeletion;
 use App\Support\Media\MediaSource;
 use App\Support\Media\OptimizedImage;
 use Illuminate\Support\Facades\Storage;
@@ -74,6 +75,7 @@ it('writes the new file under this month and deletes the old path after commit',
         ->and($rebuilt->width)->toBe(400);
     Storage::disk('local')->assertExists($rebuilt->path);
     Storage::disk('local')->assertMissing($oldPath);
+    expect(MediaPendingDeletion::query()->count())->toBe(0);
 });
 
 it('keeps the row and the old files when saving fails', function () {
@@ -370,4 +372,67 @@ it('marks a file optimized only while its version is the expected one', function
     app(RebuildMediaFile::class)->markOptimized($fresh, 'webp:2560:80:exif0', expectedVersion: 2);
 
     expect($media->fresh()->optimized_with)->toBe('webp:2560:80:exif0');
+});
+
+/**
+ * A row on the faked cloud disk with its version-1 file, thumbnail and kept original.
+ */
+function cloudMedia(): Media
+{
+    $media = Media::factory()->create(['disk' => 's3', 'width' => 2560, 'height' => 1707]);
+    $media->forceFill([
+        'path' => "media/2026/10/{$media->key}-v1.webp",
+        'thumb_path' => "media/thumbs/{$media->key}-v1.webp",
+        'original_path' => "media/originals/{$media->key}-v1.jpg",
+    ])->save();
+
+    $disk = Storage::disk('s3');
+    $disk->put($media->path, 'old-file');
+    $disk->put((string) $media->thumb_path, 'old-thumb');
+    $disk->put((string) $media->original_path, makeImage('jpg', 3000, 2000));
+
+    return $media;
+}
+
+it('writes a cloud rebuild beside the old version and keeps the replaced objects for 7 days', function () {
+    $this->freezeSecond();
+    $disk = fakeCloudDisk();
+    $media = cloudMedia();
+    [$oldPath, $oldThumb] = [$media->path, (string) $media->thumb_path];
+
+    $original = makeImage('jpg', 1200, 800);
+
+    $rebuilt = app(RebuildMediaFile::class)->handle($media, $original, 'image/jpeg', null, newOriginal: $original);
+
+    expect($rebuilt->version)->toBe(2)
+        ->and($rebuilt->path)->toBe('media/'.now()->format('Y/m')."/{$media->key}-v2.webp")
+        ->and($rebuilt->thumb_path)->toBe("media/thumbs/{$media->key}-v2.webp")
+        ->and($rebuilt->original_path)->toBe("media/originals/{$media->key}-v2.jpg")
+        ->and($disk->get($oldPath))->toBe('old-file')
+        ->and($disk->get($oldThumb))->toBe('old-thumb')
+        ->and($disk->options[$rebuilt->path])->toBe(['ContentType' => 'image/webp', 'CacheControl' => 'public, max-age=604800'])
+        ->and($disk->options[(string) $rebuilt->thumb_path])->toBe(['ContentType' => 'image/webp', 'CacheControl' => 'public, max-age=604800'])
+        ->and($disk->options[(string) $rebuilt->original_path])->toBe(['ContentType' => 'image/jpeg', 'CacheControl' => 'public, max-age=604800']);
+    $disk->assertExists([$rebuilt->path, (string) $rebuilt->thumb_path, (string) $rebuilt->original_path, "media/originals/{$media->key}-v1.jpg"]);
+
+    $pending = MediaPendingDeletion::query()->orderBy('path')->get();
+    expect($pending->map(fn (MediaPendingDeletion $row) => [$row->disk, $row->path])->all())->toBe([
+        ['s3', "media/2026/10/{$media->key}-v1.webp"],
+        ['s3', "media/originals/{$media->key}-v1.jpg"],
+        ['s3', "media/thumbs/{$media->key}-v1.webp"],
+    ])
+        ->and($pending->every(fn (MediaPendingDeletion $row) => $row->delete_after->equalTo(now()->addDays(7))))->toBeTrue();
+});
+
+it('records no pending deletion and removes its new objects when a cloud rebuild is refused', function () {
+    $disk = fakeCloudDisk();
+    $media = cloudMedia();
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 400, 300), 'image/jpeg', null);
+    Media::query()->whereKey($media->id)->update(['version' => 2]);
+
+    expect(fn () => app(RebuildMediaFile::class)->store($media, $result, null, expectedVersion: 1))
+        ->toThrow(MediaChangedException::class);
+
+    expect(MediaPendingDeletion::query()->count())->toBe(0)
+        ->and($disk->allFiles())->toEqualCanonicalizing([$media->path, $media->thumb_path, $media->original_path]);
 });

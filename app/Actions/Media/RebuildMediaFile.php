@@ -6,8 +6,11 @@ use App\Exceptions\MediaChangedException;
 use App\Exceptions\MediaEditException;
 use App\Exceptions\MediaUploadException;
 use App\Models\Media;
+use App\Models\MediaPendingDeletion;
 use App\Support\Media\ImageEdits;
+use App\Support\Media\MediaDisks;
 use App\Support\Media\MediaNames;
+use App\Support\Media\MediaPaths;
 use App\Support\Media\MediaTypes;
 use App\Support\Media\OptimizedImage;
 use Closure;
@@ -21,8 +24,10 @@ use Throwable;
  * Replaces the stored file of a media row (and its thumbnail, and optionally its kept original) with new bytes,
  * keeping the row's id and key. Used by crop, restore-original and replace; the callers authorize.
  *
- * Old files the new ones don't overwrite are deleted after commit. If anything fails, the row and its old files
- * are left exactly as before: paths shared with the old row get their old bytes back, other new files are deleted.
+ * Old files the new ones don't overwrite are deleted after commit; on a cloud disk, where the paths carry the version,
+ * they are scheduled for deletion in 7 days instead (MediaPendingDeletion), so pages rendered before keep working.
+ * If anything fails, the row and its old files are left exactly as before: paths shared with the old row get their
+ * old bytes back, other new files are deleted.
  */
 class RebuildMediaFile
 {
@@ -35,7 +40,7 @@ class RebuildMediaFile
      *                                            can't be applied throw MediaEditException and write nothing.
      * @param  string|(Closure(string): string)|null  $newName  The file name to store, or a closure that gets the extension of the result and returns it;
      *                                                          by default the name changes only when the extension does.
-     * @param  string|null  $newOriginal  Bytes to keep as the new original at media/originals/{key}.{ext}; null keeps the current one.
+     * @param  string|null  $newOriginal  Bytes to keep as the new original (MediaPaths::original()); null keeps the current one.
      * @param  bool  $keepEdits  False stores `edits` as null although they were applied (baked into a file with no original).
      * @param  bool  $dropOriginal  Clear `original_path` and delete the old original after commit. Can't be combined with $newOriginal.
      * @param  array<string, mixed>  $attributes  Extra columns saved in the same update (e.g. original_size, uploaded_extension).
@@ -128,12 +133,17 @@ class RebuildMediaFile
         [$contents, $mime, $extension, $thumbnail, $animated] = [$result->contents, $result->mime, $result->extension, $result->thumbnail, $result->animated];
         [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
 
-        $disk = Storage::disk($media->disk);
-        $path = sprintf('media/%s/%s.%s', now()->format('Y/m'), $media->key, $extension);
-        $thumbPath = $thumbnail === null ? null : "media/thumbs/{$media->key}.webp";
+        $diskName = $media->disk;
+        $disk = Storage::disk($diskName);
+        $cloud = MediaDisks::isCloud($diskName);
+        // On a cloud disk the paths carry the version this rebuild stores, so the new objects never overwrite the old.
+        $nextVersion = ($expectedVersion ?? (int) $media->version) + 1;
+        $path = MediaPaths::file($diskName, $media->key, $nextVersion, $extension, now());
+        $thumbPath = $thumbnail === null ? null : MediaPaths::thumb($diskName, $media->key, $nextVersion);
+        $newOriginalMime = $newOriginal === null ? null : ($newOriginalMime ?? MediaTypes::sniff($newOriginal));
         $originalPath = match (true) {
             $dropOriginal => null,
-            $newOriginal !== null => sprintf('media/originals/%s.%s', $media->key, $this->originalExtension($newOriginal, $newOriginalMime)),
+            $newOriginal !== null => MediaPaths::original($diskName, $media->key, $nextVersion, ($newOriginalMime === null ? null : MediaTypes::extensionFor($newOriginalMime)) ?? 'bin'),
             default => $media->original_path,
         };
 
@@ -156,7 +166,13 @@ class RebuildMediaFile
         $written = [];
 
         try {
-            foreach ([[$path, $contents], [$thumbPath, $thumbnail], [$newOriginal === null ? null : $originalPath, $newOriginal]] as [$target, $bytes]) {
+            $targets = [
+                [$path, $contents, $mime],
+                [$thumbPath, $thumbnail, 'image/webp'],
+                [$newOriginal === null ? null : $originalPath, $newOriginal, $newOriginalMime ?? 'application/octet-stream'],
+            ];
+
+            foreach ($targets as [$target, $bytes, $targetMime]) {
                 if ($target === null || $bytes === null) {
                     continue;
                 }
@@ -166,10 +182,10 @@ class RebuildMediaFile
                 }
 
                 $written[] = $target;
-                $disk->put($target, $bytes);
+                $disk->put($target, $bytes, MediaPaths::writeOptions($diskName, $targetMime));
             }
 
-            DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $animated, $imageEdits, $keepEdits, $stale, $expectedVersion): void {
+            DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $animated, $imageEdits, $keepEdits, $stale, $expectedVersion, $cloud): void {
                 $stored = Media::query()->whereKey($media->getKey())->lockForUpdate()->value('version');
 
                 if ($expectedVersion !== null && $stored === null) {
@@ -198,6 +214,14 @@ class RebuildMediaFile
                     'version' => $version + 1,
                 ]);
                 $media->save();
+
+                if ($cloud) {
+                    // Pages and CDN caches may still point at the replaced objects: they go after a delay, recorded
+                    // in this transaction so they are scheduled exactly when the new version is committed.
+                    MediaPendingDeletion::schedule($media->disk, $stale);
+
+                    return;
+                }
 
                 DB::afterCommit(function () use ($media, $stale): void {
                     try {
@@ -245,16 +269,6 @@ class RebuildMediaFile
         }
 
         $media->syncOriginal();
-    }
-
-    /**
-     * The extension of a new original: from the given MIME when the original is the source itself, else sniffed.
-     */
-    private function originalExtension(string $original, ?string $mime): string
-    {
-        $mime ??= MediaTypes::sniff($original);
-
-        return ($mime === null ? null : MediaTypes::extensionFor($mime)) ?? 'bin';
     }
 
     /**

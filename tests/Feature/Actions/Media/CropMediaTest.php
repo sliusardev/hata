@@ -3,6 +3,7 @@
 use App\Actions\Media\CropMedia;
 use App\Models\Media;
 use App\Models\MediaFolder;
+use App\Models\MediaPendingDeletion;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Image;
@@ -197,4 +198,32 @@ it('requires media.edit to crop in place', function () {
 
     expect(fn () => app(CropMedia::class)->handle($actor, $media, cropInput()))
         ->toThrow(AuthorizationException::class);
+});
+
+it('keeps the old cloud objects of a cropped file for 7 days while new renders point at the new ones', function () {
+    $this->freezeSecond();
+    $disk = fakeCloudDisk();
+    $media = Media::factory()->create(['disk' => 's3', 'width' => 2560, 'height' => 1707]);
+    $media->forceFill([
+        'path' => "media/2026/10/{$media->key}-v1.webp",
+        'thumb_path' => "media/thumbs/{$media->key}-v1.webp",
+        'original_path' => "media/originals/{$media->key}-v1.jpg",
+    ])->save();
+    $oldFile = makeImage('webp', 2560, 1707);
+    $disk->put($media->path, $oldFile);
+    $disk->put((string) $media->thumb_path, 'old-thumb');
+    $disk->put((string) $media->original_path, makeImage('jpg', 3000, 2000));
+    [$oldPath, $oldThumb] = [$media->path, (string) $media->thumb_path];
+
+    $result = app(CropMedia::class)->handle($this->actor, $media, cropInput());
+
+    // A page rendered before the crop still gets the old image.
+    expect($disk->get($oldPath))->toBe($oldFile)
+        ->and($disk->get($oldThumb))->toBe('old-thumb')
+        // A page rendered now points at the new objects.
+        ->and($result->fresh()->path)->toBe('media/'.now()->format('Y/m')."/{$media->key}-v2.webp")
+        ->and($result->thumb_path)->toBe("media/thumbs/{$media->key}-v2.webp")
+        ->and(Image::fromBytes((string) $disk->get($result->path))->width())->toBe(1500)
+        ->and(MediaPendingDeletion::query()->where('delete_after', now()->addDays(7))->pluck('path')->sort()->values()->all())
+        ->toBe([$oldPath, $oldThumb]);
 });
