@@ -40,7 +40,13 @@
                     <div class="font-medium">{{ trans_choice('media.delete.used', $deletingUsages->count()) }}</div>
                     <ul class="list-disc space-y-0.5 ps-5">
                         @foreach ($deletingUsages as $usage)
-                            <li wire:key="deleting-usage-{{ $usage->id }}">{{ __('media.details.usage_item', ['type' => class_basename($usage->usable_type), 'id' => $usage->usable_id]) }}</li>
+                            <li wire:key="deleting-usage-{{ $usage->id }}">
+                                @if (($usageUrl = $usage->url(auth()->user())) !== null)
+                                    <a href="{{ $usageUrl }}" class="underline underline-offset-2" wire:navigate>{{ $usage->label() }}</a>
+                                @else
+                                    {{ $usage->label() }}
+                                @endif
+                            </li>
                         @endforeach
                     </ul>
                 @endif

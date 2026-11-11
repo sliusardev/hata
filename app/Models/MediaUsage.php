@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Contracts\UsesMedia;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Carbon;
 
 /**
@@ -62,5 +64,64 @@ class MediaUsage extends Model
                 'field' => $field,
             ]);
         }
+    }
+
+    /**
+     * What the usable calls this place; "Type #id" when it does not name itself or no longer exists.
+     */
+    public function label(): string
+    {
+        $usable = $this->usesMedia();
+
+        return $usable?->mediaUsageLabel($this->field) ?? __('media.details.usage_item', [
+            'type' => class_basename($this->usable_type),
+            'id' => $this->usable_id,
+        ]);
+    }
+
+    /**
+     * Where the viewer can open the place, or null.
+     */
+    public function url(?User $viewer): ?string
+    {
+        return $this->usesMedia()?->mediaUsageUrl($this->field, $viewer);
+    }
+
+    /**
+     * Tell every usable that implements UsesMedia to drop its reference to these files.
+     * Call before the media rows are deleted: the usage rows cascade away with them.
+     *
+     * @param  iterable<Media>  $media
+     */
+    public static function forgetAll(iterable $media): void
+    {
+        $ids = [];
+
+        foreach ($media as $item) {
+            $ids[] = $item->id;
+        }
+
+        foreach (array_chunk($ids, 500) as $chunk) {
+            foreach (static::query()->whereIn('media_id', $chunk)->get() as $usage) {
+                $usable = $usage->usesMedia();
+                $usable?->forgetMedia($usage->field, $usage->media_id);
+            }
+        }
+    }
+
+    /**
+     * The usable model when it exists and implements UsesMedia. An unknown morph type is not an error here.
+     */
+    private function usesMedia(): (Model&UsesMedia)|null
+    {
+        $class = Relation::getMorphedModel($this->usable_type) ?? $this->usable_type;
+
+        if (! is_a($class, UsesMedia::class, true) || ! is_a($class, Model::class, true)) {
+            return null;
+        }
+
+        $usable = $this->usable;
+
+        return $usable instanceof UsesMedia ? $usable : null;
     }
 }

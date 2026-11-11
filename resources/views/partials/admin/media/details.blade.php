@@ -159,8 +159,13 @@
             <div class="space-y-1.5">
                 <flux:label>{{ __('media.details.usage') }}</flux:label>
                 @forelse ($media->usages as $usage)
+                    @php($usageUrl = $usage->url(auth()->user()))
                     <div class="text-[13px] text-zinc-700 dark:text-zinc-300" wire:key="usage-{{ $usage->id }}">
-                        {{ __('media.details.usage_item', ['type' => class_basename($usage->usable_type), 'id' => $usage->usable_id]) }}
+                        @if ($usageUrl !== null)
+                            <a href="{{ $usageUrl }}" class="underline underline-offset-2 hover:text-zinc-900 dark:hover:text-white" wire:navigate>{{ $usage->label() }}</a>
+                        @else
+                            {{ $usage->label() }}
+                        @endif
                     </div>
                 @empty
                     <div><flux:badge size="sm" color="amber">{{ __('media.index.nowhere') }}</flux:badge></div>

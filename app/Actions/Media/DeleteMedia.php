@@ -3,6 +3,7 @@
 namespace App\Actions\Media;
 
 use App\Models\Media;
+use App\Models\MediaUsage;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +27,9 @@ class DeleteMedia
         Gate::forUser($actor)->authorize('delete', $items[0] ?? new Media);
 
         return DB::transaction(function () use ($items): int {
+            // Before the delete: the usage rows cascade away with the media rows.
+            MediaUsage::forgetAll($items);
+
             $count = 0;
             $filesByDisk = [];
 
