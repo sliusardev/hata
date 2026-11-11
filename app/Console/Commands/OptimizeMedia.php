@@ -6,23 +6,17 @@ use App\Actions\Media\OptimizeExistingMedia;
 use App\Actions\Media\OptimizeImage;
 use App\Enums\OptimizeOutcome;
 use App\Exceptions\OptimizationDisabledException;
+use App\Support\Media\MediaBatchRun;
 use App\Support\Media\OptimizationRun;
 use App\Support\Media\OptimizationRunStore;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
-use Illuminate\Console\Command;
-use Illuminate\Support\Sleep;
 
 #[Signature('media:optimize {--restart : Discard the current run and start over}')]
 #[Description('Re-optimize existing images with the current media settings')]
-class OptimizeMedia extends Command
+class OptimizeMedia extends MediaBatchCommand
 {
-    private const float BATCH_SECONDS = 5.0;
-
-    /** How many 1-second waits without progress (another batch holds the lock) before giving up. */
-    private const int MAX_IDLE_WAITS = 120;
-
     public function handle(OptimizeExistingMedia $engine, OptimizationRunStore $runs, OptimizeImage $optimizer, SiteSettings $settings): int
     {
         if (! $this->optimizationEnabled()) {
@@ -48,51 +42,10 @@ class OptimizeMedia extends Command
             $this->components->info("Starting a new run: {$run->total} file(s) to optimize.");
         }
 
-        $idle = 0;
+        $run = $this->processBatches($engine, $run, $settings);
 
-        while (true) {
-            // The settings live in the database and may be changed in the admin while this runs.
-            $settings->apply();
-
-            $before = $run->toArray();
-            $run = $engine->processBatch('cli', self::BATCH_SECONDS);
-
-            if ($run === null) {
-                break;
-            }
-
-            if ($run->status === 'paused' && ! $this->optimizationEnabled()) {
-                // The engine paused the run because optimization was turned off; resuming continues it.
-                $this->components->error('Optimization is off in the media settings.');
-
-                return self::FAILURE;
-            }
-
-            if ($run->status === 'running' && ! $run->isStale($optimizer->fingerprint()) && $run->toArray() === $before) {
-                if (++$idle >= self::MAX_IDLE_WAITS) {
-                    $this->components->error('Another batch is running; try again later.');
-
-                    return self::FAILURE;
-                }
-
-                Sleep::for(1)->second();
-
-                continue;
-            }
-
-            $idle = 0;
-
-            $this->line(sprintf(
-                'Processed %d/%d · saved %s · skipped %d',
-                $run->processed(),
-                $run->total,
-                $this->megabytes($run->bytesSaved()),
-                $run->skipped(),
-            ));
-
-            if ($run->status !== 'running' || $run->isStale($optimizer->fingerprint())) {
-                break;
-            }
+        if (is_int($run)) {
+            return $run;
         }
 
         if ($run !== null) {
@@ -100,6 +53,33 @@ class OptimizeMedia extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    protected function progressLine(MediaBatchRun $run): string
+    {
+        assert($run instanceof OptimizationRun);
+
+        return sprintf(
+            'Processed %d/%d · saved %s · skipped %d',
+            $run->processed(),
+            $run->total,
+            $this->megabytes($run->bytesSaved()),
+            $run->skipped(),
+        );
+    }
+
+    /**
+     * The engine paused the run because optimization was turned off; resuming continues it.
+     */
+    protected function failure(MediaBatchRun $run): ?int
+    {
+        if ($run->status === 'paused' && ! $this->optimizationEnabled()) {
+            $this->components->error('Optimization is off in the media settings.');
+
+            return self::FAILURE;
+        }
+
+        return null;
     }
 
     /**

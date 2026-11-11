@@ -4,60 +4,18 @@ use App\Actions\Media\OptimizeExistingMedia;
 use App\Actions\Media\OptimizeImage;
 use App\Exceptions\OptimizationDisabledException;
 use App\Jobs\OptimizeExistingMediaBatch;
+use App\Livewire\Admin\MediaBatchPage;
 use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\OptimizationRun;
-use App\Support\Media\OptimizationRunStore;
-use Illuminate\Support\Facades\Auth;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
-use Livewire\Component;
 
-new #[Title('media.optimize.title')] class extends Component {
-    /**
-     * Seconds without a sign of life from the queue before the open tab takes over.
-     */
-    public const int FALLBACK_AFTER = 30;
-
-    /**
-     * Seconds of work per request while the tab processes files itself.
-     */
-    public const float BROWSER_BUDGET = 5.0;
-
-    /**
-     * True once the tab processes the run itself although a queue is configured (the queue didn't pick it up).
-     */
-    #[Locked]
-    public bool $browserFallback = false;
-
-    public bool $showStopModal = false;
-
-    public function mount(): void
-    {
-        $this->authorize('optimize', Media::class);
-
-        // Without a queue the tab drives the run; with one, tick() decides from the queue's heartbeat.
-        $this->browserFallback = ! $this->queueAvailable;
-    }
-
-    #[Computed]
-    public function run(): ?OptimizationRun
-    {
-        return app(OptimizationRunStore::class)->get();
-    }
-
+new #[Title('media.optimize.title')] class extends MediaBatchPage {
     #[Computed]
     public function candidateCount(): int
     {
         return Media::query()->optimizationCandidates(app(OptimizeImage::class)->fingerprint())->count();
-    }
-
-    #[Computed]
-    public function queueAvailable(): bool
-    {
-        return config('queue.default') !== 'sync';
     }
 
     #[Computed]
@@ -66,106 +24,51 @@ new #[Title('media.optimize.title')] class extends Component {
         return $this->run?->isStale(app(OptimizeImage::class)->fingerprint()) ?? false;
     }
 
-    public function start(): void
-    {
-        $this->authorize('optimize', Media::class);
-
-        try {
-            app(OptimizeExistingMedia::class)->start($this->actor());
-        } catch (OptimizationDisabledException) {
-            Flux::toast(variant: 'danger', text: __('media.optimize.disabled'));
-
-            return;
-        }
-
-        $this->browserFallback = ! $this->queueAvailable;
-        $this->dispatchWhenQueued();
-        $this->refresh();
-    }
-
     public function startOver(): void
     {
         $this->start();
     }
 
-    public function pause(): void
+    protected function engine(): OptimizeExistingMedia
     {
-        $this->authorize('optimize', Media::class);
-
-        app(OptimizeExistingMedia::class)->pause();
-        $this->refresh();
+        return app(OptimizeExistingMedia::class);
     }
 
-    public function resume(): void
+    protected function authorizeRun(): void
     {
         $this->authorize('optimize', Media::class);
-
-        app(OptimizeExistingMedia::class)->resume();
-        $this->browserFallback = ! $this->queueAvailable;
-        $this->dispatchWhenQueued();
-        $this->refresh();
     }
 
-    public function stop(): void
+    protected function startRun(User $actor): bool
     {
-        $this->authorize('optimize', Media::class);
+        try {
+            $this->engine()->start($actor);
+        } catch (OptimizationDisabledException) {
+            Flux::toast(variant: 'danger', text: __('media.optimize.disabled'));
 
-        app(OptimizeExistingMedia::class)->stop();
-        $this->showStopModal = false;
-        $this->browserFallback = ! $this->queueAvailable;
-        $this->refresh();
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function dispatchBatch(string $runId): void
+    {
+        OptimizeExistingMediaBatch::dispatch($runId);
     }
 
     /**
-     * The poll target while a run is going: processes a batch here when no queue is available (or it isn't working),
-     * otherwise only refreshes and watches the queue's heartbeat.
+     * With optimization off a batch only pauses the run (the engine does that), so the page shows it as paused.
      */
-    public function tick(): void
+    protected function mustProcessHere(): bool
     {
-        $this->authorize('optimize', Media::class);
-
-        $run = $this->run;
-
-        if ($run === null || $run->status !== 'running') {
-            $this->refresh();
-
-            return;
-        }
-
-        $engine = app(OptimizeExistingMedia::class);
-
-        // With optimization off a batch only pauses the run (the engine does that), so the page shows it as paused.
-        if (! $this->queueAvailable || $this->browserFallback || ! config('media.optimize.enabled')) {
-            $engine->processBatch('browser', self::BROWSER_BUDGET);
-        } elseif (! $engine->isBatchRunning() && ($run->heartbeatAt ?? $run->startedAt)->lt(now()->subSeconds(self::FALLBACK_AFTER))) {
-            $this->browserFallback = true;
-            $engine->processBatch('browser', self::BROWSER_BUDGET);
-        }
-
-        $this->refresh();
+        return ! config('media.optimize.enabled');
     }
 
-    private function dispatchWhenQueued(): void
+    protected function refresh(): void
     {
-        $run = app(OptimizationRunStore::class)->get();
-
-        if ($this->queueAvailable && $run !== null) {
-            OptimizeExistingMediaBatch::dispatch($run->id);
-        }
-    }
-
-    private function refresh(): void
-    {
-        unset($this->run, $this->candidateCount, $this->isStale);
-    }
-
-    private function actor(): User
-    {
-        $user = Auth::user();
-
-        abort_unless($user instanceof User, 403);
-
-        return $user;
+        parent::refresh();
+        unset($this->candidateCount, $this->isStale);
     }
 }; ?>
 
