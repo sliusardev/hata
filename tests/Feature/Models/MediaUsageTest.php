@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\Fixtures\MediaUsingModel;
 
+require_once __DIR__.'/../../fixtures/MediaUsingModel.php';
+
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
