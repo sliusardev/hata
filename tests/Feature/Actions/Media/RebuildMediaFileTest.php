@@ -294,3 +294,32 @@ it('stores that a rebuild from an animated gif is animated', function () {
 
     expect($rebuilt->fresh()->animated)->toBeTrue();
 });
+
+it('stores a ready optimized result', function () {
+    $media = rebuildableMedia('old-file', null, ['width' => 10, 'height' => 10]);
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 3000, 2000), 'image/jpeg', null);
+
+    $stored = app(RebuildMediaFile::class)->store($media, $result, null);
+
+    $disk = Storage::disk('local');
+    expect($stored->version)->toBe(2)
+        ->and($stored->mime)->toBe('image/webp')
+        ->and($stored->optimized_with)->toBe($result->fingerprint)
+        ->and($stored->size)->toBe(strlen($result->contents))
+        ->and($stored->animated)->toBe($result->animated)
+        ->and($disk->get($stored->path))->toBe($result->contents)
+        ->and($disk->get((string) $stored->thumb_path))->toBe($result->thumbnail)
+        ->and($stored->fresh()->version)->toBe(2);
+});
+
+it('marks a file optimized without rewriting it', function () {
+    $media = rebuildableMedia('old-file', null, ['optimized_with' => null, 'optimize_failure' => 'unreadable']);
+
+    app(RebuildMediaFile::class)->markOptimized($media, 'webp:2560:80:exif0');
+
+    $fresh = $media->fresh();
+    expect($fresh->optimized_with)->toBe('webp:2560:80:exif0')
+        ->and($fresh->optimize_failure)->toBeNull()
+        ->and($fresh->version)->toBe(1)
+        ->and(Storage::disk('local')->get($fresh->path))->toBe('old-file');
+});

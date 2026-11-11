@@ -8,6 +8,7 @@ use App\Models\Media;
 use App\Support\Media\ImageEdits;
 use App\Support\Media\MediaNames;
 use App\Support\Media\MediaTypes;
+use App\Support\Media\OptimizedImage;
 use Closure;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
@@ -59,9 +60,7 @@ class RebuildMediaFile
 
         $imageEdits = ImageEdits::fromArray($edits);
         $imageEdits = $imageEdits?->isEmpty() ? null : $imageEdits;
-        [$sourceContents, $sourceMime] = [$contents, $mime];
-        $width = $height = $fingerprint = $failure = $thumbnail = null;
-        $animated = false;
+        $sourceMime = $mime;
 
         if ($media->isImage()) {
             $result = $this->optimizer->handle($contents, $mime, $imageEdits?->toArray());
@@ -73,22 +72,61 @@ class RebuildMediaFile
             if (in_array($result->mime, OptimizeImage::MUST_CONVERT, true)) {
                 throw MediaUploadException::heicUnsupported();
             }
-
-            [$thumbnail, $animated] = [$result->thumbnail, $result->animated];
-            [$contents, $mime, $extension] = [$result->contents, $result->mime, $result->extension];
-            [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
         } elseif ($imageEdits !== null) {
             throw MediaEditException::because('not_editable');
         } else {
             $extension = MediaTypes::extensionFor($mime) ?? pathinfo($media->path, PATHINFO_EXTENSION);
+            $result = new OptimizedImage($contents, $mime, $extension, null, null, false);
         }
+
+        return $this->store(
+            $media,
+            $result,
+            $imageEdits,
+            $newName,
+            $newOriginal,
+            $newOriginal !== null && $contents === $newOriginal ? $sourceMime : null,
+            $keepEdits,
+            $dropOriginal,
+            $attributes,
+        );
+    }
+
+    /**
+     * Store an already optimized result: everything handle() does after optimizing. No decoding happens here;
+     * the thumbnail and `animated` come from $result.
+     *
+     * @param  ImageEdits|null  $edits  The edits that were applied to produce $result (null or empty: none).
+     * @param  string|null  $newOriginalMime  The canonical MIME of $newOriginal when known (saves sniffing it).
+     * @param  array<string, mixed>  $attributes
+     *
+     * @throws InvalidArgumentException when $newOriginal is given with $dropOriginal
+     */
+    public function store(
+        Media $media,
+        OptimizedImage $result,
+        ?ImageEdits $edits,
+        string|Closure|null $newName = null,
+        ?string $newOriginal = null,
+        ?string $newOriginalMime = null,
+        bool $keepEdits = true,
+        bool $dropOriginal = false,
+        array $attributes = [],
+    ): Media {
+        if ($dropOriginal && $newOriginal !== null) {
+            throw new InvalidArgumentException('A new original can not be stored while dropping the original.');
+        }
+
+        $imageEdits = $edits?->isEmpty() ? null : $edits;
+        [$contents, $mime, $extension, $thumbnail, $animated] = [$result->contents, $result->mime, $result->extension, $result->thumbnail, $result->animated];
+        [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
 
         $disk = Storage::disk($media->disk);
         $path = sprintf('media/%s/%s.%s', now()->format('Y/m'), $media->key, $extension);
         $thumbPath = $thumbnail === null ? null : "media/thumbs/{$media->key}.webp";
         $originalPath = match (true) {
             $dropOriginal => null,
-            $newOriginal !== null => sprintf('media/originals/%s.%s', $media->key, $this->originalExtension($newOriginal, $sourceContents === $newOriginal ? $sourceMime : null)),
+            $newOriginal !== null => sprintf('media/originals/%s.%s', $media->key, $this->originalExtension($newOriginal, $newOriginalMime)),
             default => $media->original_path,
         };
 
@@ -161,6 +199,15 @@ class RebuildMediaFile
         }
 
         return $media;
+    }
+
+    /**
+     * Record that the file already matches the current optimization settings, without touching files or the version
+     * (the bytes are identical, so cached URLs stay valid).
+     */
+    public function markOptimized(Media $media, string $fingerprint): void
+    {
+        $media->forceFill(['optimized_with' => $fingerprint, 'optimize_failure' => null])->save();
     }
 
     /**
