@@ -137,6 +137,7 @@ class SiteSettings
     public function apply(): void
     {
         SiteLogo::flush();
+        $s3Before = config('filesystems.disks.s3');
 
         foreach ($this->defaults as $path => $value) {
             config([$path => $value]);
@@ -164,8 +165,11 @@ class SiteSettings
             config([$path => $this->cast($key, $value)]);
         }
 
-        // The s3 disk is resolved once and keeps its config, so a changed setting needs a fresh one.
-        Storage::forgetDisk('s3');
+        // The s3 disk is resolved once and keeps its config, so a changed setting needs a fresh one. Only then: the CLI
+        // and queue workers apply the settings before every batch and keep the resolved client otherwise.
+        if (config('filesystems.disks.s3') !== $s3Before) {
+            Storage::forgetDisk('s3');
+        }
     }
 
     private function cast(string $key, mixed $value): mixed

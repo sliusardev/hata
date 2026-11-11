@@ -852,7 +852,9 @@ new #[Title('site_settings.title')] class extends Component {
                 <flux:callout icon="information-circle" variant="secondary" data-test="files-on-other-disk">
                     <flux:callout.text>
                         {{ trans_choice('site_settings.media.storage.other_disk', $this->filesOnOtherDisk, ['count' => $this->filesOnOtherDisk]) }}
-                        {{-- The link to the move page comes with the move feature. --}}
+                        @can('moveToDisk', Media::class)
+                            <flux:link :href="route('admin.media.move')" wire:navigate data-test="move-files-link">{{ __('site_settings.media.storage.move_link', ['storage' => __('site_settings.media.storage.'.config('media.disk'))]) }}</flux:link>
+                        @endcan
                     </flux:callout.text>
                 </flux:callout>
             @endif

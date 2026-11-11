@@ -43,6 +43,14 @@ class MediaPolicy
         return $actor->can('media.edit');
     }
 
+    /**
+     * Move files between the local disk and the cloud disk.
+     */
+    public function moveToDisk(User $actor): bool
+    {
+        return $actor->can('media.edit');
+    }
+
     public function deleteFolders(User $actor): bool
     {
         return $actor->can('media.edit') && $actor->can('media.delete');

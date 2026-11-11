@@ -327,6 +327,45 @@ return [
         'done_left' => ':count image was skipped and still doesn’t match the current settings.|:count images were skipped and still don’t match the current settings.',
     ],
 
+    'move' => [
+        'title' => 'Move files between disks',
+        'description' => 'Copy the files stored on the other disk to the current storage and remove them from the old one. Their links keep working.',
+        'target' => 'Files go to: :storage',
+        'idle_heading' => 'Ready to move',
+        'candidates' => ':count file is stored on the other disk.|:count files are stored on the other disk.',
+        'none' => 'Every file is already stored there.',
+        'start' => 'Start moving',
+        'start_new' => 'Start a new move',
+        'stop_heading' => 'Stop the move?',
+        'stop_body' => 'The progress shown here is cleared. Files already moved stay on the new disk, the others stay where they are.',
+        'not_configured' => 'The storage isn’t configured. Set its connection in the media settings first.',
+        'uploads_note' => 'Uploads keep working during the move: new files go to the current storage.',
+        'status' => [
+            'running' => 'Moving',
+            'paused' => 'Paused',
+            'done' => 'Done',
+        ],
+        'stats' => [
+            'moved' => 'Moved',
+            'size' => 'Data moved',
+            'skipped' => 'Skipped',
+            'processed' => 'Processed',
+        ],
+        'skipped_reasons' => [
+            'missing' => ':count missing file|:count missing files',
+            'failed' => ':count failed to copy',
+            'changed' => ':count changed meanwhile',
+        ],
+        'outcomes' => [
+            'moved' => 'Moved',
+            'missing' => 'Missing',
+            'failed' => 'Failed',
+            'changed' => 'Changed meanwhile',
+        ],
+        'done_heading' => 'All files are processed',
+        'done_left' => ':count file was skipped and is still on the other disk.|:count files were skipped and are still on the other disk.',
+    ],
+
     'picker' => [
         'not_allowed' => 'This format can’t be used here',
         'invalid' => 'Choose a file from the media library that can be used here.',

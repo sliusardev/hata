@@ -143,6 +143,7 @@ return [
             's3' => 'S3-compatible storage',
             's3_description' => 'AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, MinIO and others. The site can move between servers without moving the files.',
             'other_disk' => ':count file is stored on the other disk.|:count files are stored on the other disk.',
+            'move_link' => 'Move them to :storage',
             'endpoint' => 'Endpoint',
             'endpoint_description' => 'Leave empty for AWS S3.',
             'region' => 'Region',

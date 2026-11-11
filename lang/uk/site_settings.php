@@ -143,6 +143,7 @@ return [
             's3' => 'S3-сумісне сховище',
             's3_description' => 'AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, MinIO та інші. Сайт можна переносити між серверами без перенесення файлів.',
             'other_disk' => ':count файл зберігається на іншому диску.|:count файли зберігаються на іншому диску.|:count файлів зберігається на іншому диску.',
+            'move_link' => 'Перенести їх у «:storage»',
             'endpoint' => 'Endpoint',
             'endpoint_description' => 'Для AWS S3 залиште порожнім.',
             'region' => 'Регіон',

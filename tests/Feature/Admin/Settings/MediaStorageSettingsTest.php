@@ -256,6 +256,18 @@ it('says how many files are on the other disk', function () {
     storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
 });
 
+it('links the files on the other disk to the move page for users who may move them', function () {
+    Media::factory()->create(['disk' => 's3']);
+
+    storageTab()
+        ->assertSee(route('admin.media.move'), escape: false)
+        ->assertSee(__('site_settings.media.storage.move_link', ['storage' => __('site_settings.media.storage.local')]));
+
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.edit'])->create());
+
+    storageTab()->assertDontSee(route('admin.media.move'), escape: false);
+});
+
 it('treats any non-local driver as a cloud disk', function () {
     config(['filesystems.disks.custom' => ['driver' => 'sftp']]);
 
