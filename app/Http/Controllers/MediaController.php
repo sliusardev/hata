@@ -81,7 +81,7 @@ class MediaController extends Controller
             abort(404);
         }
 
-        abort_if($stream === false, 404);
+        abort_if($stream === null && ! $request->isMethod('HEAD'), 404);
 
         $range = ByteRange::parse($request->headers->get('Range'), $request->headers->get('If-Range'), $size, $etag);
 
