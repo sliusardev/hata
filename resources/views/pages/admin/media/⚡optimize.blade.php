@@ -147,8 +147,10 @@ new #[Title('media.optimize.title')] class extends Component {
 
     private function dispatchWhenQueued(): void
     {
-        if ($this->queueAvailable) {
-            OptimizeExistingMediaBatch::dispatch();
+        $run = app(OptimizationRunStore::class)->get();
+
+        if ($this->queueAvailable && $run !== null) {
+            OptimizeExistingMediaBatch::dispatch($run->id);
         }
     }
 

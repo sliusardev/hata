@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Media\OptimizationRun;
 use App\Support\Media\OptimizationRunStore;
 use App\Support\Media\ServerCapabilities;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -174,6 +175,7 @@ describe('optimize existing card', function () {
     it('shows the progress of a running run instead of the estimate', function () {
         Media::factory()->image()->create(['optimized_with' => null]);
         app(OptimizationRunStore::class)->save(new OptimizationRun(
+            id: (string) Str::ulid(),
             status: 'running',
             fingerprint: app(OptimizeImage::class)->fingerprint(),
             cursor: 0,
@@ -206,6 +208,7 @@ describe('optimize existing card', function () {
     it('shows a paused run with its status', function () {
         Media::factory()->image()->create(['optimized_with' => null]);
         app(OptimizationRunStore::class)->save(new OptimizationRun(
+            id: (string) Str::ulid(),
             status: 'paused',
             fingerprint: app(OptimizeImage::class)->fingerprint(),
             cursor: 0,
@@ -227,6 +230,7 @@ describe('optimize existing card', function () {
     it('ignores a stale run and shows the estimate', function () {
         Media::factory()->image()->create(['optimized_with' => null]);
         app(OptimizationRunStore::class)->save(new OptimizationRun(
+            id: (string) Str::ulid(),
             status: 'running',
             fingerprint: 'webp:1:1:old',
             cursor: 0,

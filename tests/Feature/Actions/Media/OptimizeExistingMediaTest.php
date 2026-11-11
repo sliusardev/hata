@@ -15,6 +15,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Image;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Storage::fake('local');
@@ -424,14 +425,21 @@ it('does not bring back a run stopped during the batch', function () {
 it('does not overwrite a run replaced during the batch', function () {
     optimizableMedia(makeImage('jpg', 400, 300));
     engine()->startWithoutActor();
-    rebuilderRunning(function () {
-        $this->travel(5)->seconds();
-        engine()->startWithoutActor();
-    });
+    // In the same second: runs are told apart by their id, not by when they started.
+    rebuilderRunning(fn () => engine()->startWithoutActor());
 
     engine()->processBatch('cli', 60);
 
     expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
+});
+
+it('gives every run its own ULID', function () {
+    $first = engine()->startWithoutActor();
+    $second = engine()->startWithoutActor();
+
+    expect(Str::isUlid($first->id))->toBeTrue()
+        ->and($second->id)->not->toBe($first->id)
+        ->and(app(OptimizationRunStore::class)->get()->id)->toBe($second->id);
 });
 
 it('does not overwrite progress another batch saved after its lock expired', function () {

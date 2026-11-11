@@ -88,6 +88,7 @@ it('dispatches the job and leaves processing to the queue', function () {
         ->assertSee(__('media.optimize.tab_open_queue'));
 
     Queue::assertPushed(OptimizeExistingMediaBatch::class, 1);
+    Queue::assertPushed(OptimizeExistingMediaBatch::class, fn (OptimizeExistingMediaBatch $job) => $job->runId === app(OptimizationRunStore::class)->get()->id);
     expect($media->refresh()->optimized_with)->toBeNull();
 });
 

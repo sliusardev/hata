@@ -12,6 +12,7 @@ use App\Support\Media\OptimizationRun;
 use App\Support\Media\OptimizationRunStore;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -57,6 +58,7 @@ class OptimizeExistingMedia
         $fingerprint = $this->optimizer->fingerprint();
 
         $run = new OptimizationRun(
+            id: (string) Str::ulid(),
             status: 'running',
             fingerprint: $fingerprint,
             cursor: 0,
@@ -292,7 +294,7 @@ class OptimizeExistingMedia
     {
         $stored = $this->runs->get();
 
-        if ($stored === null || ! $stored->startedAt->equalTo($run->startedAt) || $stored->cursor > $savedCursor) {
+        if ($stored === null || $stored->id !== $run->id || $stored->cursor > $savedCursor) {
             return $stored;
         }
 

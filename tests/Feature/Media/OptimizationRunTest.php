@@ -14,6 +14,7 @@ uses(RefreshDatabase::class);
 function makeRun(array $overrides = []): OptimizationRun
 {
     return OptimizationRun::fromArray(array_merge([
+        'id' => '01JCAZ5V6N3QK8Y2W4X7R9T1PM',
         'status' => 'running',
         'fingerprint' => 'fp-1',
         'cursor' => 0,
@@ -58,6 +59,7 @@ it('round-trips the run through the store', function () {
 
     expect(Setting::where('key', 'media_optimization_run')->count())->toBe(1)
         ->and($store->get()->toArray())->toBe($run->toArray())
+        ->and($store->get()->id)->toBe('01JCAZ5V6N3QK8Y2W4X7R9T1PM')
         ->and($store->get()->heartbeatAt)->toBeInstanceOf(CarbonImmutable::class);
 
     $store->clear();
@@ -106,10 +108,11 @@ it('treats a malformed stored run as no run', function (mixed $value) {
 
     expect((new OptimizationRunStore)->get())->toBeNull();
 })->with([
-    'no status' => [['fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
-    'unknown status' => [['status' => 'exploded', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
-    'no cursor' => [['status' => 'running', 'fingerprint' => 'fp', 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
-    'bad start date' => [['status' => 'running', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => 'not a date']],
-    'bad heartbeat' => [['status' => 'running', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00', 'heartbeat_at' => 'yesterday-ish']],
+    'no status' => [['id' => '01JCAZ5V6N3QK8Y2W4X7R9T1PM', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
+    'unknown status' => [['id' => '01JCAZ5V6N3QK8Y2W4X7R9T1PM', 'status' => 'exploded', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
+    'no cursor' => [['id' => '01JCAZ5V6N3QK8Y2W4X7R9T1PM', 'status' => 'running', 'fingerprint' => 'fp', 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
+    'bad start date' => [['id' => '01JCAZ5V6N3QK8Y2W4X7R9T1PM', 'status' => 'running', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => 'not a date']],
+    'bad heartbeat' => [['id' => '01JCAZ5V6N3QK8Y2W4X7R9T1PM', 'status' => 'running', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00', 'heartbeat_at' => 'yesterday-ish']],
     'a string' => ['broken'],
+    'no id (saved before runs had one)' => [['status' => 'running', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
 ]);

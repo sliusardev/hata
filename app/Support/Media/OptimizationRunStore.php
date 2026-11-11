@@ -20,7 +20,8 @@ class OptimizationRunStore
 
     /**
      * The stored run, or null when there is none or the stored value is malformed (a corrupt row counts as no run,
-     * so the page and the command never fail on it).
+     * so the page and the command never fail on it). A run saved before runs had an `id` counts as malformed too:
+     * it shows as no run and a new one can be started.
      */
     public function get(): ?OptimizationRun
     {
@@ -58,7 +59,8 @@ class OptimizationRunStore
      */
     private function isWellFormed(array $value): bool
     {
-        return in_array($value['status'] ?? null, self::STATUSES, true)
+        return is_string($value['id'] ?? null) && $value['id'] !== ''
+            && in_array($value['status'] ?? null, self::STATUSES, true)
             && is_string($value['fingerprint'] ?? null)
             && is_int($value['cursor'] ?? null)
             && is_int($value['total'] ?? null)
