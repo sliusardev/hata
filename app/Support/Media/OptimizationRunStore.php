@@ -3,6 +3,7 @@
 namespace App\Support\Media;
 
 use App\Models\Setting;
+use Carbon\Exceptions\InvalidFormatException;
 
 /**
  * Keeps the optimization run in its own settings row. It is read and written directly,
@@ -12,6 +13,15 @@ class OptimizationRunStore
 {
     public const string KEY = 'media_optimization_run';
 
+    /**
+     * @var list<string>
+     */
+    public const array STATUSES = ['running', 'paused', 'done'];
+
+    /**
+     * The stored run, or null when there is none or the stored value is malformed (a corrupt row counts as no run,
+     * so the page and the command never fail on it).
+     */
     public function get(): ?OptimizationRun
     {
         $value = Setting::query()->where('key', self::KEY)->value('value');
@@ -20,7 +30,15 @@ class OptimizationRunStore
             $value = json_decode($value, true);
         }
 
-        return is_array($value) ? OptimizationRun::fromArray($value) : null;
+        if (! is_array($value) || ! $this->isWellFormed($value)) {
+            return null;
+        }
+
+        try {
+            return OptimizationRun::fromArray($value);
+        } catch (InvalidFormatException) {
+            return null;
+        }
     }
 
     public function save(OptimizationRun $run): void
@@ -31,5 +49,20 @@ class OptimizationRunStore
     public function clear(): void
     {
         Setting::query()->where('key', self::KEY)->delete();
+    }
+
+    /**
+     * Whether the keys OptimizationRun::fromArray() requires are present with usable values (dates are checked by parsing).
+     *
+     * @param  array<mixed>  $value
+     */
+    private function isWellFormed(array $value): bool
+    {
+        return in_array($value['status'] ?? null, self::STATUSES, true)
+            && is_string($value['fingerprint'] ?? null)
+            && is_int($value['cursor'] ?? null)
+            && is_int($value['total'] ?? null)
+            && is_string($value['started_at'] ?? null)
+            && (($value['heartbeat_at'] ?? null) === null || is_string($value['heartbeat_at']));
     }
 }

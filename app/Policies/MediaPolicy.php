@@ -35,6 +35,14 @@ class MediaPolicy
         return $actor->can('media.edit');
     }
 
+    /**
+     * Run the optimization of existing files.
+     */
+    public function optimize(User $actor): bool
+    {
+        return $actor->can('media.edit');
+    }
+
     public function deleteFolders(User $actor): bool
     {
         return $actor->can('media.edit') && $actor->can('media.delete');

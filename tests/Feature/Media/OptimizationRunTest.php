@@ -100,3 +100,16 @@ it('estimates the time left from the average per file', function () {
 
     expect($run->secondsLeft(5))->toBe(10);
 });
+
+it('treats a malformed stored run as no run', function (mixed $value) {
+    Setting::query()->create(['key' => 'media_optimization_run', 'value' => $value]);
+
+    expect((new OptimizationRunStore)->get())->toBeNull();
+})->with([
+    'no status' => [['fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
+    'unknown status' => [['status' => 'exploded', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
+    'no cursor' => [['status' => 'running', 'fingerprint' => 'fp', 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00']],
+    'bad start date' => [['status' => 'running', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => 'not a date']],
+    'bad heartbeat' => [['status' => 'running', 'fingerprint' => 'fp', 'cursor' => 0, 'total' => 1, 'started_at' => '2026-11-11T10:00:00+00:00', 'heartbeat_at' => 'yesterday-ish']],
+    'a string' => ['broken'],
+]);
