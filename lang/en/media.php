@@ -304,7 +304,7 @@ return [
             'already_optimal' => ':count already optimal',
             'too_large' => ':count too large for the server',
             'unreadable' => ':count unreadable',
-            'missing' => ':count file missing',
+            'missing' => ':count missing file|:count missing files',
         ],
         'recent' => 'Latest files',
         'outcomes' => [

@@ -97,6 +97,15 @@ class OptimizeExistingMedia
         }
     }
 
+    /**
+     * Whether a batch holds the lock right now. Probes by taking the lock and releasing it at once; a batch that
+     * starts in that instant finds it taken and backs off (the queue job then retries after a short delay).
+     */
+    public function isBatchRunning(): bool
+    {
+        return Cache::lock(self::LOCK, 5)->get(fn () => true) !== true;
+    }
+
     public function stop(): void
     {
         $this->runs->clear();
@@ -142,6 +151,7 @@ class OptimizeExistingMedia
                     $run->record($media, OptimizeOutcome::Unreadable, (int) $media->size, (int) $media->size);
                 } else {
                     $run->inProgress = $media->id;
+                    $run->heartbeatAt = now()->toImmutable();
                     $saved = $this->save($run, $savedCursor);
 
                     if ($saved !== $run) {

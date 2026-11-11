@@ -420,3 +420,44 @@ it('does not overwrite progress another batch saved after its lock expired', fun
         ->and(app(OptimizationRunStore::class)->get()->cursor)->toBe(999_999)
         ->and(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
 });
+
+it('refreshes the heartbeat before every file, not only at the end of the batch', function () {
+    optimizableMedia(makeImage('jpg', 400, 300));
+    optimizableMedia(makeImage('jpg', 400, 300));
+    $engine = app(OptimizeExistingMedia::class);
+    $engine->start($this->actor);
+    $startedAt = now()->toImmutable();
+
+    $firstId = null;
+    $updates = 0;
+    $heartbeatSeenBySecondFile = null;
+    Media::updated(function (Media $media) use (&$firstId, &$updates, &$heartbeatSeenBySecondFile) {
+        $firstId ??= $media->id;
+
+        if ($media->id === $firstId) {
+            if (++$updates === 1) {
+                test()->travel(40)->seconds();
+            }
+        } else {
+            $heartbeatSeenBySecondFile ??= app(OptimizationRunStore::class)->get()->heartbeatAt;
+        }
+    });
+
+    $engine->processBatch('queue', 60.0);
+
+    expect($heartbeatSeenBySecondFile)->not->toBeNull()
+        ->and($heartbeatSeenBySecondFile->gte($startedAt->addSeconds(39)))->toBeTrue();
+});
+
+it('reports whether a batch holds the lock without taking it', function () {
+    $engine = app(OptimizeExistingMedia::class);
+
+    expect($engine->isBatchRunning())->toBeFalse();
+
+    $lock = Cache::lock(OptimizeExistingMedia::LOCK, 60);
+    $lock->get();
+    expect($engine->isBatchRunning())->toBeTrue();
+
+    $lock->release();
+    expect($engine->isBatchRunning())->toBeFalse();
+});

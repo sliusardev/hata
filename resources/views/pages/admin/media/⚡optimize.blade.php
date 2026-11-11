@@ -9,7 +9,9 @@ use App\Models\User;
 use App\Support\Media\OptimizationRun;
 use App\Support\Media\OptimizationRunStore;
 use Illuminate\Support\Facades\Auth;
+use Flux\Flux;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -27,6 +29,7 @@ new #[Title('media.optimize.title')] class extends Component {
     /**
      * True once the tab processes the run itself although a queue is configured (the queue didn't pick it up).
      */
+    #[Locked]
     public bool $browserFallback = false;
 
     public bool $showStopModal = false;
@@ -35,10 +38,8 @@ new #[Title('media.optimize.title')] class extends Component {
     {
         $this->authorize('optimize', Media::class);
 
-        // A run the browser was driving keeps being driven by it after a reload.
-        if ($this->run?->status === 'running' && $this->run->driver === 'browser') {
-            $this->browserFallback = true;
-        }
+        // Without a queue the tab drives the run; with one, tick() decides from the queue's heartbeat.
+        $this->browserFallback = ! $this->queueAvailable;
     }
 
     #[Computed]
@@ -67,13 +68,17 @@ new #[Title('media.optimize.title')] class extends Component {
 
     public function start(): void
     {
+        $this->authorize('optimize', Media::class);
+
         try {
             app(OptimizeExistingMedia::class)->start($this->actor());
         } catch (OptimizationDisabledException) {
+            Flux::toast(variant: 'danger', text: __('media.optimize.disabled'));
+
             return;
         }
 
-        $this->browserFallback = false;
+        $this->browserFallback = ! $this->queueAvailable;
         $this->dispatchWhenQueued();
         $this->refresh();
     }
@@ -96,7 +101,7 @@ new #[Title('media.optimize.title')] class extends Component {
         $this->authorize('optimize', Media::class);
 
         app(OptimizeExistingMedia::class)->resume();
-        $this->browserFallback = false;
+        $this->browserFallback = ! $this->queueAvailable;
         $this->dispatchWhenQueued();
         $this->refresh();
     }
@@ -107,7 +112,7 @@ new #[Title('media.optimize.title')] class extends Component {
 
         app(OptimizeExistingMedia::class)->stop();
         $this->showStopModal = false;
-        $this->browserFallback = false;
+        $this->browserFallback = ! $this->queueAvailable;
         $this->refresh();
     }
 
@@ -127,11 +132,13 @@ new #[Title('media.optimize.title')] class extends Component {
             return;
         }
 
+        $engine = app(OptimizeExistingMedia::class);
+
         if (! $this->queueAvailable || $this->browserFallback) {
-            app(OptimizeExistingMedia::class)->processBatch('browser', self::BROWSER_BUDGET);
-        } elseif (($run->heartbeatAt ?? $run->startedAt)->lt(now()->subSeconds(self::FALLBACK_AFTER))) {
+            $engine->processBatch('browser', self::BROWSER_BUDGET);
+        } elseif (! $engine->isBatchRunning() && ($run->heartbeatAt ?? $run->startedAt)->lt(now()->subSeconds(self::FALLBACK_AFTER))) {
             $this->browserFallback = true;
-            app(OptimizeExistingMedia::class)->processBatch('browser', self::BROWSER_BUDGET);
+            $engine->processBatch('browser', self::BROWSER_BUDGET);
         }
 
         $this->refresh();
@@ -263,7 +270,7 @@ new #[Title('media.optimize.title')] class extends Component {
                 <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400" data-test="optimize-skipped">
                     @foreach (['already_optimal', 'too_large', 'unreadable', 'missing'] as $reason)
                         @if (($run->counts[$reason] ?? 0) > 0)
-                            <li>{{ __("media.optimize.skipped_reasons.{$reason}", ['count' => $run->counts[$reason]]) }}</li>
+                            <li>{{ trans_choice("media.optimize.skipped_reasons.{$reason}", $run->counts[$reason], ['count' => $run->counts[$reason]]) }}</li>
                         @endif
                     @endforeach
                 </ul>

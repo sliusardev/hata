@@ -301,10 +301,10 @@ return [
             'processed' => 'Оброблено',
         ],
         'skipped_reasons' => [
-            'already_optimal' => ':count уже оптимальні',
-            'too_large' => ':count завеликі для сервера',
+            'already_optimal' => ':count уже оптимальний|:count уже оптимальні|:count уже оптимальних',
+            'too_large' => ':count завеликий для сервера|:count завеликі для сервера|:count завеликих для сервера',
             'unreadable' => ':count не вдалося прочитати',
-            'missing' => ':count файл відсутній',
+            'missing' => ':count файл відсутній|:count файли відсутні|:count файлів відсутні',
         ],
         'recent' => 'Останні файли',
         'outcomes' => [

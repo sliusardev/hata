@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function () {
     Storage::fake('local');
@@ -103,10 +104,10 @@ it('continues in the browser when the queue does not pick the run up', function 
     expect($media->refresh()->optimized_with)->not->toBeNull();
 });
 
-it('explains the fallback while the run is still going', function () {
+it('does not fall back while a queue batch holds the lock', function () {
     config(['queue.default' => 'database']);
     Queue::fake();
-    pageCandidate();
+    $media = pageCandidate();
 
     $component = Livewire::test('pages::admin.media.optimize')->call('start');
     $this->travel(31)->seconds();
@@ -114,9 +115,67 @@ it('explains the fallback while the run is still going', function () {
     $lock->get();
 
     $component->call('tick')
-        ->assertSee(__('media.optimize.fallback'))
-        ->assertSee(__('media.optimize.tab_open_browser'));
+        ->assertSet('browserFallback', false)
+        ->assertDontSee(__('media.optimize.fallback'));
+
+    $lock->release();
+    expect($media->refresh()->optimized_with)->toBeNull();
 });
+
+it('explains the fallback while the run is still going', function () {
+    config(['queue.default' => 'database']);
+    Queue::fake();
+    foreach (range(1, 2) as $i) {
+        pageCandidate();
+    }
+
+    $component = Livewire::test('pages::admin.media.optimize')->call('start');
+    $this->travel(31)->seconds();
+
+    // The batch budget is exhausted after the first file, so the run is still going.
+    config(['queue.default' => 'database']);
+    $component->call('tick')->assertSet('browserFallback', true);
+
+    expect(app(OptimizationRunStore::class)->get()->driver)->toBe('browser');
+});
+
+it('does not force the browser mode on a reload when a queue is available', function () {
+    config(['queue.default' => 'database']);
+    Queue::fake();
+    pageCandidate();
+    app(OptimizeExistingMedia::class)->startWithoutActor();
+    $run = app(OptimizationRunStore::class)->get();
+    $run->driver = 'browser';
+    app(OptimizationRunStore::class)->save($run);
+
+    Livewire::test('pages::admin.media.optimize')->assertSet('browserFallback', false);
+});
+
+it('shows a toast when optimization is off', function () {
+    config(['media.optimize.enabled' => false]);
+
+    Livewire::test('pages::admin.media.optimize')
+        ->call('start')
+        ->assertDispatched('toast-show');
+
+    expect(app(OptimizationRunStore::class)->get())->toBeNull();
+});
+
+it('refuses every action once media.edit is gone', function (string $action) {
+    pageCandidate();
+    $engine = app(OptimizeExistingMedia::class);
+    $engine->startWithoutActor();
+    $before = app(OptimizationRunStore::class)->get()->toArray();
+
+    $component = Livewire::test('pages::admin.media.optimize');
+    $this->actor->syncPermissions(['admin.access', 'media.view']);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $this->actor->refresh();
+
+    $component->call($action)->assertForbidden();
+
+    expect(app(OptimizationRunStore::class)->get()?->toArray())->toBe($before);
+})->with(['start', 'startOver', 'pause', 'resume', 'stop', 'tick']);
 
 it('pauses and resumes', function () {
     pageCandidate();
