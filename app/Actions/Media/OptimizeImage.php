@@ -28,7 +28,7 @@ class OptimizeImage
      *
      * @var list<string>
      */
-    private const array RASTER = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif'];
+    public const array RASTER = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif'];
 
     /**
      * MIME types browsers can't show, so they are always converted: to WebP, or to JPEG when the format

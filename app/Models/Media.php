@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Actions\Media\OptimizeImage;
 use App\Enums\MediaKind;
 use App\Models\Concerns\HasSearchIndex;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -137,6 +139,22 @@ class Media extends Model
     public function isImage(): bool
     {
         return $this->kind === MediaKind::Image;
+    }
+
+    /**
+     * Still images that were not optimized with the given settings, oldest first.
+     *
+     * @param  Builder<Media>  $query
+     */
+    public function scopeOptimizationCandidates(Builder $query, string $fingerprint): void
+    {
+        $query->where('kind', MediaKind::Image)
+            ->whereIn('mime', OptimizeImage::RASTER)
+            ->where('animated', false)
+            ->where(function (Builder $query) use ($fingerprint): void {
+                $query->whereNull('optimized_with')->orWhere('optimized_with', '!=', $fingerprint);
+            })
+            ->orderBy('id');
     }
 
     /**
