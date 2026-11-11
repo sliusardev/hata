@@ -40,6 +40,22 @@ final class OptimizationRun
         return array_sum($this->counts);
     }
 
+    /**
+     * Files seen but not rewritten (already optimal, too large, unreadable, missing).
+     */
+    public function skipped(): int
+    {
+        return $this->processed() - ($this->counts[OptimizeOutcome::Optimized->value] ?? 0);
+    }
+
+    /**
+     * Bytes saved on the rewritten files; negative when they grew.
+     */
+    public function bytesSaved(): int
+    {
+        return $this->bytesBefore - $this->bytesAfter;
+    }
+
     public function isStale(string $currentFingerprint): bool
     {
         return $this->fingerprint !== $currentFingerprint;

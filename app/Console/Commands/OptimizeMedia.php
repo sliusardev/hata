@@ -75,8 +75,8 @@ class OptimizeMedia extends Command
                 'Processed %d/%d · saved %s · skipped %d',
                 $run->processed(),
                 $run->total,
-                $this->megabytes($run->bytesBefore - $run->bytesAfter),
-                $this->skipped($run),
+                $this->megabytes($run->bytesSaved()),
+                $run->skipped(),
             ));
 
             if ($run->status !== 'running' || $run->isStale($optimizer->fingerprint())) {
@@ -89,11 +89,6 @@ class OptimizeMedia extends Command
         }
 
         return self::SUCCESS;
-    }
-
-    private function skipped(OptimizationRun $run): int
-    {
-        return $run->processed() - ($run->counts[OptimizeOutcome::Optimized->value] ?? 0);
     }
 
     private function megabytes(int $bytes): string
@@ -114,6 +109,6 @@ class OptimizeMedia extends Command
             ['Outcome', 'Files'],
             array_map(fn (OptimizeOutcome $outcome) => [$outcome->value, $run->counts[$outcome->value] ?? 0], OptimizeOutcome::cases()),
         );
-        $this->line(sprintf('Saved %s (%d -> %d bytes).', $this->megabytes($run->bytesBefore - $run->bytesAfter), $run->bytesBefore, $run->bytesAfter));
+        $this->line(sprintf('Saved %s (%d -> %d bytes).', $this->megabytes($run->bytesSaved()), $run->bytesBefore, $run->bytesAfter));
     }
 }

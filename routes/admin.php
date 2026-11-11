@@ -22,6 +22,7 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
 
         Route::livewire('media', 'pages::admin.media.index')->name('media.index');
         Route::get('media/zip', MediaZipController::class)->middleware('can:media.view')->name('media.zip');
+        Route::livewire('media/optimize', 'pages::admin.media.optimize')->middleware('can:media.edit')->name('media.optimize');
         Route::livewire('media/{media}/crop', 'pages::admin.media.crop')->middleware('can:update,media')->name('media.crop');
         Route::get('media/{media}/source', MediaSourcePreviewController::class)->middleware('can:update,media')->name('media.source');
 
