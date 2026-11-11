@@ -162,6 +162,15 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     /**
+     * Whether the variant's setting holds a media id whose file is gone (row deleted, file missing or not a logo):
+     * the picker shows no choice then, so the slot offers its own "Remove".
+     */
+    public function logoIsMissing(string $variant): bool
+    {
+        return is_int(config("admin.logo.{$variant}")) && $this->chosenLogos[$variant] === null;
+    }
+
+    /**
      * The scheme as currently chosen in the form, applied to the page before it is saved.
      */
     #[Computed]
@@ -579,6 +588,13 @@ new #[Title('site_settings.title')] class extends Component {
                                 </div>
                             @endif
                         </div>
+
+                        @if ($this->logoIsMissing($variant))
+                            <div class="flex items-center gap-3" data-test="logo-missing-{{ $variant }}">
+                                <flux:text size="sm" class="flex-1">{{ __('site_settings.logo.missing') }}</flux:text>
+                                <flux:button size="sm" variant="ghost" wire:click="removeLogo('{{ $variant }}')">{{ __('site_settings.logo.remove_missing') }}</flux:button>
+                            </div>
+                        @endif
 
                         <livewire:media-picker
                             wire:model.live="{{ $property }}"

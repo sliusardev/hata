@@ -58,6 +58,8 @@ return [
         'uses_other' => 'Uses the other theme’s logo',
         'requirements' => 'PNG, JPG, WebP or SVG from the media library. A logo is saved as soon as it is chosen. Best: transparent background, height at least 64 px.',
         'chosen' => 'Logo saved.',
+        'missing' => 'The logo file is missing.',
+        'remove_missing' => 'Remove',
         'removed' => 'Logo removed.',
         'usage_light' => 'Site logo (light)',
         'usage_dark' => 'Site logo (dark)',

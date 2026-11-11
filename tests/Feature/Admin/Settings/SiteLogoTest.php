@@ -161,6 +161,25 @@ test('removing a logo unlinks it, keeps the file and drops the usage', function 
     Storage::disk('local')->assertExists($media->path);
 });
 
+test('a logo whose file is gone shows a note with Remove in its slot, and Remove clears it', function () {
+    $this->actingAs(logoAdmin());
+    $media = logoMedia();
+    app(SetLogo::class)->handle(auth()->user(), 'dark', $media->id);
+    Storage::disk($media->disk)->delete($media->path);
+    SiteLogo::flush();
+
+    $page = Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+        ->assertSee(__('site_settings.logo.missing'))
+        ->assertSeeHtml('data-test="logo-missing-dark"')
+        ->assertDontSeeHtml('data-test="logo-missing-light"');
+
+    $page->call('removeLogo', 'dark')
+        ->assertRedirect(route('admin.settings.edit', ['tab' => 'logo']));
+
+    expect(Setting::query()->where('key', 'logo_dark')->exists())->toBeFalse()
+        ->and(MediaUsage::count())->toBe(0);
+});
+
 test('setting and removing a logo require settings.edit', function () {
     $actor = User::factory()->withPermissions(['admin.access', 'users.view'])->create();
     $media = logoMedia();
