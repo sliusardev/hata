@@ -50,10 +50,17 @@ class MoveMediaToDisk extends MediaBatchEngine
     public const array TARGETS = ['local', 's3'];
 
     /**
-     * Seconds one file's copy may take: the row lock lives this long, a batch's lock and the queue job this much past
-     * their budget. Very large files are best moved with `media:move-disk`, which has no time limit.
+     * Seconds one file's copy may take in the CLI (no time limit there): the row lock lives this long and the batch lock
+     * this much past its budget. The browser and the queue are bounded much tighter (see lockSeconds()); a file that
+     * outlives them is abandoned and its copies are swept, so very large files go through `media:move-disk`.
      */
     public const int FILE_SECONDS = 1800;
+
+    /** Seconds kept between a queue batch's lock (and job timeout) and the connection's retry_after. */
+    public const int RETRY_MARGIN = 10;
+
+    /** The least a queue batch's lock and job timeout can be clamped to, however small retry_after is. */
+    public const int MIN_QUEUE_SECONDS = 15;
 
     /** Hours after which the copies of a move that never finished (its process died) are swept by the prune. */
     public const int INSURANCE_HOURS = 24;
@@ -109,7 +116,7 @@ class MoveMediaToDisk extends MediaBatchEngine
     public function moveOne(Media $media, string $target): MoveOutcome
     {
         $version = (int) $media->version;
-        $lock = Cache::lock(RebuildMediaFile::lockName($media), self::FILE_SECONDS);
+        $lock = Cache::lock(RebuildMediaFile::lockName($media), $this->rowLockSeconds());
 
         // A crop, replace or optimization of this row is writing right now.
         if (! $lock->get()) {
@@ -139,9 +146,74 @@ class MoveMediaToDisk extends MediaBatchEngine
         return self::LOCK;
     }
 
-    protected function fileSeconds(): int
+    /**
+     * The queue's retry_after for a connection (the default one when null); null when it has none (sync).
+     */
+    public static function retryAfter(?string $connection = null): ?int
     {
-        return self::FILE_SECONDS;
+        $retryAfter = config('queue.connections.'.($connection ?? config('queue.default')).'.retry_after');
+
+        return is_numeric($retryAfter) ? (int) $retryAfter : null;
+    }
+
+    /**
+     * Seconds a queue batch (its lock and its job's timeout) may take at most: below the connection's retry_after,
+     * else a second worker would be handed the job while it still runs.
+     */
+    public function clampToRetryWindow(int $seconds, ?string $connection = null): int
+    {
+        $retryAfter = self::retryAfter($connection);
+
+        if ($retryAfter === null) {
+            return $seconds;
+        }
+
+        return min($seconds, max($retryAfter - self::RETRY_MARGIN, self::MIN_QUEUE_SECONDS));
+    }
+
+    /**
+     * Only the CLI may keep one file's locks for FILE_SECONDS; the browser keeps a short margin like optimization
+     * and the queue stays inside the retry window.
+     */
+    protected function fileSeconds(string $driver): int
+    {
+        return match ($driver) {
+            'cli' => self::FILE_SECONDS,
+            'queue' => self::FILE_SECONDS,
+            default => parent::fileSeconds($driver),
+        };
+    }
+
+    public function lockSeconds(float $budgetSeconds, string $driver = 'browser', ?string $connection = null): int
+    {
+        $seconds = parent::lockSeconds($budgetSeconds, $driver);
+
+        return $driver === 'queue' ? $this->clampToRetryWindow($seconds, $connection) : $seconds;
+    }
+
+    private function rowLockSeconds(): int
+    {
+        $seconds = $this->fileSeconds($this->driver);
+
+        return $this->driver === 'queue' ? $this->clampToRetryWindow($seconds) : $seconds;
+    }
+
+    /**
+     * Whether a PHP function can be called here (a host may list it in disable_functions, which makes it undefined).
+     */
+    protected function functionExists(string $function): bool
+    {
+        return function_exists($function);
+    }
+
+    protected function setTimeLimit(int $seconds): void
+    {
+        @set_time_limit($seconds);
+    }
+
+    protected function ignoreUserAbort(bool $ignore): int
+    {
+        return ignore_user_abort($ignore);
     }
 
     protected function isProcessable(MediaBatchRun $run): bool
@@ -216,9 +288,13 @@ class MoveMediaToDisk extends MediaBatchEngine
         MediaPendingDeletion::schedule($target, $insured, now()->addHours(self::INSURANCE_HOURS));
 
         // A large file can outlast PHP's time limit (lifted for the rest of this request or batch), and a closed tab
-        // must not abort the copy halfway; the queue worker's own timeout is the job's (MoveMediaBatch).
-        set_time_limit(0);
-        $ignoredAbort = ignore_user_abort(true);
+        // must not abort the copy halfway; the queue worker's own timeout is the job's (MoveMediaBatch). A host can
+        // disable either function, which then simply isn't called.
+        if ($this->functionExists('set_time_limit')) {
+            $this->setTimeLimit(0);
+        }
+
+        $ignoredAbort = $this->functionExists('ignore_user_abort') ? $this->ignoreUserAbort(true) : null;
 
         try {
             foreach ($copies as $column => [$oldPath, $newPath, $mime]) {
@@ -273,7 +349,9 @@ class MoveMediaToDisk extends MediaBatchEngine
 
             throw $e;
         } finally {
-            ignore_user_abort($ignoredAbort !== 0);
+            if ($ignoredAbort !== null) {
+                $this->ignoreUserAbort($ignoredAbort !== 0);
+            }
         }
 
         return MoveOutcome::Moved;

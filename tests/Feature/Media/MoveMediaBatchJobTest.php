@@ -84,9 +84,39 @@ it('stops when the run it was queued for was replaced', function () {
     Queue::assertNothingPushed();
 });
 
-it('gives a batch job as long as its batch lock lives, with room for one very large file', function () {
-    $job = new MoveMediaBatch('run');
+it('keeps the job timeout and the queue batch lock inside the connection\'s retry window', function () {
+    config(['queue.default' => 'database', 'queue.connections.database.retry_after' => 90]);
+    $engine = app(MoveMediaToDisk::class);
 
-    expect($job->timeout)->toBe(app(MoveMediaToDisk::class)->lockSeconds(MoveMediaBatch::BUDGET))
-        ->and($job->timeout)->toBeGreaterThan(MoveMediaToDisk::FILE_SECONDS);
+    expect((new MoveMediaBatch('run'))->timeout)->toBeLessThan(90)->toBeGreaterThan(0)
+        ->and($engine->lockSeconds(MoveMediaBatch::BUDGET, 'queue'))->toBeLessThan(90)
+        ->and((new MoveMediaBatch('run'))->timeout)->toBe($engine->lockSeconds(MoveMediaBatch::BUDGET, 'queue'));
+});
+
+it('lets the job timeout and the queue lock follow a larger retry_after, capped by the file time', function () {
+    config(['queue.default' => 'database', 'queue.connections.database.retry_after' => 600]);
+    $engine = app(MoveMediaToDisk::class);
+
+    expect((new MoveMediaBatch('run'))->timeout)->toBe(590)
+        ->and($engine->lockSeconds(MoveMediaBatch::BUDGET, 'queue'))->toBe(590);
+
+    config(['queue.connections.database.retry_after' => 7200]);
+
+    expect((new MoveMediaBatch('run'))->timeout)->toBe((int) MoveMediaBatch::BUDGET + MoveMediaToDisk::FILE_SECONDS);
+});
+
+it('uses the retry_after of the connection the job is sent to', function () {
+    config(['queue.default' => 'database', 'queue.connections.database.retry_after' => 600, 'queue.connections.redis.retry_after' => 90]);
+
+    $job = (new MoveMediaBatch('run'))->onConnection('redis');
+
+    expect($job->timeout)->toBeLessThan(90);
+});
+
+it('keeps the browser batch lock short and the CLI free of the retry window', function () {
+    config(['queue.default' => 'database', 'queue.connections.database.retry_after' => 90]);
+    $engine = app(MoveMediaToDisk::class);
+
+    expect($engine->lockSeconds(10.0, 'browser'))->toBe(70)
+        ->and($engine->lockSeconds(60.0, 'cli'))->toBe(60 + MoveMediaToDisk::FILE_SECONDS);
 });

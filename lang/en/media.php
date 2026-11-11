@@ -344,7 +344,7 @@ return [
         'stop_body' => 'The progress shown here is cleared. Files already moved stay on the new disk, the others stay where they are.',
         'not_configured' => 'The storage isn’t configured. Set its connection in the media settings first.',
         'uploads_note' => 'Uploads keep working during the move: new files go to the current storage.',
-        'large_files_note' => 'Very large files (videos, big archives) are best moved over SSH with “php artisan media:move-disk”, which has no time limit: a copy cut off by the server’s time limit is skipped and tried again by the next move.',
+        'large_files_note' => 'Very large files (videos, big archives) should go through “php artisan media:move-disk” over SSH, which has no time limit. Here each file has a time limit; a file that takes longer is skipped and tried again by the next move.',
         'status' => [
             'running' => 'Moving',
             'paused' => 'Paused',

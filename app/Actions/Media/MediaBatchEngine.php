@@ -21,6 +21,9 @@ abstract class MediaBatchEngine
     /** Pending cloud deletions handled at the end of a batch; kept small so the batch's response stays quick. */
     private const int PRUNE_PER_BATCH = 50;
 
+    /** Who runs the batch in progress (browser, queue or cli); files processed in it may size their locks by it. */
+    protected string $driver = 'cli';
+
     /**
      * @return MediaBatchRunStore<TRun>
      */
@@ -71,17 +74,17 @@ abstract class MediaBatchEngine
     /**
      * Seconds the batch lock outlives the budget: room for the file in progress when the budget runs out.
      */
-    protected function fileSeconds(): int
+    protected function fileSeconds(string $driver): int
     {
         return 60;
     }
 
     /**
-     * Seconds a batch with the given budget holds the lock at most; a queue job of the mode must not outlive it.
+     * Seconds a batch of the given driver and budget holds the lock at most; a queue job of the mode must not outlive it.
      */
-    public function lockSeconds(float $budgetSeconds): int
+    public function lockSeconds(float $budgetSeconds, string $driver = 'browser'): int
     {
-        return (int) ceil($budgetSeconds) + $this->fileSeconds();
+        return (int) ceil($budgetSeconds) + $this->fileSeconds($driver);
     }
 
     /**
@@ -165,7 +168,7 @@ abstract class MediaBatchEngine
             return $run;
         }
 
-        $lock = Cache::lock($this->lockName(), $this->lockSeconds($budgetSeconds));
+        $lock = Cache::lock($this->lockName(), $this->lockSeconds($budgetSeconds, $driver));
 
         if (! $lock->get()) {
             return $run;
@@ -179,6 +182,7 @@ abstract class MediaBatchEngine
                 return $run;
             }
 
+            $this->driver = $driver;
             $started = microtime(true);
             $savedCursor = $run->cursor;
 

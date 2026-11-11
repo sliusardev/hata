@@ -346,3 +346,50 @@ it('refuses an unknown or unconfigured target and users without media.edit', fun
     expect(fn () => mover()->start($viewer, 'local'))->toThrow(AuthorizationException::class)
         ->and(app(DiskMoveRunStore::class)->get())->toBeNull();
 });
+
+/**
+ * A mover whose time-limit functions are seams: it records the calls and can pretend they are disabled.
+ */
+function moverWithTimeLimitFunctions(bool $available, array &$calls): MoveMediaToDisk
+{
+    return new class(app(DiskMoveRunStore::class), $available, $calls) extends MoveMediaToDisk
+    {
+        public function __construct(DiskMoveRunStore $runs, private bool $available, private array &$calls)
+        {
+            parent::__construct($runs);
+        }
+
+        protected function functionExists(string $function): bool
+        {
+            return $this->available;
+        }
+
+        protected function setTimeLimit(int $seconds): void
+        {
+            $this->calls[] = ['set_time_limit', $seconds];
+        }
+
+        protected function ignoreUserAbort(bool $ignore): int
+        {
+            $this->calls[] = ['ignore_user_abort', $ignore];
+
+            return 0;
+        }
+    };
+}
+
+it('lifts the time limit and ignores aborts around a copy, then restores the abort setting', function () {
+    $calls = [];
+
+    expect(moverWithTimeLimitFunctions(true, $calls)->moveOne(diskMedia('local'), 's3'))->toBe(MoveOutcome::Moved)
+        ->and($calls)->toBe([['set_time_limit', 0], ['ignore_user_abort', true], ['ignore_user_abort', false]]);
+});
+
+it('still moves a file when the time-limit functions are disabled on the host', function () {
+    $calls = [];
+    $media = diskMedia('local');
+
+    expect(moverWithTimeLimitFunctions(false, $calls)->moveOne($media, 's3'))->toBe(MoveOutcome::Moved)
+        ->and($calls)->toBe([])
+        ->and($media->refresh()->disk)->toBe('s3');
+});
