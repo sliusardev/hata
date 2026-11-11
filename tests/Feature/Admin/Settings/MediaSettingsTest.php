@@ -187,7 +187,7 @@ describe('optimize existing card', function () {
         Livewire::withQueryParams(['tab' => 'media'])
             ->test('pages::admin.settings.edit')
             ->assertSeeHtml('data-test="optimize-existing-progress"')
-            ->assertSee(__('media.optimize.progress', ['processed' => 2, 'total' => 5]))
+            ->assertSee(trans_choice('media.optimize.progress', 5, ['processed' => 2, 'total' => 5]))
             ->assertDontSeeHtml('data-test="optimize-existing-count"');
     });
 
@@ -220,7 +220,7 @@ describe('optimize existing card', function () {
             ->test('pages::admin.settings.edit')
             ->assertSeeHtml('data-test="optimize-existing-progress"')
             ->assertSee(__('media.optimize.status.paused'))
-            ->assertSee(__('media.optimize.progress', ['processed' => 1, 'total' => 4]))
+            ->assertSee(trans_choice('media.optimize.progress', 4, ['processed' => 1, 'total' => 4]))
             ->assertSeeHtml(route('admin.media.optimize'));
     });
 

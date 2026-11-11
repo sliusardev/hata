@@ -1,9 +1,12 @@
 <?php
 
 use App\Actions\Media\OptimizeExistingMedia;
+use App\Actions\Media\OptimizeImage;
+use App\Actions\Media\RebuildMediaFile;
 use App\Jobs\OptimizeExistingMediaBatch;
 use App\Models\Media;
 use App\Models\User;
+use App\Support\Media\OptimizationRun;
 use App\Support\Media\OptimizationRunStore;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
@@ -129,14 +132,32 @@ it('explains the fallback while the run is still going', function () {
         pageCandidate();
     }
 
-    $component = Livewire::test('pages::admin.media.optimize')->call('start');
+    // One file per batch, so the run is still going after the tick that falls back.
+    app()->instance(OptimizeExistingMedia::class, new class(app(OptimizeImage::class), app(RebuildMediaFile::class), app(OptimizationRunStore::class)) extends OptimizeExistingMedia
+    {
+        public function processBatch(string $driver, float $budgetSeconds): ?OptimizationRun
+        {
+            return parent::processBatch($driver, 0.0);
+        }
+    });
+
+    $component = Livewire::test('pages::admin.media.optimize')
+        ->call('start')
+        ->call('tick')
+        ->assertDontSee(__('media.optimize.fallback'))
+        ->assertSee(__('media.optimize.tab_open_queue'));
+
     $this->travel(31)->seconds();
 
-    // The batch budget is exhausted after the first file, so the run is still going.
-    config(['queue.default' => 'database']);
-    $component->call('tick')->assertSet('browserFallback', true);
+    $component->call('tick')
+        ->assertSet('browserFallback', true)
+        ->assertSee(__('media.optimize.status.running'))
+        ->assertSee(__('media.optimize.fallback'))
+        ->assertSee(__('media.optimize.tab_open_browser'))
+        ->assertDontSee(__('media.optimize.tab_open_queue'));
 
-    expect(app(OptimizationRunStore::class)->get()->driver)->toBe('browser');
+    expect(app(OptimizationRunStore::class)->get()->driver)->toBe('browser')
+        ->and(app(OptimizationRunStore::class)->get()->processed())->toBe(1);
 });
 
 it('does not force the browser mode on a reload when a queue is available', function () {
@@ -240,3 +261,50 @@ it('asks before stopping', function () {
         ->set('showStopModal', true)
         ->assertSee(__('media.optimize.stop_heading'));
 });
+
+it('polls with keep-alive while running, so a background tab keeps the run going', function () {
+    pageCandidate();
+
+    Livewire::test('pages::admin.media.optimize')
+        ->call('start')
+        ->assertSeeHtml('wire:poll.2s.keep-alive="tick"')
+        ->call('pause')
+        ->assertDontSeeHtml('wire:poll');
+});
+
+it('does not show a candidate count while optimization is off', function () {
+    pageCandidate();
+    config(['media.optimize.enabled' => false]);
+
+    $this->get(route('admin.media.optimize'))
+        ->assertOk()
+        ->assertDontSee(trans_choice('media.optimize.candidates', 1, ['count' => 1]))
+        ->assertDontSee(__('media.optimize.none'));
+});
+
+it('pauses a running run once optimization is turned off', function (string $queue) {
+    config(['queue.default' => $queue]);
+    Queue::fake();
+    pageCandidate();
+    $component = Livewire::test('pages::admin.media.optimize')->call('start');
+
+    config(['media.optimize.enabled' => false]);
+
+    $component->call('tick')->assertSee(__('media.optimize.status.paused'));
+
+    expect(app(OptimizationRunStore::class)->get()->status)->toBe('paused');
+})->with(['sync', 'database']);
+
+it('pluralizes the progress by the total', function (string $locale) {
+    app()->setLocale($locale);
+    config(['queue.default' => 'database']);
+    Queue::fake();
+    pageCandidate();
+
+    Livewire::test('pages::admin.media.optimize')
+        ->call('start')
+        ->assertSee(trans_choice('media.optimize.progress', 1, ['processed' => 0, 'total' => 1]));
+
+    expect(trans_choice('media.optimize.progress', 1, ['processed' => 0, 'total' => 1]))
+        ->toBe($locale === 'uk' ? '0 з 1 файлу' : '0 of 1 file');
+})->with(['en', 'uk']);

@@ -292,7 +292,7 @@ return [
             'paused' => 'Paused',
             'done' => 'Done',
         ],
-        'progress' => ':processed of :total files',
+        'progress' => ':processed of :total file|:processed of :total files',
         'time_left' => 'About :time left',
         'stats' => [
             'saved' => 'Saved',
@@ -315,7 +315,7 @@ return [
             'missing' => 'Missing',
         ],
         'tab_open_queue' => 'You can close this tab: the queue keeps working.',
-        'tab_open_browser' => 'Keep this tab open: files are processed while it is open. Pausing or closing it stops the run until you come back.',
+        'tab_open_browser' => 'Keep this tab open, and in the foreground if you can: files are processed while it is open. Pausing or closing it stops the run until you come back.',
         'fallback' => 'The queue isn’t processing jobs, continuing in this tab.',
         'stale_heading' => 'The media settings changed',
         'stale_body' => 'This run used older settings and has stopped. Start over to apply the current ones.',

@@ -134,7 +134,8 @@ new #[Title('media.optimize.title')] class extends Component {
 
         $engine = app(OptimizeExistingMedia::class);
 
-        if (! $this->queueAvailable || $this->browserFallback) {
+        // With optimization off a batch only pauses the run (the engine does that), so the page shows it as paused.
+        if (! $this->queueAvailable || $this->browserFallback || ! config('media.optimize.enabled')) {
             $engine->processBatch('browser', self::BROWSER_BUDGET);
         } elseif (! $engine->isBatchRunning() && ($run->heartbeatAt ?? $run->startedAt)->lt(now()->subSeconds(self::FALLBACK_AFTER))) {
             $this->browserFallback = true;
@@ -171,12 +172,14 @@ new #[Title('media.optimize.title')] class extends Component {
     $enabled = (bool) config('media.optimize.enabled');
     $stale = $this->isStale;
     $browserMode = ! $this->queueAvailable || $this->browserFallback;
-    $polling = $run?->status === 'running' && ! $stale && $enabled;
+    // Keeps polling while optimization is off, so the next tick pauses the run. keep-alive: browsers throttle polling
+    // in background tabs, and in browser mode the tab is what processes the files.
+    $polling = $run?->status === 'running' && ! $stale;
     $size = fn (int $bytes) => Media::formatBytes($bytes);
     $outcomeColors = ['optimized' => 'green', 'already_optimal' => 'zinc', 'too_large' => 'amber', 'unreadable' => 'amber', 'missing' => 'red'];
 @endphp
 
-<div class="mx-auto w-full max-w-3xl space-y-6" data-test="media-optimize" @if ($polling) wire:poll.2s="tick" @endif>
+<div class="mx-auto w-full max-w-3xl space-y-6" data-test="media-optimize" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
     <div class="flex items-center gap-3">
         <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.optimize.back')" :tooltip="__('media.optimize.back')" />
         <div class="min-w-0">
@@ -197,13 +200,15 @@ new #[Title('media.optimize.title')] class extends Component {
     @if ($run === null)
         <flux:card class="space-y-4">
             <flux:heading size="lg">{{ __('media.optimize.idle_heading') }}</flux:heading>
-            <flux:text>
-                @if ($this->candidateCount > 0)
-                    {{ trans_choice('media.optimize.candidates', $this->candidateCount, ['count' => $this->candidateCount]) }}
-                @else
-                    {{ __('media.optimize.none') }}
-                @endif
-            </flux:text>
+            @if ($enabled)
+                <flux:text>
+                    @if ($this->candidateCount > 0)
+                        {{ trans_choice('media.optimize.candidates', $this->candidateCount, ['count' => $this->candidateCount]) }}
+                    @else
+                        {{ __('media.optimize.none') }}
+                    @endif
+                </flux:text>
+            @endif
             <flux:button variant="primary" wire:click="start" :disabled="! $enabled || $this->candidateCount === 0" data-test="optimize-start">
                 {{ __('media.optimize.start') }}
             </flux:button>
@@ -234,7 +239,7 @@ new #[Title('media.optimize.title')] class extends Component {
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <flux:heading size="lg">
-                        {{ $run->status === 'done' ? __('media.optimize.done_heading') : __('media.optimize.progress', ['processed' => $processed, 'total' => $run->total]) }}
+                        {{ $run->status === 'done' ? __('media.optimize.done_heading') : trans_choice('media.optimize.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
                     </flux:heading>
                     <flux:badge :color="match ($run->status) { 'running' => 'blue', 'paused' => 'amber', default => 'green' }" size="sm">
                         {{ __("media.optimize.status.{$run->status}") }}
