@@ -1,6 +1,6 @@
 # Media library
 
-> **Status: Part 2 built** (2026-11-10), plus folder tree work (2026-11-11: collapsible tree with search, moving folders, subfolder tiles, a "⋮" menu on every folder): crop, replace, restore original and versioned URLs, on top of Part 1 (library grid/list, search and filters, folders, uploads with browser resize and server optimization, details, bulk actions and ZIP download, served by route with ULID keys). Part 3 (optimize existing files: engine, queue job, `media:optimize`, the page) is built except the settings card; picker, S3: not yet. Approved mockup: https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4 (8 screens). Sections marked "Built" describe the code; the rest is still design.
+> **Status: Part 2 built** (2026-11-10), plus folder tree work (2026-11-11: collapsible tree with search, moving folders, subfolder tiles, a "⋮" menu on every folder): crop, replace, restore original and versioned URLs, on top of Part 1 (library grid/list, search and filters, folders, uploads with browser resize and server optimization, details, bulk actions and ZIP download, served by route with ULID keys). Part 3 (optimize existing files: engine, queue job, `media:optimize`, the page, the settings card) is fully built; picker, S3: not yet. Approved mockup: https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4 (8 screens). Sections marked "Built" describe the code; the rest is still design.
 
 A WordPress-like library of images and documents for pages, posts and themes. On top of WordPress: folders, crop, per-language alt text, "where is it used", automatic optimization on upload, and re-optimizing files already uploaded. It must work on shared hosting: no queue worker, no SSH, often no `storage:link`, PHP `memory_limit` 128 MB, GD only (Imagick may be missing).
 
@@ -172,7 +172,7 @@ A sixth tab `?tab=media`, saved like the others (`SiteSettingsForm::SECTIONS`, u
 | `media_keep_originals` | `media.optimize.keep_originals` | `true` (acts only while `media_optimize` is on: with optimization off no original is kept) |
 | `media_max_image_mb`, `media_max_document_mb` | `media.limits.*` | `30`, `20` |
 
-A new `config/media.php` holds these and `media.disk` (`MEDIA_DISK`, default `local`). The side card shows how many images don't match the current fingerprint and the estimated saving (estimate: 85% of their size for never-optimized files, 20% otherwise), with "Optimize existing" → screen 8.
+A new `config/media.php` holds these and `media.disk` (`MEDIA_DISK`, default `local`). The side card shows how many images don't match the current fingerprint and the estimated saving (estimate: 85% of their size for never-optimized files, 20% otherwise), with "Optimize existing" → screen 8. Built: the card sits at the end of the optimization options (so it is hidden while "Optimize images" is off in the form) and only for users with `media.edit`; it counts with the saved settings, not unsaved form values (`optimizationCard` computed property, read only on the Media tab; two SQL sums over `optimizationCandidates()`, sizes formatted by `Media::formatBytes()`). While a non-stale run is `running` it shows "N of M files" instead; with no candidates it says "All images match the current settings."
 
 ## Optimize existing files (screen 8)
 

@@ -1,7 +1,11 @@
 <?php
 
+use App\Actions\Media\OptimizeImage;
+use App\Models\Media;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Media\OptimizationRun;
+use App\Support\Media\OptimizationRunStore;
 use App\Support\Media\ServerCapabilities;
 use Livewire\Livewire;
 
@@ -142,4 +146,66 @@ it('checks a changed limit against a low cap', function () {
         ->assertHasNoErrors();
 
     expect(config('media.limits.image_mb'))->toBe(1);
+});
+
+describe('optimize existing card', function () {
+    beforeEach(fn () => fakeServerCap(null));
+
+    it('shows the candidate count and the estimated saving', function () {
+        Media::factory()->image()->create(['size' => 1_048_576, 'optimized_with' => null]);
+        Media::factory()->image()->create(['size' => 1_048_576, 'optimized_with' => 'webp:1920:50:exif0']);
+        Media::factory()->image()->create(['size' => 1_048_576, 'optimized_with' => app(OptimizeImage::class)->fingerprint()]);
+
+        Livewire::withQueryParams(['tab' => 'media'])
+            ->test('pages::admin.settings.edit')
+            ->assertSeeHtml('data-test="optimize-existing-card"')
+            ->assertSeeHtml('data-test="optimize-existing-count">2<')
+            ->assertSee('1.1 MB')
+            ->assertSeeHtml(route('admin.media.optimize'));
+    });
+
+    it('says all images match when there are no candidates', function () {
+        Livewire::withQueryParams(['tab' => 'media'])
+            ->test('pages::admin.settings.edit')
+            ->assertSee(__('site_settings.media.existing_none'))
+            ->assertDontSeeHtml('data-test="optimize-existing-count"');
+    });
+
+    it('shows the progress of a running run instead of the estimate', function () {
+        Media::factory()->image()->create(['optimized_with' => null]);
+        app(OptimizationRunStore::class)->save(new OptimizationRun(
+            status: 'running',
+            fingerprint: app(OptimizeImage::class)->fingerprint(),
+            cursor: 0,
+            total: 5,
+            counts: ['optimized' => 2],
+            bytesBefore: 0,
+            bytesAfter: 0,
+            startedAt: now()->toImmutable(),
+        ));
+
+        Livewire::withQueryParams(['tab' => 'media'])
+            ->test('pages::admin.settings.edit')
+            ->assertSeeHtml('data-test="optimize-existing-progress"')
+            ->assertSee(__('media.optimize.progress', ['processed' => 2, 'total' => 5]))
+            ->assertDontSeeHtml('data-test="optimize-existing-count"');
+    });
+
+    it('is hidden without media.edit', function () {
+        Media::factory()->image()->create(['optimized_with' => null]);
+        $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.view', 'settings.edit'])->create());
+
+        Livewire::withQueryParams(['tab' => 'media'])
+            ->test('pages::admin.settings.edit')
+            ->assertDontSeeHtml('data-test="optimize-existing-card"');
+    });
+
+    it('is hidden while optimization is off', function () {
+        Media::factory()->image()->create(['optimized_with' => null]);
+
+        Livewire::withQueryParams(['tab' => 'media'])
+            ->test('pages::admin.settings.edit')
+            ->set('form.media_optimize', false)
+            ->assertDontSeeHtml('data-test="optimize-existing-card"');
+    });
 });

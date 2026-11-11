@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Media\OptimizeImage;
 use App\Actions\Settings\RemoveLogo;
 use App\Actions\Settings\UpdateSiteSettings;
 use App\Actions\Settings\UploadLogo;
@@ -7,7 +8,10 @@ use App\Enums\SystemRole;
 use App\Exceptions\ProtectedActionException;
 use App\Livewire\Forms\SiteSettingsForm;
 use App\Support\ColorScheme\ColorScheme;
+use App\Models\Media;
 use App\Models\Role;
+use App\Support\Media\OptimizationRun;
+use App\Support\Media\OptimizationRunStore;
 use App\Support\Media\ServerCapabilities;
 use App\Support\Settings\SiteLogo;
 use App\Support\Settings\SiteSettings;
@@ -285,6 +289,37 @@ new #[Title('site_settings.title')] class extends Component {
         $bytes = app(ServerCapabilities::class)->uploadCapBytes();
 
         return $bytes === null ? null : Number::fileSize($bytes);
+    }
+
+    /**
+     * The "optimize existing files" card: the run in progress, or how many stored images don't match the saved settings
+     * and a rough saving (85% of the size of never-optimized files, 20% of the rest). Two SQL sums, no rows loaded;
+     * only read by the Media tab.
+     *
+     * @return array{run: OptimizationRun|null, count: int, saving: string}
+     */
+    #[Computed]
+    public function optimizationCard(): array
+    {
+        $fingerprint = app(OptimizeImage::class)->fingerprint();
+        $run = app(OptimizationRunStore::class)->get();
+
+        if ($run !== null && $run->status === 'running' && ! $run->isStale($fingerprint)) {
+            return ['run' => $run, 'count' => 0, 'saving' => ''];
+        }
+
+        $totals = Media::query()
+            ->optimizationCandidates($fingerprint)
+            ->reorder()
+            ->toBase()
+            ->selectRaw('count(*) as total')
+            ->selectRaw('coalesce(sum(case when optimized_with is null then size else 0 end), 0) as fresh_size')
+            ->selectRaw('coalesce(sum(case when optimized_with is null then 0 else size end), 0) as old_size')
+            ->first();
+
+        $saving = (int) round((float) $totals->fresh_size * 0.85 + (float) $totals->old_size * 0.20);
+
+        return ['run' => null, 'count' => (int) $totals->total, 'saving' => Media::formatBytes($saving)];
     }
 
     #[Computed]
@@ -568,6 +603,25 @@ new #[Title('site_settings.title')] class extends Component {
                 <flux:switch wire:model="form.media_strip_exif" :label="__('site_settings.media.strip_exif')" :description="__('site_settings.media.strip_exif_description')" align="left" />
                 <flux:switch wire:model="form.media_client_resize" :label="__('site_settings.media.client_resize')" :description="__('site_settings.media.client_resize_description')" align="left" />
                 <flux:switch wire:model="form.media_keep_originals" :label="__('site_settings.media.keep_originals')" :description="__('site_settings.media.keep_originals_description')" align="left" />
+                @can('media.edit')
+                    @php($card = $this->optimizationCard)
+                    <flux:callout icon="arrow-path" class="max-w-xl" data-test="optimize-existing-card">
+                        <flux:callout.heading>{{ __('site_settings.media.existing_heading') }}</flux:callout.heading>
+                        <flux:callout.text>
+                            @if ($card['run'] !== null)
+                                <span data-test="optimize-existing-progress">{{ __('media.optimize.progress', ['processed' => $card['run']->processed(), 'total' => $card['run']->total]) }}</span>
+                            @elseif ($card['count'] > 0)
+                                <span><span data-test="optimize-existing-count">{{ $card['count'] }}</span> {{ trans_choice('site_settings.media.existing_candidates', $card['count']) }}</span>
+                                <span data-test="optimize-existing-saving">{{ __('site_settings.media.existing_saving', ['size' => $card['saving']]) }}</span>
+                            @else
+                                {{ __('site_settings.media.existing_none') }}
+                            @endif
+                        </flux:callout.text>
+                        <x-slot name="actions">
+                            <flux:button size="sm" :href="route('admin.media.optimize')" wire:navigate>{{ __('site_settings.media.existing_button') }}</flux:button>
+                        </x-slot>
+                    </flux:callout>
+                @endcan
             @endif
 
             <flux:separator />
