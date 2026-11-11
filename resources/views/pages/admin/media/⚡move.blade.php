@@ -11,12 +11,15 @@ use Livewire\Attributes\Title;
 
 new #[Title('media.move.title')] class extends MediaBatchPage {
     /**
-     * Where the files go: the disk of the current move, else the configured storage.
+     * The disk the candidates are counted against: the target of a move that is going on, else (no move, or a
+     * finished one) the configured storage, which is also where a new move goes.
      */
     #[Computed]
     public function target(): string
     {
-        return $this->run?->target ?? (string) config('media.disk');
+        $run = $this->run;
+
+        return $run !== null && $run->status !== 'done' ? $run->target : (string) config('media.disk');
     }
 
     #[Computed]
@@ -36,12 +39,12 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
     }
 
     /**
-     * A new move always goes to the configured storage.
+     * A new move goes to the configured storage (the target the page counts candidates against).
      */
     protected function startRun(User $actor): bool
     {
         try {
-            $this->engine()->start($actor, (string) config('media.disk'));
+            $this->engine()->start($actor, $this->target);
         } catch (InvalidArgumentException) {
             Flux::toast(variant: 'danger', text: __('media.move.not_configured'));
 
@@ -68,13 +71,14 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
     $browserMode = ! $this->queueAvailable || $this->browserFallback;
     // keep-alive: browsers throttle polling in background tabs, and in browser mode the tab is what moves the files.
     $polling = $run?->status === 'running';
-    $storage = __('site_settings.media.storage.'.$this->target);
+    // The progress card names the disk of its own move; the idle card the one a new move would use.
+    $storage = __('site_settings.media.storage.'.($run?->target ?? $this->target));
     $outcomeColors = ['moved' => 'green', 'missing' => 'red', 'failed' => 'amber', 'changed' => 'zinc'];
 @endphp
 
 <div class="mx-auto w-full max-w-3xl space-y-6" data-test="media-move" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
     <div class="flex items-center gap-3">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.optimize.back')" :tooltip="__('media.optimize.back')" />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.batch.back')" :tooltip="__('media.batch.back')" />
         <div class="min-w-0">
             <flux:heading size="xl" level="1">{{ __('media.move.title') }}</flux:heading>
             <flux:text>{{ __('media.move.description') }}</flux:text>
@@ -95,6 +99,7 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
             <flux:button variant="primary" wire:click="start" :disabled="$this->candidateCount === 0" data-test="move-start">
                 {{ __('media.move.start') }}
             </flux:button>
+            <flux:text size="sm">{{ __('media.move.large_files_note') }}</flux:text>
         </flux:card>
     @else
         @php
@@ -105,7 +110,7 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
 
         @if ($run->status === 'running' && $this->queueAvailable && $this->browserFallback)
             <flux:callout variant="warning" icon="exclamation-triangle" data-test="move-fallback">
-                <flux:callout.text>{{ __('media.optimize.fallback') }}</flux:callout.text>
+                <flux:callout.text>{{ __('media.batch.fallback') }}</flux:callout.text>
             </flux:callout>
         @endif
 
@@ -113,14 +118,14 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <flux:heading size="lg">
-                        {{ $run->status === 'done' ? __('media.move.done_heading') : trans_choice('media.optimize.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
+                        {{ $run->status === 'done' ? __('media.move.done_heading') : trans_choice('media.batch.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
                     </flux:heading>
                     <flux:badge :color="match ($run->status) { 'running' => 'blue', 'paused' => 'amber', default => 'green' }" size="sm">
                         {{ __("media.move.status.{$run->status}") }}
                     </flux:badge>
                 </div>
                 @if ($secondsLeft !== null)
-                    <flux:text>{{ __('media.optimize.time_left', ['time' => \Carbon\CarbonInterval::seconds($secondsLeft)->cascade()->forHumans(['parts' => 2, 'short' => true])]) }}</flux:text>
+                    <flux:text>{{ __('media.batch.time_left', ['time' => \Carbon\CarbonInterval::seconds($secondsLeft)->cascade()->forHumans(['parts' => 2, 'short' => true])]) }}</flux:text>
                 @endif
             </div>
 
@@ -170,20 +175,21 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
             @else
                 <div class="flex flex-wrap gap-2">
                     @if ($run->status === 'running')
-                        <flux:button icon="pause" wire:click="pause" data-test="move-pause">{{ __('media.optimize.pause') }}</flux:button>
+                        <flux:button icon="pause" wire:click="pause" data-test="move-pause">{{ __('media.batch.pause') }}</flux:button>
                     @else
-                        <flux:button variant="primary" icon="play" wire:click="resume" data-test="move-resume">{{ __('media.optimize.resume') }}</flux:button>
+                        <flux:button variant="primary" icon="play" wire:click="resume" data-test="move-resume">{{ __('media.batch.resume') }}</flux:button>
                     @endif
-                    <flux:button variant="danger" icon="stop" wire:click="$set('showStopModal', true)" data-test="move-stop">{{ __('media.optimize.stop') }}</flux:button>
+                    <flux:button variant="danger" icon="stop" wire:click="$set('showStopModal', true)" data-test="move-stop">{{ __('media.batch.stop') }}</flux:button>
                 </div>
-                <flux:text size="sm">{{ $browserMode ? __('media.optimize.tab_open_browser') : __('media.optimize.tab_open_queue') }}</flux:text>
+                <flux:text size="sm">{{ $browserMode ? __('media.batch.tab_open_browser') : __('media.batch.tab_open_queue') }}</flux:text>
                 <flux:text size="sm">{{ __('media.move.uploads_note') }}</flux:text>
+                <flux:text size="sm">{{ __('media.move.large_files_note') }}</flux:text>
             @endif
         </flux:card>
 
         @if ($run->recent !== [])
             <flux:card class="space-y-3">
-                <flux:heading size="lg">{{ __('media.optimize.recent') }}</flux:heading>
+                <flux:heading size="lg">{{ __('media.batch.recent') }}</flux:heading>
                 <ul class="divide-y divide-zinc-200 dark:divide-white/10" data-test="move-recent">
                     @foreach ($run->recent as $item)
                         <li wire:key="recent-{{ $loop->index }}-{{ $item['name'] }}" class="flex items-center justify-between gap-3 py-2">
@@ -199,7 +205,7 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
         @endif
     @endif
 
-    <x-confirm-modal wire:model.self="showStopModal" :heading="__('media.move.stop_heading')" :confirm-label="__('media.optimize.stop')" confirm-action="stop">
+    <x-confirm-modal wire:model.self="showStopModal" :heading="__('media.move.stop_heading')" :confirm-label="__('media.batch.stop')" confirm-action="stop">
         {{ __('media.move.stop_body') }}
     </x-confirm-modal>
 </div>

@@ -47,7 +47,8 @@ it('shows how many files are on the other disk and where they go', function () {
         ->assertSee(__('media.move.title'))
         ->assertSee(__('media.move.target', ['storage' => __('site_settings.media.storage.s3')]))
         ->assertSee(trans_choice('media.move.candidates', 2, ['count' => 2]))
-        ->assertSee(__('media.move.start'));
+        ->assertSee(__('media.move.start'))
+        ->assertSee(__('media.move.large_files_note'));
 });
 
 it('says when nothing is left to move', function () {
@@ -77,7 +78,7 @@ it('dispatches the job and leaves the move to the queue', function () {
         ->call('start')
         ->call('tick')
         ->assertSet('browserFallback', false)
-        ->assertSee(__('media.optimize.tab_open_queue'));
+        ->assertSee(__('media.batch.tab_open_queue'));
 
     Queue::assertPushed(MoveMediaBatch::class, fn (MoveMediaBatch $job) => $job->runId === app(DiskMoveRunStore::class)->get()->id);
     expect($media->fresh()->disk)->toBe('local');
@@ -109,7 +110,7 @@ it('pauses, resumes and stops the move', function () {
     $component = Livewire::test('pages::admin.media.move')
         ->call('start')
         ->call('pause')
-        ->assertSee(__('media.optimize.resume'));
+        ->assertSee(__('media.batch.resume'));
 
     expect(app(DiskMoveRunStore::class)->get()->status)->toBe('paused');
 
@@ -127,4 +128,24 @@ it('lists failed files after the run', function () {
         ->call('tick')
         ->assertSee(__('media.move.outcomes.missing'))
         ->assertSee(trans_choice('media.move.done_left', 1, ['count' => 1]));
+});
+
+it('offers a new move to the configured storage after a finished move to the other one', function () {
+    config(['media.disk' => 'local']);
+    $media = Media::factory()->create(['disk' => 's3', 'size' => 4]);
+    Storage::disk('s3')->put($media->path, 'data');
+
+    $component = Livewire::test('pages::admin.media.move')->call('start')->call('tick')
+        ->assertSee(__('media.move.status.done'));
+    expect($media->fresh()->disk)->toBe('local');
+
+    // The admin switched the storage back afterwards: what is left and a new move both concern that storage.
+    config(['media.disk' => 's3']);
+
+    $component->call('$refresh')
+        ->assertSee(trans_choice('media.move.done_left', 1, ['count' => 1]))
+        ->assertSeeHtml('data-test="move-start-new"')
+        ->call('start');
+
+    expect(app(DiskMoveRunStore::class)->get()->target)->toBe('s3');
 });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Media\MoveMediaToDisk;
+use App\Actions\Media\PruneMediaDeletions;
 use App\Actions\Media\RebuildMediaFile;
 use App\Enums\MoveOutcome;
 use App\Models\Media;
@@ -193,6 +194,86 @@ it('moves a file whose thumbnail is missing and forgets that thumbnail', functio
     expect(mover()->moveOne($media, 's3'))->toBe(MoveOutcome::Moved)
         ->and($media->fresh()->thumb_path)->toBeNull()
         ->and($media->fresh()->disk)->toBe('s3');
+});
+
+it('does not count a row already on the target as moved', function () {
+    $media = diskMedia('s3');
+
+    expect(mover()->moveOne($media, 's3'))->toBe(MoveOutcome::Changed)
+        ->and($media->fresh()->version)->toBe(1);
+});
+
+it('insures every copy as a pending deletion while it is written and drops the insurance on success', function () {
+    $media = diskMedia('local');
+    $seen = [];
+    $this->cloud->beforeWrite = function () use (&$seen): void {
+        $seen[] = MediaPendingDeletion::query()->where('disk', 's3')->get()
+            ->map(fn (MediaPendingDeletion $row): array => [$row->path, $row->delete_after->diffInHours(now(), true)])->all();
+    };
+
+    expect(mover()->moveOne($media, 's3'))->toBe(MoveOutcome::Moved);
+    $media->refresh();
+
+    $insured = collect($seen[0])->pluck(0)->sort()->values()->all();
+    expect($insured)->toBe(collect([$media->path, $media->thumb_path, $media->original_path])->sort()->values()->all())
+        ->and(collect($seen[0])->pluck(1)->every(fn (float $hours): bool => $hours > 23 && $hours <= 24))->toBeTrue()
+        ->and($seen)->toHaveCount(3)
+        ->and(MediaPendingDeletion::query()->count())->toBe(0);
+});
+
+it('drops the insurance of a failed move once its copies are removed, and keeps it when they could not be', function () {
+    $media = diskMedia('local');
+    $this->cloud->beforeWrite = function (string $path): void {
+        if (str_contains($path, 'originals/')) {
+            throw new RuntimeException('Network down');
+        }
+    };
+
+    expect(mover()->moveOne($media, 's3'))->toBe(MoveOutcome::Failed)
+        ->and(MediaPendingDeletion::query()->count())->toBe(0)
+        ->and(Storage::disk('s3')->allFiles())->toBe([]);
+
+    $this->cloud->failDeletes = true;
+
+    expect(mover()->moveOne($media, 's3'))->toBe(MoveOutcome::Failed);
+    $left = MediaPendingDeletion::query()->where('disk', 's3')->pluck('path')->sort()->values()->all();
+    // Every copy written (and the one being written when it failed) stays insured for the prune.
+    expect(Storage::disk('s3')->allFiles())->toHaveCount(2)
+        ->and(array_diff(Storage::disk('s3')->allFiles(), $left))->toBe([])
+        ->and($left)->toHaveCount(3);
+});
+
+it('sweeps the copies a move left when its process died, never a path a row points at', function () {
+    $media = diskMedia('local');
+    $left = [];
+    // Record what is insured and written at the moment the process "dies" on its last copy.
+    $this->cloud->beforeWrite = function (string $path) use (&$left): void {
+        if (str_contains($path, 'originals/')) {
+            $left = MediaPendingDeletion::query()->get(['disk', 'path', 'delete_after'])->toArray();
+
+            throw new RuntimeException('killed');
+        }
+    };
+    mover()->moveOne($media, 's3');
+    $this->cloud->beforeWrite = null;
+
+    // The dead process never cleaned up: its copies and their insurance stay.
+    foreach ($left as $row) {
+        MediaPendingDeletion::query()->create($row);
+        Storage::disk('s3')->put($row['path'], 'partial');
+    }
+    $committed = diskMedia('s3');
+    $committed->forceFill(['path' => $left[0]['path']])->save();
+
+    $this->travel(25)->hours();
+    app(PruneMediaDeletions::class)->handle();
+
+    Storage::disk('s3')->assertExists($left[0]['path']);
+    foreach (array_slice($left, 1) as $row) {
+        Storage::disk('s3')->assertMissing($row['path']);
+    }
+    expect(MediaPendingDeletion::query()->count())->toBe(0)
+        ->and($media->fresh()->disk)->toBe('local');
 });
 
 it('runs every file on the other disk in batches and keeps its own run apart from optimization', function () {

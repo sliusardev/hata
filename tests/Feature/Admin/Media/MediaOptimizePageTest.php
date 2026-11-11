@@ -85,8 +85,8 @@ it('dispatches the job and leaves processing to the queue', function () {
         ->call('start')
         ->call('tick')
         ->assertSet('browserFallback', false)
-        ->assertDontSee(__('media.optimize.fallback'))
-        ->assertSee(__('media.optimize.tab_open_queue'));
+        ->assertDontSee(__('media.batch.fallback'))
+        ->assertSee(__('media.batch.tab_open_queue'));
 
     Queue::assertPushed(OptimizeExistingMediaBatch::class, 1);
     Queue::assertPushed(OptimizeExistingMediaBatch::class, fn (OptimizeExistingMediaBatch $job) => $job->runId === app(OptimizationRunStore::class)->get()->id);
@@ -121,7 +121,7 @@ it('does not fall back while a queue batch holds the lock', function () {
 
     $component->call('tick')
         ->assertSet('browserFallback', false)
-        ->assertDontSee(__('media.optimize.fallback'));
+        ->assertDontSee(__('media.batch.fallback'));
 
     $lock->release();
     expect($media->refresh()->optimized_with)->toBeNull();
@@ -146,17 +146,17 @@ it('explains the fallback while the run is still going', function () {
     $component = Livewire::test('pages::admin.media.optimize')
         ->call('start')
         ->call('tick')
-        ->assertDontSee(__('media.optimize.fallback'))
-        ->assertSee(__('media.optimize.tab_open_queue'));
+        ->assertDontSee(__('media.batch.fallback'))
+        ->assertSee(__('media.batch.tab_open_queue'));
 
     $this->travel(31)->seconds();
 
     $component->call('tick')
         ->assertSet('browserFallback', true)
         ->assertSee(__('media.optimize.status.running'))
-        ->assertSee(__('media.optimize.fallback'))
-        ->assertSee(__('media.optimize.tab_open_browser'))
-        ->assertDontSee(__('media.optimize.tab_open_queue'));
+        ->assertSee(__('media.batch.fallback'))
+        ->assertSee(__('media.batch.tab_open_browser'))
+        ->assertDontSee(__('media.batch.tab_open_queue'));
 
     expect(app(OptimizationRunStore::class)->get()->driver)->toBe('browser')
         ->and(app(OptimizationRunStore::class)->get()->processed())->toBe(1);
@@ -206,7 +206,7 @@ it('pauses and resumes', function () {
     Livewire::test('pages::admin.media.optimize')
         ->call('start')
         ->call('pause')
-        ->assertSee(__('media.optimize.resume'))
+        ->assertSee(__('media.batch.resume'))
         ->call('tick');
 
     expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
@@ -305,9 +305,9 @@ it('pluralizes the progress by the total', function (string $locale) {
 
     Livewire::test('pages::admin.media.optimize')
         ->call('start')
-        ->assertSee(trans_choice('media.optimize.progress', 1, ['processed' => 0, 'total' => 1]));
+        ->assertSee(trans_choice('media.batch.progress', 1, ['processed' => 0, 'total' => 1]));
 
-    expect(trans_choice('media.optimize.progress', 1, ['processed' => 0, 'total' => 1]))
+    expect(trans_choice('media.batch.progress', 1, ['processed' => 0, 'total' => 1]))
         ->toBe($locale === 'uk' ? '0 з 1 файлу' : '0 of 1 file');
 })->with(['en', 'uk']);
 

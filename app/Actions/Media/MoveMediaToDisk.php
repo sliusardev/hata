@@ -33,6 +33,9 @@ use Throwable;
  * files are deleted at once. A failure leaves the row as it was and deletes the copies. The move holds the row's
  * rebuild lock, so a crop, replace or optimization of the same file can't run at the same time.
  *
+ * Before copying, each target path is recorded as a pending deletion due in INSURANCE_HOURS; the commit (or a clean
+ * failure) drops those rows, so the prune only sweeps what a process killed mid-copy left behind.
+ *
  * @extends MediaBatchEngine<DiskMoveRun>
  */
 class MoveMediaToDisk extends MediaBatchEngine
@@ -45,6 +48,15 @@ class MoveMediaToDisk extends MediaBatchEngine
      * @var list<string>
      */
     public const array TARGETS = ['local', 's3'];
+
+    /**
+     * Seconds one file's copy may take: the row lock lives this long, a batch's lock and the queue job this much past
+     * their budget. Very large files are best moved with `media:move-disk`, which has no time limit.
+     */
+    public const int FILE_SECONDS = 1800;
+
+    /** Hours after which the copies of a move that never finished (its process died) are swept by the prune. */
+    public const int INSURANCE_HOURS = 24;
 
     public function __construct(private DiskMoveRunStore $runs) {}
 
@@ -97,7 +109,7 @@ class MoveMediaToDisk extends MediaBatchEngine
     public function moveOne(Media $media, string $target): MoveOutcome
     {
         $version = (int) $media->version;
-        $lock = Cache::lock(RebuildMediaFile::lockName($media), RebuildMediaFile::LOCK_SECONDS);
+        $lock = Cache::lock(RebuildMediaFile::lockName($media), self::FILE_SECONDS);
 
         // A crop, replace or optimization of this row is writing right now.
         if (! $lock->get()) {
@@ -125,6 +137,11 @@ class MoveMediaToDisk extends MediaBatchEngine
     protected function lockName(): string
     {
         return self::LOCK;
+    }
+
+    protected function fileSeconds(): int
+    {
+        return self::FILE_SECONDS;
     }
 
     protected function isProcessable(MediaBatchRun $run): bool
@@ -164,8 +181,9 @@ class MoveMediaToDisk extends MediaBatchEngine
             return MoveOutcome::Changed;
         }
 
+        // Nothing to move: counted as skipped, not as moved (the batch only picks rows on another disk).
         if ($media->disk === $target) {
-            return MoveOutcome::Moved;
+            return MoveOutcome::Changed;
         }
 
         $from = $media->disk;
@@ -189,6 +207,18 @@ class MoveMediaToDisk extends MediaBatchEngine
         $old = [];
         $attributesBefore = $media->getAttributes();
         $originalBefore = $media->getRawOriginal();
+        $insured = array_values(array_filter(array_map(
+            fn (array $copy): ?string => $copy[0] === null || $copy[0] === '' ? null : $copy[1],
+            $copies,
+        )));
+
+        // A process killed mid-copy (time limit, worker timeout, deploy) never reaches the cleanup below.
+        MediaPendingDeletion::schedule($target, $insured, now()->addHours(self::INSURANCE_HOURS));
+
+        // A large file can outlast PHP's time limit (lifted for the rest of this request or batch), and a closed tab
+        // must not abort the copy halfway; the queue worker's own timeout is the job's (MoveMediaBatch).
+        set_time_limit(0);
+        $ignoredAbort = ignore_user_abort(true);
 
         try {
             foreach ($copies as $column => [$oldPath, $newPath, $mime]) {
@@ -205,7 +235,7 @@ class MoveMediaToDisk extends MediaBatchEngine
                 $old[] = $oldPath;
             }
 
-            DB::transaction(function () use ($media, $version, $attributes, $from, $old): void {
+            DB::transaction(function () use ($media, $version, $attributes, $from, $old, $target, $insured): void {
                 $stored = Media::query()->whereKey($media->getKey())->lockForUpdate()->value('version');
 
                 if ($stored === null) {
@@ -217,6 +247,7 @@ class MoveMediaToDisk extends MediaBatchEngine
                 }
 
                 $media->forceFill($attributes)->save();
+                $this->dropInsurance($target, $insured);
 
                 if (MediaDisks::isCloud($from)) {
                     // Pages and CDN caches may still point at the old objects: they go after the delay.
@@ -234,11 +265,15 @@ class MoveMediaToDisk extends MediaBatchEngine
                 });
             });
         } catch (Throwable $e) {
-            $this->deleteCopies($destination, $written);
+            $left = array_diff($written, $this->deleteCopies($destination, $written));
+            // Copies that could not be removed keep their insurance, so the prune retries them.
+            $this->dropInsurance($target, array_values(array_diff($insured, $left)));
             $media->setRawAttributes($originalBefore, sync: true);
             $media->setRawAttributes($attributesBefore);
 
             throw $e;
+        } finally {
+            ignore_user_abort($ignoredAbort !== 0);
         }
 
         return MoveOutcome::Moved;
@@ -289,15 +324,34 @@ class MoveMediaToDisk extends MediaBatchEngine
      * Remove the copies a failed move wrote. A failed cleanup is reported; the original error matters more.
      *
      * @param  list<string>  $paths
+     * @return list<string> The paths removed.
      */
-    private function deleteCopies(Filesystem $disk, array $paths): void
+    private function deleteCopies(Filesystem $disk, array $paths): array
     {
+        $removed = [];
+
         foreach ($paths as $path) {
             try {
-                $disk->delete($path);
+                if ($disk->delete($path)) {
+                    $removed[] = $path;
+                }
             } catch (Throwable $e) {
                 report($e);
             }
+        }
+
+        return $removed;
+    }
+
+    /**
+     * Forget the pending deletions that insured the copies of this move.
+     *
+     * @param  list<string>  $paths
+     */
+    private function dropInsurance(string $disk, array $paths): void
+    {
+        if ($paths !== []) {
+            MediaPendingDeletion::query()->where('disk', $disk)->whereIn('path', $paths)->delete();
         }
     }
 }

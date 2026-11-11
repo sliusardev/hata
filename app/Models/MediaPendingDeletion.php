@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * A replaced object on a cloud disk, kept until `delete_after` so pages rendered before the change (and CDN caches)
- * still find it, then removed by PruneMediaDeletions.
+ * still find it, then removed by PruneMediaDeletions. A move between disks also records each copy it is about to write
+ * (due in a day, on either disk) and drops those rows when it commits or cleans up, so a process that dies mid-copy
+ * leaves no orphan behind: the prune never deletes a path a media row points at.
  *
  * @property int $id
  * @property string $disk
@@ -34,18 +37,18 @@ class MediaPendingDeletion extends Model
     }
 
     /**
-     * Schedule the given objects of a disk for deletion after KEEP_DAYS.
+     * Schedule the given objects of a disk for deletion after KEEP_DAYS, or at $deleteAfter.
      *
      * @param  list<string>  $paths
      */
-    public static function schedule(string $disk, array $paths): void
+    public static function schedule(string $disk, array $paths, ?CarbonInterface $deleteAfter = null): void
     {
         if ($paths === []) {
             return;
         }
 
         $now = now();
-        $deleteAfter = $now->addDays(self::KEEP_DAYS);
+        $deleteAfter ??= $now->addDays(self::KEEP_DAYS);
 
         static::query()->insert(array_map(fn (string $path): array => [
             'disk' => $disk,

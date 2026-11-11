@@ -810,7 +810,7 @@ new #[Title('site_settings.title')] class extends Component {
                             @if (! $card['enabled'])
                                 <span data-test="optimize-existing-unsaved">{{ __('site_settings.media.existing_save_first') }}</span>
                             @elseif ($card['run'] !== null)
-                                <span data-test="optimize-existing-progress">{{ __("media.optimize.status.{$card['run']->status}") }}: {{ trans_choice('media.optimize.progress', $card['run']->total, ['processed' => $card['run']->processed(), 'total' => $card['run']->total]) }}</span>
+                                <span data-test="optimize-existing-progress">{{ __("media.optimize.status.{$card['run']->status}") }}: {{ trans_choice('media.batch.progress', $card['run']->total, ['processed' => $card['run']->processed(), 'total' => $card['run']->total]) }}</span>
                             @elseif ($card['count'] > 0)
                                 <span><span data-test="optimize-existing-count">{{ $card['count'] }}</span> {{ trans_choice('site_settings.media.existing_candidates', $card['count']) }}</span>
                                 <span data-test="optimize-existing-saving">{{ __('site_settings.media.existing_saving', ['size' => $card['saving']]) }}</span>

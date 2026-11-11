@@ -272,10 +272,22 @@ return [
         ],
     ],
 
+    'batch' => [
+        'back' => 'Back to the media library',
+        'pause' => 'Pause',
+        'resume' => 'Resume',
+        'stop' => 'Stop',
+        'progress' => ':processed of :total file|:processed of :total files',
+        'time_left' => 'About :time left',
+        'recent' => 'Latest files',
+        'tab_open_queue' => 'You can close this tab: the queue keeps working.',
+        'tab_open_browser' => 'Keep this tab open, and in the foreground if you can: files are processed while it is open. Pausing or closing it stops the run until you come back.',
+        'fallback' => 'The queue isn’t processing jobs, continuing in this tab.',
+    ],
+
     'optimize' => [
         'title' => 'Optimize existing files',
         'description' => 'Re-compress images that were uploaded with other settings.',
-        'back' => 'Back to the media library',
         'disabled' => 'Image optimization is off.',
         'disabled_body' => 'Turn it on in the media settings to optimize existing files.',
         'open_settings' => 'Open media settings',
@@ -285,9 +297,6 @@ return [
         'start' => 'Start',
         'start_new' => 'Start a new run',
         'start_over' => 'Start over',
-        'pause' => 'Pause',
-        'resume' => 'Resume',
-        'stop' => 'Stop',
         'stop_heading' => 'Stop the run?',
         'stop_body' => 'The progress shown here is cleared. Files already optimized stay optimized.',
         'status' => [
@@ -295,8 +304,6 @@ return [
             'paused' => 'Paused',
             'done' => 'Done',
         ],
-        'progress' => ':processed of :total file|:processed of :total files',
-        'time_left' => 'About :time left',
         'stats' => [
             'saved' => 'Saved',
             'average' => 'Average saving',
@@ -310,7 +317,6 @@ return [
             'missing' => ':count missing file|:count missing files',
             'changed' => ':count changed meanwhile',
         ],
-        'recent' => 'Latest files',
         'outcomes' => [
             'optimized' => 'Optimized',
             'already_optimal' => 'Already optimal',
@@ -319,9 +325,6 @@ return [
             'missing' => 'Missing',
             'changed' => 'Changed meanwhile',
         ],
-        'tab_open_queue' => 'You can close this tab: the queue keeps working.',
-        'tab_open_browser' => 'Keep this tab open, and in the foreground if you can: files are processed while it is open. Pausing or closing it stops the run until you come back.',
-        'fallback' => 'The queue isn’t processing jobs, continuing in this tab.',
         'stale_heading' => 'The media settings changed',
         'stale_body' => 'This run used older settings and has stopped. Start over to apply the current ones.',
         'done_heading' => 'All files are processed',
@@ -341,6 +344,7 @@ return [
         'stop_body' => 'The progress shown here is cleared. Files already moved stay on the new disk, the others stay where they are.',
         'not_configured' => 'The storage isn’t configured. Set its connection in the media settings first.',
         'uploads_note' => 'Uploads keep working during the move: new files go to the current storage.',
+        'large_files_note' => 'Very large files (videos, big archives) are best moved over SSH with “php artisan media:move-disk”, which has no time limit: a copy cut off by the server’s time limit is skipped and tried again by the next move.',
         'status' => [
             'running' => 'Moving',
             'paused' => 'Paused',
@@ -354,8 +358,8 @@ return [
         ],
         'skipped_reasons' => [
             'missing' => ':count missing file|:count missing files',
-            'failed' => ':count failed to copy',
-            'changed' => ':count changed meanwhile',
+            'failed' => ':count file failed to copy|:count files failed to copy',
+            'changed' => ':count file changed meanwhile|:count files changed meanwhile',
         ],
         'outcomes' => [
             'moved' => 'Moved',

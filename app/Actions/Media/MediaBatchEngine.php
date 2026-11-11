@@ -69,6 +69,22 @@ abstract class MediaBatchEngine
     }
 
     /**
+     * Seconds the batch lock outlives the budget: room for the file in progress when the budget runs out.
+     */
+    protected function fileSeconds(): int
+    {
+        return 60;
+    }
+
+    /**
+     * Seconds a batch with the given budget holds the lock at most; a queue job of the mode must not outlive it.
+     */
+    public function lockSeconds(float $budgetSeconds): int
+    {
+        return (int) ceil($budgetSeconds) + $this->fileSeconds();
+    }
+
+    /**
      * The stored run of this mode, if any.
      *
      * @return TRun|null
@@ -149,7 +165,7 @@ abstract class MediaBatchEngine
             return $run;
         }
 
-        $lock = Cache::lock($this->lockName(), (int) ceil($budgetSeconds) + 60);
+        $lock = Cache::lock($this->lockName(), $this->lockSeconds($budgetSeconds));
 
         if (! $lock->get()) {
             return $run;

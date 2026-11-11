@@ -83,3 +83,10 @@ it('stops when the run it was queued for was replaced', function () {
     expect(app(DiskMoveRunStore::class)->get()->processed())->toBe(0);
     Queue::assertNothingPushed();
 });
+
+it('gives a batch job as long as its batch lock lives, with room for one very large file', function () {
+    $job = new MoveMediaBatch('run');
+
+    expect($job->timeout)->toBe(app(MoveMediaToDisk::class)->lockSeconds(MoveMediaBatch::BUDGET))
+        ->and($job->timeout)->toBeGreaterThan(MoveMediaToDisk::FILE_SECONDS);
+});

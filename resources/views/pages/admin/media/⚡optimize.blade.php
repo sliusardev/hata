@@ -86,7 +86,7 @@ new #[Title('media.optimize.title')] class extends MediaBatchPage {
 
 <div class="mx-auto w-full max-w-3xl space-y-6" data-test="media-optimize" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
     <div class="flex items-center gap-3">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.optimize.back')" :tooltip="__('media.optimize.back')" />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.batch.back')" :tooltip="__('media.batch.back')" />
         <div class="min-w-0">
             <flux:heading size="xl" level="1">{{ __('media.optimize.title') }}</flux:heading>
             <flux:text>{{ __('media.optimize.description') }}</flux:text>
@@ -136,7 +136,7 @@ new #[Title('media.optimize.title')] class extends MediaBatchPage {
             </flux:callout>
         @elseif ($run->status === 'running' && $this->queueAvailable && $this->browserFallback)
             <flux:callout variant="warning" icon="exclamation-triangle" data-test="optimize-fallback">
-                <flux:callout.text>{{ __('media.optimize.fallback') }}</flux:callout.text>
+                <flux:callout.text>{{ __('media.batch.fallback') }}</flux:callout.text>
             </flux:callout>
         @endif
 
@@ -144,14 +144,14 @@ new #[Title('media.optimize.title')] class extends MediaBatchPage {
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <flux:heading size="lg">
-                        {{ $run->status === 'done' ? __('media.optimize.done_heading') : trans_choice('media.optimize.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
+                        {{ $run->status === 'done' ? __('media.optimize.done_heading') : trans_choice('media.batch.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
                     </flux:heading>
                     <flux:badge :color="match ($run->status) { 'running' => 'blue', 'paused' => 'amber', default => 'green' }" size="sm">
                         {{ __("media.optimize.status.{$run->status}") }}
                     </flux:badge>
                 </div>
                 @if ($secondsLeft !== null && ! $stale)
-                    <flux:text>{{ __('media.optimize.time_left', ['time' => \Carbon\CarbonInterval::seconds($secondsLeft)->cascade()->forHumans(['parts' => 2, 'short' => true])]) }}</flux:text>
+                    <flux:text>{{ __('media.batch.time_left', ['time' => \Carbon\CarbonInterval::seconds($secondsLeft)->cascade()->forHumans(['parts' => 2, 'short' => true])]) }}</flux:text>
                 @endif
             </div>
 
@@ -199,23 +199,23 @@ new #[Title('media.optimize.title')] class extends MediaBatchPage {
             @elseif (! $stale)
                 <div class="flex flex-wrap gap-2">
                     @if ($run->status === 'running')
-                        <flux:button icon="pause" wire:click="pause" data-test="optimize-pause">{{ __('media.optimize.pause') }}</flux:button>
+                        <flux:button icon="pause" wire:click="pause" data-test="optimize-pause">{{ __('media.batch.pause') }}</flux:button>
                     @else
-                        <flux:button variant="primary" icon="play" wire:click="resume" :disabled="! $enabled" data-test="optimize-resume">{{ __('media.optimize.resume') }}</flux:button>
+                        <flux:button variant="primary" icon="play" wire:click="resume" :disabled="! $enabled" data-test="optimize-resume">{{ __('media.batch.resume') }}</flux:button>
                     @endif
-                    <flux:button variant="danger" icon="stop" wire:click="$set('showStopModal', true)" data-test="optimize-stop">{{ __('media.optimize.stop') }}</flux:button>
+                    <flux:button variant="danger" icon="stop" wire:click="$set('showStopModal', true)" data-test="optimize-stop">{{ __('media.batch.stop') }}</flux:button>
                 </div>
-                <flux:text size="sm">{{ $browserMode ? __('media.optimize.tab_open_browser') : __('media.optimize.tab_open_queue') }}</flux:text>
+                <flux:text size="sm">{{ $browserMode ? __('media.batch.tab_open_browser') : __('media.batch.tab_open_queue') }}</flux:text>
             @else
                 <div>
-                    <flux:button wire:click="stop">{{ __('media.optimize.stop') }}</flux:button>
+                    <flux:button wire:click="stop">{{ __('media.batch.stop') }}</flux:button>
                 </div>
             @endif
         </flux:card>
 
         @if ($run->recent !== [])
             <flux:card class="space-y-3">
-                <flux:heading size="lg">{{ __('media.optimize.recent') }}</flux:heading>
+                <flux:heading size="lg">{{ __('media.batch.recent') }}</flux:heading>
                 <ul class="divide-y divide-zinc-200 dark:divide-white/10" data-test="optimize-recent">
                     @foreach ($run->recent as $item)
                         <li wire:key="recent-{{ $loop->index }}-{{ $item['name'] }}" class="flex items-center justify-between gap-3 py-2">
@@ -233,7 +233,7 @@ new #[Title('media.optimize.title')] class extends MediaBatchPage {
         @endif
     @endif
 
-    <x-confirm-modal wire:model.self="showStopModal" :heading="__('media.optimize.stop_heading')" :confirm-label="__('media.optimize.stop')" confirm-action="stop">
+    <x-confirm-modal wire:model.self="showStopModal" :heading="__('media.optimize.stop_heading')" :confirm-label="__('media.batch.stop')" confirm-action="stop">
         {{ __('media.optimize.stop_body') }}
     </x-confirm-modal>
 </div>
