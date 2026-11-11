@@ -37,6 +37,7 @@ class UploadMedia
         $extension = $type['ext'];
         $mime = $type['mime'];
         $width = $height = $fingerprint = $thumbnail = $failure = null;
+        $animated = false;
 
         if ($type['kind'] === MediaKind::Image) {
             $result = $this->optimizer->handle($contents, $mime);
@@ -45,7 +46,7 @@ class UploadMedia
                 throw MediaUploadException::heicUnsupported();
             }
 
-            $thumbnail = $this->optimizer->thumbnail($result->contents);
+            [$thumbnail, $animated] = [$result->thumbnail, $result->animated];
             $original = $contents;
             [$contents, $mime, $extension] = [$result->contents, $result->mime, $result->extension];
             [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
@@ -87,6 +88,7 @@ class UploadMedia
                 'uploaded_extension' => MediaUploadChecks::pickedExtension($pickedExtension) ?? $type['ext'],
                 'optimized_with' => $fingerprint,
                 'optimize_failure' => $failure,
+                'animated' => $animated,
             ]);
             $media->key = $key;
             $media->save();

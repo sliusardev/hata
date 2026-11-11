@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\MediaKind;
 use App\Models\Concerns\HasSearchIndex;
-use App\Support\Media\MediaTypes;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -36,6 +35,7 @@ use Illuminate\Support\Str;
  * @property string|null $uploaded_extension
  * @property string|null $optimized_with
  * @property string|null $optimize_failure 'too_large' or 'unreadable' when an image was stored without optimizing
+ * @property bool $animated Whether the image has several frames (GIF, WebP or APNG); such images can't be edited
  * @property array<string, mixed>|null $edits
  * @property int $version Bumped whenever the file's content changes; part of the public URL so caches refresh
  * @property string|null $title
@@ -46,7 +46,7 @@ use Illuminate\Support\Str;
  */
 #[Fillable([
     'folder_id', 'uploaded_by', 'disk', 'path', 'original_path', 'thumb_path', 'name', 'kind', 'mime', 'size',
-    'width', 'height', 'original_size', 'uploaded_extension', 'optimized_with', 'optimize_failure', 'edits', 'version', 'title', 'alt',
+    'width', 'height', 'original_size', 'uploaded_extension', 'optimized_with', 'optimize_failure', 'animated', 'edits', 'version', 'title', 'alt',
 ])]
 #[Hidden(['search_index'])]
 class Media extends Model
@@ -89,6 +89,7 @@ class Media extends Model
     {
         return [
             'alt' => 'array',
+            'animated' => 'bool',
             'edits' => 'array',
             'kind' => MediaKind::class,
             'version' => 'integer',
@@ -140,7 +141,8 @@ class Media extends Model
 
     /**
      * Whether the image can be cropped, rotated or flipped: a raster image that isn't animated. SVG, animated
-     * GIF/WebP/APNG, documents and files missing from the disk can't. The file is read once per instance.
+     * GIF/WebP/APNG (the `animated` column), documents and files missing from the disk can't. The file is only checked for
+     * existence, never read.
      */
     public function isEditable(): bool
     {
@@ -148,14 +150,11 @@ class Media extends Model
             return $this->editable;
         }
 
-        if (! $this->isImage() || $this->mime === 'image/svg+xml') {
+        if (! $this->isImage() || $this->mime === 'image/svg+xml' || $this->animated) {
             return $this->editable = false;
         }
 
-        $disk = Storage::disk($this->disk);
-
-        return $this->editable = $disk->exists($this->path)
-            && ! MediaTypes::isAnimated((string) $disk->get($this->path), $this->mime);
+        return $this->editable = Storage::disk($this->disk)->exists($this->path);
     }
 
     /**

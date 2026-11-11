@@ -233,6 +233,27 @@ it('makes a 400px webp thumbnail', function (string $driver) {
         ->and($size[1])->toBeGreaterThanOrEqual(266)->toBeLessThanOrEqual(267);
 })->with('drivers');
 
+it('returns a thumbnail with the optimized image', function (string $driver) {
+    useImageDriver($driver);
+
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 3000, 2000), 'image/jpeg');
+    $size = getimagesizefromstring((string) $result->thumbnail);
+
+    expect($result->thumbnail)->not->toBeNull()
+        ->and($result->animated)->toBeFalse()
+        ->and($size['mime'])->toBe('image/webp')
+        ->and($size[0])->toBe(400)
+        ->and($size[1])->toBeGreaterThanOrEqual(266)->toBeLessThanOrEqual(267);
+})->with('drivers');
+
+it('returns a thumbnail and the animated flag for an animated gif', function () {
+    $result = app(OptimizeImage::class)->handle(animatedGif(), 'image/gif');
+
+    expect($result->animated)->toBeTrue()
+        ->and($result->thumbnail)->not->toBeNull()
+        ->and($result->contents)->toBe(animatedGif());
+});
+
 it('builds the fingerprint from the settings', function () {
     config(['media.optimize.max_side' => null, 'media.optimize.quality' => 70, 'media.optimize.strip_exif' => false]);
 

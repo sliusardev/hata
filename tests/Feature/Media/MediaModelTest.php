@@ -142,11 +142,12 @@ it('knows which files can be edited', function () {
     Storage::disk('local')->put('a.gif', $gif);
     Storage::disk('local')->put('a.pdf', '%PDF-1.4');
 
-    $make = fn (string $path, string $mime, MediaKind $kind) => Media::factory()->create(['disk' => 'local', 'path' => $path, 'mime' => $mime, 'kind' => $kind]);
+    $make = fn (string $path, string $mime, MediaKind $kind, bool $animated = false) => Media::factory()->create(['disk' => 'local', 'path' => $path, 'mime' => $mime, 'kind' => $kind, 'animated' => $animated]);
 
     expect($make('a.jpg', 'image/jpeg', MediaKind::Image)->isEditable())->toBeTrue()
         ->and($make('a.svg', 'image/svg+xml', MediaKind::Image)->isEditable())->toBeFalse()
-        ->and($make('a.gif', 'image/gif', MediaKind::Image)->isEditable())->toBeFalse()
+        ->and($make('a.gif', 'image/gif', MediaKind::Image, animated: true)->isEditable())->toBeFalse()
+        ->and($make('a.jpg', 'image/jpeg', MediaKind::Image, animated: true)->isEditable())->toBeFalse()
         ->and($make('a.pdf', 'application/pdf', MediaKind::Document)->isEditable())->toBeFalse()
         ->and($make('missing.jpg', 'image/jpeg', MediaKind::Image)->isEditable())->toBeFalse();
 });

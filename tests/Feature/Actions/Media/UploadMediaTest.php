@@ -200,3 +200,11 @@ it('keeps no original when optimization is off', function () {
     expect($media->original_path)->toBeNull()
         ->and(Storage::disk('local')->allFiles())->toHaveCount(2);
 });
+
+it('stores whether the uploaded image is animated', function () {
+    $gif = app(UploadMedia::class)->handle($this->actor, uploadedImage('a.gif', animatedGif()));
+    $jpeg = app(UploadMedia::class)->handle($this->actor, uploadedImage('b.jpg', makeImage('jpg')));
+
+    expect($gif->animated)->toBeTrue()
+        ->and($jpeg->animated)->toBeFalse();
+});

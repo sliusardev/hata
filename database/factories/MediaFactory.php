@@ -35,6 +35,7 @@ class MediaFactory extends Factory
             'height' => 600,
             'uploaded_extension' => 'webp',
             'optimize_failure' => null,
+            'animated' => false,
             'version' => 1,
             'alt' => [],
         ];

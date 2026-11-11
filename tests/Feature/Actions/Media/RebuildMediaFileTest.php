@@ -254,7 +254,7 @@ it('falls back to the current file', function () {
 });
 
 it('forgets whether the file is editable after a rebuild', function () {
-    $media = rebuildableMedia(animatedGif(), null, ['mime' => 'image/gif', 'name' => 'a.gif']);
+    $media = rebuildableMedia(animatedGif(), null, ['mime' => 'image/gif', 'name' => 'a.gif', 'animated' => true]);
     expect($media->isEditable())->toBeFalse();
 
     app(RebuildMediaFile::class)->handle($media, makeImage('jpg'), 'image/jpeg', null);
@@ -285,4 +285,12 @@ it('increments the version from the database, not from the instance', function (
     expect($rebuilt->version)->toBe(3)
         ->and($stale->version)->toBe(3)
         ->and($media->fresh()->version)->toBe(3);
+});
+
+it('stores that a rebuild from an animated gif is animated', function () {
+    $media = rebuildableMedia('old-file', null, ['mime' => 'image/gif', 'name' => 'a.gif']);
+
+    $rebuilt = app(RebuildMediaFile::class)->handle($media, animatedGif(), 'image/gif', null);
+
+    expect($rebuilt->fresh()->animated)->toBeTrue();
 });

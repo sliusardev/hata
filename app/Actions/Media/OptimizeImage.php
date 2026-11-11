@@ -2,6 +2,7 @@
 
 namespace App\Actions\Media;
 
+use App\Support\Media\CaptureThumbnail;
 use App\Support\Media\ImageEdits;
 use App\Support\Media\MediaTypes;
 use App\Support\Media\MemoryGuard;
@@ -57,25 +58,27 @@ class OptimizeImage
         $animated = $raster && MediaTypes::isAnimated($contents, $mime);
 
         if ($imageEdits !== null && (! $raster || $animated)) {
-            return $this->unchanged($contents, $mime, $width, $height, 'not_editable');
+            return $this->unchanged($contents, $mime, $width, $height, $animated, 'not_editable');
         }
 
         if (! $raster || (! $enabled && ! $mustConvert && $imageEdits === null) || $animated) {
-            return $this->unchanged($contents, $mime, $width, $height);
+            return $this->unchanged($contents, $mime, $width, $height, $animated);
         }
 
         if ($size === null) {
-            return $this->unchanged($contents, $mime, $width, $height, 'unreadable');
+            return $this->unchanged($contents, $mime, $width, $height, $animated, 'unreadable');
         }
 
         if (! $this->memory->canDecode($size[0], $size[1])) {
-            return $this->unchanged($contents, $mime, $width, $height, 'too_large');
+            return $this->unchanged($contents, $mime, $width, $height, $animated, 'too_large');
         }
 
         $format = $this->targetFormat($mime, $enabled);
         $quality = $this->quality();
         $maxSide = config('media.optimize.max_side');
         $scaled = $enabled && is_int($maxSide) && $maxSide > 0 && ($imageEdits !== null || max($size) > $maxSide);
+
+        $capture = new CaptureThumbnail(max(1, (int) config('media.thumb_side')), $this->quality());
 
         try {
             $image = Image::fromBytes($contents)->orient();
@@ -88,14 +91,15 @@ class OptimizeImage
                 $image = $image->scale($maxSide, $maxSide);
             }
 
+            $image = $this->capturingThumbnail($image, $capture);
             $image = $format === 'original' ? $image->quality($quality) : $image->optimize($format, $quality);
             $output = ($enabled ? $this->stripped($image) : $image)->toBytes();
         } catch (ImageException) {
-            return $this->unchanged($contents, $mime, $width, $height, 'unreadable');
+            return $this->unchanged($contents, $mime, $width, $height, $animated, 'unreadable');
         }
 
         if (! $enabled) {
-            return $this->converted($output, optimized: false, fingerprint: null);
+            return $this->converted($output, optimized: false, fingerprint: null, thumbnail: $capture->bytes);
         }
 
         $keepInput = ! $mustConvert
@@ -105,10 +109,10 @@ class OptimizeImage
             && ! (config('media.optimize.strip_exif') && $this->hasMetadata($contents, $mime));
 
         if ($keepInput) {
-            return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: true, fingerprint: $this->fingerprint());
+            return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: true, fingerprint: $this->fingerprint(), thumbnail: $capture->bytes);
         }
 
-        return $this->converted($output, optimized: true, fingerprint: $this->fingerprint(), mime: $format === 'original' ? $mime : null);
+        return $this->converted($output, optimized: true, fingerprint: $this->fingerprint(), mime: $format === 'original' ? $mime : null, thumbnail: $capture->bytes);
     }
 
     /**
@@ -171,7 +175,7 @@ class OptimizeImage
     /**
      * An encoded result; its MIME is sniffed from the bytes unless given.
      */
-    private function converted(string $output, bool $optimized, ?string $fingerprint, ?string $mime = null): OptimizedImage
+    private function converted(string $output, bool $optimized, ?string $fingerprint, ?string $mime = null, ?string $thumbnail = null): OptimizedImage
     {
         $outputSize = @getimagesizefromstring($output);
         $outputMime = $mime ?? (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($output);
@@ -184,15 +188,19 @@ class OptimizeImage
             $outputSize === false ? null : $outputSize[1],
             optimized: $optimized,
             fingerprint: $fingerprint,
+            thumbnail: $thumbnail,
         );
     }
 
     /**
      * @param  'too_large'|'unreadable'|'not_editable'|null  $failure
      */
-    private function unchanged(string $contents, string $mime, ?int $width, ?int $height, ?string $failure = null): OptimizedImage
+    private function unchanged(string $contents, string $mime, ?int $width, ?int $height, bool $animated, ?string $failure = null): OptimizedImage
     {
-        return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: false, failure: $failure);
+        // Nothing was decoded for the result, so the preview takes its own decode (not for formats browsers can't show).
+        $thumbnail = in_array($mime, self::MUST_CONVERT, true) ? null : $this->thumbnail($contents);
+
+        return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: false, failure: $failure, thumbnail: $thumbnail, animated: $animated);
     }
 
     private function extensionFor(string $mime): string
@@ -243,6 +251,28 @@ class OptimizeImage
     private function quality(): int
     {
         return max(1, min(100, (int) config('media.optimize.quality')));
+    }
+
+    /**
+     * Add the step that encodes the preview from the image as decoded here, after orienting, edits and the max-side scale.
+     * Strips metadata from the preview too when strip_exif is on (GD never writes any).
+     */
+    private function capturingThumbnail(PendingImage $image, CaptureThumbnail $capture): PendingImage
+    {
+        $strip = (bool) config('media.optimize.strip_exif');
+
+        Image::transformUsing('gd', CaptureThumbnail::class, function (ImageInterface $decoded, CaptureThumbnail $step): ImageInterface {
+            $step->capture($decoded, fn (ImageInterface $copy): ImageInterface => $copy);
+
+            return $decoded;
+        });
+        Image::transformUsing('imagick', CaptureThumbnail::class, function (ImageInterface $decoded, CaptureThumbnail $step) use ($strip): ImageInterface {
+            $step->capture($decoded, fn (ImageInterface $copy): ImageInterface => $strip ? $copy->modify(new StripMetaModifier) : $copy);
+
+            return $decoded;
+        });
+
+        return $image->transform($capture);
     }
 
     /**

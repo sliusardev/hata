@@ -61,6 +61,7 @@ class RebuildMediaFile
         $imageEdits = $imageEdits?->isEmpty() ? null : $imageEdits;
         [$sourceContents, $sourceMime] = [$contents, $mime];
         $width = $height = $fingerprint = $failure = $thumbnail = null;
+        $animated = false;
 
         if ($media->isImage()) {
             $result = $this->optimizer->handle($contents, $mime, $imageEdits?->toArray());
@@ -73,7 +74,7 @@ class RebuildMediaFile
                 throw MediaUploadException::heicUnsupported();
             }
 
-            $thumbnail = $this->optimizer->thumbnail($result->contents);
+            [$thumbnail, $animated] = [$result->thumbnail, $result->animated];
             [$contents, $mime, $extension] = [$result->contents, $result->mime, $result->extension];
             [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
         } elseif ($imageEdits !== null) {
@@ -123,7 +124,7 @@ class RebuildMediaFile
                 $disk->put($target, $bytes);
             }
 
-            DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $imageEdits, $keepEdits, $stale): void {
+            DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $animated, $imageEdits, $keepEdits, $stale): void {
                 $version = (int) Media::query()->whereKey($media->getKey())->lockForUpdate()->value('version');
 
                 $media->fill($attributes)->fill([
@@ -137,6 +138,7 @@ class RebuildMediaFile
                     'height' => $height,
                     'optimized_with' => $fingerprint,
                     'optimize_failure' => $failure,
+                    'animated' => $animated,
                     'edits' => $keepEdits ? $imageEdits?->toArray() : null,
                     'version' => $version + 1,
                 ]);

@@ -53,7 +53,7 @@ it('is forbidden without media.edit', function () {
 it('is not found for svg, animated gif and documents', function (string $kind) {
     $media = match ($kind) {
         'svg' => cropPageMedia('<svg xmlns="http://www.w3.org/2000/svg"/>', attributes: ['mime' => 'image/svg+xml', 'name' => 'a.svg']),
-        'gif' => cropPageMedia(animatedGif(), attributes: ['mime' => 'image/gif', 'name' => 'a.gif']),
+        'gif' => cropPageMedia(animatedGif(), attributes: ['mime' => 'image/gif', 'name' => 'a.gif', 'animated' => true]),
         default => tap(Media::factory()->document()->create(), fn (Media $media) => Storage::disk('local')->put($media->path, '%PDF-1.4')),
     };
 
