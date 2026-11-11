@@ -9,6 +9,7 @@ use App\Models\MediaFolder;
 use App\Models\User;
 use App\Support\Media\MediaNames;
 use App\Support\Media\MediaUploadChecks;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -25,6 +26,7 @@ class UploadMedia
      *                                        It comes from the client: used only when it is on the whitelist.
      *
      * @throws MediaUploadException
+     * @throws AuthorizationException
      */
     public function handle(User $actor, UploadedFile $file, ?MediaFolder $folder = null, ?int $pickedSize = null, ?string $pickedExtension = null): Media
     {

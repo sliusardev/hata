@@ -325,4 +325,8 @@ return [
         'done_left' => ':count image was skipped and still doesn’t match the current settings.|:count images were skipped and still don’t match the current settings.',
     ],
 
+    'picker' => [
+        'not_allowed' => 'This format can’t be used here',
+    ],
+
 ];

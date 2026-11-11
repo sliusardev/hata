@@ -9,7 +9,6 @@ use App\Actions\Media\RenameFolder;
 use App\Actions\Media\ReplaceMediaFile;
 use App\Actions\Media\RestoreOriginal;
 use App\Actions\Media\UpdateMedia;
-use App\Actions\Media\UploadMedia;
 use App\Actions\Media\ZipMedia;
 use App\Enums\MediaKind;
 use App\Exceptions\MediaUploadException;
@@ -17,9 +16,11 @@ use App\Livewire\Forms\MediaDetailsForm;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
+use App\Support\Media\MediaFilters;
 use App\Support\Media\MediaIds;
 use App\Support\Media\MediaTypes;
 use App\Support\Media\ServerCapabilities;
+use App\Support\Media\StoreUploadedMedia;
 use Carbon\CarbonImmutable;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -298,7 +299,7 @@ new #[Title('media.index.title')] class extends Component {
      *
      * @return array{ok: bool, id?: int, name?: string, meta?: string, error?: string}
      */
-    public function storeUpload(UploadMedia $uploadMedia): array
+    public function storeUpload(StoreUploadedMedia $storeUploadedMedia): array
     {
         $this->authorize('create', Media::class);
 
@@ -312,41 +313,13 @@ new #[Title('media.index.title')] class extends Component {
             return ['ok' => false, 'error' => __('media.upload.failed')];
         }
 
-        $folder = $folderId === null ? null : MediaFolder::query()->find($folderId);
+        $result = $storeUploadedMedia->handle($this->actor(), $file, $folderId, $pickedSize, $pickedExtension);
 
-        if ($folderId !== null && $folder === null) {
-            $file->delete();
-
-            return ['ok' => false, 'error' => __('media.errors.folder_missing')];
+        if ($result['ok']) {
+            unset($this->media, $this->totals, $this->folders, $this->months);
         }
 
-        try {
-            $media = $uploadMedia->handle($this->actor(), $file, $folder, $pickedSize, $pickedExtension);
-        } catch (MediaUploadException $exception) {
-            return ['ok' => false, 'error' => $exception->getMessage()];
-        } catch (AuthorizationException $exception) {
-            throw $exception;
-        } catch (Throwable $exception) {
-            report($exception);
-
-            return ['ok' => false, 'error' => __('media.upload.failed')];
-        } finally {
-            $file->delete();
-        }
-
-        unset($this->media, $this->totals, $this->folders, $this->months);
-
-        return [
-            'ok' => true,
-            'id' => $media->id,
-            'name' => $media->name,
-            'meta' => $media->savedBytes() === null
-                ? __('media.upload.done', ['size' => $media->humanSize()])
-                : __('media.upload.done_compressed', [
-                    'before' => Media::formatBytes((int) $media->original_size),
-                    'after' => $media->humanSize(),
-                ]),
-        ];
+        return $result;
     }
 
     /**
@@ -1288,33 +1261,19 @@ new #[Title('media.index.title')] class extends Component {
      */
     private function filteredQuery(): Builder
     {
-        return Media::query()
-            ->when($this->folder === 'none', fn (Builder $query) => $query->whereNull('folder_id'))
-            ->when($this->currentFolder, fn (Builder $query, MediaFolder $folder) => $query->where('folder_id', $folder->id))
-            ->when(MediaKind::tryFrom($this->type), fn (Builder $query, MediaKind $kind) => $query->where('kind', $kind))
-            ->when($this->monthRange(), fn (Builder $query, array $range) => $query->whereBetween('created_at', $range))
-            ->when($this->unused, fn (Builder $query) => $query->doesntHave('usages'))
-            ->search($this->search);
+        return $this->filters()->apply(Media::query());
     }
 
-    /**
-     * The selected month as a UTC range, so no database-specific date SQL is needed.
-     *
-     * @return array{0: CarbonImmutable, 1: CarbonImmutable}|null
-     */
-    private function monthRange(): ?array
+    private function filters(): MediaFilters
     {
-        if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $this->month) !== 1) {
-            return null;
-        }
-
-        $start = CarbonImmutable::createFromFormat('!Y-m', $this->month, (string) config('admin.timezone'));
-
-        if (! $start instanceof CarbonImmutable) {
-            return null;
-        }
-
-        return [$start->utc(), $start->endOfMonth()->utc()];
+        return new MediaFilters(
+            search: $this->search,
+            type: $this->type,
+            month: $this->month,
+            folder: $this->currentFolder,
+            noFolder: $this->folder === 'none',
+            unused: $this->unused,
+        );
     }
 
     private function actor(): User
