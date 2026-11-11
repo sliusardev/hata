@@ -18,7 +18,7 @@ final class MediaIds
      * Unique positive integers (digit strings accepted), at most MAX of them, in the order given.
      *
      * @param  array<array-key, mixed>  $ids
-     * @return array<int, int>
+     * @return list<int>
      */
     public static function normalize(array $ids): array
     {
@@ -32,7 +32,7 @@ final class MediaIds
      * The normalized ids that belong to existing files, in the order given.
      *
      * @param  array<array-key, mixed>  $ids
-     * @return array<int, int>
+     * @return list<int>
      */
     public static function existing(array $ids): array
     {
