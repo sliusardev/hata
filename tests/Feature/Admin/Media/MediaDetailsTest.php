@@ -42,7 +42,7 @@ it('opens the details of a file', function () {
         ->assertSee('164 KB · 2560 × 1707')
         ->assertSee('Olena Koval')
         ->assertSee(__('media.index.nowhere'))
-        ->assertSee($media->url());
+        ->assertSee($media->appUrl());
 });
 
 it('ignores a file id that does not exist', function () {
@@ -294,7 +294,7 @@ it('shows the file url in a selectable field with a copy fallback for plain http
 
     Livewire::test('pages::admin.media.index')
         ->call('select', $media->id)
-        ->assertSeeHtml('value="'.e($media->url()).'"')
+        ->assertSeeHtml('value="'.e($media->appUrl()).'"')
         ->assertSeeHtml('data-test="media-details-copy"')
         ->assertSeeHtml((string) Js::from(__('media.details.copied')))
         ->assertSeeHtml((string) Js::from(__('media.details.copy_failed')));

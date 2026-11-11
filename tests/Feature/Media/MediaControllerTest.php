@@ -150,16 +150,6 @@ it('needs no login', function () {
     $this->get($media->url())->assertOk();
 });
 
-it('redirects files on a cloud disk to the disk url', function () {
-    Storage::fake('cdn', ['url' => 'https://cdn.example.test']);
-    config(['filesystems.disks.cdn.driver' => 's3']);
-    $media = Media::factory()->create(['disk' => 'cdn']);
-
-    $this->get($media->url())
-        ->assertRedirect(Storage::disk('cdn')->url($media->path))
-        ->assertHeader('X-Content-Type-Options', 'nosniff');
-});
-
 it('serves a local-driver disk that is not named local', function () {
     Storage::fake('media');
     config(['filesystems.disks.media.driver' => 'local']);
@@ -191,4 +181,64 @@ it('gives the thumbnail its own etag', function () {
     expect($thumbEtag)->not->toBe($mainEtag);
 
     $this->get($media->thumbUrl(), ['If-None-Match' => $thumbEtag])->assertStatus(304);
+});
+
+it('streams svg from a cloud disk without redirecting', function () {
+    fakeCloudDisk('s3');
+    config(['filesystems.disks.s3.url' => 'https://cdn.example.test']);
+    $media = Media::factory()->create(['disk' => 's3', 'name' => 'l.svg', 'mime' => 'image/svg+xml', 'path' => 'media/2026/11/K-v1.svg']);
+    Storage::disk('s3')->put($media->path, '<svg xmlns="http://www.w3.org/2000/svg"/>');
+
+    $response = $this->get($media->url())->assertOk()
+        ->assertHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+    expect($response->streamedContent())->toBe('<svg xmlns="http://www.w3.org/2000/svg"/>');
+});
+
+it('redirects a cloud pdf to a signed url carrying the real name', function () {
+    fakeCloudDisk('s3');
+    $seen = [];
+    Storage::disk('s3')->buildTemporaryUrlsUsing(function ($path, $expiration, $options) use (&$seen) {
+        $seen = compact('path', 'expiration', 'options');
+
+        return 'https://signed.example.test/'.$path.'?sig=1';
+    });
+    $media = Media::factory()->document()->create(['disk' => 's3', 'name' => 'price list.pdf', 'path' => 'media/2026/11/K-v1.pdf']);
+
+    $this->get($media->url())->assertStatus(302)->assertRedirect('https://signed.example.test/media/2026/11/K-v1.pdf?sig=1');
+
+    expect($seen['options']['ResponseContentDisposition'])->toStartWith('inline')->toContain('price list.pdf')
+        ->and($seen['expiration']->between(now()->addMinutes(59), now()->addMinutes(61)))->toBeTrue();
+});
+
+it('redirects a cloud raster to the direct url when public, else to a signed url', function () {
+    fakeCloudDisk('s3');
+    config(['filesystems.disks.s3.url' => null]);
+    Storage::disk('s3')->buildTemporaryUrlsUsing(fn ($path) => 'https://signed.example.test/'.$path);
+    $media = Media::factory()->create(['disk' => 's3', 'path' => 'media/2026/11/K-v1.webp']);
+
+    $this->get($media->url())->assertRedirect('https://signed.example.test/media/2026/11/K-v1.webp');
+
+    config(['filesystems.disks.s3.url' => 'https://cdn.example.test']);
+
+    $this->get($media->appUrl())->assertStatus(302)
+        ->assertRedirect(Storage::disk('s3')->url($media->path));
+});
+
+it('answers range requests with 206 and 416', function () {
+    $media = storedMedia(['name' => 'a.pdf', 'mime' => 'application/pdf', 'kind' => MediaKind::Document], '0123456789');
+
+    $part = $this->get($media->url(), ['Range' => 'bytes=2-5'])->assertStatus(206)
+        ->assertHeader('Content-Range', 'bytes 2-5/10')
+        ->assertHeader('Accept-Ranges', 'bytes');
+    expect($part->streamedContent())->toBe('2345');
+
+    $tail = $this->get($media->url(), ['Range' => 'bytes=-3'])->assertStatus(206);
+    expect($tail->streamedContent())->toBe('789');
+
+    $this->get($media->url(), ['Range' => 'bytes=50-60'])->assertStatus(416)
+        ->assertHeader('Content-Range', 'bytes */10');
+
+    $this->get($media->url())->assertOk()->assertHeader('Accept-Ranges', 'bytes');
 });

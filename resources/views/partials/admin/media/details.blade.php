@@ -176,7 +176,7 @@
             <div
                 class="flex gap-2"
                 x-data="{
-                    url: @js($media->url()),
+                    url: @js($media->appUrl()),
                     copy() {
                         copyText(this.url).then((copied) => (copied ? this.copied() : this.selectInstead()));
                     },
@@ -191,7 +191,7 @@
                     },
                 }"
             >
-                <flux:input size="sm" readonly :value="$media->url()" :aria-label="__('media.details.url')" class="min-w-0 flex-1" x-on:focus="$event.target.select()" />
+                <flux:input size="sm" readonly :value="$media->appUrl()" :aria-label="__('media.details.url')" class="min-w-0 flex-1" x-on:focus="$event.target.select()" />
                 <flux:button size="sm" icon="link" x-on:click="copy()" data-test="media-details-copy">{{ __('media.details.copy') }}</flux:button>
             </div>
         </div>

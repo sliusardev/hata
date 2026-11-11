@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Actions\Media\OptimizeImage;
 use App\Enums\MediaKind;
 use App\Models\Concerns\HasSearchIndex;
+use App\Support\Media\MediaDisks;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -122,9 +123,14 @@ class Media extends Model
         return $this->hasMany(MediaUsage::class);
     }
 
+    /**
+     * The URL to put in an <img> or link: the direct bucket/CDN URL for a raster image on a cloud disk that has a
+     * public URL (the path carries the version, so it needs no `v`), otherwise the app route with `?v=`.
+     */
     public function url(): string
     {
-        return route('media.show', [$this->key, $this->name, 'v' => $this->version]);
+        return $this->directUrl($this->path)
+            ?? route('media.show', [$this->key, $this->name, 'v' => $this->version]);
     }
 
     public function thumbUrl(): ?string
@@ -133,7 +139,34 @@ class Media extends Model
             return null;
         }
 
-        return route('media.show', [$this->key, $this->name, 'thumb' => 1, 'v' => $this->version]);
+        return $this->directUrl($this->thumb_path)
+            ?? route('media.show', [$this->key, $this->name, 'thumb' => 1, 'v' => $this->version]);
+    }
+
+    /**
+     * The stable `/media/{key}/{name}` URL, without a version: the one to copy into content, whichever disk the file is on.
+     */
+    public function appUrl(): string
+    {
+        return route('media.show', [$this->key, $this->name]);
+    }
+
+    /**
+     * The public URL of a stored object (Flysystem's URL, which includes the disk's path prefix), or null when the
+     * file must go through the app: local disks, disks without a public URL, and SVG (always streamed, sandboxed)
+     * or documents (signed, with their real name).
+     */
+    public function directUrl(string $path): ?string
+    {
+        if (! MediaDisks::isCloud($this->disk) || MediaDisks::publicUrl($this->disk) === null) {
+            return null;
+        }
+
+        if ($this->kind !== MediaKind::Image || $this->mime === 'image/svg+xml') {
+            return null;
+        }
+
+        return Storage::disk($this->disk)->url($path);
     }
 
     public function isImage(): bool

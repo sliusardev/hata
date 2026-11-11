@@ -5,6 +5,7 @@ use App\Models\MediaFolder;
 use App\Models\MediaUsage;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
@@ -280,4 +281,18 @@ it('keeps the outline of the open tile when it has focus', function () {
         ->and($classes)->toContain('outline-2', 'outline-accent')
         ->not->toContain('focus:outline-none')
         ->and($classes)->toContain('focus-visible:outline-dashed');
+});
+
+it('shows the stable app url in the details panel even for a direct cloud file', function () {
+    $this->actingAs(mediaViewer());
+    config(['filesystems.disks.s3.driver' => 's3', 'filesystems.disks.s3.url' => 'https://cdn.example.test']);
+    Storage::fake('s3', ['url' => 'https://cdn.example.test']);
+    $media = Media::factory()->create(['disk' => 's3', 'path' => 'media/2026/11/K-v1.webp']);
+
+    expect($media->url())->toStartWith('https://cdn.example.test/');
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->assertSeeHtml('value="'.$media->appUrl().'"')
+        ->assertDontSeeHtml('value="'.$media->url().'"');
 });

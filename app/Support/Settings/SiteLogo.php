@@ -4,6 +4,7 @@ namespace App\Support\Settings;
 
 use App\Models\Media;
 use App\Support\Media\MediaAcceptance;
+use App\Support\Media\MediaDisks;
 use ArrayObject;
 use Illuminate\Support\Facades\Storage;
 
@@ -43,7 +44,7 @@ class SiteLogo
     }
 
     /**
-     * The file chosen for exactly this variant, with no fallback; null when unset, deleted, missing on disk or not a logo format.
+     * The file chosen for exactly this variant, with no fallback; null when unset, deleted, missing on a local disk (a cloud disk is trusted, to save a request) or not a logo format.
      */
     public static function own(string $variant): ?Media
     {
@@ -60,7 +61,7 @@ class SiteLogo
 
             $memo[$id] = $media !== null
                 && (new MediaAcceptance('image', self::EXTENSIONS))->allows($media)
-                && Storage::disk($media->disk)->exists($media->path)
+                && (MediaDisks::isCloud($media->disk) || Storage::disk($media->disk)->exists($media->path))
                 ? $media
                 : null;
         }

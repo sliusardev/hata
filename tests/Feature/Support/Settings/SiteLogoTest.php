@@ -63,3 +63,13 @@ it('renders the default mark, not an image with a dead URL, when both logos are 
 
     expect(view('components.site-logo')->render())->not->toContain('<img');
 });
+
+it('trusts the row on a cloud disk without asking the disk whether the file exists', function () {
+    $disk = fakeCloudDisk('s3');
+    $logo = Media::factory()->image()->create(['disk' => 's3', 'name' => 'logo.webp']);
+    app(SiteSettings::class)->put(['logo_light' => $logo->id]);
+
+    // Nothing was ever written: a local disk would treat the logo as missing.
+    expect($disk->exists($logo->path))->toBeFalse()
+        ->and(SiteLogo::own('light')?->id)->toBe($logo->id);
+});
