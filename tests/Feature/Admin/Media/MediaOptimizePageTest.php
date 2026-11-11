@@ -3,6 +3,7 @@
 use App\Actions\Media\OptimizeExistingMedia;
 use App\Actions\Media\OptimizeImage;
 use App\Actions\Media\RebuildMediaFile;
+use App\Enums\OptimizeOutcome;
 use App\Jobs\OptimizeExistingMediaBatch;
 use App\Models\Media;
 use App\Models\User;
@@ -309,3 +310,26 @@ it('pluralizes the progress by the total', function (string $locale) {
     expect(trans_choice('media.optimize.progress', 1, ['processed' => 0, 'total' => 1]))
         ->toBe($locale === 'uk' ? '0 з 1 файлу' : '0 of 1 file');
 })->with(['en', 'uk']);
+
+it('has a label for every outcome and a skipped reason for every outcome but optimized', function (string $locale) {
+    app()->setLocale($locale);
+
+    foreach (OptimizeOutcome::cases() as $outcome) {
+        expect(__("media.optimize.outcomes.{$outcome->value}"))->not->toBe("media.optimize.outcomes.{$outcome->value}");
+
+        if ($outcome !== OptimizeOutcome::Optimized) {
+            expect(trans_choice("media.optimize.skipped_reasons.{$outcome->value}", 2, ['count' => 2]))->not->toContain('skipped_reasons');
+        }
+    }
+})->with(['en', 'uk']);
+
+it('lists a file changed during the run as skipped', function () {
+    pageCandidate();
+    $run = app(OptimizeExistingMedia::class)->startWithoutActor();
+    $run->record(Media::query()->firstOrFail(), OptimizeOutcome::Changed, 10, 10);
+    app(OptimizationRunStore::class)->save($run);
+
+    Livewire::test('pages::admin.media.optimize')
+        ->assertSee(trans_choice('media.optimize.skipped_reasons.changed', 1, ['count' => 1]))
+        ->assertSee(__('media.optimize.outcomes.changed'));
+});

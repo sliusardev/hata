@@ -3,6 +3,7 @@
 use App\Actions\Media\OptimizeImage;
 use App\Actions\Media\RebuildMediaFile;
 use App\Enums\MediaKind;
+use App\Exceptions\MediaChangedException;
 use App\Exceptions\MediaEditException;
 use App\Exceptions\MediaUploadException;
 use App\Models\Media;
@@ -322,4 +323,51 @@ it('marks a file optimized without rewriting it', function () {
         ->and($fresh->optimize_failure)->toBeNull()
         ->and($fresh->version)->toBe(1)
         ->and(Storage::disk('local')->get($fresh->path))->toBe('old-file');
+});
+
+it('refuses to store over a version changed meanwhile and leaves the files and the row as they were', function () {
+    $media = rebuildableMedia('old-file', null, ['width' => 10, 'height' => 10]);
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 400, 300), 'image/jpeg', null);
+    // A crop or replace stored a new version after $media was loaded.
+    Media::query()->whereKey($media->id)->update(['version' => 2]);
+    $row = Media::query()->findOrFail($media->id)->getAttributes();
+
+    expect(fn () => app(RebuildMediaFile::class)->store($media, $result, null, expectedVersion: 1))
+        ->toThrow(MediaChangedException::class);
+
+    $disk = Storage::disk('local');
+    expect(Media::query()->findOrFail($media->id)->getAttributes())->toBe($row)
+        ->and($media->version)->toBe(1)
+        ->and($disk->get($media->path))->toBe('old-file')
+        ->and($disk->get((string) $media->thumb_path))->toBe('old-thumb')
+        ->and($disk->allFiles())->toEqualCanonicalizing([$media->path, $media->thumb_path]);
+});
+
+it('leaves none of its files behind when the row was deleted meanwhile', function () {
+    $media = rebuildableMedia('old-file');
+    $result = app(OptimizeImage::class)->handle(makeImage('jpg', 400, 300), 'image/jpeg', null);
+    // Deleted meanwhile; its files go after that commit, so they may still be there now.
+    Media::query()->whereKey($media->id)->delete();
+
+    expect(fn () => app(RebuildMediaFile::class)->store($media, $result, null, newOriginal: 'original-bytes', expectedVersion: 1))
+        ->toThrow(MediaChangedException::class);
+
+    expect(Storage::disk('local')->allFiles())->toBe([]);
+});
+
+it('marks a file optimized only while its version is the expected one', function () {
+    $media = rebuildableMedia('old-file', null, ['optimized_with' => null]);
+    Media::query()->whereKey($media->id)->update(['version' => 2, 'edits' => ['rotate' => 90, 'flip_h' => false, 'flip_v' => false, 'crop' => null, 'size' => null]]);
+    $media->edits = null;
+
+    expect(fn () => app(RebuildMediaFile::class)->markOptimized($media, 'webp:2560:80:exif0', expectedVersion: 1))
+        ->toThrow(MediaChangedException::class);
+
+    $fresh = $media->fresh();
+    expect($fresh->optimized_with)->toBeNull()
+        ->and($fresh->edits)->not->toBeNull();
+
+    app(RebuildMediaFile::class)->markOptimized($fresh, 'webp:2560:80:exif0', expectedVersion: 2);
+
+    expect($media->fresh()->optimized_with)->toBe('webp:2560:80:exif0');
 });

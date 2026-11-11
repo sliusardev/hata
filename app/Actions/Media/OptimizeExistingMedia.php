@@ -3,6 +3,7 @@
 namespace App\Actions\Media;
 
 use App\Enums\OptimizeOutcome;
+use App\Exceptions\MediaChangedException;
 use App\Exceptions\OptimizationDisabledException;
 use App\Models\Media;
 use App\Models\User;
@@ -205,14 +206,32 @@ class OptimizeExistingMedia
 
     /**
      * Rebuild one file from its source (the kept original, else the current file) with its stored edits.
-     * Skipped outcomes write nothing; an existing original is never dropped.
+     * Skipped outcomes write nothing; an existing original is never dropped. The row is rewritten only while it still
+     * has the version loaded here: a file cropped or replaced meanwhile is `changed`, one deleted meanwhile `missing`.
      *
      * @return array{OptimizeOutcome, int, int} The outcome, and the size of the current file before and after.
      */
     public function optimizeOne(Media $media): array
     {
         $before = (int) $media->size;
+        $version = (int) $media->version;
 
+        try {
+            return $this->rebuild($media, $before, $version);
+        } catch (MediaChangedException $e) {
+            return [$e->gone ? OptimizeOutcome::Missing : OptimizeOutcome::Changed, $before, $before];
+        }
+    }
+
+    /**
+     * optimizeOne() without the version check's outcome: throws when the row changed or went away meanwhile.
+     *
+     * @return array{OptimizeOutcome, int, int}
+     *
+     * @throws MediaChangedException
+     */
+    private function rebuild(Media $media, int $before, int $version): array
+    {
         try {
             $source = MediaSource::for($media);
         } catch (RuntimeException) {
@@ -236,7 +255,7 @@ class OptimizeExistingMedia
 
         if (! $source->isOriginal && $result->contents === $source->contents) {
             $media->edits = null;
-            $this->rebuilder->markOptimized($media, $this->optimizer->fingerprint());
+            $this->rebuilder->markOptimized($media, $this->optimizer->fingerprint(), $version);
 
             return [OptimizeOutcome::AlreadyOptimal, $before, $before];
         }
@@ -250,6 +269,7 @@ class OptimizeExistingMedia
             newOriginal: $keepOriginal ? $source->contents : null,
             newOriginalMime: $keepOriginal ? $source->mime : null,
             keepEdits: $source->isOriginal,
+            expectedVersion: $version,
         );
 
         return [OptimizeOutcome::Optimized, $before, (int) $media->size];

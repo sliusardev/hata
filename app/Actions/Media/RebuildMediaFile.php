@@ -2,6 +2,7 @@
 
 namespace App\Actions\Media;
 
+use App\Exceptions\MediaChangedException;
 use App\Exceptions\MediaEditException;
 use App\Exceptions\MediaUploadException;
 use App\Models\Media;
@@ -99,8 +100,13 @@ class RebuildMediaFile
      * @param  ImageEdits|null  $edits  The edits that were applied to produce $result (null or empty: none).
      * @param  string|null  $newOriginalMime  The canonical MIME of $newOriginal when known (saves sniffing it).
      * @param  array<string, mixed>  $attributes
+     * @param  int|null  $expectedVersion  The version the caller loaded; when given, the row is rewritten only while it
+     *                                     still has it (checked under the row lock), so a crop or replace stored
+     *                                     meanwhile is never undone. Null: no check.
      *
      * @throws InvalidArgumentException when $newOriginal is given with $dropOriginal
+     * @throws MediaChangedException when $expectedVersion is given and the row has another version or is gone; nothing
+     *                               is kept: the files are rolled back, or for a deleted row the written ones removed
      */
     public function store(
         Media $media,
@@ -112,6 +118,7 @@ class RebuildMediaFile
         bool $keepEdits = true,
         bool $dropOriginal = false,
         array $attributes = [],
+        ?int $expectedVersion = null,
     ): Media {
         if ($dropOriginal && $newOriginal !== null) {
             throw new InvalidArgumentException('A new original can not be stored while dropping the original.');
@@ -162,8 +169,18 @@ class RebuildMediaFile
                 $disk->put($target, $bytes);
             }
 
-            DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $animated, $imageEdits, $keepEdits, $stale): void {
-                $version = (int) Media::query()->whereKey($media->getKey())->lockForUpdate()->value('version');
+            DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $animated, $imageEdits, $keepEdits, $stale, $expectedVersion): void {
+                $stored = Media::query()->whereKey($media->getKey())->lockForUpdate()->value('version');
+
+                if ($expectedVersion !== null && $stored === null) {
+                    throw MediaChangedException::gone();
+                }
+
+                if ($expectedVersion !== null && (int) $stored !== $expectedVersion) {
+                    throw MediaChangedException::changed();
+                }
+
+                $version = (int) $stored;
 
                 $media->fill($attributes)->fill([
                     'path' => $path,
@@ -191,7 +208,9 @@ class RebuildMediaFile
                 });
             });
         } catch (Throwable $e) {
-            $this->undoWrites($disk, $written, $backups);
+            // A deleted row's old files belong to its deletion (which may already have removed them): restoring them
+            // would leave orphans, so everything written here is removed instead.
+            $this->undoWrites($disk, $written, $e instanceof MediaChangedException && $e->gone ? [] : $backups);
             $media->setRawAttributes($originalBefore, sync: true);
             $media->setRawAttributes($attributesBefore);
 
@@ -203,11 +222,29 @@ class RebuildMediaFile
 
     /**
      * Record that the file already matches the current optimization settings, without touching files or the version
-     * (the bytes are identical, so cached URLs stay valid).
+     * (the bytes are identical, so cached URLs stay valid). Other dirty attributes (e.g. cleared `edits`) are saved too.
+     *
+     * @param  int|null  $expectedVersion  When given, the row is updated only while it still has this version.
+     *
+     * @throws MediaChangedException when $expectedVersion is given and the row has another version or is gone
      */
-    public function markOptimized(Media $media, string $fingerprint): void
+    public function markOptimized(Media $media, string $fingerprint, ?int $expectedVersion = null): void
     {
-        $media->forceFill(['optimized_with' => $fingerprint, 'optimize_failure' => null])->save();
+        $media->forceFill(['optimized_with' => $fingerprint, 'optimize_failure' => null]);
+
+        if ($expectedVersion === null) {
+            $media->save();
+
+            return;
+        }
+
+        $updated = Media::query()->whereKey($media->getKey())->where('version', $expectedVersion)->update($media->getDirty());
+
+        if ($updated === 0) {
+            throw Media::query()->whereKey($media->getKey())->exists() ? MediaChangedException::changed() : MediaChangedException::gone();
+        }
+
+        $media->syncOriginal();
     }
 
     /**

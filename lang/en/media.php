@@ -305,6 +305,7 @@ return [
             'too_large' => ':count too large for the server',
             'unreadable' => ':count unreadable',
             'missing' => ':count missing file|:count missing files',
+            'changed' => ':count changed meanwhile',
         ],
         'recent' => 'Latest files',
         'outcomes' => [
@@ -313,6 +314,7 @@ return [
             'too_large' => 'Too large',
             'unreadable' => 'Unreadable',
             'missing' => 'Missing',
+            'changed' => 'Changed meanwhile',
         ],
         'tab_open_queue' => 'You can close this tab: the queue keeps working.',
         'tab_open_browser' => 'Keep this tab open, and in the foreground if you can: files are processed while it is open. Pausing or closing it stops the run until you come back.',

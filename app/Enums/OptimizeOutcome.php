@@ -9,4 +9,7 @@ enum OptimizeOutcome: string
     case TooLarge = 'too_large';
     case Unreadable = 'unreadable';
     case Missing = 'missing';
+
+    /** The file was cropped or replaced while the batch processed it; that change is kept. */
+    case Changed = 'changed';
 }

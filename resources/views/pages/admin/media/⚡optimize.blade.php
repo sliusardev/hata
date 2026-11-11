@@ -178,7 +178,7 @@ new #[Title('media.optimize.title')] class extends Component {
     // in background tabs, and in browser mode the tab is what processes the files.
     $polling = $run?->status === 'running' && ! $stale;
     $size = fn (int $bytes) => Media::formatBytes($bytes);
-    $outcomeColors = ['optimized' => 'green', 'already_optimal' => 'zinc', 'too_large' => 'amber', 'unreadable' => 'amber', 'missing' => 'red'];
+    $outcomeColors = ['optimized' => 'green', 'already_optimal' => 'zinc', 'too_large' => 'amber', 'unreadable' => 'amber', 'missing' => 'red', 'changed' => 'zinc'];
 @endphp
 
 <div class="mx-auto w-full max-w-3xl space-y-6" data-test="media-optimize" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
@@ -275,7 +275,7 @@ new #[Title('media.optimize.title')] class extends Component {
 
             @if ($run->skipped() > 0)
                 <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400" data-test="optimize-skipped">
-                    @foreach (['already_optimal', 'too_large', 'unreadable', 'missing'] as $reason)
+                    @foreach (['already_optimal', 'too_large', 'unreadable', 'missing', 'changed'] as $reason)
                         @if (($run->counts[$reason] ?? 0) > 0)
                             <li>{{ trans_choice("media.optimize.skipped_reasons.{$reason}", $run->counts[$reason], ['count' => $run->counts[$reason]]) }}</li>
                         @endif

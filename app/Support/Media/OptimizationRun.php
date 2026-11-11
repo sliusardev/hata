@@ -44,7 +44,7 @@ final class OptimizationRun
     }
 
     /**
-     * Files seen but not rewritten (already optimal, too large, unreadable, missing).
+     * Files seen but not rewritten (already optimal, too large, unreadable, missing, changed meanwhile).
      */
     public function skipped(): int
     {

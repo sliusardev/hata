@@ -88,11 +88,11 @@ function rebuilderRunning(Closure $during): void
             parent::__construct($optimizer);
         }
 
-        public function store(Media $media, OptimizedImage $result, ?ImageEdits $edits, string|Closure|null $newName = null, ?string $newOriginal = null, ?string $newOriginalMime = null, bool $keepEdits = true, bool $dropOriginal = false, array $attributes = []): Media
+        public function store(Media $media, OptimizedImage $result, ?ImageEdits $edits, string|Closure|null $newName = null, ?string $newOriginal = null, ?string $newOriginalMime = null, bool $keepEdits = true, bool $dropOriginal = false, array $attributes = [], ?int $expectedVersion = null): Media
         {
-            ($this->during)();
+            ($this->during)($media);
 
-            return parent::store($media, $result, $edits, $newName, $newOriginal, $newOriginalMime, $keepEdits, $dropOriginal, $attributes);
+            return parent::store($media, $result, $edits, $newName, $newOriginal, $newOriginalMime, $keepEdits, $dropOriginal, $attributes, $expectedVersion);
         }
     });
 }
@@ -499,4 +499,37 @@ it('reports whether a batch holds the lock without taking it', function () {
 
     $lock->release();
     expect($engine->isBatchRunning())->toBeFalse();
+});
+
+it('skips a file cropped or replaced during the batch without undoing that change', function () {
+    $bytes = makeImage('jpg', 400, 300);
+    $media = optimizableMedia($bytes);
+    engine()->startWithoutActor();
+    rebuilderRunning(fn (Media $media) => Media::query()->whereKey($media->id)->update(['version' => 2]));
+
+    $run = engine()->processBatch('cli', 60);
+    $fresh = $media->fresh();
+
+    expect($run->counts)->toBe(['changed' => 1])
+        ->and($run->status)->toBe('done')
+        ->and($fresh->version)->toBe(2)
+        ->and($fresh->path)->toBe($media->path)
+        ->and($fresh->optimized_with)->toBeNull()
+        ->and(Storage::disk('local')->get($media->path))->toBe($bytes)
+        ->and(Storage::disk('local')->allFiles())->toBe([$media->path]);
+});
+
+it('counts a file deleted during the batch as missing and leaves no files of it', function () {
+    $media = optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    rebuilderRunning(function (Media $media) {
+        Media::query()->whereKey($media->id)->delete();
+        Storage::disk('local')->delete($media->path);
+    });
+
+    $run = engine()->processBatch('cli', 60);
+
+    expect($run->counts)->toBe(['missing' => 1])
+        ->and(Media::query()->find($media->id))->toBeNull()
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
