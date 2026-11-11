@@ -139,7 +139,7 @@ class Media extends Model
             return null;
         }
 
-        return $this->directUrl($this->thumb_path)
+        return $this->directUrl($this->thumb_path, 'image/webp')
             ?? route('media.show', [$this->key, $this->name, 'thumb' => 1, 'v' => $this->version]);
     }
 
@@ -152,21 +152,24 @@ class Media extends Model
     }
 
     /**
-     * The public URL of a stored object (Flysystem's URL, which includes the disk's path prefix), or null when the
-     * file must go through the app: local disks, disks without a public URL, and SVG (always streamed, sandboxed)
-     * or documents (signed, with their real name).
+     * The public URL (with `?v=`) of a stored object (Flysystem's URL, which includes the disk's path prefix), or
+     * null when the file must go through the app: local disks, disks without a public URL, and what is served as
+     * SVG (always streamed, sandboxed) or as a document (signed, with its real name). `$mime` is the type being
+     * served, which differs from the row's for a thumbnail (always WebP).
      */
-    public function directUrl(string $path): ?string
+    public function directUrl(string $path, ?string $mime = null): ?string
     {
+        $mime ??= $this->mime;
+
         if (! MediaDisks::isCloud($this->disk) || MediaDisks::publicUrl($this->disk) === null) {
             return null;
         }
 
-        if ($this->kind !== MediaKind::Image || $this->mime === 'image/svg+xml') {
+        if ($this->kind !== MediaKind::Image || $mime === 'image/svg+xml') {
             return null;
         }
 
-        return Storage::disk($this->disk)->url($path);
+        return Storage::disk($this->disk)->url($path).'?v='.$this->version;
     }
 
     public function isImage(): bool

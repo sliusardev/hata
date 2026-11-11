@@ -206,7 +206,8 @@ it('redirects a cloud pdf to a signed url carrying the real name', function () {
     });
     $media = Media::factory()->document()->create(['disk' => 's3', 'name' => 'price list.pdf', 'path' => 'media/2026/11/K-v1.pdf']);
 
-    $this->get($media->url())->assertStatus(302)->assertRedirect('https://signed.example.test/media/2026/11/K-v1.pdf?sig=1');
+    $this->get($media->url())->assertStatus(302)->assertRedirect('https://signed.example.test/media/2026/11/K-v1.pdf?sig=1')
+        ->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-cache, private');
 
     expect($seen['options']['ResponseContentDisposition'])->toStartWith('inline')->toContain('price list.pdf')
         ->and($seen['expiration']->between(now()->addMinutes(59), now()->addMinutes(61)))->toBeTrue();
@@ -223,7 +224,8 @@ it('redirects a cloud raster to the direct url when public, else to a signed url
     config(['filesystems.disks.s3.url' => 'https://cdn.example.test']);
 
     $this->get($media->appUrl())->assertStatus(302)
-        ->assertRedirect(Storage::disk('s3')->url($media->path));
+        ->assertRedirect(Storage::disk('s3')->url($media->path).'?v=1')
+        ->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-cache, private');
 });
 
 it('answers range requests with 206 and 416', function () {
@@ -241,4 +243,59 @@ it('answers range requests with 206 and 416', function () {
         ->assertHeader('Content-Range', 'bytes */10');
 
     $this->get($media->url())->assertOk()->assertHeader('Accept-Ranges', 'bytes');
+});
+
+it('downloads a local file as an attachment with the real name', function () {
+    $media = storedMedia(['name' => 'photo one.webp']);
+
+    $response = $this->get($media->appUrl().'?download=1')->assertOk();
+
+    expect($response->headers->get('Content-Disposition'))->toStartWith('attachment')->toContain('photo one.webp');
+});
+
+it('downloads a cloud raster through a signed attachment url with the real name', function () {
+    fakeCloudDisk('s3');
+    config(['filesystems.disks.s3.url' => 'https://cdn.example.test']);
+    $seen = [];
+    Storage::disk('s3')->buildTemporaryUrlsUsing(function ($path, $expiration, $options) use (&$seen) {
+        $seen = $options;
+
+        return 'https://signed.example.test/'.$path;
+    });
+    $media = Media::factory()->create(['disk' => 's3', 'name' => 'photo.webp', 'path' => 'media/2026/11/K-v3.webp']);
+
+    $this->get($media->appUrl().'?download=1')->assertRedirect('https://signed.example.test/media/2026/11/K-v3.webp');
+
+    expect($seen['ResponseContentDisposition'])->toStartWith('attachment')->toContain('photo.webp');
+});
+
+it('does not cache partial or unsatisfiable responses', function () {
+    $media = storedMedia(['name' => 'a.pdf', 'mime' => 'application/pdf', 'kind' => MediaKind::Document], '0123456789');
+
+    $this->get($media->url(), ['Range' => 'bytes=0-1'])->assertStatus(206)->assertHeader('Cache-Control', 'no-store, private');
+    $this->get($media->url(), ['Range' => 'bytes=99-'])->assertStatus(416)->assertHeader('Cache-Control', 'no-store, private');
+});
+
+it('handles open-ended, multiple, stale and empty suffix ranges', function () {
+    $media = storedMedia(['name' => 'a.pdf', 'mime' => 'application/pdf', 'kind' => MediaKind::Document], '0123456789');
+
+    expect($this->get($media->url(), ['Range' => 'bytes=7-'])->assertStatus(206)->assertHeader('Content-Range', 'bytes 7-9/10')->streamedContent())->toBe('789');
+    expect($this->get($media->url(), ['Range' => 'bytes=0-1,4-5'])->assertOk()->streamedContent())->toBe('0123456789');
+    expect($this->get($media->url(), ['Range' => 'bytes=0-1', 'If-Range' => '"nope"'])->assertOk()->streamedContent())->toBe('0123456789');
+    $this->get($media->url(), ['Range' => 'bytes=-0'])->assertStatus(416);
+});
+
+it('answers ranges on a cloud svg stream', function () {
+    fakeCloudDisk('s3');
+    $media = Media::factory()->create(['disk' => 's3', 'name' => 'l.svg', 'mime' => 'image/svg+xml', 'path' => 'media/2026/11/K-v1.svg']);
+    Storage::disk('s3')->put($media->path, '0123456789');
+
+    expect($this->get($media->url(), ['Range' => 'bytes=3-6'])->assertStatus(206)->assertHeader('Content-Range', 'bytes 3-6/10')->streamedContent())->toBe('3456');
+    $this->get($media->url(), ['Range' => 'bytes=20-'])->assertStatus(416);
+});
+
+it('answers HEAD without a body', function () {
+    $media = storedMedia(['name' => 'a.pdf', 'mime' => 'application/pdf', 'kind' => MediaKind::Document], '0123456789');
+
+    $this->call('HEAD', $media->url())->assertOk()->assertHeader('Content-Length', '10');
 });

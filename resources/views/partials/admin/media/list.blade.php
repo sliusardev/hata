@@ -87,7 +87,7 @@
                     <x-admin.row-actions data-test="media-actions-{{ $item->id }}">
                         <flux:menu.item icon="information-circle" wire:click="select({{ $item->id }})">{{ __('media.details.heading') }}</flux:menu.item>
                         <flux:menu.item icon="arrow-top-right-on-square" :href="$item->url()" target="_blank">{{ __('media.index.open') }}</flux:menu.item>
-                        <flux:menu.item icon="arrow-down-tray" :href="$item->url()" download="{{ $item->name }}">{{ __('media.details.download') }}</flux:menu.item>
+                        <flux:menu.item icon="arrow-down-tray" :href="$item->appUrl().'?download=1'">{{ __('media.details.download') }}</flux:menu.item>
                         @can('delete', $item)
                             <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $item->id }})">{{ __('common.actions.delete') }}</flux:menu.item>
                         @endcan

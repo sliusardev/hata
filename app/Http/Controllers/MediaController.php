@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\MediaKind;
 use App\Models\Media;
+use App\Support\Media\ByteRange;
 use App\Support\Media\MediaDisks;
 use App\Support\Media\MediaTypes;
 use Illuminate\Http\RedirectResponse;
@@ -35,11 +35,17 @@ class MediaController extends Controller
 
         $path = $thumb ? (string) $media->thumb_path : $media->path;
         $mime = $thumb ? 'image/webp' : $media->mime;
+        $download = $request->boolean('download');
         $disk = Storage::disk($media->disk);
+        $disposition = HeaderUtils::makeDisposition(
+            $download ? 'attachment' : ($thumb ? 'inline' : MediaTypes::disposition($mime)),
+            $media->name,
+            $this->asciiFallback($media->name),
+        );
 
         if (MediaDisks::isCloud($media->disk)) {
             if ($mime !== 'image/svg+xml') {
-                return $this->uncacheableRedirect($this->cloudUrl($media, $path, $mime, $thumb), 302);
+                return $this->uncacheableRedirect($this->cloudUrl($media, $path, $mime, $download, $disposition), 302);
             }
         } else {
             abort_unless($disk->exists($path), 404);
@@ -52,6 +58,7 @@ class MediaController extends Controller
                 : 'no-cache',
             'X-Content-Type-Options' => 'nosniff',
             'Accept-Ranges' => 'bytes',
+            'Content-Disposition' => $disposition,
         ];
 
         if ($mime === 'image/svg+xml') {
@@ -69,25 +76,21 @@ class MediaController extends Controller
 
         try {
             $size = $disk->size($path);
-            $stream = $disk->readStream($path);
+            $stream = $request->isMethod('HEAD') ? null : $disk->readStream($path);
         } catch (UnableToReadFile|UnableToRetrieveMetadata) {
             abort(404);
         }
 
-        abort_if($stream === null, 404);
+        abort_if($stream === false, 404);
 
-        $headers['Content-Disposition'] = HeaderUtils::makeDisposition(
-            $thumb ? 'inline' : MediaTypes::disposition($mime),
-            $media->name,
-            $this->asciiFallback($media->name),
-        );
-
-        $range = $this->parseRange($request, $size, $etag);
+        $range = ByteRange::parse($request->headers->get('Range'), $request->headers->get('If-Range'), $size, $etag);
 
         if ($range === false) {
-            fclose($stream);
-
-            return new Response('', 416, [...$headers, 'Content-Range' => "bytes */{$size}"]);
+            return new Response('', 416, [
+                ...$headers,
+                'Cache-Control' => 'no-store',
+                'Content-Range' => "bytes */{$size}",
+            ]);
         }
 
         [$start, $end] = $range ?? [0, $size - 1];
@@ -96,11 +99,16 @@ class MediaController extends Controller
 
         if ($status === 206) {
             $headers['Content-Range'] = "bytes {$start}-{$end}/{$size}";
+            $headers['Cache-Control'] = 'no-store';
         }
 
         $response = new StreamedResponse(function () use ($stream, $start, $end, $size): void {
+            if ($stream === null) {
+                return;
+            }
+
             if ($size > 0) {
-                $this->copyRange($stream, $start, $end);
+                ByteRange::copy($stream, $start, $end);
             }
 
             fclose($stream);
@@ -113,95 +121,22 @@ class MediaController extends Controller
     }
 
     /**
-     * Where a cloud file is fetched from: the public/CDN URL for a raster image on a disk that has one, otherwise
-     * a signed URL (valid for an hour) whose disposition and type carry the real name.
+     * Where a cloud file is fetched from: the public/CDN URL for a raster image on a disk that has one (not for a
+     * download, which needs the real name), otherwise a signed URL (valid for an hour) whose disposition and type
+     * carry the real name.
      */
-    private function cloudUrl(Media $media, string $path, string $mime, bool $thumb): string
+    private function cloudUrl(Media $media, string $path, string $mime, bool $download, string $disposition): string
     {
-        $direct = $mime !== 'image/svg+xml' && $media->kind === MediaKind::Image ? $media->directUrl($path) : null;
+        $direct = $download ? null : $media->directUrl($path, $mime);
 
         if ($direct !== null) {
             return $direct;
         }
 
-        $disposition = HeaderUtils::makeDisposition(
-            $thumb ? 'inline' : MediaTypes::disposition($mime),
-            $media->name,
-            $this->asciiFallback($media->name),
-        );
-
         return Storage::disk($media->disk)->temporaryUrl($path, now()->addHour(), [
             'ResponseContentDisposition' => $disposition,
             'ResponseContentType' => MediaTypes::responseMime($mime),
         ]);
-    }
-
-    /**
-     * The single byte range asked for: [start, end] inclusive, null to send the whole file (no or ignorable Range
-     * header, multiple ranges, a stale If-Range) and false when it can't be satisfied.
-     *
-     * @return array{0: int, 1: int}|false|null
-     */
-    private function parseRange(Request $request, int $size, string $etag): array|false|null
-    {
-        $header = $request->headers->get('Range');
-
-        if (! is_string($header) || ! preg_match('/^bytes=(\d*)-(\d*)$/', trim($header), $m)) {
-            return null;
-        }
-
-        $ifRange = $request->headers->get('If-Range');
-
-        if (is_string($ifRange) && trim($ifRange, '"W/ ') !== $etag) {
-            return null;
-        }
-
-        [, $from, $to] = $m;
-
-        if ($from === '' && $to === '') {
-            return null;
-        }
-
-        if ($from === '') {
-            $length = (int) $to;
-
-            return $length === 0 || $size === 0 ? false : [max(0, $size - $length), $size - 1];
-        }
-
-        $start = (int) $from;
-        $end = $to === '' ? $size - 1 : min((int) $to, $size - 1);
-
-        return $start >= $size || $end < $start ? false : [$start, $end];
-    }
-
-    /**
-     * @param  resource  $stream
-     */
-    private function copyRange($stream, int $start, int $end): void
-    {
-        if ($start > 0 && @fseek($stream, $start) !== 0) {
-            for ($skip = $start; $skip > 0 && ! feof($stream); $skip -= strlen((string) $chunk)) {
-                $chunk = fread($stream, min(8192, $skip));
-
-                if ($chunk === false || $chunk === '') {
-                    return;
-                }
-            }
-        }
-
-        $left = $end - $start + 1;
-
-        while ($left > 0 && ! feof($stream)) {
-            $chunk = fread($stream, min(8192, $left));
-
-            if ($chunk === false || $chunk === '') {
-                break;
-            }
-
-            echo $chunk;
-            $left -= strlen($chunk);
-            flush();
-        }
     }
 
     private function asciiFallback(string $name): string

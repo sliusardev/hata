@@ -299,3 +299,12 @@ it('shows the file url in a selectable field with a copy fallback for plain http
         ->assertSeeHtml((string) Js::from(__('media.details.copied')))
         ->assertSeeHtml((string) Js::from(__('media.details.copy_failed')));
 });
+
+it('points Download at the app route with the download flag', function () {
+    $this->actingAs(mediaEditor());
+    $media = Media::factory()->create();
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->assertSeeHtml('href="'.e($media->appUrl().'?download=1').'"');
+});
