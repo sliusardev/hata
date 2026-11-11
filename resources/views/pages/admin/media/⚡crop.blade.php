@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Media\CropMedia;
+use App\Exceptions\MediaChangedException;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\ImageEdits;
@@ -229,6 +230,8 @@ new #[Title('media.crop.title'), Layout('layouts::focus')] class extends Compone
             foreach ($exception->errors() as $field => $messages) {
                 $this->addError($field === 'size' ? 'size' : 'crop', $messages[0]);
             }
+        } catch (MediaChangedException $exception) {
+            $this->addError('crop', $exception->userMessage());
         } catch (AuthorizationException) {
             Flux::toast(variant: 'danger', text: __('media.errors.forbidden'));
         }

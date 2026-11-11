@@ -101,3 +101,16 @@ it('prunes from the library page at most once an hour', function () {
 
     $this->disk->assertMissing('media/2026/11/b-v1.webp');
 });
+
+it('skips the prune when the optimize batch already spent its budget', function () {
+    Storage::fake('local');
+    pendingObject('media/2026/11/a-v1.webp', -1);
+    $media = Media::factory()->create(['disk' => 'local', 'mime' => 'image/jpeg', 'optimized_with' => null, 'path' => 'media/2025/01/x.jpg']);
+    Storage::disk('local')->put($media->path, makeImage('jpg'));
+    $engine = app(OptimizeExistingMedia::class);
+    $engine->startWithoutActor();
+
+    $engine->processBatch('browser', 0.0);
+
+    $this->disk->assertExists('media/2026/11/a-v1.webp');
+});

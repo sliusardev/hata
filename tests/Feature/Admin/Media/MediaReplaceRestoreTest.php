@@ -1,6 +1,8 @@
 <?php
 
+use App\Actions\Media\ReplaceMediaFile;
 use App\Actions\Media\RestoreOriginal;
+use App\Exceptions\MediaChangedException;
 use App\Models\Media;
 use App\Models\MediaUsage;
 use App\Models\User;
@@ -190,4 +192,26 @@ it('forgets the pending replace or restore on cancel', function () {
         ->call('restoreConfirmed');
 
     expect($media->refresh()->version)->toBe(1);
+});
+
+it('says the file was changed meanwhile when a replace or restore loses the race', function () {
+    $media = replaceTarget(makeImage('jpg', 900, 600));
+    $this->mock(ReplaceMediaFile::class)->shouldReceive('handle')->andThrow(MediaChangedException::changed());
+    $this->mock(RestoreOriginal::class)->shouldReceive('handle')->andThrow(MediaChangedException::changed());
+    $danger = fn (string $event, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
+        && ($params['slots']['text'] ?? null) === __('media.errors.changed_meanwhile');
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->set('replacement', replacementFile('Fresh photo.jpg', makeImage('jpg', 1000, 700)))
+        ->call('confirmReplace')
+        ->call('replaceConfirmed')
+        ->assertReturned(['ok' => false, 'error' => __('media.errors.changed_meanwhile')])
+        ->assertDispatched('toast-show', $danger);
+
+    Livewire::test('pages::admin.media.index')
+        ->call('select', $media->id)
+        ->call('confirmRestore')
+        ->call('restoreConfirmed')
+        ->assertDispatched('toast-show', $danger);
 });

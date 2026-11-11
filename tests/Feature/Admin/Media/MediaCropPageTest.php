@@ -1,5 +1,7 @@
 <?php
 
+use App\Actions\Media\CropMedia;
+use App\Exceptions\MediaChangedException;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\MediaUsage;
@@ -233,4 +235,15 @@ it('explains when the image is too large to edit on this server', function () {
         ->assertSee(__('media.errors.too_large_to_edit'))
         ->assertDontSee(route('admin.media.source', $media), escape: false)
         ->assertDontSee(__('media.crop.apply'));
+});
+
+it('says the file was changed meanwhile when the crop loses the race', function () {
+    $media = cropPageMedia(makeImage('webp', 800, 600));
+    $this->mock(CropMedia::class)->shouldReceive('handle')->andThrow(MediaChangedException::changed());
+
+    Livewire::test('pages::admin.media.crop', ['media' => $media])
+        ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
+        ->call('apply')
+        ->assertHasErrors(['crop' => __('media.errors.changed_meanwhile')])
+        ->assertNoRedirect();
 });

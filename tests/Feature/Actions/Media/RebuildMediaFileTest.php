@@ -10,6 +10,7 @@ use App\Models\Media;
 use App\Models\MediaPendingDeletion;
 use App\Support\Media\MediaSource;
 use App\Support\Media\OptimizedImage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -278,16 +279,18 @@ it('stores the new original with the extension of the source when it is the sour
     Storage::disk('local')->assertExists("media/originals/{$media->key}.heic");
 });
 
-it('increments the version from the database, not from the instance', function () {
+it('refuses to rebuild from an instance loaded before another rebuild, instead of overwriting it', function () {
     $media = rebuildableMedia(makeImage('webp'));
     $stale = Media::query()->findOrFail($media->id);
 
     app(RebuildMediaFile::class)->handle($media, makeImage('jpg', 400, 300), 'image/jpeg', null);
-    $rebuilt = app(RebuildMediaFile::class)->handle($stale, makeImage('jpg', 300, 200), 'image/jpeg', null);
 
-    expect($rebuilt->version)->toBe(3)
-        ->and($stale->version)->toBe(3)
-        ->and($media->fresh()->version)->toBe(3);
+    expect(fn () => app(RebuildMediaFile::class)->handle($stale, makeImage('jpg', 300, 200), 'image/jpeg', null))
+        ->toThrow(MediaChangedException::class);
+
+    expect($stale->version)->toBe(1)
+        ->and($media->fresh()->version)->toBe(2)
+        ->and($media->fresh()->width)->toBe(400);
 });
 
 it('stores that a rebuild from an animated gif is animated', function () {
@@ -435,4 +438,52 @@ it('records no pending deletion and removes its new objects when a cloud rebuild
 
     expect(MediaPendingDeletion::query()->count())->toBe(0)
         ->and($disk->allFiles())->toEqualCanonicalizing([$media->path, $media->thumb_path, $media->original_path]);
+});
+
+it('refuses a cloud rebuild from a stale row and leaves the committed newer version alone', function () {
+    $disk = fakeCloudDisk();
+    $media = cloudMedia();
+    // Another rebuild committed version 2 after $media (version 1) was loaded.
+    $v2 = ['path' => "media/2026/11/{$media->key}-v2.webp", 'thumb_path' => "media/thumbs/{$media->key}-v2.webp"];
+    Media::query()->whereKey($media->id)->update([...$v2, 'version' => 2]);
+    $disk->put($v2['path'], 'committed-v2');
+    $disk->put($v2['thumb_path'], 'committed-v2-thumb');
+    $row = Media::query()->findOrFail($media->id)->getAttributes();
+    $original = makeImage('jpg', 1200, 800);
+
+    expect(fn () => app(RebuildMediaFile::class)->handle($media, $original, 'image/jpeg', null, newOriginal: $original))
+        ->toThrow(MediaChangedException::class);
+
+    expect(Media::query()->findOrFail($media->id)->getAttributes())->toBe($row)
+        ->and($disk->get($v2['path']))->toBe('committed-v2')
+        ->and($disk->get($v2['thumb_path']))->toBe('committed-v2-thumb')
+        ->and($disk->allFiles())->toEqualCanonicalizing([$media->path, $media->thumb_path, $media->original_path, ...array_values($v2)])
+        ->and(MediaPendingDeletion::query()->count())->toBe(0);
+});
+
+it('refuses a local rebuild from a stale row without touching the files', function () {
+    $media = rebuildableMedia('old-file');
+    Media::query()->whereKey($media->id)->update(['version' => 2]);
+
+    expect(fn () => app(RebuildMediaFile::class)->handle($media, makeImage('jpg', 400, 300), 'image/jpeg', null))
+        ->toThrow(MediaChangedException::class);
+
+    expect(Media::query()->findOrFail($media->id)->version)->toBe(2)
+        ->and(Storage::disk('local')->get($media->path))->toBe('old-file');
+});
+
+it('refuses a rebuild while another rebuild of the same file holds its lock', function () {
+    $media = rebuildableMedia('old-file');
+    $lock = Cache::lock(RebuildMediaFile::lockName($media), 60);
+    $lock->get();
+
+    try {
+        expect(fn () => app(RebuildMediaFile::class)->handle($media, makeImage('jpg', 400, 300), 'image/jpeg', null))
+            ->toThrow(MediaChangedException::class);
+    } finally {
+        $lock->release();
+    }
+
+    expect(Media::query()->findOrFail($media->id)->version)->toBe(1)
+        ->and(Storage::disk('local')->get($media->path))->toBe('old-file');
 });

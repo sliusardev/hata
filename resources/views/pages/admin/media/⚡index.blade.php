@@ -11,6 +11,7 @@ use App\Actions\Media\ReplaceMediaFile;
 use App\Actions\Media\RestoreOriginal;
 use App\Actions\Media\UpdateMedia;
 use App\Actions\Media\ZipMedia;
+use App\Exceptions\MediaChangedException;
 use App\Exceptions\MediaUploadException;
 use App\Livewire\Forms\MediaDetailsForm;
 use App\Models\Media;
@@ -238,7 +239,13 @@ new #[Title('media.index.title')] class extends Component {
 
         // At most once an hour, after the response is sent: replaced cloud files whose delay is over.
         if (Cache::add(PruneMediaDeletions::PAGE_GUARD, true, now()->addHour())) {
-            defer(fn () => app(PruneMediaDeletions::class)->handle());
+            defer(function (): void {
+                try {
+                    app(PruneMediaDeletions::class)->handle(PruneMediaDeletions::PAGE_LIMIT);
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            });
         }
 
         $this->forgetMissingFolder();
@@ -373,6 +380,10 @@ new #[Title('media.index.title')] class extends Component {
             Flux::toast(variant: 'danger', text: $exception->getMessage());
 
             return ['ok' => false, 'error' => $exception->getMessage()];
+        } catch (MediaChangedException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->userMessage());
+
+            return ['ok' => false, 'error' => $exception->userMessage()];
         } catch (AuthorizationException) {
             $this->toastForbidden();
 
@@ -426,6 +437,10 @@ new #[Title('media.index.title')] class extends Component {
             $restoreOriginal->handle($this->actor(), $media);
         } catch (ValidationException $exception) {
             Flux::toast(variant: 'danger', text: $exception->errors()['original'][0] ?? __('media.restore.failed'));
+
+            return;
+        } catch (MediaChangedException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->userMessage());
 
             return;
         } catch (AuthorizationException) {

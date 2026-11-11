@@ -17,6 +17,9 @@ class PruneMediaDeletions
     /** Cache key that limits the library page to one prune an hour. */
     public const string PAGE_GUARD = 'media-prune-deletions';
 
+    /** Rows the library page handles per prune, so the deferred work after its response stays short. */
+    public const int PAGE_LIMIT = 50;
+
     /** Hours a failed deletion waits before it is tried again, so it doesn't block the rows behind it. */
     private const int RETRY_HOURS = 24;
 

@@ -262,6 +262,8 @@ return [
         'invalid_crop' => 'The crop area is outside the image.',
         'invalid_edit' => 'The edit settings are not valid.',
         'other_kind' => 'This file is :kind, so it can only be replaced with a file of the same type.',
+        'changed_meanwhile' => 'Someone changed this file meanwhile. Reload the page and try again.',
+        'deleted_meanwhile' => 'This file was deleted meanwhile.',
         'kinds' => [
             'image' => 'an image',
             'document' => 'a document',

@@ -202,7 +202,11 @@ class OptimizeExistingMedia
             $run->driver = $driver;
 
             $saved = $this->save($run, $savedCursor);
-            $this->pruneDeletions();
+
+            // Only while the batch has budget left, so a browser tick that already used it answers at once.
+            if (microtime(true) - $started < $budgetSeconds) {
+                $this->pruneDeletions();
+            }
 
             return $saved;
         } finally {

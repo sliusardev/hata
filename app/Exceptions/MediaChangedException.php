@@ -24,4 +24,12 @@ class MediaChangedException extends RuntimeException
     {
         return new self(true);
     }
+
+    /**
+     * The translated message the admin UI shows for it.
+     */
+    public function userMessage(): string
+    {
+        return $this->gone ? __('media.errors.deleted_meanwhile') : __('media.errors.changed_meanwhile');
+    }
 }
