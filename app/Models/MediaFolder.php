@@ -90,6 +90,24 @@ class MediaFolder extends Model
     }
 
     /**
+     * Direct subfolders of a folder (null = the top level), taken from treeRows() rows, by name, each with
+     * `children_count` set: the folder tiles of the library page and the media picker.
+     *
+     * @param  array<int, array{folder: MediaFolder, depth: int}>  $rows
+     * @return \Illuminate\Support\Collection<int, MediaFolder>
+     */
+    public static function childrenOf(array $rows, ?int $parentId): \Illuminate\Support\Collection
+    {
+        $folders = collect($rows)->pluck('folder');
+        $childCounts = $folders->countBy(fn (MediaFolder $folder): int => $folder->parent_id ?? 0);
+
+        return $folders
+            ->where('parent_id', $parentId)
+            ->each(fn (MediaFolder $folder) => $folder->setAttribute('children_count', $childCounts->get($folder->id, 0)))
+            ->values();
+    }
+
+    /**
      * Ids of every folder below this one, at any depth (self excluded).
      *
      * @return array<int, int>

@@ -1139,13 +1139,7 @@ new #[Title('media.index.title')] class extends Component {
             return collect();
         }
 
-        $rows = collect($this->folders)->pluck('folder');
-        $childCounts = $rows->countBy(fn (MediaFolder $folder): int => $folder->parent_id ?? 0);
-
-        return $rows
-            ->where('parent_id', $current->id)
-            ->each(fn (MediaFolder $folder) => $folder->setAttribute('children_count', $childCounts->get($folder->id, 0)))
-            ->values();
+        return MediaFolder::childrenOf($this->folders, $current->id);
     }
 
     /**
@@ -1502,23 +1496,7 @@ new #[Title('media.index.title')] class extends Component {
         <div class="flex min-w-0 flex-1 flex-col gap-6 xl:flex-row xl:items-start">
         <div class="min-w-0 flex-1 space-y-4" data-media-drag-labels="{{ json_encode($this->dragLabels) }}">
             <div class="flex min-h-8 items-center gap-2 text-sm">
-                <flux:breadcrumbs :aria-label="__('media.index.folders.path')">
-                    @if ($folder === null)
-                        <flux:breadcrumbs.item>{{ __('media.index.folders.all') }}</flux:breadcrumbs.item>
-                    @else
-                        <flux:breadcrumbs.item href="#" wire:click.prevent="$set('folder', null)">{{ __('media.index.folders.all') }}</flux:breadcrumbs.item>
-                        @if ($folder === 'none')
-                            <flux:breadcrumbs.item>{{ __('media.index.folders.none') }}</flux:breadcrumbs.item>
-                        @endif
-                        @foreach ($this->breadcrumb as $crumb)
-                            @if ($loop->last)
-                                <flux:breadcrumbs.item wire:key="crumb-{{ $crumb->id }}" title="{{ $crumb->name }}">{{ $crumb->name }}</flux:breadcrumbs.item>
-                            @else
-                                <flux:breadcrumbs.item href="#" wire:click.prevent="$set('folder', '{{ $crumb->id }}')" wire:key="crumb-{{ $crumb->id }}" title="{{ $crumb->name }}">{{ $crumb->name }}</flux:breadcrumbs.item>
-                            @endif
-                        @endforeach
-                    @endif
-                </flux:breadcrumbs>
+                @include('partials.admin.media.breadcrumb', ['folder' => $folder, 'crumbs' => $this->breadcrumb, 'rootValue' => 'null'])
                 <flux:text size="sm" variant="subtle">· {{ trans_choice('media.index.file_count', $this->media->total()) }}</flux:text>
 
                 @if ($this->currentFolder && $canManageFolders)

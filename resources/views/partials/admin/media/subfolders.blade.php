@@ -2,8 +2,11 @@
     Subfolder tiles of the open folder, shown above the files in grid and list view.
     Expects: $subfolders (folders with media_count and children_count), $canMove (media.edit: the tiles are
     drop targets for files and folders, can be dragged as folders and get the folder "⋮" menu; see resources/js/media-folder-drag.js).
+    Optional: $noFolderCount (int: a first "No folder" tile with that many files, which sets the folder to 'none'; the media
+    picker shows it at the top level, where it has no folder tree). The media picker passes $canMove = false.
     Tiles are not files: no selection, no marquee (data-media-folder keeps the marquee away).
 --}}
+@php $noFolderCount ??= null; @endphp
 <div
     class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     role="group"
@@ -14,6 +17,26 @@
         x-on:dragend.window="reset()"
     @endif
 >
+    @if ($noFolderCount !== null)
+        <div wire:key="subfolder-none" class="flex min-w-0 items-center rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">
+            <div
+                role="button"
+                tabindex="0"
+                class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dashed focus-visible:outline-zinc-500 dark:focus-visible:outline-zinc-300"
+                wire:click="$set('folder', 'none')"
+                x-on:keydown.enter.prevent="$el.click()"
+                x-on:keydown.space.prevent="$el.click()"
+                data-test="media-subfolder-open-none"
+            >
+                <flux:icon name="folder-minus" variant="outline" class="size-6 shrink-0 text-zinc-400" />
+                <div class="min-w-0 flex-1">
+                    <div class="truncate text-sm font-medium text-zinc-800 dark:text-white">{{ __('media.index.folders.none') }}</div>
+                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ trans_choice('media.index.subfolders.files', $noFolderCount) }}</div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @foreach ($subfolders as $subfolder)
         <div
             wire:key="subfolder-{{ $subfolder->id }}"

@@ -77,6 +77,65 @@ it('narrows the library by search, month and folder and loads 30 files at a time
     expect($picker->instance()->files->modelKeys())->toBe([$old->id]);
 });
 
+it('opens a folder from its tile, shows its subfolders and only its own files, and leads back by the breadcrumb', function () {
+    $this->actingAs(pickerUser());
+    $brand = MediaFolder::factory()->create(['name' => 'Brand']);
+    $icons = MediaFolder::factory()->create(['name' => 'Icons', 'parent_id' => $brand->id]);
+    $deep = MediaFolder::factory()->create(['name' => 'Deep', 'parent_id' => $icons->id]);
+    $other = MediaFolder::factory()->create(['name' => 'Other']);
+    $root = Media::factory()->image()->create(['name' => 'loose.webp']);
+    $inBrand = Media::factory()->image()->inFolder($brand)->create(['name' => 'brand-mark.webp']);
+    $inIcons = Media::factory()->image()->inFolder($icons)->create(['name' => 'icon.webp']);
+
+    // At the root: every file, the top-level folders and "No folder" as tiles, no drag and no folder menus.
+    $picker = testPicker()->call('openPicker')
+        ->assertSeeHtml('data-test="media-subfolder-open-'.$brand->id.'"')
+        ->assertSeeHtml('data-test="media-subfolder-open-'.$other->id.'"')
+        ->assertSeeHtml('data-test="media-subfolder-open-none"')
+        ->assertDontSeeHtml('data-test="media-subfolder-open-'.$icons->id.'"')
+        ->assertDontSeeHtml('draggable="true"')
+        ->assertDontSeeHtml('data-test="media-subfolder-actions-');
+    expect($picker->instance()->subfolders->pluck('id')->all())->toBe([$brand->id, $other->id])
+        ->and($picker->instance()->files->modelKeys())->toEqualCanonicalizing([$root->id, $inBrand->id, $inIcons->id]);
+
+    // A tile sets the folder: its subfolders as tiles, only its own files, the breadcrumb leads back.
+    $picker->set('folder', (string) $brand->id)
+        ->assertSeeHtml('data-test="media-subfolder-open-'.$icons->id.'"')
+        ->assertDontSeeHtml('data-test="media-subfolder-open-'.$deep->id.'"')
+        ->assertDontSeeHtml('data-test="media-subfolder-open-none"')
+        ->assertSeeHtml('data-test="media-breadcrumb-root"');
+    expect($picker->instance()->subfolders->pluck('id')->all())->toBe([$icons->id])
+        ->and($picker->instance()->files->modelKeys())->toBe([$inBrand->id]);
+
+    $picker->set('folder', (string) $icons->id)
+        ->assertSeeHtml('data-test="media-breadcrumb-'.$brand->id.'"');
+    expect($picker->instance()->files->modelKeys())->toBe([$inIcons->id]);
+
+    $picker->set('folder', 'none');
+    expect($picker->instance()->subfolders)->toBeEmpty()
+        ->and($picker->instance()->files->modelKeys())->toBe([$root->id]);
+
+    $picker->set('folder', '')->assertDontSeeHtml('data-test="media-breadcrumb-root"');
+    expect($picker->instance()->subfolders->pluck('id')->all())->toBe([$brand->id, $other->id]);
+});
+
+it('hides the folder tiles while searching', function () {
+    $this->actingAs(pickerUser());
+    MediaFolder::factory()->create(['name' => 'Brand']);
+
+    $picker = testPicker()->call('openPicker')->set('search', 'x');
+
+    expect($picker->instance()->subfolders)->toBeEmpty();
+});
+
+it('falls back to the root for a folder id that is unknown or not an id', function (string $folder) {
+    $this->actingAs(pickerUser());
+
+    testPicker()->call('openPicker')
+        ->set('folder', $folder)
+        ->assertSet('folder', '');
+})->with(['987654', 'abc', '1 or 1=1']);
+
 it('selects a file with a click and sets the value with Select', function () {
     $this->actingAs(pickerUser());
     [$first, $second] = Media::factory()->image()->count(2)->create()->all();
@@ -172,12 +231,13 @@ it('ignores ids that are missing or not allowed', function () {
         ->assertSet('value', [$image->id]);
 });
 
-it('uploads into the chosen folder, selects the new file and switches to the library', function () {
+it('uploads into the open folder, selects the new file and switches to the library', function () {
     $this->actingAs(pickerUser(['media.upload']));
     $folder = MediaFolder::factory()->create();
 
     $picker = testPicker()
         ->call('openPicker')
+        ->set('folder', (string) $folder->id)
         ->assertSee(__('media.picker.tabs.upload'))
         ->set('tab', 'upload')
         ->set('upload', UploadedFile::fake()->createWithContent('Logo.png', makeImage('png', 300, 120)))
@@ -191,7 +251,9 @@ it('uploads into the chosen folder, selects the new file and switches to the lib
 
     $picker->assertSet('picked', [$media->id])
         ->assertSet('focusedId', $media->id)
-        ->assertSet('tab', 'library');
+        ->assertSet('tab', 'library')
+        ->assertSet('folder', (string) $folder->id);
+    expect($picker->instance()->files->modelKeys())->toBe([$media->id]);
 });
 
 it('refuses an upload outside the accepted kind or extensions', function (string $name, Closure $bytes, array $props) {
@@ -391,3 +453,12 @@ it('works with a parent whose field is empty, picks a file and hands its id back
     'empty string, multiple' => ['', true],
     'null, multiple' => [null, true],
 ]);
+
+it('ties its label to the field group', function () {
+    $this->actingAs(pickerUser());
+    $picker = testPicker();
+    $labelId = 'media-picker-label-'.$picker->id();
+
+    $picker->assertSeeHtml('aria-labelledby="'.$labelId.'"')
+        ->assertSeeHtml('id="'.$labelId.'"');
+});

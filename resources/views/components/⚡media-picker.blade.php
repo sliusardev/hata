@@ -99,7 +99,8 @@ new class extends Component {
     public string $month = '';
 
     /**
-     * '' = all files, 'none' = files without a folder, otherwise a folder id. Uploads go here too.
+     * The open folder: '' = all files, 'none' = files without a folder, otherwise a folder id (set by the folder tiles
+     * and the breadcrumb; an unknown id falls back to ''). Uploads go here too.
      */
     public string $folder = '';
 
@@ -430,6 +431,62 @@ new class extends Component {
         return MediaFolder::treeRows();
     }
 
+    #[Computed]
+    public function currentFolder(): ?MediaFolder
+    {
+        if (! ctype_digit($this->folder)) {
+            return null;
+        }
+
+        return collect($this->folders)->firstWhere('folder.id', (int) $this->folder)['folder'] ?? null;
+    }
+
+    /**
+     * The open folder and its ancestors, top first.
+     *
+     * @return \Illuminate\Support\Collection<int, MediaFolder>
+     */
+    #[Computed]
+    public function breadcrumb(): \Illuminate\Support\Collection
+    {
+        return $this->currentFolder?->breadcrumb() ?? collect();
+    }
+
+    /**
+     * Folder tiles above the files, as in the library: the open folder's direct subfolders, or the top-level folders
+     * under "All files" (the picker has no folder tree). None for "No folder" and while a search or month is set.
+     *
+     * @return \Illuminate\Support\Collection<int, MediaFolder>
+     */
+    #[Computed]
+    public function subfolders(): \Illuminate\Support\Collection
+    {
+        if ($this->folder === 'none' || $this->search !== '' || $this->month !== '') {
+            return collect();
+        }
+
+        $current = $this->currentFolder;
+
+        if ($current === null && $this->folder !== '') {
+            return collect();
+        }
+
+        return MediaFolder::childrenOf($this->folders, $current?->id);
+    }
+
+    /**
+     * Files without a folder, for the "No folder" tile under "All files" (null = no tile: in a folder or while filtering).
+     */
+    #[Computed]
+    public function noFolderCount(): ?int
+    {
+        if ($this->folder !== '' || $this->search !== '' || $this->month !== '') {
+            return null;
+        }
+
+        return Media::query()->whereNull('folder_id')->count();
+    }
+
     /**
      * @return array<string, string>
      */
@@ -533,9 +590,9 @@ new class extends Component {
     $modalName = 'media-picker-'.$this->getId();
 @endphp
 
-<div class="space-y-2" data-test="media-picker">
+<div class="space-y-2" role="group" @if ($label) aria-labelledby="media-picker-label-{{ $this->getId() }}" @endif data-test="media-picker">
     @if ($label)
-        <flux:label>{{ $label }}</flux:label>
+        <flux:label id="media-picker-label-{{ $this->getId() }}">{{ $label }}</flux:label>
     @endif
 
     @if ($chosen->isEmpty())
@@ -656,13 +713,6 @@ new class extends Component {
                                     <flux:select.option :value="$monthValue">{{ $monthLabel }}</flux:select.option>
                                 @endforeach
                             </flux:select>
-                            <flux:select wire:model.live="folder" :aria-label="__('media.picker.folder')" class="sm:w-56">
-                                <flux:select.option value="">{{ __('media.index.folders.all') }}</flux:select.option>
-                                <flux:select.option value="none">{{ __('media.index.folders.none') }}</flux:select.option>
-                                @foreach ($this->folders as $row)
-                                    <flux:select.option :value="(string) $row['folder']->id" wire:key="picker-folder-{{ $row['folder']->id }}">{{ str_repeat("\u{00A0}\u{00A0}\u{00A0}", min($row['depth'], 4)) }}{{ $row['folder']->name }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
                             @if ($acceptance->kind() !== null)
                                 <flux:text size="sm">{{ __('media.picker.only.'.$acceptance->accept) }}</flux:text>
                             @endif
@@ -670,11 +720,22 @@ new class extends Component {
 
                         <div class="flex min-h-0 flex-1 flex-col border-t border-zinc-100 md:flex-row dark:border-white/5">
                             <div class="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                                <div class="flex min-h-8 items-center text-sm" data-test="media-picker-breadcrumb">
+                                    @include('partials.admin.media.breadcrumb', ['folder' => $folder, 'crumbs' => $this->breadcrumb, 'rootValue' => "''"])
+                                </div>
+
                                 @if ($canUpload)
                                     @include('partials.admin.media.upload-tiles')
                                 @endif
 
-                                @if ($this->files->isEmpty())
+                                @php $subfolders = $this->subfolders; @endphp
+                                @if ($subfolders->isNotEmpty() || $this->noFolderCount !== null)
+                                    @include('partials.admin.media.subfolders', ['subfolders' => $subfolders, 'canMove' => false, 'noFolderCount' => $this->noFolderCount])
+                                @endif
+
+                                @if ($this->files->isEmpty() && $subfolders->isNotEmpty())
+                                    <flux:text size="sm" variant="subtle">{{ __('media.index.subfolders.no_files') }}</flux:text>
+                                @elseif ($this->files->isEmpty())
                                     <flux:text class="py-10 text-center">{{ __('media.picker.empty') }}</flux:text>
                                 @else
                                     <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5" data-test="media-picker-grid">

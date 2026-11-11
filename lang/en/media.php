@@ -344,7 +344,6 @@ return [
             'upload' => 'Upload new',
         ],
         'search' => 'Search files',
-        'folder' => 'Folder',
         'only' => [
             'image' => 'Only images are shown',
             'document' => 'Only documents are shown',
@@ -359,7 +358,7 @@ return [
         'no_alt' => 'No alt text.',
         'open_in_library' => 'Open in the media library',
         'upload_title' => 'Drop files here',
-        'upload_hint' => 'Uploaded files go into the folder chosen in the library tab and are selected right away.',
+        'upload_hint' => 'Uploaded files go into the folder open in the library tab and are selected right away.',
         'upload_browse' => 'Choose files',
     ],
 
