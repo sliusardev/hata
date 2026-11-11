@@ -50,7 +50,7 @@ class OptimizeMedia extends Command
         $idle = 0;
 
         while (true) {
-            $before = $run?->toArray();
+            $before = $run->toArray();
             $run = $engine->processBatch('cli', self::BATCH_SECONDS);
 
             if ($run === null) {
