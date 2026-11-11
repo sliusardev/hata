@@ -252,6 +252,7 @@ return [
         'unsupported' => 'The file ":name" is not supported.',
         'too_large' => 'File is too large: :size MB, the limit is :limit MB.',
         'heic_unsupported' => 'HEIC can’t be converted on this server, export the photo as JPG.',
+        'storage_failed' => 'The file couldn’t be saved to the storage. Try again later or ask the administrator to check the storage settings.',
         'folder_name' => 'Folder name must be 1–100 characters.',
         'limit_above_server' => 'The limit cannot be higher than the server allows (:size).',
         'folder_exists' => 'A folder with this name already exists here.',

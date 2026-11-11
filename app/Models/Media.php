@@ -125,7 +125,8 @@ class Media extends Model
 
     /**
      * The URL to put in an <img> or link: the direct bucket/CDN URL for a raster image on a cloud disk that has a
-     * public URL (the path carries the version, so it needs no `v`), otherwise the app route with `?v=`.
+     * public URL, otherwise the app route. Both carry `?v={version}`: a direct object path carries the version too,
+     * but rows moved or imported may not, so the query string is what changes the URL for every rebuild.
      */
     public function url(): string
     {

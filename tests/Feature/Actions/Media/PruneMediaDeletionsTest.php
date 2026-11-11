@@ -114,3 +114,13 @@ it('skips the prune when the optimize batch already spent its budget', function 
 
     $this->disk->assertExists('media/2026/11/a-v1.webp');
 });
+
+it('keeps the rows and tries again later when the disk does not delete the objects', function () {
+    $pending = pendingObject('media/2026/11/stuck-v1.webp', -1);
+    $this->disk->failDeletes = true;
+
+    expect(app(PruneMediaDeletions::class)->handle())->toBe(0);
+
+    $this->disk->assertExists('media/2026/11/stuck-v1.webp');
+    expect($pending->fresh()->delete_after->isAfter(now()->addHours(23)))->toBeTrue();
+});

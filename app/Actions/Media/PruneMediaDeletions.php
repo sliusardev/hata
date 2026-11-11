@@ -5,6 +5,7 @@ namespace App\Actions\Media;
 use App\Models\Media;
 use App\Models\MediaPendingDeletion;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -44,8 +45,10 @@ class PruneMediaDeletions
             $ids = $rows->pluck('id')->all();
 
             try {
-                // A missing object is fine: deleting it again is a no-op.
-                Storage::disk($disk)->delete(array_values(array_diff($paths, $used)));
+                // A missing object is fine: deleting it again is a no-op. A disk that doesn't throw reports with false.
+                if (! Storage::disk($disk)->delete(array_values(array_diff($paths, $used)))) {
+                    throw new RuntimeException("The [{$disk}] disk did not delete the pending objects.");
+                }
             } catch (Throwable $e) {
                 report($e);
 

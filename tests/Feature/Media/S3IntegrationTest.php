@@ -7,6 +7,7 @@ use App\Actions\Media\UploadMedia;
 use App\Enums\MoveOutcome;
 use App\Models\Media;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -92,4 +93,24 @@ it('uploads, serves directly, moves to local and back, and deletes on a real sto
         expect($cloud->exists((string) $path))->toBeFalse();
     }
     expect(Media::query()->count())->toBe(0);
+});
+
+it('signs a stable url a real store accepts, and stores svg as an inert download', function () {
+    $pdf = "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF";
+    $document = app(UploadMedia::class)->handle($this->actor, UploadedFile::fake()->createWithContent('terms.pdf', $pdf));
+    $this->actingAs($this->actor);
+
+    $first = $this->get($document->url())->assertStatus(302)->headers->get('Location');
+    $second = $this->get($document->url())->assertStatus(302)->headers->get('Location');
+    expect($second)->toBe($first);
+
+    $response = Http::withoutVerifying()->get((string) $first);
+    expect($response->status())->toBe(200)
+        ->and($response->body())->toBe($pdf)
+        ->and($response->header('Content-Disposition'))->toContain('terms.pdf');
+
+    $svg = app(UploadMedia::class)->handle($this->actor, UploadedFile::fake()->createWithContent('logo.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>'));
+    $stored = Http::withoutVerifying()->get(Storage::disk('s3')->temporaryUrl($svg->path, now()->addMinutes(5)));
+    expect($stored->header('Content-Type'))->toBe('application/octet-stream')
+        ->and($stored->header('Content-Disposition'))->toBe('attachment');
 });

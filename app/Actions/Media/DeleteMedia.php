@@ -15,6 +15,8 @@ class DeleteMedia
     /**
      * Stored files are removed in `DB::afterCommit`, so inside an enclosing
      * transaction they go only after the outermost commit and stay on rollback.
+     * The files are those the rows point at when they are deleted (re-read with a row lock), not those of the
+     * instances passed in.
      *
      * @param  iterable<Media>|Media  $media
      * @return int Number of deleted rows.
@@ -34,15 +36,21 @@ class DeleteMedia
             $filesByDisk = [];
 
             foreach (array_chunk($items, 500) as $chunk) {
-                foreach ($chunk as $item) {
-                    foreach ([$item->path, $item->original_path, $item->thumb_path] as $file) {
+                $ids = array_map(fn (Media $item): int => $item->id, $chunk);
+
+                // The stored disk and paths, read under the row lock: a move or rebuild may have committed others
+                // since the instances were loaded, and deleting the stale ones would orphan the current objects.
+                $stored = Media::query()->whereKey($ids)->lockForUpdate()->get(['id', 'disk', 'path', 'original_path', 'thumb_path']);
+
+                foreach ($stored as $row) {
+                    foreach ([$row->path, $row->original_path, $row->thumb_path] as $file) {
                         if ($file !== null && $file !== '') {
-                            $filesByDisk[$item->disk][] = $file;
+                            $filesByDisk[$row->disk][] = $file;
                         }
                     }
                 }
 
-                $count += Media::query()->whereKey(array_map(fn (Media $item): int => $item->id, $chunk))->delete();
+                $count += Media::query()->whereKey($ids)->delete();
             }
 
             DB::afterCommit(function () use ($filesByDisk): void {

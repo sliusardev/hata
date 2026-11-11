@@ -244,7 +244,7 @@ class RebuildMediaFile
                 }
 
                 $written[$target] = $targetMime;
-                $disk->put($target, $bytes, MediaPaths::writeOptions($diskName, $targetMime));
+                MediaPaths::write($disk, $diskName, $target, $bytes, $targetMime);
             }
 
             DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $animated, $imageEdits, $keepEdits, $stale, $basis, $cloud): void {
@@ -296,7 +296,7 @@ class RebuildMediaFile
         } catch (Throwable $e) {
             // A deleted row's old files belong to its deletion (which may already have removed them): restoring them
             // would leave orphans, so everything written here is removed instead.
-            $this->undoWrites($disk, $diskName, $written, $e instanceof MediaChangedException && $e->gone ? [] : $backups);
+            $this->undoWrites($disk, $diskName, $this->notCommitted($media, $written, $cloud), $e instanceof MediaChangedException && $e->gone ? [] : $backups);
             $media->setRawAttributes($originalBefore, sync: true);
             $media->setRawAttributes($attributesBefore);
 
@@ -331,6 +331,28 @@ class RebuildMediaFile
         }
 
         $media->syncOriginal();
+    }
+
+    /**
+     * The written paths that the stored row doesn't point at now. On a cloud disk a rebuild that won the row after this
+     * one's lock expired committed the same versioned paths: deleting them would leave its row pointing at nothing.
+     *
+     * @param  array<string, string>  $written
+     * @return array<string, string>
+     */
+    private function notCommitted(Media $media, array $written, bool $cloud): array
+    {
+        if (! $cloud || $written === [] || ! $media->exists) {
+            return $written;
+        }
+
+        $stored = Media::query()->whereKey($media->getKey())->first(['path', 'thumb_path', 'original_path']);
+
+        if ($stored === null) {
+            return $written;
+        }
+
+        return array_diff_key($written, array_flip(array_filter([$stored->path, $stored->thumb_path, $stored->original_path])));
     }
 
     /**

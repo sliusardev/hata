@@ -10,6 +10,7 @@ use App\Support\Media\MemoryGuard;
 use Illuminate\Support\Facades\Image;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Tests\Fixtures\RecordingDisk;
 
 beforeEach(function () {
     Storage::fake('local');
@@ -246,4 +247,20 @@ it('says the file was changed meanwhile when the crop loses the race', function 
         ->call('apply')
         ->assertHasErrors(['crop' => __('media.errors.changed_meanwhile')])
         ->assertNoRedirect();
+});
+
+it('shows a storage error and keeps the file when the disk does not store the crop', function () {
+    $media = cropPageMedia(makeImage('webp', 800, 600));
+    $fake = Storage::disk('local');
+    $failing = new RecordingDisk($fake->getDriver(), $fake->getAdapter(), $fake->getConfig());
+    $failing->failWrites = true;
+    Storage::set('local', $failing);
+
+    Livewire::test('pages::admin.media.crop', ['media' => $media])
+        ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
+        ->call('apply')
+        ->assertHasErrors(['crop' => __('media.errors.storage_failed')])
+        ->assertNoRedirect();
+
+    expect($media->fresh()->version)->toBe(1);
 });

@@ -4,6 +4,7 @@ namespace App\Actions\Media;
 
 use App\Enums\MediaKind;
 use App\Exceptions\MediaUploadException;
+use App\Exceptions\MediaWriteException;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
@@ -89,8 +90,8 @@ class UploadMedia
         try {
             foreach ([[$path, $contents, $mime], [$originalPath, $original ?? null, $type['mime']], [$thumbPath, $thumbnail, 'image/webp']] as [$target, $bytes, $targetMime]) {
                 if ($target !== null && $bytes !== null) {
-                    $storage->put($target, $bytes, MediaPaths::writeOptions($disk, $targetMime));
                     $written[] = $target;
+                    MediaPaths::write($storage, $disk, $target, $bytes, $targetMime);
                 }
             }
 
@@ -121,6 +122,13 @@ class UploadMedia
                 $storage->delete($written);
             } catch (Throwable) {
                 // The original exception matters more than a failed cleanup.
+            }
+
+            if ($e instanceof MediaWriteException) {
+                // The storage is at fault, not the file: logged for the admin, a plain message for the uploader.
+                report($e);
+
+                throw MediaUploadException::storageFailed($e);
             }
 
             throw $e;

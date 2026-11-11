@@ -70,6 +70,14 @@ it('keeps v on the old-name redirect', function () {
         ->assertRedirect('/media/'.$media->key.'/hero.webp?v=2');
 });
 
+it('keeps download on the old-name redirect', function () {
+    $media = storedMedia(['name' => 'hero.webp', 'version' => 2]);
+
+    $this->get('/media/'.$media->key.'/hero.jpg?download=1')
+        ->assertStatus(301)
+        ->assertRedirect('/media/'.$media->key.'/hero.webp?download=1&v=2');
+});
+
 it('caches the current version for a week', function () {
     $media = storedMedia(['version' => 3]);
 
@@ -210,7 +218,31 @@ it('redirects a cloud pdf to a signed url carrying the real name', function () {
         ->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-cache, private');
 
     expect($seen['options']['ResponseContentDisposition'])->toStartWith('inline')->toContain('price list.pdf')
-        ->and($seen['expiration']->between(now()->addMinutes(59), now()->addMinutes(61)))->toBeTrue();
+        ->and(now()->diffInMinutes($seen['expiration']))->toBeGreaterThanOrEqual(60.0);
+});
+
+it('signs the same url for every request within an hour, so browsers can cache the object', function () {
+    fakeCloudDisk('s3');
+    config(['filesystems.disks.s3.url' => null]);
+    $seen = [];
+    Storage::disk('s3')->buildTemporaryUrlsUsing(function ($path, $expiration, $options) use (&$seen) {
+        $seen[] = [$expiration->getTimestamp(), $options['start_time'] ?? null];
+
+        return 'https://signed.example.test/'.$path;
+    });
+    $media = Media::factory()->create(['disk' => 's3', 'path' => 'media/2026/11/K-v1.webp', 'thumb_path' => 'media/thumbs/K-v1.webp']);
+
+    $this->travelTo(now()->setTime(10, 5));
+    $this->get($media->thumbUrl())->assertStatus(302);
+    $this->travelTo(now()->setTime(10, 55));
+    $this->get($media->thumbUrl())->assertStatus(302);
+    $this->travelTo(now()->setTime(11, 1));
+    $this->get($media->thumbUrl())->assertStatus(302);
+
+    $start = now()->setTime(10, 0)->getTimestamp();
+    expect($seen[0])->toBe([$start + 7200, $start])
+        ->and($seen[1])->toBe($seen[0])
+        ->and($seen[2])->toBe([$start + 10800, $start + 3600]);
 });
 
 it('redirects a cloud raster to the direct url when public, else to a signed url', function () {

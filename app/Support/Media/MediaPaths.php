@@ -2,7 +2,9 @@
 
 namespace App\Support\Media;
 
+use App\Exceptions\MediaWriteException;
 use Carbon\CarbonInterface;
+use Illuminate\Contracts\Filesystem\Filesystem;
 
 /**
  * Where media objects are stored and how they are written.
@@ -36,6 +38,10 @@ class MediaPaths
      * The options every media object is written with: on a cloud disk its content type and cache header (the
      * store would otherwise guess the type and send no cache header); none on a local disk.
      *
+     * An SVG object is stored as an inert download (`application/octet-stream`, `attachment`): opened straight from
+     * the bucket or CDN it could run script on that origin. The app streams SVG with its own type and sandbox headers
+     * (decision 50), so the stored type is never what a visitor gets.
+     *
      * @return array<string, string>
      */
     public static function writeOptions(string $disk, string $mime): array
@@ -44,7 +50,23 @@ class MediaPaths
             return [];
         }
 
+        if ($mime === 'image/svg+xml') {
+            return ['ContentType' => 'application/octet-stream', 'ContentDisposition' => 'attachment', 'CacheControl' => self::CACHE_CONTROL];
+        }
+
         return ['ContentType' => $mime, 'CacheControl' => self::CACHE_CONTROL];
+    }
+
+    /**
+     * Write one media object with its write options.
+     *
+     * @throws MediaWriteException when the disk reports the object was not stored
+     */
+    public static function write(Filesystem $storage, string $disk, string $path, string $bytes, string $mime): void
+    {
+        if ($storage->put($path, $bytes, self::writeOptions($disk, $mime)) === false) {
+            throw MediaWriteException::notWritten($disk, $path);
+        }
     }
 
     private static function name(string $disk, string $key, int $version): string

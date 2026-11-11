@@ -6,9 +6,13 @@ use App\Actions\Media\OptimizeExistingMedia;
 use App\Actions\Media\ReplaceMediaFile;
 use App\Actions\Media\RestoreOriginal;
 use App\Actions\Media\UploadMedia;
+use App\Exceptions\MediaChangedException;
+use App\Exceptions\MediaUploadException;
+use App\Exceptions\MediaWriteException;
 use App\Models\Media;
 use App\Models\MediaPendingDeletion;
 use App\Models\User;
+use App\Support\Media\MediaPaths;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Image;
 use Illuminate\Support\Facades\Storage;
@@ -41,7 +45,10 @@ it('uploads an image to the cloud disk with a thumbnail and direct urls', functi
         ->and($media->thumb_path)->not->toBeNull()
         ->and($media->url())->toBe(Storage::disk('s3')->url($media->path).'?v=1')
         ->and($media->thumbUrl())->toBe(Storage::disk('s3')->url($media->thumb_path).'?v=1')
-        ->and($media->appUrl())->toContain('/media/'.$media->key);
+        ->and($media->appUrl())->toContain('/media/'.$media->key)
+        // Served straight from the bucket/CDN, never through the app route (`/media/{key}/{name}`).
+        ->and($media->url())->not->toContain('/media/'.$media->key.'/')
+        ->and($media->thumbUrl())->not->toContain('/media/'.$media->key.'/');
     $disk = Storage::disk('s3');
     $disk->assertExists($media->path);
     $disk->assertExists($media->thumb_path);
@@ -53,7 +60,8 @@ it('uploads a document and serves it by a signed download url', function () {
     $file = UploadedFile::fake()->createWithContent('terms.pdf', "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF");
     $media = app(UploadMedia::class)->handle($this->actor, $file);
 
-    expect($media->disk)->toBe('s3')->and($media->thumb_path)->toBeNull();
+    expect($media->disk)->toBe('s3')->and($media->thumb_path)->toBeNull()
+        ->and($media->url())->toBe(route('media.show', [$media->key, $media->name, 'v' => 1]));
     Storage::disk('s3')->assertExists($media->path);
 
     $this->actingAs($this->actor)->get($media->url())
@@ -132,7 +140,8 @@ it('zips cloud files by streaming them from the disk', function () {
     $zip->open($response->baseResponse->getFile()->getPathname());
 
     expect($zip->numFiles)->toBe(2)
-        ->and($zip->getFromName($first->name))->toBe(Storage::disk('s3')->get($first->path));
+        ->and($zip->getFromName($first->name))->toBe(Storage::disk('s3')->get($first->path))
+        ->and(Storage::disk('s3')->streamed)->toBe([$first->path, $second->path]);
     $zip->close();
 })->skip(! class_exists(ZipArchive::class), 'ZipArchive is not installed.');
 
@@ -178,4 +187,83 @@ it('decides isEditable on a cloud row with one existence check, memoized', funct
     // A missing object makes it not editable.
     Storage::disk('s3')->delete($media->path);
     expect(Media::query()->findOrFail($media->id)->isEditable())->toBeFalse();
+});
+
+it('refuses an upload the cloud disk did not store and creates no row', function () {
+    Storage::disk('s3')->failWrites = true;
+
+    expect(fn () => cloudUploadedPhoto($this->actor))
+        ->toThrow(MediaUploadException::class, __('media.errors.storage_failed'));
+
+    expect(Media::query()->count())->toBe(0)
+        ->and(Storage::disk('s3')->allFiles())->toBe([]);
+});
+
+it('keeps the row and schedules nothing when the cloud disk does not store a crop', function () {
+    $media = cloudUploadedPhoto($this->actor);
+    $before = [$media->path, $media->thumb_path, $media->original_path];
+    Storage::disk('s3')->failWrites = true;
+
+    expect(fn () => app(CropMedia::class)->handle($this->actor, $media, ['crop' => ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5]]))
+        ->toThrow(MediaWriteException::class);
+
+    $fresh = $media->fresh();
+    expect($fresh->version)->toBe(1)
+        ->and([$fresh->path, $fresh->thumb_path, $fresh->original_path])->toBe($before)
+        ->and(MediaPendingDeletion::query()->count())->toBe(0);
+    foreach ($before as $file) {
+        Storage::disk('s3')->assertExists($file);
+    }
+});
+
+it('never deletes the objects of a rebuild that won the row while this one was writing', function () {
+    $media = cloudUploadedPhoto($this->actor);
+    $disk = Storage::disk('s3');
+    $winner = null;
+
+    // The per-row lock expired: another rebuild of version 1 committed version 2 on the same versioned paths.
+    $disk->beforeWrite = function (string $path) use ($media, &$winner): void {
+        if ($winner !== null) {
+            return;
+        }
+
+        $winner = ['path' => $path, 'thumb_path' => MediaPaths::thumb('s3', $media->key, 2)];
+        Media::query()->whereKey($media->id)->update(['version' => 2, ...$winner]);
+    };
+
+    expect(fn () => app(CropMedia::class)->handle($this->actor, $media, ['crop' => ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5]]))
+        ->toThrow(MediaChangedException::class);
+
+    $disk->assertExists($winner['path']);
+    $disk->assertExists($winner['thumb_path']);
+    expect(MediaPendingDeletion::query()->count())->toBe(0);
+});
+
+it('deletes the objects the row points at when it is deleted, not the ones of a stale instance', function () {
+    $stale = cloudUploadedPhoto($this->actor);
+    $disk = Storage::disk('s3');
+
+    // A crop or move committed version 2 after the instance was loaded.
+    $current = ['path' => str_replace('-v1', '-v2', $stale->path), 'thumb_path' => MediaPaths::thumb('s3', $stale->key, 2), 'original_path' => null];
+    $disk->put($current['path'], 'v2');
+    $disk->put($current['thumb_path'], 'v2-thumb');
+    Media::query()->whereKey($stale->id)->update(['version' => 2, ...$current]);
+
+    expect(app(DeleteMedia::class)->handle($this->actor, $stale))->toBe(1);
+
+    $disk->assertMissing($current['path']);
+    $disk->assertMissing($current['thumb_path']);
+});
+
+it('stores an svg on the cloud disk as an inert download and still streams it sandboxed', function () {
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>';
+    $media = app(UploadMedia::class)->handle($this->actor, UploadedFile::fake()->createWithContent('logo.svg', $svg));
+    $disk = Storage::disk('s3');
+
+    expect($disk->options[$media->path]['ContentType'])->toBe('application/octet-stream')
+        ->and($disk->options[$media->path]['ContentDisposition'])->toBe('attachment');
+
+    $response = $this->actingAs($this->actor)->get($media->url())->assertOk();
+    expect($response->headers->get('Content-Type'))->toStartWith('image/svg+xml')
+        ->and($response->headers->get('Content-Security-Policy'))->toContain('sandbox');
 });

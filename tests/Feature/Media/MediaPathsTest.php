@@ -24,3 +24,13 @@ it('puts the version into the paths on a cloud disk', function () {
             'CacheControl' => 'public, max-age=604800',
         ]);
 });
+
+it('writes svg objects on a cloud disk as an inert download, so the bucket never renders them', function () {
+    config(['filesystems.disks.s3.driver' => 's3']);
+
+    expect(MediaPaths::writeOptions('s3', 'image/svg+xml'))->toBe([
+        'ContentType' => 'application/octet-stream',
+        'ContentDisposition' => 'attachment',
+        'CacheControl' => 'public, max-age=604800',
+    ])->and(MediaPaths::writeOptions('local', 'image/svg+xml'))->toBe([]);
+});

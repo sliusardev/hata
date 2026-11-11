@@ -2,6 +2,7 @@
 
 use App\Actions\Media\CropMedia;
 use App\Exceptions\MediaChangedException;
+use App\Exceptions\MediaWriteException;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\ImageEdits;
@@ -232,6 +233,10 @@ new #[Title('media.crop.title'), Layout('layouts::focus')] class extends Compone
             }
         } catch (MediaChangedException $exception) {
             $this->addError('crop', $exception->userMessage());
+        } catch (MediaWriteException $exception) {
+            // Rolled back by RebuildMediaFile: the file is as it was.
+            report($exception);
+            $this->addError('crop', __('media.errors.storage_failed'));
         } catch (AuthorizationException) {
             Flux::toast(variant: 'danger', text: __('media.errors.forbidden'));
         }

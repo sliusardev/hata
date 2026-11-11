@@ -122,8 +122,12 @@ class MediaController extends Controller
 
     /**
      * Where a cloud file is fetched from: the public/CDN URL for a raster image on a disk that has one (not for a
-     * download, which needs the real name), otherwise a signed URL (valid for an hour) whose disposition and type
-     * carry the real name.
+     * download, which needs the real name), otherwise a signed URL whose disposition and type carry the real name.
+     *
+     * The signature is made for the start of the current clock hour and expires two hours after it (so at least an
+     * hour from now): every request within the hour gets the same URL, and the browser can reuse the object it cached
+     * instead of fetching a new URL each time. The SDK reads `start_time` as a presign option (Laravel passes the
+     * options to the command too, which ignores unknown keys).
      */
     private function cloudUrl(Media $media, string $path, string $mime, bool $download, string $disposition): string
     {
@@ -133,9 +137,12 @@ class MediaController extends Controller
             return $direct;
         }
 
-        return Storage::disk($media->disk)->temporaryUrl($path, now()->addHour(), [
+        $signedAt = now()->startOfHour();
+
+        return Storage::disk($media->disk)->temporaryUrl($path, $signedAt->addHours(2), [
             'ResponseContentDisposition' => $disposition,
             'ResponseContentType' => MediaTypes::responseMime($mime),
+            'start_time' => $signedAt->getTimestamp(),
         ]);
     }
 
@@ -145,13 +152,14 @@ class MediaController extends Controller
     }
 
     /**
-     * The URL under the current name, keeping the request's version and thumb flag.
+     * The URL under the current name, keeping the request's version, thumb and download flags.
      */
     private function currentNameUrl(Request $request, Media $media, bool $thumb): string
     {
         $version = $request->query('v');
         $parameters = [
             ...($thumb ? ['thumb' => 1] : []),
+            ...($request->boolean('download') ? ['download' => 1] : []),
             'v' => is_string($version) && $version !== '' ? $version : $media->version,
         ];
 
