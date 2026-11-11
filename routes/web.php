@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\MediaController;
-use App\Http\Controllers\SiteLogoController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -16,13 +15,6 @@ Route::get('dashboard', function (Request $request) {
         ? redirect()->route('admin.dashboard')
         : redirect()->route('profile.edit');
 })->middleware('auth')->name('dashboard');
-
-/*
-| The logos uploaded in the site settings. Public, because the sign-in pages show them too.
-*/
-Route::get('branding/logo/{variant}', SiteLogoController::class)
-    ->whereIn('variant', ['light', 'dark'])
-    ->name('branding.logo');
 
 /*
 | Public media library files. No auth: the URLs are embedded in site content.

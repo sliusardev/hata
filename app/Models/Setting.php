@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Contracts\UsesMedia;
+use App\Support\Settings\SiteLogo;
+use App\Support\Settings\SiteSettings;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -10,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $key
  * @property mixed $value
  */
-class Setting extends Model
+class Setting extends Model implements UsesMedia
 {
     /**
      * @var list<string>
@@ -28,5 +31,28 @@ class Setting extends Model
         return [
             'value' => 'json',
         ];
+    }
+
+    public function mediaUsageLabel(string $field): string
+    {
+        return $field === 'logo_dark' ? __('site_settings.logo.usage_dark') : __('site_settings.logo.usage_light');
+    }
+
+    public function mediaUsageUrl(string $field, ?User $viewer): ?string
+    {
+        return $viewer?->can('settings.edit') ? route('admin.settings.edit', ['tab' => 'logo']) : null;
+    }
+
+    /**
+     * Stop using a logo whose file is being deleted. Runs inside the delete's transaction; the settings cache
+     * and the config are refreshed only after it commits (see SiteSettings::put()).
+     */
+    public function forgetMedia(string $field, int $mediaId): void
+    {
+        $variants = array_map(fn (string $variant): string => "logo_{$variant}", SiteLogo::VARIANTS);
+
+        if (in_array($field, $variants, true) && $this->key === $field && (int) $this->value === $mediaId) {
+            app(SiteSettings::class)->put([$field => null]);
+        }
     }
 }

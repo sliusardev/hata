@@ -2,9 +2,12 @@
 
 namespace App\Actions\Settings;
 
+use App\Models\MediaUsage;
+use App\Models\Setting;
 use App\Models\User;
 use App\Support\Settings\SiteLogo;
 use App\Support\Settings\SiteSettings;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
@@ -13,7 +16,7 @@ class RemoveLogo
     public function __construct(private SiteSettings $settings) {}
 
     /**
-     * Delete the uploaded light or dark logo. The other one (or the default mark) takes its place.
+     * Stop using the light or dark logo. The file stays in the library; the other logo (or the default mark) takes its place.
      */
     public function handle(User $actor, string $variant): void
     {
@@ -23,12 +26,14 @@ class RemoveLogo
             throw new InvalidArgumentException("Unknown logo variant [{$variant}].");
         }
 
-        $path = config("admin.logo.{$variant}");
+        DB::transaction(function () use ($variant): void {
+            $setting = Setting::query()->where('key', "logo_{$variant}")->first();
 
-        $this->settings->put(["logo_{$variant}" => null]);
+            if ($setting !== null) {
+                MediaUsage::sync($setting, "logo_{$variant}", []);
+            }
 
-        if (is_string($path) && $path !== '') {
-            SiteLogo::disk()->delete($path);
-        }
+            $this->settings->put(["logo_{$variant}" => null]);
+        });
     }
 }

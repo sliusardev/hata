@@ -61,15 +61,12 @@ return [
     | Site Logo
     |--------------------------------------------------------------------------
     |
-    | Paths of the logos uploaded in the site settings (light and dark theme),
-    | on the given disk. They are served by the branding.logo route, so the
-    | disk can be private and no storage:link is needed. Null means the
-    | default Hata mark.
+    | Ids of the media library files chosen as the light and dark theme logos
+    | in the site settings. Null means the default Hata mark.
     |
     */
 
     'logo' => [
-        'disk' => env('ADMIN_LOGO_DISK', 'local'),
         'light' => null,
         'dark' => null,
     ],

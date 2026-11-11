@@ -2,12 +2,14 @@
 
 namespace App\Support\Settings;
 
-use Illuminate\Contracts\Filesystem\Filesystem;
+use App\Models\Media;
+use App\Support\Media\MediaAcceptance;
+use ArrayObject;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * The logos uploaded in the site settings: one for the light theme and one for the dark theme.
- * When only one is uploaded, it is used for both themes.
+ * The site logos: one for the light theme and one for the dark theme, each a file of the media library
+ * (the setting holds its id). When only one is chosen, it is used for both themes.
  */
 class SiteLogo
 {
@@ -16,41 +18,82 @@ class SiteLogo
      */
     public const array VARIANTS = ['light', 'dark'];
 
+    /**
+     * Extensions a logo may have.
+     *
+     * @var list<string>
+     */
+    public const array EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
+
+    private const string MEMO_KEY = 'site-logo.memo';
+
     public static function isCustom(): bool
     {
-        return self::path('light') !== null;
+        return self::media('light') !== null;
     }
 
     /**
-     * Path on the logo disk, falling back to the other variant.
+     * The file for the variant, falling back to the other variant.
      */
-    public static function path(string $variant): ?string
+    public static function media(string $variant): ?Media
     {
         $other = $variant === 'light' ? 'dark' : 'light';
 
-        foreach ([$variant, $other] as $candidate) {
-            $path = config("admin.logo.{$candidate}");
-
-            if (is_string($path) && $path !== '') {
-                return $path;
-            }
-        }
-
-        return null;
+        return self::own($variant) ?? self::own($other);
     }
 
     /**
-     * Versioned URL, so browsers may cache the file for good and still see a new upload.
+     * The file chosen for exactly this variant, with no fallback; null when unset, deleted, missing on disk or not a logo format.
+     */
+    public static function own(string $variant): ?Media
+    {
+        $id = config("admin.logo.{$variant}");
+
+        if (! is_int($id)) {
+            return null;
+        }
+
+        $memo = self::memo();
+
+        if (! $memo->offsetExists($id)) {
+            $media = Media::query()->find($id);
+
+            $memo[$id] = $media !== null
+                && (new MediaAcceptance('image', self::EXTENSIONS))->allows($media)
+                && Storage::disk($media->disk)->exists($media->path)
+                ? $media
+                : null;
+        }
+
+        return $memo[$id];
+    }
+
+    /**
+     * The URL of the file for the variant; it carries the file's version, so a changed file shows up at once.
      */
     public static function url(string $variant): ?string
     {
-        $path = self::path($variant);
-
-        return $path === null ? null : route('branding.logo', ['variant' => $variant, 'v' => substr(md5($path), 0, 8)]);
+        return self::media($variant)?->url();
     }
 
-    public static function disk(): Filesystem
+    /**
+     * Forget the lookups of this request. Called whenever the settings are applied.
+     */
+    public static function flush(): void
     {
-        return Storage::disk(config('admin.logo.disk'));
+        app()->forgetInstance(self::MEMO_KEY);
+    }
+
+    /**
+     * @return ArrayObject<int, Media|null>
+     */
+    private static function memo(): ArrayObject
+    {
+        if (! app()->bound(self::MEMO_KEY)) {
+            app()->instance(self::MEMO_KEY, new ArrayObject);
+        }
+
+        /** @var ArrayObject<int, Media|null> */
+        return app(self::MEMO_KEY);
     }
 }

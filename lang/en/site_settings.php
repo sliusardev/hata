@@ -51,17 +51,16 @@ return [
 
     'logo' => [
         'heading' => 'Logo',
-        'description' => 'Shown next to the site name in the admin panel and on the sign-in pages. Without an upload, the default Hata mark is used. If you upload only one logo, it is used in both themes.',
+        'description' => 'Shown next to the site name in the admin panel and on the sign-in pages. Choose files from the media library; without a choice, the default Hata mark is used. If you choose only one logo, it is used in both themes.',
         'light' => 'Light theme',
         'dark' => 'Dark theme',
         'default' => 'Default logo',
         'uses_other' => 'Uses the other theme’s logo',
-        'upload' => 'Upload a logo',
-        'uploading' => 'Uploading…',
-        'remove' => 'Remove',
-        'requirements' => 'PNG, JPG, WebP or SVG, up to 1 MB. A logo is saved as soon as it is uploaded. Best: transparent background, height at least 64 px.',
-        'uploaded' => 'Logo uploaded.',
+        'requirements' => 'PNG, JPG, WebP or SVG from the media library. A logo is saved as soon as it is chosen. Best: transparent background, height at least 64 px.',
+        'chosen' => 'Logo saved.',
         'removed' => 'Logo removed.',
+        'usage_light' => 'Site logo (light)',
+        'usage_dark' => 'Site logo (dark)',
     ],
 
     'colors' => [

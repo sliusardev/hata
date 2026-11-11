@@ -31,7 +31,7 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 | `color_scheme`, `color_accent`, `color_gray`, `color_tint_sidebar` | `admin.colors.*` | Colors |
 | `media_optimize`, `media_max_side`, `media_quality`, `media_format`, `media_strip_exif`, `media_client_resize`, `media_keep_originals` | `media.optimize.*` | Media |
 | `media_max_image_mb`, `media_max_document_mb` | `media.limits.image_mb`, `media.limits.document_mb` | Media |
-| `logo_light`, `logo_dark` | `admin.logo.light`, `admin.logo.dark` (paths on `admin.logo.disk`) | Logo |
+| `logo_light`, `logo_dark` | `admin.logo.light`, `admin.logo.dark` (media ids, cast to int) | Logo |
 
 ## Tabs
 
@@ -52,12 +52,13 @@ Switching tabs while the open one has unsaved changes (compared with the values 
 
 ## Logo
 
-- **Default mark:** `<x-app-logo-icon>`, a house with crossed rafters over the gable and a four-pane window (`currentColor`). `public/favicon.svg` (follows the system theme), `favicon.ico` and `apple-touch-icon.png` use the same mark. Uploaded logos don't change the favicon.
-- **`<x-site-logo class="h-8">`** shows the uploaded logos (light one with `dark:hidden`, dark one with `hidden dark:block`) or the default mark on an accent tile. Used by `<x-app-logo>` (sidebar, header) and the auth layouts; `variant="dark"` always shows the dark one (the dark panel of the split auth layout).
-- **Logo tab:** a light and a dark slot, each with a preview on a matching background, a file input and "Remove". PNG, JPG, WebP or SVG up to 1 MB. A file is stored as soon as it's uploaded (no Save button on this tab), then the page reloads on the same tab with a toast.
-- **Fallback:** with only one logo uploaded, it's used in both themes (`SiteLogo::path()`).
-- **Storage:** `UploadLogo` stores the file in `branding/` on `admin.logo.disk` (default `local`, private) and deletes the file it replaces; `RemoveLogo` deletes the file and the setting.
-- **Serving:** `GET /branding/logo/{light|dark}` (`branding.logo`, public, because the sign-in pages show it), `SiteLogoController`. 404 without a logo. The URL carries `?v=` (hash of the path), so the response is cached for a year (`immutable`). `Content-Security-Policy: … sandbox` and `nosniff` keep scripts in an uploaded SVG from running when it's opened directly; inside `<img>` they never run.
+- **Default mark:** `<x-app-logo-icon>`, a house with crossed rafters over the gable and a four-pane window (`currentColor`). `public/favicon.svg` (follows the system theme), `favicon.ico` and `apple-touch-icon.png` use the same mark. Chosen logos don't change the favicon.
+- **`<x-site-logo class="h-8">`** shows the chosen logos (light one with `dark:hidden`, dark one with `hidden dark:block`) or the default mark on an accent tile. Used by `<x-app-logo>` (sidebar, header) and the auth layouts; `variant="dark"` always shows the dark one (the dark panel of the split auth layout).
+- **Logo tab:** a light and a dark slot, each with a preview on a matching background and the media picker (`accept` image, single, extensions PNG, JPG, JPEG, WebP, SVG; GIF and documents are refused). Picking a file stores it as soon as it's chosen (no Save button on this tab) and the page reloads on the same tab with a toast; the picker's own "Remove" (the bound value becomes empty) stops using the logo, the file stays in the library. The page properties `logoLight`/`logoDark` hold the id (`''` without a logo) and are bound with `wire:model.live`; a refused id shows a field error. Without `media.view` the picker hides itself and shows its own "needs access to the media library" hint (one per slot); the current choice stays visible.
+- **Fallback:** with only one logo chosen, it's used in both themes (`SiteLogo::media()`). A missing row, a file missing on disk or a file that isn't a logo format counts as empty; with both empty the default mark is shown (never an `<img>` with a dead URL). Lookups are memoized per request and forgotten whenever the settings are applied (`SiteLogo::flush()`).
+- **Storage:** the setting holds the media id. `SetLogo` (`settings.edit`) validates it with `MediaSelection(accept: 'image', extensions: SiteLogo::EXTENSIONS)`, stores it through `SiteSettings::put()` and records the usage (`MediaUsage::sync($settingRow, 'logo_light'|'logo_dark', [$id])`). `RemoveLogo` removes the setting and its usage row; the file stays.
+- **Usage and deleting:** `Setting` implements `UsesMedia`: the label is "Site logo (light)" / "Site logo (dark)", the link goes to this tab for viewers with `settings.edit`. Deleting the file in the library (also through a folder) calls `Setting::forgetMedia()` inside the delete transaction, which removes the setting; `SiteSettings::put()` clears the cache and re-applies the config only after commit (`DB::afterCommit`), so a delete that fails leaves the logo and files as they were.
+- **Serving:** logos are ordinary media files served by `MediaController` (`/media/{key}/{name}`, see the media spec); there is no `branding.logo` route.
 
 ## Colors
 

@@ -3,7 +3,7 @@
 use App\Actions\Media\OptimizeImage;
 use App\Actions\Settings\RemoveLogo;
 use App\Actions\Settings\UpdateSiteSettings;
-use App\Actions\Settings\UploadLogo;
+use App\Actions\Settings\SetLogo;
 use App\Enums\SystemRole;
 use App\Exceptions\ProtectedActionException;
 use App\Livewire\Forms\SiteSettingsForm;
@@ -28,24 +28,21 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 new #[Title('site_settings.title')] class extends Component {
-    use WithFileUploads;
-
     public SiteSettingsForm $form;
 
     /**
-     * New light-theme logo, stored as soon as it is uploaded.
+     * The light-theme logo's media id, bound to the media picker ('' = none). A chosen file is stored as soon as it is picked.
      */
-    public ?TemporaryUploadedFile $logoLight = null;
+    public int|string|null $logoLight = '';
 
     /**
-     * New dark-theme logo, stored as soon as it is uploaded.
+     * The dark-theme logo's media id, bound to the media picker ('' = none).
      */
-    public ?TemporaryUploadedFile $logoDark = null;
+    public int|string|null $logoDark = '';
 
     /**
      * The open tab, one of SiteSettingsForm::SECTIONS.
@@ -78,6 +75,8 @@ new #[Title('site_settings.title')] class extends Component {
         }
 
         $this->form->fillFromSettings($settings);
+        $this->logoLight = SiteLogo::own('light')?->id ?? '';
+        $this->logoDark = SiteLogo::own('dark')?->id ?? '';
         $this->savedValues = $this->form->all();
     }
 
@@ -125,14 +124,14 @@ new #[Title('site_settings.title')] class extends Component {
         $this->pendingTab = '';
     }
 
-    public function updatedLogoLight(UploadLogo $uploadLogo): void
+    public function updatedLogoLight(SetLogo $setLogo, RemoveLogo $removeLogo): void
     {
-        $this->storeLogo($uploadLogo, 'light');
+        $this->applyLogo($setLogo, $removeLogo, 'light');
     }
 
-    public function updatedLogoDark(UploadLogo $uploadLogo): void
+    public function updatedLogoDark(SetLogo $setLogo, RemoveLogo $removeLogo): void
     {
-        $this->storeLogo($uploadLogo, 'dark');
+        $this->applyLogo($setLogo, $removeLogo, 'dark');
     }
 
     public function removeLogo(RemoveLogo $removeLogo, string $variant): void
@@ -151,17 +150,14 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     /**
-     * Uploaded path of each variant (no fallback to the other one), for the previews.
+     * The file chosen for each variant (no fallback to the other one), for the previews.
      *
-     * @return array<string, string|null>
+     * @return array<string, Media|null>
      */
     #[Computed]
-    public function uploadedLogos(): array
+    public function chosenLogos(): array
     {
-        return [
-            'light' => filled(config('admin.logo.light')) ? config('admin.logo.light') : null,
-            'dark' => filled(config('admin.logo.dark')) ? config('admin.logo.dark') : null,
-        ];
+        return ['light' => SiteLogo::own('light'), 'dark' => SiteLogo::own('dark')];
     }
 
     /**
@@ -210,23 +206,31 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     /**
-     * Validate and store the logo, then reload so every layout shows it.
+     * Store the file the picker sent (or stop using the logo when it sent none), then reload so every layout shows it.
      */
-    private function storeLogo(UploadLogo $uploadLogo, string $variant): void
+    private function applyLogo(SetLogo $setLogo, RemoveLogo $removeLogo, string $variant): void
     {
         $this->authorize('settings.edit');
 
         $property = $variant === 'light' ? 'logoLight' : 'logoDark';
+        $value = $this->{$property};
 
-        $this->validate(
-            [$property => ['required', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:1024']],
-            attributes: [$property => __("site_settings.logo.{$variant}")],
-        );
+        if (blank($value)) {
+            $this->removeLogo($removeLogo, $variant);
 
-        $uploadLogo->handle(Auth::user(), $variant, $this->{$property});
-        $this->reset($property);
+            return;
+        }
 
-        Toast::success(__('site_settings.logo.uploaded'));
+        try {
+            $setLogo->handle(Auth::user(), $variant, (int) $value);
+        } catch (ValidationException $e) {
+            $this->reset($property);
+            $this->addError($property, $e->validator->errors()->first('media'));
+
+            return;
+        }
+
+        Toast::success(__('site_settings.logo.chosen'));
 
         $this->redirectRoute('admin.settings.edit', ['tab' => 'logo']);
     }
@@ -529,8 +533,8 @@ new #[Title('site_settings.title')] class extends Component {
                             'border-zinc-200 bg-zinc-50' => $variant === 'light',
                             'border-zinc-700 bg-zinc-900' => $variant === 'dark',
                         ])>
-                            @if ($this->uploadedLogos[$variant])
-                                <img src="{{ SiteLogo::url($variant) }}" alt="" class="h-12 w-auto max-w-full object-contain" data-test="logo-preview-{{ $variant }}" />
+                            @if ($this->chosenLogos[$variant])
+                                <img src="{{ $this->chosenLogos[$variant]->url() }}" alt="" class="h-12 w-auto max-w-full object-contain" data-test="logo-preview-{{ $variant }}" />
                             @else
                                 <div class="text-center">
                                     @if (SiteLogo::isCustom())
@@ -551,17 +555,14 @@ new #[Title('site_settings.title')] class extends Component {
                             @endif
                         </div>
 
-                        <flux:input type="file" wire:model="{{ $property }}" accept=".png,.jpg,.jpeg,.webp,.svg" :aria-label="__('site_settings.logo.upload')" />
-                        <div wire:loading wire:target="{{ $property }}">
-                            <flux:text class="text-xs">{{ __('site_settings.logo.uploading') }}</flux:text>
-                        </div>
+                        <livewire:media-picker
+                            wire:model.live="{{ $property }}"
+                            accept="image"
+                            :extensions="SiteLogo::EXTENSIONS"
+                            :label="__('site_settings.logo.'.$variant)"
+                            :key="'logo-picker-'.$variant"
+                        />
                         <flux:error :name="$property" />
-
-                        @if ($this->uploadedLogos[$variant])
-                            <flux:button size="sm" variant="ghost" icon="trash" wire:click="removeLogo('{{ $variant }}')" data-test="remove-logo-{{ $variant }}">
-                                {{ __('site_settings.logo.remove') }}
-                            </flux:button>
-                        @endif
                     </div>
                 @endforeach
             </div>

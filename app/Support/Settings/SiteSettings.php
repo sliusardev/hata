@@ -65,6 +65,8 @@ class SiteSettings
         'registration_enabled' => 'bool',
         'color_tint_sidebar' => 'bool',
         'mail_port' => 'int',
+        'logo_light' => 'int',
+        'logo_dark' => 'int',
         'media_optimize' => 'bool',
         'media_max_side' => 'int',
         'media_quality' => 'int',
@@ -123,6 +125,8 @@ class SiteSettings
      */
     public function apply(): void
     {
+        SiteLogo::flush();
+
         foreach ($this->defaults as $path => $value) {
             config([$path => $value]);
         }
@@ -189,10 +193,13 @@ class SiteSettings
             }
         });
 
-        Cache::forget(self::CACHE_KEY);
+        // Inside an enclosing transaction (a library delete) the cache and the config change only once it commits.
+        DB::afterCommit(function (): void {
+            Cache::forget(self::CACHE_KEY);
 
-        $this->apply();
+            $this->apply();
 
-        Mail::forgetMailers();
+            Mail::forgetMailers();
+        });
     }
 }
