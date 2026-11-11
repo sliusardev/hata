@@ -330,7 +330,7 @@ return [
         'invalid' => 'Choose a file from the media library that can be used here.',
         'needs_access' => 'Choosing a file needs access to the media library.',
         'alt_note' => 'Alt text changes in the library, everywhere this file is used.',
-        'choose' => 'Choose',
+        'choose' => 'Choose file',
         'change' => 'Change',
         'add' => 'Add files',
         'remove' => 'Remove',

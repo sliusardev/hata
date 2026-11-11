@@ -38,10 +38,31 @@ new class extends Component {
     public const int STEP = 30;
 
     /**
-     * @var int|list<int>|null
+     * The chosen id (null = none), or with `multiple` a list of ids. Livewire writes the parent's field here as it is,
+     * so an empty string or a digit string is tolerated too; normalizeValue() turns them into null or an int.
+     *
+     * @var int|string|array<array-key, mixed>|null
      */
     #[Modelable]
-    public int|array|null $value = null;
+    public int|string|array|null $value = null;
+
+    /**
+     * The ids the picker was mounted with (set on the first dehydrate, after Livewire wrote the parent's value):
+     * without media.view the browser may only take files out of these.
+     *
+     * @var list<int>|null
+     */
+    #[Locked]
+    public ?array $mountedIds = null;
+
+    /**
+     * The file a click just took out of a multiple selection and where it was, so the double click that follows
+     * puts it back in place instead of at the end.
+     *
+     * @var array{id: int, index: int}|null
+     */
+    #[Locked]
+    public ?array $lastUnpicked = null;
 
     /**
      * `image`, `document` or `any`.
@@ -127,19 +148,29 @@ new class extends Component {
         $this->extensions = $acceptance->extensions;
         $this->label = $label;
 
-        if ($multiple) {
-            $this->value = is_array($this->value) ? MediaIds::normalize($this->value) : [];
-        } elseif (is_array($this->value)) {
-            $this->value = null;
-        }
     }
 
     /**
-     * The value as the browser (or the parent's binding) sent it: only allowed, existing files are kept.
+     * Livewire writes a bound parent's value after mount(), so the value is brought into shape here, before every
+     * snapshot: '' and other non-digit text become null (or [] with `multiple`), digit strings become ints.
+     */
+    public function dehydrate(): void
+    {
+        $this->value = $this->normalizeValue($this->value);
+        $this->mountedIds ??= $this->valueIds();
+    }
+
+    /**
+     * The value as the browser (or the parent's binding) sent it: only allowed, existing files are kept, and without
+     * media.view only files the picker was mounted with (taking them out is all such a user can do).
      */
     public function updatedValue(): void
     {
-        $ids = $this->acceptance()->filterIds(is_array($this->value) ? $this->value : [$this->value]);
+        $ids = $this->acceptance()->filterIds($this->valueIds());
+
+        if (! $this->actor()->can('viewAny', Media::class)) {
+            $ids = array_values(array_intersect($ids, $this->mountedIds ?? []));
+        }
 
         $this->value = $this->multiple ? $ids : ($ids[0] ?? null);
         unset($this->chosen);
@@ -183,10 +214,14 @@ new class extends Component {
             return;
         }
 
+        $index = array_search($id, $this->picked, true);
+        $this->lastUnpicked = null;
+
         if (! $this->multiple) {
             $this->picked = [$id];
-        } elseif (in_array($id, $this->picked, true)) {
+        } elseif ($index !== false) {
             $this->picked = array_values(array_diff($this->picked, [$id]));
+            $this->lastUnpicked = ['id' => $id, 'index' => $index];
         } else {
             $this->picked = [...$this->picked, $id];
         }
@@ -208,9 +243,14 @@ new class extends Component {
         if (! $this->multiple) {
             $this->picked = [$id];
         } elseif (! in_array($id, $this->picked, true)) {
-            $this->picked = [...$this->picked, $id];
+            // The first click of the double click took an already picked file out: put it back where it was.
+            $index = $this->lastUnpicked !== null && $this->lastUnpicked['id'] === $id ? $this->lastUnpicked['index'] : count($this->picked);
+            $picked = $this->picked;
+            array_splice($picked, $index, 0, [$id]);
+            $this->picked = $picked;
         }
 
+        $this->lastUnpicked = null;
         $this->choose();
     }
 
@@ -405,10 +445,13 @@ new class extends Component {
     #[Computed]
     public function uploaderConfig(): array
     {
-        return UploaderConfig::for($this->actor(), $this->acceptance()->uploadExtensions());
+        return [
+            ...UploaderConfig::for($this->actor(), $this->acceptance()->uploadExtensions()),
+            'single' => ! $this->multiple,
+        ];
     }
 
-    public function acceptance(): MediaAcceptance
+    protected function acceptance(): MediaAcceptance
     {
         return new MediaAcceptance($this->accept, $this->extensions);
     }
@@ -441,11 +484,37 @@ new class extends Component {
     }
 
     /**
+     * The value in its canonical shape: an int or null, or with `multiple` a list of ints.
+     *
+     * @return int|list<int>|null
+     */
+    private function normalizeValue(mixed $value): int|array|null
+    {
+        $ids = $this->idsOf($value);
+
+        return $this->multiple ? $ids : ($ids[0] ?? null);
+    }
+
+    /**
+     * The ids in the value, whatever shape it came in ('' and other non-digit text mean none).
+     *
      * @return list<int>
      */
     private function valueIds(): array
     {
-        return MediaIds::normalize(is_array($this->value) ? $this->value : ($this->value === null ? [] : [$this->value]));
+        return $this->idsOf($this->value);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function idsOf(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $this->multiple ? MediaIds::normalize($value) : [];
+        }
+
+        return MediaIds::normalize([$value]);
     }
 
     private function actor(): User
@@ -618,7 +687,8 @@ new class extends Component {
                                                 type="button"
                                                 wire:key="picker-tile-{{ $item->id }}"
                                                 @if ($usable)
-                                                    wire:click="pick({{ $item->id }})"
+                                                    {{-- A double click sends only pickAndChoose, not a second pick. --}}
+                                                    x-on:click="if ($event.detail <= 1) $wire.pick({{ $item->id }})"
                                                     wire:dblclick="pickAndChoose({{ $item->id }})"
                                                     aria-pressed="{{ $isPicked ? 'true' : 'false' }}"
                                                     data-test="media-picker-tile-{{ $item->id }}"

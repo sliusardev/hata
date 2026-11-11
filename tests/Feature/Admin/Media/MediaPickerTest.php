@@ -5,6 +5,9 @@ use App\Models\MediaFolder;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Component;
+use Livewire\Features\SupportTesting\ComponentState;
+use Livewire\Features\SupportTesting\RequestBroker;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -104,7 +107,7 @@ it('selects and closes on a double click', function () {
 
 it('keeps the pick order and toggles files with multiple', function () {
     $this->actingAs(pickerUser());
-    [$a, $b, $c] = Media::factory()->image()->count(3)->create()->all();
+    [$a, $b, $c, $d] = Media::factory()->image()->count(4)->create()->all();
 
     $picker = testPicker(['multiple' => true, 'value' => []])
         ->call('openPicker')
@@ -113,10 +116,24 @@ it('keeps the pick order and toggles files with multiple', function () {
         ->call('pick', $b->id)
         ->call('pick', $a->id)
         ->assertSet('picked', [$c->id, $b->id])
-        ->call('pickAndChoose', $a->id)
-        ->assertSet('value', [$c->id, $b->id, $a->id]);
+        ->call('pick', $a->id)
+        ->call('pickAndChoose', $d->id)
+        ->assertSet('value', [$c->id, $b->id, $a->id, $d->id]);
 
-    $picker->call('remove', $b->id)->assertSet('value', [$c->id, $a->id]);
+    $picker->call('remove', $b->id)->assertSet('value', [$c->id, $a->id, $d->id]);
+});
+
+it('keeps a picked file in place when it is double clicked with multiple', function () {
+    $this->actingAs(pickerUser());
+    [$a, $b, $c] = Media::factory()->image()->count(3)->create()->all();
+
+    // The browser sends the first click of a double click as pick (which takes a picked file out), then pickAndChoose.
+    testPicker(['multiple' => true, 'value' => [$a->id, $b->id, $c->id]])
+        ->call('openPicker')
+        ->call('pick', $b->id)
+        ->call('pickAndChoose', $b->id)
+        ->assertSet('value', [$a->id, $b->id, $c->id])
+        ->assertSet('showModal', false);
 });
 
 it('removes the current choice', function () {
@@ -264,4 +281,113 @@ it('refuses every library method without media.view', function (string $method, 
     'loadMore' => ['loadMore', []],
     'saveAlt' => ['saveAlt', []],
     'storeUpload' => ['storeUpload', []],
+    '_startUpload' => ['_startUpload', ['upload', [['name' => 'a.png', 'size' => 100, 'type' => 'image/png']], false]],
+]);
+
+it('keeps a value set from the browser to the mounted files without media.view', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
+    [$mounted, $other] = Media::factory()->image()->count(2)->create()->all();
+
+    testPicker(['value' => $mounted->id])
+        ->set('value', $other->id)
+        ->assertSet('value', null)
+        ->assertDontSee($other->name);
+
+    testPicker(['multiple' => true, 'value' => [$mounted->id]])
+        ->set('value', [$other->id, $mounted->id])
+        ->assertSet('value', [$mounted->id])
+        ->assertDontSee($other->name)
+        ->set('value', [])
+        ->assertSet('value', []);
+});
+
+it('normalizes the value it is mounted with', function (mixed $value, bool $multiple, mixed $expected) {
+    $this->actingAs(pickerUser());
+    Media::factory()->image()->create(['id' => 7]);
+
+    testPicker(['value' => $value, 'multiple' => $multiple])->assertSet('value', $expected);
+})->with([
+    'empty string, single' => ['', false, null],
+    'digit string, single' => ['7', false, 7],
+    'text, single' => ['abc', false, null],
+    'list, single' => [[7], false, null],
+    'null, multiple' => [null, true, []],
+    'empty string, multiple' => ['', true, []],
+    'digit strings, multiple' => [['7', 7], true, [7]],
+]);
+
+/**
+ * A form that holds the picker's value the way a real parent does (`wire:model.live` on the picker).
+ */
+class MediaPickerTestParent extends Component
+{
+    public int|string|array|null $logo = null;
+
+    public bool $multiple = false;
+
+    public function render(): string
+    {
+        return <<<'BLADE'
+            <div>
+                <livewire:media-picker wire:model.live="logo" accept="image" :multiple="$multiple" />
+            </div>
+            BLADE;
+    }
+}
+
+/**
+ * The snapshot of the picker rendered inside the parent's test, with the wire:model binding in its memo.
+ *
+ * @return array<string, mixed>
+ */
+function childPickerSnapshot(Testable $parent): array
+{
+    preg_match_all('/wire:snapshot="([^"]*)"/', $parent->html(), $matches);
+
+    return collect($matches[1])
+        ->map(fn (string $encoded): array => json_decode(htmlspecialchars_decode($encoded, ENT_QUOTES), true))
+        ->firstOrFail(fn (array $snapshot): bool => $snapshot['memo']['name'] === 'media-picker');
+}
+
+/**
+ * That picker as a testable component of its own (Livewire's test API has no handle on a child), so its next
+ * requests carry the binding as they do in the browser.
+ *
+ * @param  array<string, mixed>  $snapshot
+ */
+function childPicker(array $snapshot): Testable
+{
+    $state = new ComponentState(null, null, null, '', $snapshot, []);
+
+    return Closure::bind(fn (): Testable => new Testable(new RequestBroker(app()), $state), null, Testable::class)();
+}
+
+it('works with a parent whose field is empty, picks a file and hands its id back to the parent', function (mixed $initial, bool $multiple) {
+    $this->actingAs(pickerUser());
+    $image = Media::factory()->image()->create();
+    $expected = $multiple ? [$image->id] : $image->id;
+    Livewire::component('media-picker-test-parent', MediaPickerTestParent::class);
+
+    $parent = Livewire::test('media-picker-test-parent', ['logo' => $initial, 'multiple' => $multiple]);
+
+    // The binding the browser uses to copy the picker's value into the parent's field.
+    expect($parent->html())->toContain('wire:model.live="$parent.logo"')->toContain('x-modelable="$wire.value"');
+
+    $snapshot = childPickerSnapshot($parent);
+    $mounted = (new ComponentState(null, null, null, '', $snapshot, []))->getSnapshotData();
+
+    expect($mounted['value'])->toBe($multiple ? [] : null);
+
+    $picker = childPicker($snapshot)
+        ->call('openPicker')
+        ->call('pickAndChoose', $image->id)
+        ->assertSet('value', $expected);
+
+    // What x-modelable then writes into the parent's field.
+    $parent->set('logo', $picker->get('value'))->assertSet('logo', $expected);
+})->with([
+    'empty string' => ['', false],
+    'null' => [null, false],
+    'empty string, multiple' => ['', true],
+    'null, multiple' => [null, true],
 ]);

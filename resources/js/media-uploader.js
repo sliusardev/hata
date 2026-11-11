@@ -9,7 +9,7 @@
  *
  * Config (from the page): canUpload, clientResize, clientSide (px), accept (extensions), types ({ext: kind}),
  * limits ({kind: bytes}), uploadCap (PHP's upload cap in bytes, null = none), locale and texts
- * (translated strings with :placeholders).
+ * (translated strings with :placeholders); the media picker adds single (true: only the first of several files is queued).
  */
 
 /** Formats the browser can decode and the canvas can re-encode. */
@@ -221,7 +221,10 @@ export default function mediaUploader(config) {
             // The folder open now, so switching folders while the queue runs doesn't change where files go.
             const folderId = /^\d+$/.test(String(this.$wire.folder ?? '')) ? Number(this.$wire.folder) : null;
 
-            for (const file of Array.from(fileList ?? [])) {
+            // A picker for one file takes only the first of several dropped files.
+            const picked = Array.from(fileList ?? []).slice(0, config.single ? 1 : undefined);
+
+            for (const file of picked) {
                 const id = nextId++;
                 const extension = extensionOf(file.name);
                 const error = this.precheck(file, extension);

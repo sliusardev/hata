@@ -16,12 +16,10 @@ function validateSelection(mixed $value, MediaSelection $rule): array
     return [$validator->passes(), $validator->errors()->first('media') ?: null];
 }
 
-const LOGO_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
-
 it('accepts an allowed image id for a single selection', function () {
     $image = Media::factory()->image()->create();
 
-    expect(validateSelection($image->id, new MediaSelection(accept: 'image', multiple: false, extensions: LOGO_EXTENSIONS)))
+    expect(validateSelection($image->id, new MediaSelection(accept: 'image', multiple: false, extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'])))
         ->toBe([true, null])
         ->and(validateSelection((string) $image->id, new MediaSelection(accept: 'image')))->toBe([true, null]);
 });
@@ -63,9 +61,10 @@ it('rejects a document where an image is expected', function () {
 
 it('rejects an image whose extension is not in the list', function () {
     $gif = Media::factory()->image()->create(['name' => 'animation.gif', 'mime' => 'image/gif']);
+    $logoExtensions = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
 
-    expect(validateSelection($gif->id, new MediaSelection(accept: 'image', extensions: LOGO_EXTENSIONS)))
+    expect(validateSelection($gif->id, new MediaSelection(accept: 'image', extensions: $logoExtensions)))
         ->toBe([false, __('media.picker.invalid')])
-        ->and(validateSelection([$gif->id], new MediaSelection(accept: 'image', multiple: true, extensions: LOGO_EXTENSIONS)))
+        ->and(validateSelection([$gif->id], new MediaSelection(accept: 'image', multiple: true, extensions: $logoExtensions)))
         ->toBe([false, __('media.picker.invalid')]);
 });
