@@ -2,7 +2,7 @@
 
 Admin panel starter kit (users, roles, permissions; later pages, posts, themes). Built on top of the official Laravel Livewire starter kit. Also read `AGENTS.md` (Laravel Boost guidelines, local only).
 
-## Stack (verified 2026-11-05)
+## Stack (verified 2026-11-12)
 
 | Package | Version |
 |---|---|
@@ -11,11 +11,13 @@ Admin panel starter kit (users, roles, permissions; later pages, posts, themes).
 | livewire/livewire | 4.4 (SFC, no Volt) |
 | livewire/flux | 2.21 **free** (no `livewire/flux-pro`) |
 | livewire/blaze | 1.0 |
+| spatie/laravel-permission | 8.4 |
 | laravel/fortify | 1.41 (auth backend, passkeys, 2FA) |
 | pestphp/pest | 5.3 |
 | larastan/larastan | 3.14, level 7 (`composer types:check`) |
 | laravel/pint | 1.32 |
-| intervention/image | 4.2 (image driver for `Illuminate\Image`; imagick if loaded, else gd) |
+| intervention/image | 4.4 (image driver for `Illuminate\Image`; imagick if loaded, else gd) |
+| league/flysystem-aws-s3-v3 | 3.35 (S3 adapter for the optional cloud media disk; any S3-compatible service) |
 | Tailwind | 4, built by vite-plus (`npm run build`) |
 
 ## Starter kit structure
@@ -28,6 +30,9 @@ Admin panel starter kit (users, roles, permissions; later pages, posts, themes).
 - **Toasts:** `Flux::toast(...)` with `<flux:toast.group>` persisted in the sidebar layout.
 - **Existing Actions:** `app/Actions/Fortify/*` (Fortify contracts, method names set by Fortify). `app/Concerns/*ValidationRules.php` are validation-rule traits.
 - **AppServiceProvider:** `Date::use(CarbonImmutable::class)`, `DB::prohibitDestructiveCommands()` in production, `Password::defaults()` (strict in production, `null` otherwise).
+- **Media batches:** `App\Actions\Media\MediaBatchEngine` (run state, lock, heartbeat, budgets, pause/resume/stop) is the base of `OptimizeExistingMedia` and `MoveMediaToDisk`; each has its queue job (`App\Jobs\MediaBatchJob` base), command (`App\Console\Commands\MediaBatchCommand` base: `media:optimize`, `media:move-disk {to}`) and page (`App\Livewire\Admin\MediaBatchPage` base: `/admin/media/optimize`, `/admin/media/move`).
+- **Scheduler:** `media:prune-deleted` runs `daily()` (`routes/console.php`); it deletes cloud objects from `media_pending_deletions` when due. Batches and the library page prune too, so no cron is required.
+- **Cache locks:** media rebuilds, moves and batches use cache locks, so web, queue and CLI need one shared cache store (database, redis or file on one server), never `array`.
 - **Tests:** Pest, SQLite `:memory:` (phpunit.xml), `RefreshDatabase` for Feature tests. `composer test` = pint --test + phpstan + tests. CI (`.github/workflows/tests.yml`) runs `composer setup` + `composer ci:check`.
 - **No `lang/` directory** before stage 1. About 106 unique `__('Literal')` strings in the starter kit.
 - `.ai/` contains only `mcp/mcp.json`; there is no `.ai/rules`.
@@ -91,7 +96,7 @@ Each decision gives its date and its reason. Add new ones at the end.
 47. **Folders: collapsible tree, moves and per-folder menus** (2026-11-11, user's requests). The tree shows only the path to the open folder expanded (the rest is kept per browser in `localStorage`), caps its indent at depth 4 and gets a search over 15 folders, so deep or many folders stay readable. Folders move by drag or a "Move to…" folder picker (`MoveFolder`, in a locked transaction; never into itself or a descendant, and `descendantIds()` stops on a cycle). The open folder shows its subfolders as tiles, and every folder (tile, tree row, breadcrumb) has the same "⋮" menu from one partial. The details panel closes when its file leaves the view; while anything is selected, a plain tile click toggles the pick.
 48. **Media optimization picks its driver itself, and queued jobs re-apply the site settings** (2026-11-11). "Optimize existing files" runs on the queue when `queue.default` isn't `sync` (a self-chaining `OptimizeExistingMediaBatch`), else the open page processes batches; with a queue, the page falls back to processing after 30 s without a heartbeat while no batch holds the lock. `Queue::before` in `AppServiceProvider` re-applies `SiteSettings` before every job (and `media:optimize` before every batch), because the settings live in the database and a worker boots once. It skips jobs on the `sync` connection: they run inside a request that already applied the settings, and re-applying would put the site default back into `app.locale` after `SetLocale`.
 49. **Logos are library files** (2026-11-11). The light and dark logos are ordinary media files chosen with the media picker, so there is no logo upload, `branding` disk or `branding.logo` route any more. `logo_light`/`logo_dark` hold media ids (cast to int into `admin.logo.*`), and each choice is recorded in `media_usages` against the `Setting` row, which implements `UsesMedia`: the library shows "Site logo (light/dark)" in the file's details, and deleting the file (or its folder) clears the setting inside the delete's transaction (config and cache refresh only after commit). Logos uploaded before this change are imported into the library by the migration `import_branding_logos_into_media` (a top-level "Logo" folder, `UploadMedia::import()` without an actor like decision 16; a logo that can't be imported is dropped, the deploy never fails).
-50. **Media on S3-compatible storage** (2026-11-11). Cloud raster images and their thumbnails are served by direct CDN/bucket URLs with `?v={version}` when the disk has a public URL (else a 302 to a signed URL); SVG is always streamed through the app with the CSP sandbox and `nosniff`, never redirected to the bucket; documents and downloads go through the app route to a signed URL (1 hour) whose disposition carries the real file name. Cloud object paths carry the version (`{key}-v{version}`), so a rebuild never overwrites a committed object; replaced objects wait 7 days in `media_pending_deletions` (pruned by batches, the library page and a daily schedule, no worker or cron needed). Moving files between disks (`/admin/media/move`, `media:move-disk`) is a second mode of the optimize batch mechanism (`MediaBatchEngine` and its run/store/job/command/page bases), not a copy of it; a move bumps the version so `?v=` changes and a row moved back never reuses a path still pending deletion. Rebuilds and moves take a per-row cache lock (`RebuildMediaFile::lockName()`) plus a version guard, so the lock needs a cache store shared by web, queue and CLI (not `array`). SVG objects are written as `application/octet-stream` + `attachment`, so a direct bucket/CDN link can never render one on that origin. The `s3` disk keeps `'throw' => false`, so every media write and delete checks its result (a `false` write rolls the upload or rebuild back, a `false` delete is retried by the prune). A move insures each copy as a pending deletion due in a day and drops it on commit or cleanup, so a process killed mid-copy leaves nothing behind for long; its queue job's timeout is the batch lock (budget + 30 min). Signed URLs are signed per clock hour, so they stay the same within it.
+50. **Media on S3-compatible storage** (2026-11-11). Cloud raster images and their thumbnails are served by direct CDN/bucket URLs with `?v={version}` when the disk has a public URL (else a 302 to a signed URL); SVG is always streamed through the app with the CSP sandbox and `nosniff`, never redirected to the bucket; documents and downloads go through the app route to a signed URL (valid for at least an hour) whose disposition carries the real file name. Cloud object paths carry the version (`{key}-v{version}`), so a rebuild never overwrites a committed object; replaced objects wait 7 days in `media_pending_deletions` (pruned by batches, the library page and a daily schedule, no worker or cron needed). Moving files between disks (`/admin/media/move`, `media:move-disk`) is a second mode of the optimize batch mechanism (`MediaBatchEngine` and its run/store/job/command/page bases), not a copy of it; a move bumps the version so `?v=` changes and a row moved back never reuses a path still pending deletion. Rebuilds and moves take a per-row cache lock (`RebuildMediaFile::lockName()`) plus a version guard, so the lock needs a cache store shared by web, queue and CLI (not `array`). SVG objects are written as `application/octet-stream` + `attachment`, so a direct bucket/CDN link can never render one on that origin. The `s3` disk keeps `'throw' => false`, so every media write and delete checks its result (a `false` write rolls the upload or rebuild back, a `false` delete is retried by the prune). A move insures each copy as a pending deletion due in a day and drops it on commit or cleanup, so a process killed mid-copy leaves nothing behind for long; its queue job's timeout is the batch lock (budget + 30 min). Signed URLs are signed from the start of the clock hour (valid 1 to 2 hours), so they stay the same within it.
 
 ## Conventions
 
@@ -109,8 +114,8 @@ Short specs for each section of the site. Read the relevant one before changing 
 - [User settings](docs/specs/user-settings.md): profile, language, security, appearance
 - [Users page](docs/specs/users.md): list, create/edit form, user actions and protection rules
 - [Roles and permissions page](docs/specs/roles.md): permission registry, system roles, permission matrix, role actions
-- [Site settings page](docs/specs/site-settings.md): site name, language, timezone, registration, default role, email, logo, colors
-- [Media library](docs/specs/media.md): files and folders, upload, image optimization, permissions
+- [Site settings page](docs/specs/site-settings.md): site name, language, timezone, registration, default role, email, logo, colors, media (optimization, storage/S3)
+- [Media library](docs/specs/media.md): files and folders, upload, image optimization, crop/replace, picker, storage (local and S3-compatible), optimizing and moving existing files, permissions
 
 ===
 

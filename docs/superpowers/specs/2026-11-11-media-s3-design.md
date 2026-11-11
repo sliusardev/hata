@@ -1,5 +1,7 @@
 # Media library, Part 5: S3-compatible storage — design
 
+> Status: built. Part 5 is built on branch `media-s3` (S3-compatible storage, direct CDN URLs, moving files between disks); where this record differs from the code after review, `docs/specs/media.md` ("Storage disks", "Move files between disks") and `docs/specs/site-settings.md` ("Media") are the current behaviour.
+
 Date: 2026-11-11. Builds on `docs/specs/media.md` ("Storage disks (local now, S3-compatible later)", the serving route, "Optimize existing files") and `docs/specs/site-settings.md` (Media tab). Read those first; this document settles what they leave open and overrides them where it says so.
 
 ## Intent

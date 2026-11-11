@@ -40,7 +40,7 @@ npm install && npm run build
 3. Run the migrations and the seeder from your hosting control panel (`php artisan migrate --force && php artisan db:seed --force`). The seeder creates that super admin if it does not exist yet.
 4. Remove `ADMIN_PASSWORD` from `.env` after the first deploy.
 
-Stage 1 does not queue any jobs. On hosting without workers, set `QUEUE_CONNECTION=sync`.
+No job needs a worker. On hosting without workers, set `QUEUE_CONNECTION=sync`: long media tasks (optimizing or moving existing files) then run in the open admin page, or with `php artisan media:optimize` / `media:move-disk` over SSH. With a real queue, run a worker and use one shared cache store (database, redis or file, not `array`) because media jobs use cache locks.
 
 ## Creating the first admin
 
@@ -99,7 +99,7 @@ The interface is available in English (`en`, the default and fallback) and Ukrai
 
 Registration is disabled by default. Turn it on in **Admin → Site settings** (or set `ADMIN_REGISTRATION_ENABLED=true`). Registered users get the role chosen there, no role by default, so they cannot open the admin panel until an administrator assigns one.
 
-The site settings page also holds the site name, default language, timezone, email (SMTP) settings the light/dark logo (PNG, JPG, WebP or SVG; stored privately and served by the app, no `storage:link` needed) and the color scheme of the admin panel (nine presets or your company color). Values saved there override `.env`. After updating an existing install, run `php artisan migrate`, `php artisan permissions:sync` and `php artisan db:seed --class=RoleSeeder` so the `admin` role gets the new `settings.edit` permission.
+The site settings page also holds the site name, default language, timezone, email (SMTP) settings the light/dark logo (PNG, JPG, WebP or SVG, picked from the media library) and the color scheme of the admin panel (nine presets or your company color). Values saved there override `.env`. After updating an existing install, run `php artisan migrate`, `php artisan permissions:sync` and `php artisan db:seed --class=RoleSeeder` so the `admin` role gets the new `settings.edit` permission.
 
 ## Media library
 
@@ -107,6 +107,7 @@ Admin → Media stores images and documents on a private disk and serves them th
 
 - **Image extension:** PHP needs GD or Imagick, with WebP support, to optimize uploaded images. AVIF and HEIC need an Imagick build that can decode them. HEIC is never stored as HEIC: Safari converts it to JPEG in the browser, otherwise the server converts it to WebP (JPEG when the format setting keeps the original). Without such an Imagick, AVIF is stored as it is, and a HEIC the browser could not convert is refused with a hint to export it as JPG.
 - **Upload limits:** the default limits are 30 MB per image and 20 MB per document (`config/media.php`). Set `upload_max_filesize` and `post_max_size` in `php.ini` to at least `32M`, or uploads fail before the app sees them. The Media tab shows the cap the server actually allows.
+- **Optional S3-compatible storage:** by default files stay on the server. Under Admin → Site settings → Media you can send new uploads to S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces or MinIO (endpoint, region, bucket, keys, path-style for MinIO, optional public/CDN URL; "Test connection" checks them; `AWS_*` in `.env` work as defaults). The adapter `league/flysystem-aws-s3-v3` is already installed. Existing files move between the two with Admin → Media → move page or `php artisan media:move-disk s3|local`. The app keeps serving SVG itself and signs document links, so the bucket can stay private unless you set a public URL. For a long queue move, set `DB_QUEUE_RETRY_AFTER` above 1845 (see `docs/specs/media.md`, Known limitations). `php artisan media:prune-deleted` runs daily from the scheduler and removes replaced cloud objects after 7 days; without a cron the batches and the library page do it.
 - **Memory:** very large photos that don't fit in `memory_limit` are stored without optimization, with a note in the file details.
 
 ## Development

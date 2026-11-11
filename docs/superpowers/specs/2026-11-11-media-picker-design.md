@@ -1,5 +1,7 @@
 # Media library, Part 4: media picker — design
 
+> Status: built. Part 4 is built (media picker, logos from the library); the current behaviour is in `docs/specs/media.md` ("Picker") and `docs/specs/site-settings.md` ("Logo").
+
 Date: 2026-11-11. Builds on `docs/specs/media.md` ("Picker (screen 5)", `media_usages`) and `docs/specs/site-settings.md` ("Logo"). Approved mockup for the picker: screen 5 of https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4. Read those first; this document settles what they leave open.
 
 ## Intent

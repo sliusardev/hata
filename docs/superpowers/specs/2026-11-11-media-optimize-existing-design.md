@@ -1,5 +1,7 @@
 # Media library, Part 3: optimize existing files — design
 
+> Status: built. Part 3 is built (optimizing existing files, `media:optimize`); the current behaviour is in `docs/specs/media.md` ("Optimize existing files") and `docs/specs/site-settings.md`.
+
 Date: 2026-11-11. Builds on `docs/specs/media.md` (screen 8 "Optimize existing files" and the Media tab of site settings, screen 7). Read that spec first; this document only adds and settles what it leaves open.
 
 ## Intent
