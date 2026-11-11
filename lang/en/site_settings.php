@@ -126,6 +126,7 @@ return [
         'existing_candidates' => 'image doesn’t match the saved settings.|images don’t match the saved settings.',
         'existing_saving' => 'Estimated saving: about :size.',
         'existing_none' => 'All images match the current settings.',
+        'existing_save_first' => 'Save to see which existing images can be optimized.',
         'existing_button' => 'Optimize existing',
         'limits_section' => 'Limits',
         'max_image_mb' => 'Images, up to MB',

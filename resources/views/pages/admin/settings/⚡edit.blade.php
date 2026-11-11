@@ -296,16 +296,20 @@ new #[Title('site_settings.title')] class extends Component {
      * and a rough saving (85% of the size of never-optimized files, 20% of the rest). Two SQL sums, no rows loaded;
      * only read by the Media tab.
      *
-     * @return array{run: OptimizationRun|null, count: int, saving: string}
+     * @return array{enabled: bool, run: OptimizationRun|null, count: int, saving: string}
      */
     #[Computed]
     public function optimizationCard(): array
     {
+        if (! config('media.optimize.enabled')) {
+            return ['enabled' => false, 'run' => null, 'count' => 0, 'saving' => ''];
+        }
+
         $fingerprint = app(OptimizeImage::class)->fingerprint();
         $run = app(OptimizationRunStore::class)->get();
 
-        if ($run !== null && $run->status === 'running' && ! $run->isStale($fingerprint)) {
-            return ['run' => $run, 'count' => 0, 'saving' => ''];
+        if ($run !== null && in_array($run->status, ['running', 'paused'], true) && ! $run->isStale($fingerprint)) {
+            return ['enabled' => true, 'run' => $run, 'count' => 0, 'saving' => ''];
         }
 
         $totals = Media::query()
@@ -319,7 +323,7 @@ new #[Title('site_settings.title')] class extends Component {
 
         $saving = (int) round((float) $totals->fresh_size * 0.85 + (float) $totals->old_size * 0.20);
 
-        return ['run' => null, 'count' => (int) $totals->total, 'saving' => Media::formatBytes($saving)];
+        return ['enabled' => true, 'run' => null, 'count' => (int) $totals->total, 'saving' => Media::formatBytes($saving)];
     }
 
     #[Computed]
@@ -608,8 +612,10 @@ new #[Title('site_settings.title')] class extends Component {
                     <flux:callout icon="arrow-path" class="max-w-xl" data-test="optimize-existing-card">
                         <flux:callout.heading>{{ __('site_settings.media.existing_heading') }}</flux:callout.heading>
                         <flux:callout.text>
-                            @if ($card['run'] !== null)
-                                <span data-test="optimize-existing-progress">{{ __('media.optimize.progress', ['processed' => $card['run']->processed(), 'total' => $card['run']->total]) }}</span>
+                            @if (! $card['enabled'])
+                                <span data-test="optimize-existing-unsaved">{{ __('site_settings.media.existing_save_first') }}</span>
+                            @elseif ($card['run'] !== null)
+                                <span data-test="optimize-existing-progress">{{ __("media.optimize.status.{$card['run']->status}") }}: {{ __('media.optimize.progress', ['processed' => $card['run']->processed(), 'total' => $card['run']->total]) }}</span>
                             @elseif ($card['count'] > 0)
                                 <span><span data-test="optimize-existing-count">{{ $card['count'] }}</span> {{ trans_choice('site_settings.media.existing_candidates', $card['count']) }}</span>
                                 <span data-test="optimize-existing-saving">{{ __('site_settings.media.existing_saving', ['size' => $card['saving']]) }}</span>
@@ -618,7 +624,7 @@ new #[Title('site_settings.title')] class extends Component {
                             @endif
                         </flux:callout.text>
                         <x-slot name="actions">
-                            <flux:button size="sm" :href="route('admin.media.optimize')" wire:navigate>{{ __('site_settings.media.existing_button') }}</flux:button>
+                            @if ($card['enabled'])<flux:button size="sm" :href="route('admin.media.optimize')" wire:navigate>{{ __('site_settings.media.existing_button') }}</flux:button>@endif
                         </x-slot>
                     </flux:callout>
                 @endcan

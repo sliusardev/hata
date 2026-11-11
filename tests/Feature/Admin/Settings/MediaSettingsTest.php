@@ -191,6 +191,58 @@ describe('optimize existing card', function () {
             ->assertDontSeeHtml('data-test="optimize-existing-count"');
     });
 
+    it('shows no counts while optimization is stored as off', function () {
+        config(['media.optimize.enabled' => false]);
+        Media::factory()->image()->create(['optimized_with' => null]);
+
+        Livewire::withQueryParams(['tab' => 'media'])
+            ->test('pages::admin.settings.edit')
+            ->set('form.media_optimize', true)
+            ->assertSeeHtml('data-test="optimize-existing-unsaved"')
+            ->assertDontSeeHtml('data-test="optimize-existing-count"')
+            ->assertDontSeeHtml(route('admin.media.optimize'));
+    });
+
+    it('shows a paused run with its status', function () {
+        Media::factory()->image()->create(['optimized_with' => null]);
+        app(OptimizationRunStore::class)->save(new OptimizationRun(
+            status: 'paused',
+            fingerprint: app(OptimizeImage::class)->fingerprint(),
+            cursor: 0,
+            total: 4,
+            counts: ['optimized' => 1],
+            bytesBefore: 0,
+            bytesAfter: 0,
+            startedAt: now()->toImmutable(),
+        ));
+
+        Livewire::withQueryParams(['tab' => 'media'])
+            ->test('pages::admin.settings.edit')
+            ->assertSeeHtml('data-test="optimize-existing-progress"')
+            ->assertSee(__('media.optimize.status.paused'))
+            ->assertSee(__('media.optimize.progress', ['processed' => 1, 'total' => 4]))
+            ->assertSeeHtml(route('admin.media.optimize'));
+    });
+
+    it('ignores a stale run and shows the estimate', function () {
+        Media::factory()->image()->create(['optimized_with' => null]);
+        app(OptimizationRunStore::class)->save(new OptimizationRun(
+            status: 'running',
+            fingerprint: 'webp:1:1:old',
+            cursor: 0,
+            total: 9,
+            counts: ['optimized' => 3],
+            bytesBefore: 0,
+            bytesAfter: 0,
+            startedAt: now()->toImmutable(),
+        ));
+
+        Livewire::withQueryParams(['tab' => 'media'])
+            ->test('pages::admin.settings.edit')
+            ->assertDontSeeHtml('data-test="optimize-existing-progress"')
+            ->assertSeeHtml('data-test="optimize-existing-count">1<');
+    });
+
     it('is hidden without media.edit', function () {
         Media::factory()->image()->create(['optimized_with' => null]);
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.view', 'settings.edit'])->create());

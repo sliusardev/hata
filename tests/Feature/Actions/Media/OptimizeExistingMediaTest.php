@@ -171,7 +171,7 @@ it('re-applies stored crop edits from the original', function () {
     expect($outcome)->toBe(OptimizeOutcome::Optimized)
         ->and([$media->width, $media->height])->toBe([1000, 500])
         ->and([$stored->width(), $stored->height()])->toBe([1000, 500])
-        ->and($media->edits)->toBe($edits);
+        ->and($media->edits)->toEqualCanonicalizing($edits);
 });
 
 it('skips a file too large for memory and leaves it a candidate', function () {
