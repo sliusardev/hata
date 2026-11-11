@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Settings\SetLogo;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\MediaUsage;
@@ -88,4 +89,41 @@ it('changes nothing when run twice', function () {
     expect(Media::query()->count())->toBe(1)
         ->and(Setting::query()->where('key', 'logo_light')->value('value'))->toBe($id)
         ->and(MediaUsage::query()->count())->toBe(1);
+});
+
+it('imports under a readable name', function () {
+    Storage::disk('local')->put('branding/3f9a1c0d2e.PNG', makeImage('png'));
+    Setting::create(['key' => 'logo_dark', 'value' => 'branding/3f9a1c0d2e.PNG']);
+
+    runLogoImport();
+
+    expect(Media::query()->sole()->name)->toStartWith('logo-dark.');
+});
+
+it('keeps the old file and leaves no library file when storing the setting fails after the import', function () {
+    Storage::disk('local')->put('branding/a.png', makeImage('png'));
+    Setting::create(['key' => 'logo_light', 'value' => 'branding/a.png']);
+    app()->instance(SetLogo::class, new class(app(SiteSettings::class)) extends SetLogo
+    {
+        public function assign(string $variant, int $mediaId): void
+        {
+            throw new RuntimeException('Setting write failed.');
+        }
+    });
+
+    runLogoImport();
+
+    expect(Media::query()->count())->toBe(0)
+        ->and(MediaUsage::query()->count())->toBe(0)
+        ->and(Storage::disk('media')->allFiles())->toBe([])
+        ->and(Storage::disk('local')->exists('branding/a.png'))->toBeTrue()
+        ->and(Setting::query()->where('key', 'logo_light')->exists())->toBeFalse();
+});
+
+it('does not fail when the settings cache cannot be cleared', function () {
+    Cache::partialMock()->shouldReceive('forget')->with(SiteSettings::CACHE_KEY)->andThrow(new RuntimeException('Cache is down.'));
+
+    runLogoImport();
+
+    expect(true)->toBeTrue();
 });
