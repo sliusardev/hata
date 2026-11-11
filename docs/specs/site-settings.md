@@ -58,6 +58,7 @@ Switching tabs while the open one has unsaved changes (compared with the values 
 - **Fallback:** with only one logo chosen, it's used in both themes (`SiteLogo::media()`). A missing row, a file missing on disk or a file that isn't a logo format counts as empty; with both empty the default mark is shown (never an `<img>` with a dead URL). Lookups are memoized per request and forgotten whenever the settings are applied (`SiteLogo::flush()`).
 - **Storage:** the setting holds the media id. `SetLogo` (`settings.edit`; also `media.view` unless the id is already the stored one, so a user without library access can't take arbitrary files) validates it with `MediaSelection(accept: 'image', extensions: SiteLogo::EXTENSIONS)`, stores it through `SiteSettings::put()` and records the usage (`MediaUsage::sync($settingRow, 'logo_light'|'logo_dark', [$id])`). `RemoveLogo` removes the setting and its usage row; the file stays.
 - **Usage and deleting:** `Setting` implements `UsesMedia`: the label is "Site logo (light)" / "Site logo (dark)", the link goes to this tab for viewers with `settings.edit`. Deleting the file in the library (also through a folder) calls `Setting::forgetMedia()` inside the delete transaction, which removes the setting; `SiteSettings::put()` clears the cache and re-applies the config only after commit (`DB::afterCommit`), so a delete that fails leaves the logo and files as they were.
+- **Upgrade:** the migration `import_branding_logos_into_media` turns logos uploaded before the library (settings holding a `branding/...` path on the old disk, `ADMIN_LOGO_DISK`, default `local`) into library files in a top-level "Logo" folder (an existing one is reused), through `UploadMedia::import()` (no actor, `uploaded_by` null) and `SetLogo::assign()` (setting and usage row exactly as a pick stores them), then deletes the old file. A slot that fails (missing file, not an image, decode error) is reported and its setting removed, so the default mark shows; the deploy never fails. Settings that already hold an id are left alone, so a second run changes nothing. `down()` does nothing.
 - **Serving:** logos are ordinary media files served by `MediaController` (`/media/{key}/{name}`, see the media spec); there is no `branding.logo` route.
 
 ## Colors
@@ -85,6 +86,6 @@ Details of the settings and their defaults are in [the media spec](media.md#site
 
 | Action | Permission | Rules |
 |---|---|---|
-| `UploadLogo` | `settings.edit` | stores the validated file, deletes the previous one |
-| `RemoveLogo` | `settings.edit` | deletes the file and the setting |
+| `SetLogo` | `settings.edit` | stores a library file's id as the logo and records the usage (`assign()` does it without checks, for the import migration) |
+| `RemoveLogo` | `settings.edit` | removes the setting and its usage; the file stays |
 | `UpdateSiteSettings` | `settings.edit` | stores only the keys it's given (one tab); the role of new users must be assignable by the actor and not super-admin (`ProtectedActionException`, shown as a field error) |

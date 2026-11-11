@@ -43,6 +43,15 @@ class SetLogo
             attributes: ['media' => __("site_settings.logo.{$variant}")],
         )->validate();
 
+        $this->assign($variant, $mediaId);
+    }
+
+    /**
+     * Store the media id as the logo and record the usage, without any checks.
+     * Callers must have validated the id (`handle()`) or know the file (the import migration).
+     */
+    public function assign(string $variant, int $mediaId): void
+    {
         DB::transaction(function () use ($variant, $mediaId): void {
             $this->settings->put(["logo_{$variant}" => $mediaId]);
 

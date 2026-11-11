@@ -32,6 +32,25 @@ class UploadMedia
     {
         Gate::forUser($actor)->authorize('create', Media::class);
 
+        return $this->store($actor->id, $file, $folder, $pickedSize, $pickedExtension);
+    }
+
+    /**
+     * Store a file without an actor (`uploaded_by` stays null), with the same checks, optimization and storing as `handle()`.
+     * Only for code that runs outside a request, such as the migration that imports the old logos.
+     *
+     * @throws MediaUploadException
+     */
+    public function import(UploadedFile $file, ?MediaFolder $folder = null): Media
+    {
+        return $this->store(null, $file, $folder, null, null);
+    }
+
+    /**
+     * @throws MediaUploadException
+     */
+    private function store(?int $uploadedBy, UploadedFile $file, ?MediaFolder $folder, ?int $pickedSize, ?string $pickedExtension): Media
+    {
         $type = MediaUploadChecks::validate($file, $pickedSize);
         $uploadedSize = (int) $file->getSize();
 
@@ -75,7 +94,7 @@ class UploadMedia
 
             $media = new Media([
                 'folder_id' => $folder?->id,
-                'uploaded_by' => $actor->id,
+                'uploaded_by' => $uploadedBy,
                 'disk' => $disk,
                 'path' => $path,
                 'original_path' => $originalPath,
