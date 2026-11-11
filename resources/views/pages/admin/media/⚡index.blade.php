@@ -1387,7 +1387,8 @@ new #[Title('media.index.title')] class extends Component {
     x-on:drop.window="drop($event)"
     x-on:dragend.window="resetDrag()"
     x-on:keydown.escape.window="mediaDetailsClose.escapeKey($event, $wire)"
-    x-init="
+    x-init="(() => {
+        {{-- Alpine evaluates x-init as `return <expression>`, so statements such as try go inside a function. --}}
         try {
             const stored = localStorage.getItem('media.view');
             if (! new URLSearchParams(window.location.search).has('view') && ['grid', 'list'].includes(stored) && stored !== $wire.view) {
@@ -1395,7 +1396,7 @@ new #[Title('media.index.title')] class extends Component {
             }
         } catch (error) {}
         $wire.$watch('view', (value) => { try { localStorage.setItem('media.view', value) } catch (error) {} });
-    "
+    })()"
 >
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
