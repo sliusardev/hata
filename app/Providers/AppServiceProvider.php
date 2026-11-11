@@ -7,6 +7,7 @@ use App\Support\Permissions\PermissionRegistry;
 use App\Support\Settings\SiteSettings;
 use App\Support\Translation\VendorTranslations;
 use Carbon\CarbonImmutable;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -47,11 +48,17 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Re-apply the site settings before every queued job. A worker boots once, but the settings live in the database
      * and change while it runs; `stored()` reads a cache that saving clears, and `apply()` first restores the config
-     * values of settings applied earlier, so a removed setting falls back to `.env` here too.
+     * values of settings applied earlier, so a removed setting falls back to `.env` here too. Jobs on the `sync`
+     * connection run inside the current request, which applied the settings at boot; re-applying there would write
+     * the site default back into `app.locale` after `SetLocale` set the user's language.
      */
     protected function configureQueue(): void
     {
-        Queue::before(function (): void {
+        Queue::before(function (JobProcessing $event): void {
+            if ($event->connectionName === 'sync') {
+                return;
+            }
+
             $this->app->make(SiteSettings::class)->apply();
             Mail::forgetMailers();
         });

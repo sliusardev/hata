@@ -2,6 +2,8 @@
 
 use App\Models\Setting;
 use App\Support\Settings\SiteSettings;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Facades\Cache;
 
 test('removing a setting brings back the value from the config file', function () {
@@ -47,9 +49,23 @@ test('a queued job sees settings changed after the worker booted, and removed on
 
     expect(config('media.optimize.quality'))->toBe(65);
 
+    event(new JobProcessing('database', new SyncJob(app(), '{}', 'database', 'default')));
+
+    expect(config('media.optimize.quality'))->toBe(70)
+        ->and(config('media.optimize.keep_originals'))->toBeTrue();
+});
+
+test('a job on the sync connection keeps the settings of the request it runs in', function () {
+    app(SiteSettings::class)->put(['media_quality' => 65, 'default_locale' => 'en']);
+    app()->setLocale('uk');
+
+    Setting::query()->updateOrCreate(['key' => 'media_quality'], ['value' => 70]);
+    Cache::forget(SiteSettings::CACHE_KEY);
+
     dispatch(function () {
-        Cache::put('seen', [config('media.optimize.quality'), config('media.optimize.keep_originals')]);
+        Cache::put('seen', config('media.optimize.quality'));
     })->onConnection('sync');
 
-    expect(Cache::get('seen'))->toBe([70, true]);
+    expect(Cache::get('seen'))->toBe(65)
+        ->and(app()->getLocale())->toBe('uk');
 });
