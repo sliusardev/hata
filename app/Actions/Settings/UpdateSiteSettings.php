@@ -3,14 +3,17 @@
 namespace App\Actions\Settings;
 
 use App\Exceptions\ProtectedActionException;
+use App\Exceptions\StorageSettingsException;
+use App\Models\Media;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Media\MediaDisks;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Gate;
 
 class UpdateSiteSettings
 {
-    public function __construct(private SiteSettings $settings) {}
+    public function __construct(private SiteSettings $settings, private TestStorageConnection $connectionTest) {}
 
     /**
      * Store the settings of one tab: only the given keys change. SMTP fields are removed
@@ -18,7 +21,7 @@ class UpdateSiteSettings
      *
      * @param  array<string, string|int|bool|null>  $data  Validated input.
      *
-     * @throws ProtectedActionException
+     * @throws ProtectedActionException|StorageSettingsException
      */
     public function handle(User $actor, array $data): void
     {
@@ -36,7 +39,47 @@ class UpdateSiteSettings
             $data = $this->normalizeMail($data);
         }
 
+        if (array_key_exists('media_storage', $data)) {
+            $data = $this->normalizeStorage($data);
+        }
+
         $this->settings->put($data);
+    }
+
+    /**
+     * An empty secret keeps the stored one. The connection can't be cleared while files are on s3, and choosing s3
+     * needs a passing connection test with the values being saved.
+     *
+     * @param  array<string, string|int|bool|null>  $data
+     * @return array<string, string|int|bool|null>
+     *
+     * @throws StorageSettingsException
+     */
+    private function normalizeStorage(array $data): array
+    {
+        $typedSecret = $data['media_s3_secret'] ?? null;
+
+        if (blank($typedSecret)) {
+            unset($data['media_s3_secret']);
+        }
+
+        if (Media::query()->where('disk', 's3')->exists()) {
+            foreach (['media_s3_bucket', 'media_s3_key'] as $field) {
+                if (array_key_exists($field, $data) && blank($data[$field])) {
+                    throw StorageSettingsException::on($field, __('site_settings.media.storage.errors.cannot_clear'));
+                }
+            }
+        }
+
+        if (($data['media_storage'] ?? null) === 's3') {
+            $result = $this->connectionTest->handle(MediaDisks::connectionConfig($data));
+
+            if (! $result['ok']) {
+                throw StorageSettingsException::on('media_storage', __('site_settings.media.storage.not_saved', ['reason' => $result['message'] ?? '']));
+            }
+        }
+
+        return $data;
     }
 
     /**

@@ -4,12 +4,15 @@ use App\Actions\Media\OptimizeImage;
 use App\Actions\Settings\RemoveLogo;
 use App\Actions\Settings\UpdateSiteSettings;
 use App\Actions\Settings\SetLogo;
+use App\Actions\Settings\TestStorageConnection;
 use App\Enums\SystemRole;
 use App\Exceptions\ProtectedActionException;
+use App\Exceptions\StorageSettingsException;
 use App\Livewire\Forms\SiteSettingsForm;
 use App\Support\ColorScheme\ColorScheme;
 use App\Models\Media;
 use App\Models\Role;
+use App\Support\Media\MediaDisks;
 use App\Support\Media\OptimizationRun;
 use App\Support\Media\OptimizationRunStore;
 use App\Support\Media\ServerCapabilities;
@@ -67,6 +70,18 @@ new #[Title('site_settings.title')] class extends Component {
 
     public bool $showUnsavedModal = false;
 
+    /**
+     * Asks for confirmation when the bucket, endpoint, prefix or public URL change while files are on s3.
+     */
+    public bool $showS3ChangeModal = false;
+
+    /**
+     * The last "Test connection" result, null until one runs or after a connection field changes.
+     *
+     * @var array{ok: bool, message: string}|null
+     */
+    public ?array $storageTest = null;
+
     public function mount(SiteSettings $settings): void
     {
         $this->authorize('settings.edit');
@@ -79,6 +94,16 @@ new #[Title('site_settings.title')] class extends Component {
         $this->logoLight = SiteLogo::own('light')?->id;
         $this->logoDark = SiteLogo::own('dark')?->id;
         $this->savedValues = $this->form->all();
+    }
+
+    /**
+     * A test result describes the values it ran with, so it goes away when they change.
+     */
+    public function updated(string $name): void
+    {
+        if (str_starts_with($name, 'form.media_s3_') || $name === 'form.media_storage') {
+            $this->storageTest = null;
+        }
     }
 
     public function updatedTab(): void
@@ -116,6 +141,8 @@ new #[Title('site_settings.title')] class extends Component {
     {
         $this->form->fill(Arr::only($this->savedValues, SiteSettingsForm::SECTIONS[$this->tab]));
         $this->form->mail_password = '';
+        $this->form->media_s3_secret = '';
+        $this->storageTest = null;
         $this->showUnsavedModal = false;
 
         if (array_key_exists($this->pendingTab, SiteSettingsForm::SECTIONS)) {
@@ -365,6 +392,12 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     #[Computed]
+    public function hasStoredS3Secret(): bool
+    {
+        return app(SiteSettings::class)->has('media_s3_secret') || filled(config('filesystems.disks.s3.secret'));
+    }
+
+    #[Computed]
     public function hasStoredMailPassword(): bool
     {
         return app(SiteSettings::class)->has('mail_password');
@@ -372,12 +405,37 @@ new #[Title('site_settings.title')] class extends Component {
 
     public function save(UpdateSiteSettings $updateSiteSettings): void
     {
+        $this->persist($updateSiteSettings, false);
+    }
+
+    /**
+     * Save after the admin confirmed that the existing s3 files are already at the new location.
+     */
+    public function confirmS3Change(UpdateSiteSettings $updateSiteSettings): void
+    {
+        $this->showS3ChangeModal = false;
+
+        $this->persist($updateSiteSettings, true);
+    }
+
+    private function persist(UpdateSiteSettings $updateSiteSettings, bool $s3ChangeConfirmed): void
+    {
         $this->authorize('settings.edit');
 
         $data = $this->form->validateSection($this->tab);
 
+        if ($this->tab === 'media' && ! $s3ChangeConfirmed && $this->movesS3Files()) {
+            $this->showS3ChangeModal = true;
+
+            return;
+        }
+
         try {
             $updateSiteSettings->handle(Auth::user(), $data);
+        } catch (StorageSettingsException $exception) {
+            $this->addError("form.{$exception->field}", $exception->getMessage());
+
+            return;
         } catch (ProtectedActionException $exception) {
             $this->addError('form.default_role', $exception->getMessage());
 
@@ -386,12 +444,65 @@ new #[Title('site_settings.title')] class extends Component {
 
         // Mark the form clean, so the leave-page warning doesn't fire on the redirect below.
         $this->form->mail_password = '';
+        $this->form->media_s3_secret = '';
         $this->savedValues = $this->form->all();
 
         Toast::success(__('site_settings.messages.saved'));
 
         // A full reload, so the layout picks up the new site name.
         $this->redirectRoute('admin.settings.edit', ['tab' => $this->tab]);
+    }
+
+    /**
+     * Whether the form changes where existing s3 files are looked up (bucket, endpoint, prefix, public URL)
+     * while some media rows are on s3.
+     */
+    private function movesS3Files(): bool
+    {
+        $changed = false;
+
+        foreach (['media_s3_bucket', 'media_s3_endpoint', 'media_s3_prefix', 'media_s3_public_url'] as $field) {
+            $changed = $changed || trim((string) $this->form->{$field}, '/') !== trim((string) ($this->savedValues[$field] ?? ''), '/');
+        }
+
+        // A cleared bucket or key is refused by the action; no point asking first.
+        if (blank($this->form->media_s3_bucket) || blank($this->form->media_s3_key)) {
+            return false;
+        }
+
+        return $changed && Media::query()->where('disk', 's3')->exists();
+    }
+
+    /**
+     * Number of media files on a disk other than the one new uploads go to.
+     */
+    #[Computed]
+    public function filesOnOtherDisk(): int
+    {
+        return Media::query()->where('disk', '!=', config('media.disk'))->count();
+    }
+
+    /**
+     * Try the storage with the values in the form (saved or not).
+     */
+    public function testStorageConnection(TestStorageConnection $connectionTest): void
+    {
+        $this->authorize('settings.edit');
+
+        $result = $connectionTest->handle(MediaDisks::connectionConfig([
+            'media_s3_endpoint' => $this->form->media_s3_endpoint,
+            'media_s3_region' => $this->form->media_s3_region,
+            'media_s3_bucket' => $this->form->media_s3_bucket,
+            'media_s3_key' => $this->form->media_s3_key,
+            'media_s3_secret' => $this->form->media_s3_secret,
+            'media_s3_path_style' => $this->form->media_s3_path_style,
+            'media_s3_prefix' => $this->form->media_s3_prefix,
+        ]));
+
+        $this->storageTest = [
+            'ok' => $result['ok'],
+            'message' => $result['ok'] ? __('site_settings.media.storage.test_ok') : ($result['message'] ?? ''),
+        ];
     }
 
     /**
@@ -428,8 +539,8 @@ new #[Title('site_settings.title')] class extends Component {
             const form = $wire.form;
             const saved = $wire.savedValues;
 
-            return this.fields.some((field) => field === 'mail_password'
-                ? (form.mail_password ?? '') !== ''
+            return this.fields.some((field) => ['mail_password', 'media_s3_secret'].includes(field)
+                ? (form[field] ?? '') !== ''
                 : String(form[field] ?? '') !== String(saved[field] ?? ''));
         },
         leave() {
@@ -684,6 +795,69 @@ new #[Title('site_settings.title')] class extends Component {
             @if ($this->serverCap !== null)
                 <flux:text class="text-xs" data-test="media-server-cap">{{ __('site_settings.media.server_cap', ['size' => $this->serverCap]) }}</flux:text>
             @endif
+
+            <flux:separator />
+
+            <flux:heading level="2">{{ __('site_settings.media.storage.section') }}</flux:heading>
+
+            <flux:radio.group wire:model.live="form.media_storage" :label="__('site_settings.media.storage.where')" :description="__('site_settings.media.storage.where_description')">
+                <flux:radio value="local" :label="__('site_settings.media.storage.local')" :description="__('site_settings.media.storage.local_description')" />
+                <flux:radio value="s3" :label="__('site_settings.media.storage.s3')" :description="__('site_settings.media.storage.s3_description')" />
+            </flux:radio.group>
+            <flux:error name="form.media_storage" />
+
+            @if ($this->filesOnOtherDisk > 0)
+                <flux:callout icon="information-circle" variant="secondary" data-test="files-on-other-disk">
+                    <flux:callout.text>
+                        {{ trans_choice('site_settings.media.storage.other_disk', $this->filesOnOtherDisk, ['count' => $this->filesOnOtherDisk]) }}
+                        {{-- The link to the move page comes with the move feature. --}}
+                    </flux:callout.text>
+                </flux:callout>
+            @endif
+
+            <div class="space-y-6" data-test="s3-fields">
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <flux:input wire:model="form.media_s3_endpoint" :label="__('site_settings.media.storage.endpoint')" :description="__('site_settings.media.storage.endpoint_description')" placeholder="https://s3.example.com" autocomplete="off" />
+                    <flux:input wire:model="form.media_s3_region" :label="__('site_settings.media.storage.region')" placeholder="us-east-1" autocomplete="off" />
+                </div>
+
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <flux:input wire:model="form.media_s3_bucket" :label="__('site_settings.media.storage.bucket')" autocomplete="off" />
+                    <flux:input wire:model="form.media_s3_prefix" :label="__('site_settings.media.storage.prefix')" :description="__('site_settings.media.storage.prefix_description')" placeholder="prod" autocomplete="off" />
+                </div>
+
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <flux:input wire:model="form.media_s3_key" :label="__('site_settings.media.storage.key')" autocomplete="off" />
+                    <flux:input
+                        wire:model="form.media_s3_secret"
+                        type="password"
+                        viewable
+                        :label="__('site_settings.media.storage.secret')"
+                        :description="$this->hasStoredS3Secret ? __('site_settings.media.storage.secret_keep') : null"
+                        autocomplete="new-password"
+                    />
+                </div>
+
+                <flux:switch wire:model="form.media_s3_path_style" :label="__('site_settings.media.storage.path_style')" :description="__('site_settings.media.storage.path_style_description')" align="left" />
+
+                <flux:input wire:model="form.media_s3_public_url" :label="__('site_settings.media.storage.public_url')" :description="__('site_settings.media.storage.public_url_description')" placeholder="https://cdn.example.com" autocomplete="off" />
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <flux:button variant="ghost" icon="signal" wire:click="testStorageConnection" data-test="test-storage-button">
+                        {{ __('site_settings.media.storage.test') }}
+                    </flux:button>
+                </div>
+
+                @if ($storageTest !== null)
+                    <flux:callout
+                        :icon="$storageTest['ok'] ? 'check-circle' : 'exclamation-triangle'"
+                        :variant="$storageTest['ok'] ? 'success' : 'danger'"
+                        data-test="storage-test-result"
+                    >
+                        <flux:callout.text>{{ $storageTest['message'] }}</flux:callout.text>
+                    </flux:callout>
+                @endif
+            </div>
         @else
             <div class="grid gap-6 sm:grid-cols-2">
                 <flux:input wire:model="form.mail_from_address" type="email" :label="__('site_settings.mail.from_address')" required />
@@ -747,6 +921,15 @@ new #[Title('site_settings.title')] class extends Component {
         confirm-action="discardChangesAndSwitch"
     >
         {{ __('site_settings.unsaved.body', ['tab' => __("site_settings.{$tab}.heading")]) }}
+    </x-confirm-modal>
+
+    <x-confirm-modal
+        wire:model.self="showS3ChangeModal"
+        :heading="__('site_settings.media.storage.change_heading')"
+        :confirm-label="__('site_settings.media.storage.change_confirm')"
+        confirm-action="confirmS3Change"
+    >
+        {{ __('site_settings.media.storage.change_body') }}
     </x-confirm-modal>
 
     <flux:modal name="leave-site-settings" class="max-w-md md:min-w-md">

@@ -87,6 +87,30 @@ class SiteSettingsForm extends Form
     public string $media_max_document_mb = '20';
 
     /**
+     * Where new files go: "local" or "s3".
+     */
+    public string $media_storage = 'local';
+
+    public string $media_s3_endpoint = '';
+
+    public string $media_s3_region = '';
+
+    public string $media_s3_bucket = '';
+
+    public string $media_s3_key = '';
+
+    /**
+     * Never filled from storage. Left empty, it keeps the stored secret.
+     */
+    public string $media_s3_secret = '';
+
+    public bool $media_s3_path_style = false;
+
+    public string $media_s3_public_url = '';
+
+    public string $media_s3_prefix = '';
+
+    /**
      * @var list<string>
      */
     public const array MEDIA_MAX_SIDES = ['1920', '2560', '3840', 'none'];
@@ -117,6 +141,14 @@ class SiteSettingsForm extends Form
         $this->media_keep_originals = (bool) config('media.optimize.keep_originals');
         $this->media_max_image_mb = (string) config('media.limits.image_mb');
         $this->media_max_document_mb = (string) config('media.limits.document_mb');
+        $this->media_storage = config('media.disk') === 's3' ? 's3' : 'local';
+        $this->media_s3_endpoint = (string) config('filesystems.disks.s3.endpoint');
+        $this->media_s3_region = (string) config('filesystems.disks.s3.region');
+        $this->media_s3_bucket = (string) config('filesystems.disks.s3.bucket');
+        $this->media_s3_key = (string) config('filesystems.disks.s3.key');
+        $this->media_s3_path_style = (bool) config('filesystems.disks.s3.use_path_style_endpoint');
+        $this->media_s3_public_url = (string) config('filesystems.disks.s3.url');
+        $this->media_s3_prefix = (string) config('filesystems.disks.s3.root');
 
         if ($this->mail_mailer === 'smtp') {
             $this->mail_host = (string) config('mail.mailers.smtp.host');
@@ -138,7 +170,7 @@ class SiteSettingsForm extends Form
         // Logos are uploaded and removed right away, without the Save button.
         'logo' => [],
         'colors' => ['color_scheme', 'color_accent', 'color_gray', 'color_tint_sidebar'],
-        'media' => ['media_optimize', 'media_max_side', 'media_quality', 'media_format', 'media_strip_exif', 'media_client_resize', 'media_keep_originals', 'media_max_image_mb', 'media_max_document_mb'],
+        'media' => ['media_optimize', 'media_max_side', 'media_quality', 'media_format', 'media_strip_exif', 'media_client_resize', 'media_keep_originals', 'media_max_image_mb', 'media_max_document_mb', 'media_storage', 'media_s3_endpoint', 'media_s3_region', 'media_s3_bucket', 'media_s3_key', 'media_s3_secret', 'media_s3_path_style', 'media_s3_public_url', 'media_s3_prefix'],
     ];
 
     /**
@@ -150,8 +182,8 @@ class SiteSettingsForm extends Form
     public function hasChangesIn(string $section, array $savedValues): bool
     {
         foreach (self::SECTIONS[$section] as $field) {
-            if ($field === 'mail_password') {
-                if (filled($this->mail_password)) {
+            if (in_array($field, ['mail_password', 'media_s3_secret'], true)) {
+                if (filled($this->{$field})) {
                     return true;
                 }
 
@@ -184,10 +216,11 @@ class SiteSettingsForm extends Form
             $value = $validated[$field] ?? null;
 
             $data[$field] = match (true) {
-                in_array($field, ['registration_enabled', 'color_tint_sidebar', 'media_optimize', 'media_strip_exif', 'media_client_resize', 'media_keep_originals'], true) => (bool) $value,
+                in_array($field, ['registration_enabled', 'color_tint_sidebar', 'media_optimize', 'media_strip_exif', 'media_client_resize', 'media_keep_originals', 'media_s3_path_style'], true) => (bool) $value,
                 $field === 'media_max_side' => $value === 'none' ? 0 : (int) $value,
                 in_array($field, ['media_quality', 'media_max_image_mb', 'media_max_document_mb'], true) => (int) $value,
                 $field === 'color_accent' => filled($value) ? strtolower((string) $value) : null,
+                in_array($field, ['media_s3_public_url', 'media_s3_prefix'], true) => filled($value) ? trim((string) $value, '/') : null,
                 $field === 'mail_port' => filled($value) ? (int) $value : null,
                 default => filled($value) ? $value : null,
             };
@@ -226,6 +259,20 @@ class SiteSettingsForm extends Form
             'media_strip_exif' => ['boolean'],
             'media_client_resize' => ['boolean'],
             'media_keep_originals' => ['boolean'],
+            'media_storage' => ['required', Rule::in(['local', 's3'])],
+            'media_s3_endpoint' => ['nullable', 'url:http,https', 'max:255'],
+            'media_s3_region' => ['nullable', 'required_if:media_storage,s3', 'string', 'max:64'],
+            'media_s3_bucket' => ['nullable', 'required_if:media_storage,s3', 'string', 'max:255'],
+            'media_s3_key' => ['nullable', 'required_if:media_storage,s3', 'string', 'max:255'],
+            'media_s3_secret' => [
+                'nullable',
+                Rule::requiredIf(fn (): bool => $this->media_storage === 's3' && blank(config('filesystems.disks.s3.secret'))),
+                'string',
+                'max:1000',
+            ],
+            'media_s3_path_style' => ['boolean'],
+            'media_s3_public_url' => ['nullable', 'url:http,https', 'max:255'],
+            'media_s3_prefix' => ['nullable', 'string', 'max:255'],
             'media_max_image_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap('media.limits.image_mb')],
             'media_max_document_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap('media.limits.document_mb')],
         ];

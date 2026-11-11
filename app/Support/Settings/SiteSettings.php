@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Site settings edited in the admin panel.
@@ -54,6 +55,15 @@ class SiteSettings
         'media_keep_originals' => 'media.optimize.keep_originals',
         'media_max_image_mb' => 'media.limits.image_mb',
         'media_max_document_mb' => 'media.limits.document_mb',
+        'media_storage' => 'media.disk',
+        'media_s3_endpoint' => 'filesystems.disks.s3.endpoint',
+        'media_s3_region' => 'filesystems.disks.s3.region',
+        'media_s3_bucket' => 'filesystems.disks.s3.bucket',
+        'media_s3_key' => 'filesystems.disks.s3.key',
+        'media_s3_secret' => 'filesystems.disks.s3.secret',
+        'media_s3_path_style' => 'filesystems.disks.s3.use_path_style_endpoint',
+        'media_s3_public_url' => 'filesystems.disks.s3.url',
+        'media_s3_prefix' => 'filesystems.disks.s3.root',
     ];
 
     /**
@@ -75,6 +85,7 @@ class SiteSettings
         'media_keep_originals' => 'bool',
         'media_max_image_mb' => 'int',
         'media_max_document_mb' => 'int',
+        'media_s3_path_style' => 'bool',
     ];
 
     /**
@@ -88,7 +99,7 @@ class SiteSettings
      *
      * @var list<string>
      */
-    public const array ENCRYPTED = ['mail_password'];
+    public const array ENCRYPTED = ['mail_password', 'media_s3_secret'];
 
     /**
      * Config values before the first override, restored when a setting is removed.
@@ -152,6 +163,9 @@ class SiteSettings
 
             config([$path => $this->cast($key, $value)]);
         }
+
+        // The s3 disk is resolved once and keeps its config, so a changed setting needs a fresh one.
+        Storage::forgetDisk('s3');
     }
 
     private function cast(string $key, mixed $value): mixed
