@@ -16,6 +16,8 @@ final class OptimizationRun
     /**
      * @param  array<string, int>  $counts  Files per outcome value.
      * @param  list<array{name: string, before: int, after: int, outcome: string}>  $recent  Newest first.
+     * @param  int|null  $inProgress  The media id a batch is processing right now, saved before the file is touched; if
+     *                                the process dies on that file (e.g. a memory fatal), the next batch finds it here.
      */
     public function __construct(
         public string $status,
@@ -30,6 +32,7 @@ final class OptimizationRun
         public ?string $driver = null,
         public float $secondsSpent = 0.0,
         public array $recent = [],
+        public ?int $inProgress = null,
     ) {}
 
     public function processed(): int
@@ -90,6 +93,7 @@ final class OptimizationRun
             'driver' => $this->driver,
             'seconds_spent' => $this->secondsSpent,
             'recent' => $this->recent,
+            'in_progress' => $this->inProgress,
         ];
     }
 
@@ -111,6 +115,7 @@ final class OptimizationRun
             driver: $data['driver'] ?? null,
             secondsSpent: (float) ($data['seconds_spent'] ?? 0),
             recent: array_values((array) ($data['recent'] ?? [])),
+            inProgress: is_int($data['in_progress'] ?? null) ? $data['in_progress'] : null,
         );
     }
 }

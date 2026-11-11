@@ -2,11 +2,15 @@
 
 use App\Actions\Media\OptimizeExistingMedia;
 use App\Actions\Media\OptimizeImage;
+use App\Actions\Media\RebuildMediaFile;
 use App\Enums\OptimizeOutcome;
+use App\Exceptions\OptimizationDisabledException;
 use App\Models\Media;
 use App\Models\User;
+use App\Support\Media\ImageEdits;
 use App\Support\Media\MemoryGuard;
 use App\Support\Media\OptimizationRunStore;
+use App\Support\Media\OptimizedImage;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Image;
@@ -69,6 +73,27 @@ function noisyJpeg(int $width, int $height): string
     imagejpeg($image, null, 90);
 
     return (string) ob_get_clean();
+}
+
+/**
+ * Bind a RebuildMediaFile that runs $during right before it stores each file (to simulate what happens meanwhile).
+ */
+function rebuilderRunning(Closure $during): void
+{
+    app()->instance(RebuildMediaFile::class, new class(app(OptimizeImage::class), $during) extends RebuildMediaFile
+    {
+        public function __construct(OptimizeImage $optimizer, private Closure $during)
+        {
+            parent::__construct($optimizer);
+        }
+
+        public function store(Media $media, OptimizedImage $result, ?ImageEdits $edits, string|Closure|null $newName = null, ?string $newOriginal = null, ?string $newOriginalMime = null, bool $keepEdits = true, bool $dropOriginal = false, array $attributes = []): Media
+        {
+            ($this->during)();
+
+            return parent::store($media, $result, $edits, $newName, $newOriginal, $newOriginalMime, $keepEdits, $dropOriginal, $attributes);
+        }
+    });
 }
 
 function engine(): OptimizeExistingMedia
@@ -268,4 +293,130 @@ it('refuses to start without media.edit', function () {
 
     expect(fn () => engine()->start($viewer))->toThrow(AuthorizationException::class)
         ->and(app(OptimizationRunStore::class)->get())->toBeNull();
+});
+
+it('does not apply stored edits again when the original file is gone', function () {
+    $edits = ['rotate' => 90, 'flip_h' => false, 'flip_v' => false, 'crop' => ['x' => 0, 'y' => 0, 'w' => 300, 'h' => 500], 'size' => null];
+    $media = optimizableMedia(makeImage('jpg', 300, 500), original: makeImage('jpg', 3000, 2000), attributes: ['edits' => $edits]);
+    Storage::disk('local')->delete((string) $media->original_path);
+
+    [$outcome] = engine()->optimizeOne($media);
+    $media->refresh();
+    $stored = Image::fromBytes((string) Storage::disk('local')->get($media->path));
+
+    expect($outcome)->toBe(OptimizeOutcome::Optimized)
+        ->and([$stored->width(), $stored->height()])->toBe([300, 500])
+        ->and($media->edits)->toBeNull();
+});
+
+it('refuses to start a run while optimization is off', function () {
+    config(['media.optimize.enabled' => false]);
+
+    expect(fn () => engine()->startWithoutActor())->toThrow(OptimizationDisabledException::class)
+        ->and(app(OptimizationRunStore::class)->get())->toBeNull();
+});
+
+it('skips the file a previous batch died on without processing it', function () {
+    $bytes = makeImage('jpg', 400, 300);
+    $killer = optimizableMedia($bytes);
+    $next = optimizableMedia(makeImage('jpg', 400, 300));
+    $store = app(OptimizationRunStore::class);
+    $run = engine()->startWithoutActor();
+    $run->inProgress = $killer->id;
+    $store->save($run);
+
+    $run = engine()->processBatch('browser', 60);
+
+    expect($run->counts)->toBe(['unreadable' => 1, 'optimized' => 1])
+        ->and($run->inProgress)->toBeNull()
+        ->and($run->status)->toBe('done')
+        ->and($killer->fresh()->version)->toBe(1)
+        ->and(Storage::disk('local')->get($killer->path))->toBe($bytes)
+        ->and($next->fresh()->version)->toBe(2);
+});
+
+it('marks the file in progress before touching it', function () {
+    $media = optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    $seen = null;
+    rebuilderRunning(function () use (&$seen) {
+        $seen = app(OptimizationRunStore::class)->get()?->inProgress;
+    });
+
+    $run = engine()->processBatch('browser', 0);
+
+    expect($seen)->toBe($media->id)
+        ->and($run->inProgress)->toBeNull()
+        ->and(app(OptimizationRunStore::class)->get()->inProgress)->toBeNull();
+});
+
+it('counts an unexpected error on one file as unreadable and goes on', function () {
+    $broken = optimizableMedia(makeImage('jpg', 400, 300));
+    $next = optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    $calls = 0;
+    rebuilderRunning(function () use (&$calls) {
+        if (++$calls === 1) {
+            throw new RuntimeException('Disk full');
+        }
+    });
+
+    $run = engine()->processBatch('cli', 60);
+
+    expect($run->counts)->toBe(['unreadable' => 1, 'optimized' => 1])
+        ->and($broken->fresh()->version)->toBe(1)
+        ->and($next->fresh()->version)->toBe(2);
+});
+
+it('keeps a pause made during the batch', function () {
+    optimizableMedia(makeImage('jpg', 400, 300));
+    optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    rebuilderRunning(fn () => engine()->pause());
+
+    $run = engine()->processBatch('cli', 60);
+
+    expect($run->status)->toBe('paused')
+        ->and($run->processed())->toBe(1)
+        ->and(app(OptimizationRunStore::class)->get()->status)->toBe('paused');
+});
+
+it('does not bring back a run stopped during the batch', function () {
+    optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    rebuilderRunning(fn () => engine()->stop());
+
+    expect(engine()->processBatch('cli', 60))->toBeNull()
+        ->and(app(OptimizationRunStore::class)->get())->toBeNull();
+});
+
+it('does not overwrite a run replaced during the batch', function () {
+    optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    rebuilderRunning(function () {
+        $this->travel(5)->seconds();
+        engine()->startWithoutActor();
+    });
+
+    engine()->processBatch('cli', 60);
+
+    expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
+});
+
+it('does not overwrite progress another batch saved after its lock expired', function () {
+    optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    rebuilderRunning(function () {
+        $store = app(OptimizationRunStore::class);
+        $other = $store->get();
+        $other->cursor = 999_999;
+        $other->inProgress = null;
+        $store->save($other);
+    });
+
+    $run = engine()->processBatch('cli', 60);
+
+    expect($run->cursor)->toBe(999_999)
+        ->and(app(OptimizationRunStore::class)->get()->cursor)->toBe(999_999)
+        ->and(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
 });

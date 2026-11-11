@@ -3,6 +3,7 @@
 namespace App\Actions\Media;
 
 use App\Enums\OptimizeOutcome;
+use App\Exceptions\OptimizationDisabledException;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\ImageEdits;
@@ -32,6 +33,8 @@ class OptimizeExistingMedia
 
     /**
      * Start a fresh run (replacing any existing one) as the given user.
+     *
+     * @throws OptimizationDisabledException when image optimization is off
      */
     public function start(User $actor): OptimizationRun
     {
@@ -42,9 +45,15 @@ class OptimizeExistingMedia
 
     /**
      * Start a fresh run without an actor (the CLI), replacing any existing one.
+     *
+     * @throws OptimizationDisabledException when image optimization is off (the run could never move); nothing is saved
      */
     public function startWithoutActor(): OptimizationRun
     {
+        if (! config('media.optimize.enabled')) {
+            throw new OptimizationDisabledException;
+        }
+
         $fingerprint = $this->optimizer->fingerprint();
 
         $run = new OptimizationRun(
@@ -124,17 +133,39 @@ class OptimizeExistingMedia
             }
 
             $started = microtime(true);
+            $savedCursor = $run->cursor;
 
             while (($media = $this->next($run)) !== null) {
-                [$outcome, $before, $after] = $this->optimizeSafely($media);
-                $run->record($media, $outcome, $before, $after);
+                if ($media->id === $run->inProgress) {
+                    // The process died on this file in an earlier batch (e.g. a memory fatal): don't try it again in this run.
+                    $run->inProgress = null;
+                    $run->record($media, OptimizeOutcome::Unreadable, (int) $media->size, (int) $media->size);
+                } else {
+                    $run->inProgress = $media->id;
+                    $saved = $this->save($run, $savedCursor);
 
-                if (microtime(true) - $started >= $budgetSeconds) {
+                    if ($saved !== $run) {
+                        return $saved;
+                    }
+
+                    if ($run->status !== 'running') {
+                        // Paused meanwhile: leave this file for the resume.
+                        $run->inProgress = null;
+
+                        break;
+                    }
+
+                    [$outcome, $before, $after] = $this->optimizeSafely($media);
+                    $run->inProgress = null;
+                    $run->record($media, $outcome, $before, $after);
+                }
+
+                if ($run->status !== 'running' || microtime(true) - $started >= $budgetSeconds) {
                     break;
                 }
             }
 
-            if ($this->next($run) === null) {
+            if ($run->status === 'running' && $this->next($run) === null) {
                 $run->status = 'done';
             }
 
@@ -142,7 +173,7 @@ class OptimizeExistingMedia
             $run->heartbeatAt = now()->toImmutable();
             $run->driver = $driver;
 
-            return $this->save($run);
+            return $this->save($run, $savedCursor);
         } finally {
             $lock->release();
         }
@@ -165,7 +196,8 @@ class OptimizeExistingMedia
         }
 
         try {
-            $edits = ImageEdits::fromArray($media->edits);
+            // Without the original the current file already has the edits baked in, so they are not applied again.
+            $edits = $source->isOriginal ? ImageEdits::fromArray($media->edits) : null;
             $edits = $edits?->isEmpty() ? null : $edits;
             $result = $this->optimizer->handle($source->contents, $source->mime, $edits?->toArray());
         } catch (InvalidArgumentException) {
@@ -179,6 +211,7 @@ class OptimizeExistingMedia
         }
 
         if (! $source->isOriginal && $result->contents === $source->contents) {
+            $media->edits = null;
             $this->rebuilder->markOptimized($media, $this->optimizer->fingerprint());
 
             return [OptimizeOutcome::AlreadyOptimal, $before, $before];
@@ -192,7 +225,7 @@ class OptimizeExistingMedia
             $edits,
             newOriginal: $keepOriginal ? $source->contents : null,
             newOriginalMime: $keepOriginal ? $source->mime : null,
-            keepEdits: true,
+            keepEdits: $source->isOriginal,
         );
 
         return [OptimizeOutcome::Optimized, $before, (int) $media->size];
@@ -228,13 +261,16 @@ class OptimizeExistingMedia
     }
 
     /**
-     * Save the batch's progress unless the run was stopped or replaced meanwhile; a pause made during the batch is kept.
+     * Save the batch's progress unless the run was stopped or replaced meanwhile, or another batch moved its cursor
+     * past the one this batch last saved (the lock expired mid-batch). A pause made during the batch is kept.
+     *
+     * @return OptimizationRun|null $run when saved, else the stored run (null when stopped)
      */
-    private function save(OptimizationRun $run): ?OptimizationRun
+    private function save(OptimizationRun $run, int &$savedCursor): ?OptimizationRun
     {
         $stored = $this->runs->get();
 
-        if ($stored === null || ! $stored->startedAt->equalTo($run->startedAt)) {
+        if ($stored === null || ! $stored->startedAt->equalTo($run->startedAt) || $stored->cursor > $savedCursor) {
             return $stored;
         }
 
@@ -243,6 +279,7 @@ class OptimizeExistingMedia
         }
 
         $this->runs->save($run);
+        $savedCursor = $run->cursor;
 
         return $run;
     }
