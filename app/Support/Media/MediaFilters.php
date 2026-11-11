@@ -93,16 +93,21 @@ final readonly class MediaFilters
     }
 
     /**
+     * Only plain extensions (letters and digits) are matched, so the LIKE pattern needs no escape clause,
+     * whose syntax differs between SQLite and MySQL; anything else is dropped.
+     *
      * @param  Builder<Media>  $query
      */
     private function limitToExtensions(Builder $query): void
     {
-        $extensions = array_values(array_unique(array_map('strtolower', $this->extensions ?? [])));
+        $extensions = array_values(array_unique(array_filter(
+            array_map('strtolower', $this->extensions ?? []),
+            fn (string $extension): bool => preg_match('/^[a-z0-9]+$/', $extension) === 1,
+        )));
 
         $query->where(function (Builder $query) use ($extensions): void {
             foreach ($extensions as $extension) {
-                $escaped = addcslashes($extension, '\\%_');
-                $query->orWhereRaw("lower(name) like ? escape '\\'", ['%.'.$escaped]);
+                $query->orWhereRaw('lower(name) like ?', ['%.'.$extension]);
             }
 
             if ($extensions === []) {

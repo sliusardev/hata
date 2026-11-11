@@ -72,6 +72,7 @@ it('filters by the extension of the current name', function () {
 
     expect(filteredNames(new MediaFilters(extensions: ['webp'])))->toBe(['a.WEBP'])
         ->and(filteredNames(new MediaFilters(extensions: [])))->toBe([])
+        ->and(filteredNames(new MediaFilters(extensions: ['%', 'we_p', 'pdf'])))->toBe(['b.pdf'])
         ->and(filteredNames(new MediaFilters(extensions: null)))->toBe(['a.WEBP', 'b.pdf', 'webp']);
 });
 

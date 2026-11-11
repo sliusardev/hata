@@ -246,4 +246,4 @@ Actions take `User $actor` and call `Gate::forUser($actor)->authorize()` (decisi
 - The crop page uses a full-screen layout (`layouts::focus`) without the sidebar.
 - Changed files get a new `?v=` instead of a new key, so URLs stored in content stay valid.
 
-The library's filters (search, type, month, folder / no folder, unused, optional extensions) live in `App\Support\Media\MediaFilters`, which the library page's `filteredQuery()` and the media picker both use; `MediaFilters::monthRange()` turns a `YYYY-MM` month in the site timezone into a UTC range.
+The library's filters (search, type, month, folder / no folder, unused, optional extensions: only plain `[a-z0-9]` extensions are matched, by a `LIKE '%.ext'` with no escape clause, so the same SQL runs on SQLite and MySQL) live in `App\Support\Media\MediaFilters`, which the library page's `filteredQuery()` and the media picker both use; `MediaFilters::monthRange()` turns a `YYYY-MM` month in the site timezone into a UTC range.
