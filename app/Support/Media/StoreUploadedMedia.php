@@ -8,6 +8,7 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
@@ -54,6 +55,7 @@ class StoreUploadedMedia
             $file->delete();
         }
 
+        // The extension of the stored name, which can differ from the uploaded one (e.g. jpg becomes webp).
         if ($allowedExtensions !== null && ! in_array(strtolower($media->extension()), $allowedExtensions, true)) {
             $this->discard($media);
 
@@ -79,12 +81,21 @@ class StoreUploadedMedia
      */
     private function discard(Media $media): void
     {
-        $files = array_filter([$media->path, $media->original_path, $media->thumb_path]);
-
-        $media->delete();
+        $files = array_values(array_filter([$media->path, $media->original_path, $media->thumb_path]));
+        $disk = $media->disk;
 
         try {
-            Storage::disk($media->disk)->delete($files);
+            DB::transaction(function () use ($media, $files, $disk): void {
+                $media->delete();
+
+                DB::afterCommit(function () use ($files, $disk): void {
+                    try {
+                        Storage::disk($disk)->delete($files);
+                    } catch (Throwable $exception) {
+                        report($exception);
+                    }
+                });
+            });
         } catch (Throwable $exception) {
             report($exception);
         }

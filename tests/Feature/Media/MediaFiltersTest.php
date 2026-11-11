@@ -75,20 +75,44 @@ it('filters by the extension of the current name', function () {
         ->and(filteredNames(new MediaFilters(extensions: null)))->toBe(['a.WEBP', 'b.pdf', 'webp']);
 });
 
-it('refuses a file outside the allowed extensions and stores nothing', function () {
+function pickedUpload(): array
+{
     Storage::fake('local');
     seedRolesAndPermissions();
     $actor = User::factory()->withPermissions(['admin.access', 'media.view', 'media.upload'])->create();
-    $this->actingAs($actor);
 
     Storage::fake('tmp-for-tests');
     $path = 'abc-meta'.base64_encode('pic.jpg').'-mimeType=image_jpeg-.jpg';
     Storage::disk('tmp-for-tests')->put('livewire-tmp/'.$path, makeImage('jpg', 200, 100));
-    $upload = new TemporaryUploadedFile($path, 'tmp-for-tests');
+
+    return [$actor, new TemporaryUploadedFile($path, 'tmp-for-tests')];
+}
+
+it('refuses a file outside the allowed extensions and stores nothing', function () {
+    [$actor, $upload] = pickedUpload();
 
     $result = app(StoreUploadedMedia::class)->handle($actor, $upload, null, null, null, ['pdf', 'zip']);
 
     expect($result)->toBe(['ok' => false, 'error' => __('media.picker.not_allowed')])
         ->and(Media::query()->count())->toBe(0)
-        ->and(Storage::disk('local')->allFiles('media'))->toBe([]);
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
+});
+
+it('stores a file whose stored extension is allowed', function () {
+    [$actor, $upload] = pickedUpload();
+
+    $result = app(StoreUploadedMedia::class)->handle($actor, $upload, null, null, null, ['webp']);
+
+    expect($result['ok'])->toBeTrue()
+        ->and(Media::query()->sole()->name)->toEndWith('.webp');
+});
+
+it('still returns the refusal when removing the refused file fails', function () {
+    [$actor, $upload] = pickedUpload();
+    Media::deleting(fn () => throw new RuntimeException('delete failed'));
+    $this->withoutExceptionHandling();
+
+    $result = app(StoreUploadedMedia::class)->handle($actor, $upload, null, null, null, ['pdf']);
+
+    expect($result)->toBe(['ok' => false, 'error' => __('media.picker.not_allowed')]);
 });
