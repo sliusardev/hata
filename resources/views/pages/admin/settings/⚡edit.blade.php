@@ -859,47 +859,31 @@ new #[Title('site_settings.title')] class extends Component {
 
             @if ($form->media_storage === 's3' || $this->hasS3Files)
             <div class="space-y-6" data-test="s3-fields">
-                <div class="grid gap-6 sm:grid-cols-2">
-                    <flux:input wire:model="form.media_s3_endpoint" :label="__('site_settings.media.storage.endpoint')" :description="__('site_settings.media.storage.endpoint_description')" placeholder="https://s3.example.com" autocomplete="off" />
+                <div class="grid items-start gap-6 sm:grid-cols-2">
+                    <flux:input wire:model="form.media_s3_endpoint" :label="__('site_settings.media.storage.endpoint')" :description:trailing="__('site_settings.media.storage.endpoint_description')" placeholder="https://s3.example.com" autocomplete="off" />
                     <flux:input wire:model="form.media_s3_region" :label="__('site_settings.media.storage.region')" placeholder="us-east-1" autocomplete="off" />
                 </div>
 
-                <div class="grid gap-6 sm:grid-cols-2">
+                <div class="grid items-start gap-6 sm:grid-cols-2">
                     <flux:input wire:model="form.media_s3_bucket" :label="__('site_settings.media.storage.bucket')" autocomplete="off" />
-                    <flux:input wire:model="form.media_s3_prefix" :label="__('site_settings.media.storage.prefix')" :description="__('site_settings.media.storage.prefix_description')" placeholder="prod" autocomplete="off" />
+                    <flux:input wire:model="form.media_s3_prefix" :label="__('site_settings.media.storage.prefix')" :description:trailing="__('site_settings.media.storage.prefix_description')" placeholder="prod" autocomplete="off" />
                 </div>
 
-                <div class="grid gap-6 sm:grid-cols-2">
+                <div class="grid items-start gap-6 sm:grid-cols-2">
                     <flux:input wire:model="form.media_s3_key" :label="__('site_settings.media.storage.key')" autocomplete="off" />
                     <flux:input
                         wire:model="form.media_s3_secret"
                         type="password"
                         viewable
                         :label="__('site_settings.media.storage.secret')"
-                        :description="$this->hasStoredS3Secret ? __('site_settings.media.storage.secret_keep') : ($this->hasEnvS3Secret ? __('site_settings.media.storage.secret_env') : null)"
+                        :description:trailing="$this->hasStoredS3Secret ? __('site_settings.media.storage.secret_keep') : ($this->hasEnvS3Secret ? __('site_settings.media.storage.secret_env') : null)"
                         autocomplete="new-password"
                     />
                 </div>
 
                 <flux:switch wire:model="form.media_s3_path_style" :label="__('site_settings.media.storage.path_style')" :description="__('site_settings.media.storage.path_style_description')" align="left" />
 
-                <flux:input wire:model="form.media_s3_public_url" :label="__('site_settings.media.storage.public_url')" :description="__('site_settings.media.storage.public_url_description')" placeholder="https://cdn.example.com" autocomplete="off" />
-
-                <div class="flex flex-wrap items-center gap-3">
-                    <flux:button variant="ghost" icon="signal" wire:click="testStorageConnection" data-test="test-storage-button">
-                        {{ __('site_settings.media.storage.test') }}
-                    </flux:button>
-                </div>
-
-                @if ($storageTest !== null)
-                    <flux:callout
-                        :icon="$storageTest['ok'] ? 'check-circle' : 'exclamation-triangle'"
-                        :variant="$storageTest['ok'] ? 'success' : 'danger'"
-                        data-test="storage-test-result"
-                    >
-                        <flux:callout.text>{{ $storageTest['message'] }}</flux:callout.text>
-                    </flux:callout>
-                @endif
+                <flux:input wire:model="form.media_s3_public_url" :label="__('site_settings.media.storage.public_url')" :description:trailing="__('site_settings.media.storage.public_url_description')" placeholder="https://cdn.example.com" autocomplete="off" />
             </div>
             @endif
         @else
@@ -937,8 +921,23 @@ new #[Title('site_settings.title')] class extends Component {
             @endif
         @endif
 
+        @if ($tab === 'media' && $storageTest !== null && ($form->media_storage === 's3' || $this->hasS3Files))
+            <flux:callout
+                :icon="$storageTest['ok'] ? 'check-circle' : 'exclamation-triangle'"
+                :variant="$storageTest['ok'] ? 'success' : 'danger'"
+                data-test="storage-test-result"
+            >
+                <flux:callout.text>{{ $storageTest['message'] }}</flux:callout.text>
+            </flux:callout>
+        @endif
+
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
+                @if ($tab === 'media' && ($form->media_storage === 's3' || $this->hasS3Files))
+                    <flux:button variant="ghost" icon="signal" wire:click="testStorageConnection" data-test="test-storage-button">
+                        {{ __('site_settings.media.storage.test') }}
+                    </flux:button>
+                @endif
                 @if ($tab === 'mail')
                     <flux:button variant="ghost" icon="paper-airplane" wire:click="sendTestEmail" data-test="send-test-email-button">
                         {{ __('site_settings.mail.send_test') }}
