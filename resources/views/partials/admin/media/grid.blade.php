@@ -61,14 +61,7 @@
                     'relative aspect-square overflow-hidden rounded-lg bg-zinc-100 ring-1 ring-black/5 ring-inset transition dark:bg-white/5 dark:ring-white/10',
                     'group-hover:ring-zinc-300 dark:group-hover:ring-white/20',
                 ])>
-                    @if ($thumbUrl = $item->thumbUrl())
-                        <img src="{{ $thumbUrl }}" alt="{{ $item->altFor(app()->getLocale()) }}" loading="lazy" draggable="false" class="size-full object-cover" />
-                    @else
-                        <div class="flex size-full flex-col items-center justify-center gap-2 text-zinc-400 dark:text-zinc-500">
-                            <flux:icon :name="$item->kind->icon()" variant="outline" class="size-10" />
-                            <span class="text-xs font-semibold tracking-wide text-zinc-500 dark:text-zinc-400">{{ $item->extension() }}</span>
-                        </div>
-                    @endif
+                    @include('partials.admin.media.thumb', ['item' => $item])
 
                     @if ($isPicked)
                         <div class="absolute end-2 top-2 flex size-6 items-center justify-center rounded-full bg-zinc-800 text-white ring-2 ring-white dark:bg-white dark:text-zinc-800 dark:ring-zinc-900" data-test="media-tile-picked">

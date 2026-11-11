@@ -68,6 +68,28 @@ class MediaFolder extends Model
     }
 
     /**
+     * Folders in tree order (each followed by its subfolders), with their depth, for the library and the picker.
+     *
+     * @return array<int, array{folder: MediaFolder, depth: int}>
+     */
+    public static function treeRows(): array
+    {
+        $byParent = self::tree()->groupBy(fn (MediaFolder $folder): int => $folder->parent_id ?? 0);
+        $rows = [];
+
+        $walk = function (int $parentId, int $depth) use (&$walk, &$rows, $byParent): void {
+            foreach ($byParent->get($parentId, []) as $folder) {
+                $rows[] = ['folder' => $folder, 'depth' => $depth];
+                $walk($folder->id, $depth + 1);
+            }
+        };
+
+        $walk(0, 0);
+
+        return $rows;
+    }
+
+    /**
      * Ids of every folder below this one, at any depth (self excluded).
      *
      * @return array<int, int>

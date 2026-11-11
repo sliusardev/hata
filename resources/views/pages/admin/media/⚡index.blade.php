@@ -10,7 +10,6 @@ use App\Actions\Media\ReplaceMediaFile;
 use App\Actions\Media\RestoreOriginal;
 use App\Actions\Media\UpdateMedia;
 use App\Actions\Media\ZipMedia;
-use App\Enums\MediaKind;
 use App\Exceptions\MediaUploadException;
 use App\Livewire\Forms\MediaDetailsForm;
 use App\Models\Media;
@@ -18,10 +17,8 @@ use App\Models\MediaFolder;
 use App\Models\User;
 use App\Support\Media\MediaFilters;
 use App\Support\Media\MediaIds;
-use App\Support\Media\MediaTypes;
-use App\Support\Media\ServerCapabilities;
 use App\Support\Media\StoreUploadedMedia;
-use Carbon\CarbonImmutable;
+use App\Support\Media\UploaderConfig;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,7 +26,6 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -1125,19 +1121,7 @@ new #[Title('media.index.title')] class extends Component {
     #[Computed]
     public function folders(): array
     {
-        $byParent = MediaFolder::tree()->groupBy(fn (MediaFolder $folder): int => $folder->parent_id ?? 0);
-        $rows = [];
-
-        $walk = function (int $parentId, int $depth) use (&$walk, &$rows, $byParent): void {
-            foreach ($byParent->get($parentId, []) as $folder) {
-                $rows[] = ['folder' => $folder, 'depth' => $depth];
-                $walk($folder->id, $depth + 1);
-            }
-        };
-
-        $walk(0, 0);
-
-        return $rows;
+        return MediaFolder::treeRows();
     }
 
     /**
@@ -1172,23 +1156,7 @@ new #[Title('media.index.title')] class extends Component {
     #[Computed]
     public function months(): array
     {
-        $oldest = Media::query()->min('created_at');
-
-        if ($oldest === null) {
-            return [];
-        }
-
-        $timezone = (string) config('admin.timezone');
-        $cursor = CarbonImmutable::parse($oldest, (string) config('app.timezone'))->tz($timezone)->startOfMonth();
-        $last = CarbonImmutable::now($timezone)->startOfMonth();
-        $months = [];
-
-        while ($cursor <= $last) {
-            $months[$cursor->format('Y-m')] = Str::ucfirst($cursor->isoFormat('MMMM YYYY'));
-            $cursor = $cursor->addMonth();
-        }
-
-        return array_reverse($months, true);
+        return MediaFilters::monthOptions();
     }
 
     #[Computed]
@@ -1232,28 +1200,7 @@ new #[Title('media.index.title')] class extends Component {
     #[Computed]
     public function uploaderConfig(): array
     {
-        return [
-            'canUpload' => $this->actor()->can('create', Media::class),
-            'clientResize' => config('media.optimize.enabled') && config('media.optimize.client_resize'),
-            'clientSide' => (int) config('media.client_side'),
-            'accept' => array_keys(MediaTypes::ALLOWED),
-            'types' => array_map(fn (array $type): string => $type['kind']->value, MediaTypes::ALLOWED),
-            'limits' => collect(MediaKind::cases())
-                ->mapWithKeys(fn (MediaKind $kind): array => [$kind->value => MediaTypes::limitBytes($kind)])
-                ->all(),
-            'uploadCap' => app(ServerCapabilities::class)->uploadCapBytes(),
-            'locale' => str_replace('_', '-', app()->getLocale()),
-            'texts' => [
-                'too_large' => __('media.errors.too_large'),
-                'unsupported' => __('media.errors.unsupported'),
-                'failed' => __('media.upload.failed'),
-                'title' => __('media.upload.title'),
-                'waiting' => __('media.upload.waiting'),
-                'preparing' => __('media.upload.preparing'),
-                'progress' => __('media.upload.progress'),
-                'compressing' => __('media.upload.compressing'),
-            ],
-        ];
+        return UploaderConfig::for($this->actor());
     }
 
     /**

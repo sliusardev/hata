@@ -7,6 +7,7 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 /**
  * The media library's filters, shared by the library page and the media picker so both
@@ -43,6 +44,32 @@ final readonly class MediaFilters
             ->when($this->unused, fn (Builder $query) => $query->doesntHave('usages'))
             ->when($this->extensions !== null, fn (Builder $query) => $this->limitToExtensions($query))
             ->search($this->search);
+    }
+
+    /**
+     * Every month from the oldest upload to now, newest first, as Y-m => label in the admin timezone.
+     *
+     * @return array<string, string>
+     */
+    public static function monthOptions(): array
+    {
+        $oldest = Media::query()->min('created_at');
+
+        if ($oldest === null) {
+            return [];
+        }
+
+        $timezone = (string) config('admin.timezone');
+        $cursor = CarbonImmutable::parse($oldest, (string) config('app.timezone'))->tz($timezone)->startOfMonth();
+        $last = CarbonImmutable::now($timezone)->startOfMonth();
+        $months = [];
+
+        while ($cursor <= $last) {
+            $months[$cursor->format('Y-m')] = Str::ucfirst($cursor->isoFormat('MMMM YYYY'));
+            $cursor = $cursor->addMonth();
+        }
+
+        return array_reverse($months, true);
     }
 
     /**
