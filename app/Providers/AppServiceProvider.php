@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -35,10 +37,24 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->app->make(SiteSettings::class)->apply();
+        $this->configureQueue();
         $this->configureMedia();
         $this->configureDefaults();
         $this->configureTranslations();
         $this->configureAuthorization();
+    }
+
+    /**
+     * Re-apply the site settings before every queued job. A worker boots once, but the settings live in the database
+     * and change while it runs; `stored()` reads a cache that saving clears, and `apply()` first restores the config
+     * values of settings applied earlier, so a removed setting falls back to `.env` here too.
+     */
+    protected function configureQueue(): void
+    {
+        Queue::before(function (): void {
+            $this->app->make(SiteSettings::class)->apply();
+            Mail::forgetMailers();
+        });
     }
 
     /**

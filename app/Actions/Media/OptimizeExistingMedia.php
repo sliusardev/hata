@@ -113,8 +113,8 @@ class OptimizeExistingMedia
 
     /**
      * Process the next candidates after the cursor until $budgetSeconds are spent (checked after each file, so at least
-     * one file is processed), then save the run. Does nothing while the run isn't running, is stale, optimization is
-     * off or another batch holds the lock.
+     * one file is processed), then save the run. Does nothing while the run isn't running, is stale or another batch
+     * holds the lock. A running run that finds optimization off is paused (before the batch or before its next file).
      *
      * @param  string  $driver  Who runs the batch: browser, queue or cli.
      * @return OptimizationRun|null The run after the batch; null when there is no run.
@@ -122,6 +122,13 @@ class OptimizeExistingMedia
     public function processBatch(string $driver, float $budgetSeconds): ?OptimizationRun
     {
         $run = $this->runs->get();
+
+        if ($run?->status === 'running' && ! config('media.optimize.enabled')) {
+            // Turned off during the run: pause it, so every driver stops and the page shows it; a resume continues.
+            $this->pause();
+
+            return $this->runs->get();
+        }
 
         if ($run === null || ! $this->canProcess($run)) {
             return $run;
@@ -149,6 +156,11 @@ class OptimizeExistingMedia
                     // The process died on this file in an earlier batch (e.g. a memory fatal): don't try it again in this run.
                     $run->inProgress = null;
                     $run->record($media, OptimizeOutcome::Unreadable, (int) $media->size, (int) $media->size);
+                } elseif (! config('media.optimize.enabled')) {
+                    // Turned off during the batch (the queue re-applies the settings per job, the CLI per batch).
+                    $run->status = 'paused';
+
+                    break;
                 } else {
                     $run->inProgress = $media->id;
                     $run->heartbeatAt = now()->toImmutable();

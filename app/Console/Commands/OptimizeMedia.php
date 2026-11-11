@@ -8,6 +8,7 @@ use App\Enums\OptimizeOutcome;
 use App\Exceptions\OptimizationDisabledException;
 use App\Support\Media\OptimizationRun;
 use App\Support\Media\OptimizationRunStore;
+use App\Support\Settings\SiteSettings;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -22,9 +23,9 @@ class OptimizeMedia extends Command
     /** How many 1-second waits without progress (another batch holds the lock) before giving up. */
     private const int MAX_IDLE_WAITS = 120;
 
-    public function handle(OptimizeExistingMedia $engine, OptimizationRunStore $runs, OptimizeImage $optimizer): int
+    public function handle(OptimizeExistingMedia $engine, OptimizationRunStore $runs, OptimizeImage $optimizer, SiteSettings $settings): int
     {
-        if (! config('media.optimize.enabled')) {
+        if (! $this->optimizationEnabled()) {
             $this->components->error('Optimization is off in the media settings.');
 
             return self::FAILURE;
@@ -50,11 +51,21 @@ class OptimizeMedia extends Command
         $idle = 0;
 
         while (true) {
+            // The settings live in the database and may be changed in the admin while this runs.
+            $settings->apply();
+
             $before = $run->toArray();
             $run = $engine->processBatch('cli', self::BATCH_SECONDS);
 
             if ($run === null) {
                 break;
+            }
+
+            if ($run->status === 'paused' && ! $this->optimizationEnabled()) {
+                // The engine paused the run because optimization was turned off; resuming continues it.
+                $this->components->error('Optimization is off in the media settings.');
+
+                return self::FAILURE;
             }
 
             if ($run->status === 'running' && ! $run->isStale($optimizer->fingerprint()) && $run->toArray() === $before) {
@@ -89,6 +100,14 @@ class OptimizeMedia extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Read on every call: the settings are re-applied before each batch and may have changed.
+     */
+    private function optimizationEnabled(): bool
+    {
+        return (bool) config('media.optimize.enabled');
     }
 
     private function megabytes(int $bytes): string

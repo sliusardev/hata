@@ -31,7 +31,8 @@ class OptimizeExistingMediaBatch implements ShouldQueue
         $before = $runs->get();
         $run = $engine->processBatch('queue', static::BUDGET);
 
-        if ($run === null || $run->status !== 'running' || $run->isStale($optimizer->fingerprint())) {
+        // The engine pauses a run that finds optimization off; never come back for one that can't move.
+        if ($run === null || $run->status !== 'running' || $run->isStale($optimizer->fingerprint()) || ! config('media.optimize.enabled')) {
             return;
         }
 

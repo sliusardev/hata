@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\Setting;
 use App\Support\Settings\SiteSettings;
+use Illuminate\Support\Facades\Cache;
 
 test('removing a setting brings back the value from the config file', function () {
     $original = config('app.name');
@@ -32,4 +34,22 @@ test('stored media settings reach config as real bools and ints', function () {
     expect(config('media.optimize.strip_exif'))->toBeFalse()
         ->and(config('media.optimize.max_side'))->toBeNull()
         ->and(config('media.optimize.quality'))->toBe(65);
+});
+
+test('a queued job sees settings changed after the worker booted, and removed ones revert', function () {
+    $settings = app(SiteSettings::class);
+    $settings->put(['media_keep_originals' => false, 'media_quality' => 65]);
+
+    // Another process (the admin page) changes the settings; this "worker" booted with the old ones.
+    Setting::query()->where('key', 'media_keep_originals')->delete();
+    Setting::query()->updateOrCreate(['key' => 'media_quality'], ['value' => 70]);
+    Cache::forget(SiteSettings::CACHE_KEY);
+
+    expect(config('media.optimize.quality'))->toBe(65);
+
+    dispatch(function () {
+        Cache::put('seen', [config('media.optimize.quality'), config('media.optimize.keep_originals')]);
+    })->onConnection('sync');
+
+    expect(Cache::get('seen'))->toBe([70, true]);
 });

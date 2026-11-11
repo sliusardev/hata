@@ -248,14 +248,13 @@ it('visits skipped files once per run and ends done with counts', function () {
         ->and(Media::query()->optimizationCandidates(currentFingerprint())->count())->toBe(2);
 });
 
-it('does nothing for a stale run, a held lock or optimization off', function (string $case) {
+it('does nothing for a stale run or a held lock', function (string $case) {
     optimizableMedia(makeImage('jpg', 400, 300));
     engine()->startWithoutActor();
 
     match ($case) {
         'stale' => config(['media.optimize.quality' => 60]),
         'held lock' => Cache::lock('media-optimization-batch', 60)->get(),
-        'optimization off' => config(['media.optimize.enabled' => false]),
     };
 
     $run = engine()->processBatch('browser', 0);
@@ -263,7 +262,39 @@ it('does nothing for a stale run, a held lock or optimization off', function (st
     expect($run->processed())->toBe(0)
         ->and($run->cursor)->toBe(0)
         ->and($run->status)->toBe('running');
-})->with(['stale', 'held lock', 'optimization off']);
+})->with(['stale', 'held lock']);
+
+it('pauses the run when it finds optimization off, and goes on after a resume once it is on again', function () {
+    optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    config(['media.optimize.enabled' => false]);
+
+    $run = engine()->processBatch('browser', 0);
+
+    expect($run->processed())->toBe(0)
+        ->and($run->status)->toBe('paused')
+        ->and(app(OptimizationRunStore::class)->get()->status)->toBe('paused');
+
+    config(['media.optimize.enabled' => true]);
+    engine()->resume();
+    $run = engine()->processBatch('browser', 0);
+
+    expect($run->processed())->toBe(1)
+        ->and($run->status)->toBe('done');
+});
+
+it('pauses before the next file when optimization is turned off during the batch', function () {
+    optimizableMedia(makeImage('jpg', 400, 300));
+    optimizableMedia(makeImage('jpg', 400, 300));
+    engine()->startWithoutActor();
+    rebuilderRunning(fn () => config(['media.optimize.enabled' => false]));
+
+    $run = engine()->processBatch('cli', 60);
+
+    expect($run->processed())->toBe(1)
+        ->and($run->status)->toBe('paused')
+        ->and(app(OptimizationRunStore::class)->get()->status)->toBe('paused');
+});
 
 it('does nothing for a paused run until it is resumed', function () {
     optimizableMedia(makeImage('jpg', 400, 300));

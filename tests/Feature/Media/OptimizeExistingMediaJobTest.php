@@ -97,3 +97,15 @@ it('waits before retrying while another batch holds the lock', function () {
 
     $lock->release();
 });
+
+it('stops without dispatching again when optimization was turned off during the run', function () {
+    Queue::fake();
+    jobCandidate();
+    app(OptimizeExistingMedia::class)->startWithoutActor();
+    config(['media.optimize.enabled' => false]);
+
+    app()->call([new OptimizeExistingMediaBatch, 'handle']);
+
+    expect(app(OptimizationRunStore::class)->get()->status)->toBe('paused');
+    Queue::assertNothingPushed();
+});

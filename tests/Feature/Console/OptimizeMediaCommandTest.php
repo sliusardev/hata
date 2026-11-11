@@ -2,7 +2,9 @@
 
 use App\Actions\Media\OptimizeExistingMedia;
 use App\Models\Media;
+use App\Models\Setting;
 use App\Support\Media\OptimizationRunStore;
+use App\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
@@ -110,4 +112,33 @@ it('gives up when another batch keeps the lock', function () {
     expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
 
     $lock->release();
+});
+
+it('stops with an error when optimization is turned off during the run', function () {
+    commandCandidate();
+    commandCandidate();
+    Media::updated(fn () => config(['media.optimize.enabled' => false]));
+
+    $this->artisan('media:optimize')
+        ->expectsOutputToContain('Optimization is off in the media settings.')
+        ->doesntExpectOutputToContain('Another batch is running')
+        ->assertFailed();
+
+    $run = app(OptimizationRunStore::class)->get();
+
+    expect($run->status)->toBe('paused')
+        ->and($run->processed())->toBe(1);
+});
+
+it('sees settings saved in the admin after it started', function () {
+    commandCandidate();
+    // Saved by the admin page in another process: stored, but not yet applied to this process's config.
+    Setting::query()->create(['key' => 'media_optimize', 'value' => false]);
+    Cache::forget(SiteSettings::CACHE_KEY);
+
+    $this->artisan('media:optimize')
+        ->expectsOutputToContain('Optimization is off in the media settings.')
+        ->assertFailed();
+
+    expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
 });
