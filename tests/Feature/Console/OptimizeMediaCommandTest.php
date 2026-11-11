@@ -3,7 +3,9 @@
 use App\Actions\Media\OptimizeExistingMedia;
 use App\Models\Media;
 use App\Support\Media\OptimizationRunStore;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 
 beforeEach(function () {
     Storage::fake('local');
@@ -91,4 +93,21 @@ it('starts over when the stored run is stale', function () {
     $this->artisan('media:optimize')->assertSuccessful();
 
     expect(app(OptimizationRunStore::class)->get()->total)->toBe(1);
+});
+
+it('gives up when another batch keeps the lock', function () {
+    Sleep::fake();
+    commandCandidate();
+    $lock = Cache::lock(OptimizeExistingMedia::LOCK, 60);
+    $lock->get();
+
+    $this->artisan('media:optimize')
+        ->expectsOutputToContain('Another batch is running; try again later.')
+        ->doesntExpectOutputToContain('Processed')
+        ->assertFailed();
+
+    Sleep::assertSleptTimes(119);
+    expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
+
+    $lock->release();
 });

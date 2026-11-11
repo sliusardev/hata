@@ -11,12 +11,16 @@ use App\Support\Media\OptimizationRunStore;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Sleep;
 
 #[Signature('media:optimize {--restart : Discard the current run and start over}')]
 #[Description('Re-optimize existing images with the current media settings')]
 class OptimizeMedia extends Command
 {
     private const float BATCH_SECONDS = 5.0;
+
+    /** How many 1-second waits without progress (another batch holds the lock) before giving up. */
+    private const int MAX_IDLE_WAITS = 120;
 
     public function handle(OptimizeExistingMedia $engine, OptimizationRunStore $runs, OptimizeImage $optimizer): int
     {
@@ -43,7 +47,30 @@ class OptimizeMedia extends Command
             $this->components->info("Starting a new run: {$run->total} file(s) to optimize.");
         }
 
-        while (($run = $engine->processBatch('cli', self::BATCH_SECONDS)) !== null) {
+        $idle = 0;
+
+        while (true) {
+            $before = $run?->toArray();
+            $run = $engine->processBatch('cli', self::BATCH_SECONDS);
+
+            if ($run === null) {
+                break;
+            }
+
+            if ($run->status === 'running' && ! $run->isStale($optimizer->fingerprint()) && $run->toArray() === $before) {
+                if (++$idle >= self::MAX_IDLE_WAITS) {
+                    $this->components->error('Another batch is running; try again later.');
+
+                    return self::FAILURE;
+                }
+
+                Sleep::for(1)->second();
+
+                continue;
+            }
+
+            $idle = 0;
+
             $this->line(sprintf(
                 'Processed %d/%d · saved %s · skipped %d',
                 $run->processed(),

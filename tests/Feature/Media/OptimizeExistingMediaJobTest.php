@@ -4,6 +4,7 @@ use App\Actions\Media\OptimizeExistingMedia;
 use App\Jobs\OptimizeExistingMediaBatch;
 use App\Models\Media;
 use App\Support\Media\OptimizationRunStore;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
@@ -80,4 +81,19 @@ it('has a budget that fits inside its timeout', function () {
     expect($job->timeout)->toBe(60)
         ->and($job->tries)->toBe(1)
         ->and(OptimizeExistingMediaBatch::BUDGET)->toBeLessThan($job->timeout);
+});
+
+it('waits before retrying while another batch holds the lock', function () {
+    Queue::fake();
+    jobCandidate();
+    app(OptimizeExistingMedia::class)->startWithoutActor();
+    $lock = Cache::lock(OptimizeExistingMedia::LOCK, 60);
+    $lock->get();
+
+    app()->call([new OptimizeExistingMediaBatch, 'handle']);
+
+    expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
+    Queue::assertPushed(OptimizeExistingMediaBatch::class, fn ($job) => $job->delay !== null);
+
+    $lock->release();
 });
