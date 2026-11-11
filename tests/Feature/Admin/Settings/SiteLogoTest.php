@@ -42,9 +42,9 @@ test('choosing a logo through the picker binding stores the id, records the usag
     $this->actingAs(logoAdmin());
     $media = logoMedia();
 
-    // The picker writes the chosen id into the bound property ('' is what the parent holds without a logo).
+    // The picker writes the chosen id into the bound property (null is what the parent holds without a logo).
     Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
-        ->assertSet('logoLight', '')
+        ->assertSet('logoLight', null)
         ->set('logoLight', $media->id)
         ->assertHasNoErrors()
         ->assertRedirect(route('admin.settings.edit', ['tab' => 'logo']));
@@ -63,7 +63,7 @@ test('the page hands the picker the current logo and accepts the picker clearing
 
     Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
         ->assertSet('logoDark', $media->id)
-        ->assertSet('logoLight', '')
+        ->assertSet('logoLight', null)
         ->assertSeeHtml('data-test="logo-preview-dark"')
         ->set('logoDark', null)
         ->assertRedirect(route('admin.settings.edit', ['tab' => 'logo']));
@@ -73,9 +73,10 @@ test('the page hands the picker the current logo and accepts the picker clearing
         ->and(Media::find($media->id))->not->toBeNull();
 });
 
-test('a GIF, a document or a missing id is refused with a field error and nothing is stored', function (string $case) {
+test('a GIF, a document, a missing id or a tampered value is refused with a field error and nothing is stored', function (string $case) {
     $this->actingAs(logoAdmin());
     $id = match ($case) {
+        'array' => [1, 2],
         'gif' => logoMedia('spinner.gif', 'image/gif')->id,
         'document' => Media::factory()->document()->create()->id,
         'missing' => 987654,
@@ -84,11 +85,65 @@ test('a GIF, a document or a missing id is refused with a field error and nothin
     Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
         ->set('logoLight', $id)
         ->assertHasErrors('logoLight')
-        ->assertSet('logoLight', '')
+        ->assertSet('logoLight', null)
         ->assertNoRedirect();
 
     expect(Setting::count())->toBe(0)->and(MediaUsage::count())->toBe(0);
-})->with(['gif', 'document', 'missing']);
+})->with(['gif', 'document', 'missing', 'array']);
+
+test('a refused id puts the stored logo back in the field', function () {
+    $this->actingAs(logoAdmin());
+    $media = logoMedia();
+    app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
+
+    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+        ->set('logoLight', logoMedia('spinner.gif', 'image/gif')->id)
+        ->assertHasErrors('logoLight')
+        ->assertSet('logoLight', $media->id);
+
+    expect(config('admin.logo.light'))->toBe($media->id);
+});
+
+test('opening the picker on an empty slot (the picker echoing the empty value) changes nothing', function (mixed $empty) {
+    $this->actingAs(logoAdmin());
+
+    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+        ->set('logoLight', $empty)
+        ->assertNoRedirect()
+        ->assertHasNoErrors();
+
+    expect(session(Toast::SESSION_KEY))->toBeNull();
+})->with([[''], [null]]);
+
+test('choosing the logo that is already stored changes nothing', function () {
+    $this->actingAs(logoAdmin());
+    $media = logoMedia();
+    app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
+
+    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+        ->set('logoLight', (string) $media->id)
+        ->assertNoRedirect();
+
+    expect(session(Toast::SESSION_KEY))->toBeNull();
+});
+
+test('settings.edit without media.view cannot take a library file as a logo, but may keep the one in place', function () {
+    $media = logoMedia();
+    $other = logoMedia('other.png', 'image/png');
+    app(SetLogo::class)->handle(logoAdmin(), 'light', $media->id);
+    $actor = User::factory()->withPermissions(['admin.access', 'settings.edit'])->create();
+    $this->actingAs($actor);
+
+    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+        ->set('logoDark', $other->id)
+        ->assertHasErrors('logoDark');
+
+    expect(fn () => app(SetLogo::class)->handle($actor, 'dark', $other->id))->toThrow(AuthorizationException::class)
+        ->and(Setting::query()->where('key', 'logo_dark')->exists())->toBeFalse();
+
+    app(SetLogo::class)->handle($actor, 'light', $media->id);
+    expect(config('admin.logo.light'))->toBe($media->id);
+});
 
 test('removing a logo unlinks it, keeps the file and drops the usage', function () {
     $this->actingAs(logoAdmin());
@@ -179,7 +234,7 @@ test('a delete that fails after the logo was forgotten leaves the setting, the c
 
     // The media rows are deleted after forgetMedia() ran inside the same transaction.
     DB::listen(function (QueryExecuted $query): void {
-        if (str_starts_with($query->sql, 'delete from "media"')) {
+        if (preg_match('/^delete from [`"]media[`"]/', $query->sql) === 1) {
             throw new RuntimeException('boom');
         }
     });

@@ -1,5 +1,5 @@
 {{--
-    The site logo: the logos uploaded in the site settings (light and dark theme), or the
+    The site logo: the logos chosen from the media library in the site settings (light and dark theme), or the
     default Hata mark on an accent tile. Size it with a height class: <x-site-logo class="h-8" />.
     variant="dark" always shows the dark-theme logo (for areas with a dark background).
 --}}

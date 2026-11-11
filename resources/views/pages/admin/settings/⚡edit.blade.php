@@ -17,6 +17,7 @@ use App\Support\Settings\SiteLogo;
 use App\Support\Settings\SiteSettings;
 use App\Support\Toast;
 use Flux\Flux;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -35,14 +36,14 @@ new #[Title('site_settings.title')] class extends Component {
     public SiteSettingsForm $form;
 
     /**
-     * The light-theme logo's media id, bound to the media picker ('' = none). A chosen file is stored as soon as it is picked.
+     * The light-theme logo's media id, bound to the media picker (null = none). A chosen file is stored as soon as it is picked.
      */
-    public int|string|null $logoLight = '';
+    public mixed $logoLight = null;
 
     /**
-     * The dark-theme logo's media id, bound to the media picker ('' = none).
+     * The dark-theme logo's media id, bound to the media picker (null = none).
      */
-    public int|string|null $logoDark = '';
+    public mixed $logoDark = null;
 
     /**
      * The open tab, one of SiteSettingsForm::SECTIONS.
@@ -75,8 +76,8 @@ new #[Title('site_settings.title')] class extends Component {
         }
 
         $this->form->fillFromSettings($settings);
-        $this->logoLight = SiteLogo::own('light')?->id ?? '';
-        $this->logoDark = SiteLogo::own('dark')?->id ?? '';
+        $this->logoLight = SiteLogo::own('light')?->id;
+        $this->logoDark = SiteLogo::own('dark')?->id;
         $this->savedValues = $this->form->all();
     }
 
@@ -214,18 +215,42 @@ new #[Title('site_settings.title')] class extends Component {
 
         $property = $variant === 'light' ? 'logoLight' : 'logoDark';
         $value = $this->{$property};
+        $stored = config("admin.logo.{$variant}");
+        $stored = is_int($stored) ? $stored : null;
 
-        if (blank($value)) {
+        // The picker echoes its value when it opens, so an empty value on an empty slot, or the stored id, is no change.
+        if (blank($value) && $value !== 0 && $value !== '0') {
+            // A dangling setting (its file is gone) shows an empty picker, so an empty echo must not clear it.
+            if (SiteLogo::own($variant) === null) {
+                $this->{$property} = null;
+
+                return;
+            }
+
             $this->removeLogo($removeLogo, $variant);
 
             return;
         }
 
+        if (is_string($value) && ctype_digit($value)) {
+            $value = (int) $value;
+        }
+
+        if ($value === $stored) {
+            $this->{$property} = $stored;
+
+            return;
+        }
+
         try {
-            $setLogo->handle(Auth::user(), $variant, (int) $value);
-        } catch (ValidationException $e) {
-            $this->reset($property);
-            $this->addError($property, $e->validator->errors()->first('media'));
+            if (! is_int($value)) {
+                throw new AuthorizationException;
+            }
+
+            $setLogo->handle(Auth::user(), $variant, $value);
+        } catch (ValidationException|AuthorizationException) {
+            $this->{$property} = SiteLogo::own($variant)?->id;
+            $this->addError($property, __('media.picker.invalid'));
 
             return;
         }

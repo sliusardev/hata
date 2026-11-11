@@ -2,6 +2,7 @@
 
 namespace App\Actions\Settings;
 
+use App\Models\Media;
 use App\Models\MediaUsage;
 use App\Models\Setting;
 use App\Models\User;
@@ -29,6 +30,11 @@ class SetLogo
 
         if (! in_array($variant, SiteLogo::VARIANTS, true)) {
             throw new InvalidArgumentException("Unknown logo variant [{$variant}].");
+        }
+
+        // Without media.view a file can't be browsed, so only the logo already in place may be kept.
+        if (config("admin.logo.{$variant}") !== $mediaId) {
+            Gate::forUser($actor)->authorize('viewAny', Media::class);
         }
 
         Validator::make(
