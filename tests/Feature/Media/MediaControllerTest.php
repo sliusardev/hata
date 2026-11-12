@@ -331,3 +331,13 @@ it('answers HEAD without a body', function () {
 
     $this->call('HEAD', $media->url())->assertOk()->assertHeader('Content-Length', '10');
 });
+
+it('serves files without the web middleware, so no session is started and no cookie is set', function () {
+    $media = storedMedia();
+
+    $response = $this->get($media->url())->assertOk();
+
+    expect($response->headers->getCookies())->toBe([]);
+
+    $this->get('/media/01ARZ3NDEKTSV4RRFFQ69G5FAV/missing.webp')->assertNotFound()->assertHeaderMissing('Set-Cookie');
+});

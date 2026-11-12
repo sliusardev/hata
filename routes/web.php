@@ -18,10 +18,13 @@ Route::get('dashboard', function (Request $request) {
 
 /*
 | Public media library files. No auth: the URLs are embedded in site content.
+| No "web" middleware either: a page may request dozens of files, and none of them
+| needs a session, cookies, CSRF or a locale.
 */
 Route::get('media/{key}/{name}', MediaController::class)
     ->where('key', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
     ->where('name', '[^/]+')
+    ->withoutMiddleware('web')
     ->name('media.show');
 
 require __DIR__.'/admin.php';
