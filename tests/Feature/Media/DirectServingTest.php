@@ -9,6 +9,7 @@ use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -87,7 +88,7 @@ it('stores the probe result in UTC', function () {
         ->and(Carbon::parse($settings->value('media_direct_checked_at'))->utcOffset())->toBe(0);
 });
 
-it('is due for a check unless the link is missing or a fresh probe succeeded', function () {
+it('is due for a check unless the link is missing, a fresh probe succeeded or one was just tried', function () {
     linkPublicDiskInTempDir(link: false);
     expect(freshDirectServing()->dueForCheck())->toBeFalse();
 
@@ -96,26 +97,118 @@ it('is due for a check unless the link is missing or a fresh probe succeeded', f
     expect($service->dueForCheck())->toBeTrue();
 
     $service->record(false, 'https://example.test/storage');
+    expect($service->dueForCheck())->toBeFalse();
+
+    $this->travel(31)->minutes();
     expect($service->dueForCheck())->toBeTrue();
 
     $service->record(true, 'https://example.test/storage');
     expect($service->dueForCheck())->toBeFalse();
 
-    $this->travel(25)->hours();
+    $this->travel(23)->hours();
+    expect($service->dueForCheck())->toBeFalse();
+
+    $this->travel(2)->hours();
     expect($service->dueForCheck())->toBeTrue();
 });
 
-it('builds the probe url and keeps one probe token', function () {
-    Storage::fake('public');
-    config(['filesystems.disks.public.url' => 'https://example.test/storage/']);
+it('backs off for 30 minutes after an attempt whose report never came, unless the url changes', function () {
+    linkPublicDiskInTempDir();
     $service = freshDirectServing();
 
-    $token = $service->probeToken();
+    $service->markAttempt();
+    expect($service->state())->toBe('unchecked')
+        ->and($service->dueForCheck())->toBeFalse();
 
-    expect($service->probeUrl())->toBe('https://example.test/storage/media/.probe')
-        ->and($token)->not->toBe('')
-        ->and($service->probeToken())->toBe($token)
-        ->and(Storage::disk('public')->get('media/.probe'))->toBe($token);
+    $this->travel(29)->minutes();
+    expect($service->dueForCheck())->toBeFalse();
+
+    config(['filesystems.disks.public.url' => 'https://www.example.test/storage']);
+    expect($service->dueForCheck())->toBeTrue();
+
+    config(['filesystems.disks.public.url' => 'https://example.test/storage']);
+    $this->travel(2)->minutes();
+    expect($service->dueForCheck())->toBeTrue();
+});
+
+it('also backs off a due recheck of a direct state whose report never came', function () {
+    linkPublicDiskInTempDir();
+    $service = freshDirectServing();
+    $service->record(true, 'https://example.test/storage');
+
+    $this->travel(25)->hours();
+    $service->markAttempt();
+
+    expect($service->state())->toBe('direct')
+        ->and($service->dueForCheck())->toBeFalse();
+});
+
+it('skips the write when the same result for the same url comes again within 30 minutes', function () {
+    linkPublicDiskInTempDir();
+    $service = freshDirectServing();
+    $this->freezeSecond();
+    $service->record(false, 'https://example.test/storage');
+    $first = app(SiteSettings::class)->value('media_direct_checked_at');
+
+    $this->travel(10)->minutes();
+    DB::enableQueryLog();
+    $service->record(false, 'https://example.test/storage');
+    $writes = collect(DB::getQueryLog())->filter(fn (array $query) => ! str_starts_with(strtolower($query['query']), 'select'))->count();
+    DB::disableQueryLog();
+
+    expect($writes)->toBe(0)
+        ->and(app(SiteSettings::class)->value('media_direct_checked_at'))->toBe($first);
+
+    $service->record(false, 'https://example.test/storage', force: true);
+    expect(app(SiteSettings::class)->value('media_direct_checked_at'))->not->toBe($first);
+
+    $this->travel(31)->minutes();
+    $forced = app(SiteSettings::class)->value('media_direct_checked_at');
+    $service->record(false, 'https://example.test/storage');
+    expect(app(SiteSettings::class)->value('media_direct_checked_at'))->not->toBe($forced);
+});
+
+it('records without re-applying the settings, so logos, mailers and runtime config stay', function () {
+    linkPublicDiskInTempDir();
+    app(SiteSettings::class)->put(['site_name' => 'Stored name']);
+    config(['app.name' => 'Changed at runtime']);
+    Mail::spy();
+
+    freshDirectServing()->record(true, 'https://example.test/storage');
+    freshDirectServing()->markAttempt();
+
+    expect(config('app.name'))->toBe('Changed at runtime')
+        ->and(freshDirectServing()->state())->toBe('direct');
+    Mail::shouldNotHaveReceived('forgetMailers');
+});
+
+it('builds the probe url and keeps one probe image of a random size', function () {
+    Storage::fake('public');
+    config(['filesystems.disks.public.url' => 'https://example.test/storage/']);
+    Storage::disk('public')->put('media/.probe', 'old token');
+
+    $size = freshDirectServing()->probeSize();
+    $bytes = (string) Storage::disk('public')->get('media/probe.png');
+    $info = getimagesizefromstring($bytes);
+
+    expect(freshDirectServing()->probeUrl())->toBe('https://example.test/storage/media/probe.png')
+        ->and($size['width'])->toBeGreaterThanOrEqual(2)->toBeLessThanOrEqual(64)
+        ->and($size['height'])->toBeGreaterThanOrEqual(2)->toBeLessThanOrEqual(64)
+        ->and($info[0] ?? null)->toBe($size['width'])
+        ->and($info[1] ?? null)->toBe($size['height'])
+        ->and($info['mime'] ?? null)->toBe('image/png')
+        ->and(imagecreatefromstring($bytes))->toBeInstanceOf(GdImage::class)
+        ->and(freshDirectServing()->probeSize())->toBe($size);
+    Storage::disk('public')->assertMissing('media/.probe');
+});
+
+it('writes a new probe image when the stored one is not a valid probe', function () {
+    Storage::fake('public');
+    Storage::disk('public')->put('media/probe.png', 'not an image');
+
+    $size = freshDirectServing()->probeSize();
+
+    expect(getimagesizefromstring((string) Storage::disk('public')->get('media/probe.png'))[0] ?? null)->toBe($size['width']);
 });
 
 it('fakes the service with fixed answers', function () {

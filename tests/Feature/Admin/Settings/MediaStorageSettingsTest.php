@@ -477,7 +477,24 @@ describe('direct serving status', function () {
         DirectServing::fake(state: 'link_missing');
         $this->mock(CreateStorageLink::class)->shouldReceive('handle')->once();
 
-        storageTab()->call('createStorageLink')->assertHasNoErrors()->assertDispatched('toast-show');
+        storageTab()->call('createStorageLink')->assertHasNoErrors()->assertDispatched('toast-show')->assertJs('window.checkMediaDirect?.(true)');
+    });
+
+    it('refreshes the status line when a probe result is recorded and forces the check again', function () {
+        DirectServing::fake(state: 'unreachable');
+
+        storageTab()
+            ->assertSeeHtml('x-on:media-direct-checked.window="$wire.$refresh()"')
+            ->assertSeeHtml('window.checkMediaDirect?.(true)');
+    });
+
+    it('forbids creating the storage link to a user who lost settings.edit', function () {
+        DirectServing::fake(state: 'link_missing');
+        $component = storageTab();
+
+        $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
+
+        $component->call('createStorageLink')->assertForbidden();
     });
 
     it('toasts the failure message when the link cannot be created', function () {

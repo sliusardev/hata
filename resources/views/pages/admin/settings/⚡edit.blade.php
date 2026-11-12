@@ -529,6 +529,8 @@ new #[Title('site_settings.title')] class extends Component {
      */
     public function createStorageLink(CreateStorageLink $createStorageLink): void
     {
+        $this->authorize('settings.edit');
+
         try {
             $createStorageLink->handle(Auth::user());
         } catch (StorageLinkException $exception) {
@@ -539,7 +541,8 @@ new #[Title('site_settings.title')] class extends Component {
 
         unset($this->directState);
         Flux::toast(variant: 'success', text: __('site_settings.media.storage.direct.link_created'));
-        $this->js('window.checkMediaDirect().then(() => $wire.$refresh())');
+        // The status line refreshes itself on the `media-direct-checked` event once the result is recorded.
+        $this->js('window.checkMediaDirect?.(true)');
     }
 
     /**
@@ -881,13 +884,13 @@ new #[Title('site_settings.title')] class extends Component {
 
             @if (MediaDisks::publishes((string) config('media.disk')))
                 @php($directState = $this->directState)
-                <div class="flex flex-wrap items-center gap-3" x-data="{ checking: false }" data-test="direct-status-{{ $directState }}">
+                <div class="flex flex-wrap items-center gap-3" x-data="{ checking: false }" x-on:media-direct-checked.window="$wire.$refresh()" data-test="direct-status-{{ $directState }}">
                     <flux:text @class(['max-w-prose', 'text-amber-600 dark:text-amber-400' => in_array($directState, ['link_missing', 'unreachable'], true)])>{{ __('site_settings.media.storage.direct.'.$directState, ['url' => app(DirectServing::class)->probeUrl()]) }}</flux:text>
 
                     @if ($directState === 'link_missing')
                         <flux:button size="sm" wire:click="createStorageLink" data-test="create-storage-link">{{ __('site_settings.media.storage.direct.create_link') }}</flux:button>
                     @elseif ($directState !== 'direct')
-                        <flux:button size="sm" x-bind:disabled="checking" x-on:click="checking = true; window.checkMediaDirect().then(() => $wire.$refresh()).finally(() => checking = false)" data-test="check-direct">{{ __('site_settings.media.storage.direct.check_again') }}</flux:button>
+                        <flux:button size="sm" x-bind:disabled="checking" x-on:click="checking = true; Promise.resolve(window.checkMediaDirect?.(true)).finally(() => checking = false)" data-test="check-direct">{{ __('site_settings.media.storage.direct.check_again') }}</flux:button>
                     @endif
                 </div>
             @endif
