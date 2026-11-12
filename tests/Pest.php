@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Media;
+use App\Support\Media\DirectServing;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -166,9 +167,13 @@ function fakeCloudDisk(string $disk = 's3'): RecordingDisk
  * Make the site's media disk the public one: raster images go to the faked `public` disk, originals, SVG and
  * documents to the faked `local` one.
  */
-function usePublicMediaDisk(): void
+function usePublicMediaDisk(bool $direct = false): void
 {
     Storage::fake('public');
     Storage::fake('local');
     config(['media.disk' => 'public']);
+
+    if ($direct) {
+        DirectServing::fake();
+    }
 }

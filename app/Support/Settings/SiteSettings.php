@@ -67,6 +67,13 @@ class SiteSettings
     ];
 
     /**
+     * Values the app stores and reads itself (probe results): they map to no config path and no form field.
+     *
+     * @var list<string>
+     */
+    public const array STORED_ONLY = ['media_direct_state', 'media_direct_url', 'media_direct_checked_at'];
+
+    /**
      * Settings that must reach config as a given type (the code checks with is_int()/is_bool()).
      *
      * @var array<string, 'int'|'bool'>
@@ -131,6 +138,11 @@ class SiteSettings
         return array_key_exists($key, $this->stored());
     }
 
+    public function value(string $key): mixed
+    {
+        return $this->stored()[$key] ?? null;
+    }
+
     /**
      * Write stored settings over the config.
      */
@@ -193,7 +205,7 @@ class SiteSettings
     {
         DB::transaction(function () use ($values): void {
             foreach ($values as $key => $value) {
-                if (! array_key_exists($key, self::CONFIG_PATHS)) {
+                if (! array_key_exists($key, self::CONFIG_PATHS) && ! in_array($key, self::STORED_ONLY, true)) {
                     continue;
                 }
 

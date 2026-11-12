@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Support\Media\DirectServing;
 use App\Support\Permissions\PermissionRegistry;
 use App\Support\Settings\SiteSettings;
 use App\Support\Translation\VendorTranslations;
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->singleton(SiteSettings::class);
+        $this->app->singleton(DirectServing::class);
     }
 
     /**

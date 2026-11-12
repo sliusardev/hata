@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Actions\Media\OptimizeImage;
 use App\Enums\MediaKind;
 use App\Models\Concerns\HasSearchIndex;
+use App\Support\Media\DirectServing;
 use App\Support\Media\MediaDisks;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -162,7 +163,9 @@ class Media extends Model
     {
         $mime ??= $this->mime;
 
-        if (! MediaDisks::isCloud($this->disk) || MediaDisks::publicUrl($this->disk) === null) {
+        $cloud = MediaDisks::isCloud($this->disk) && MediaDisks::publicUrl($this->disk) !== null;
+
+        if (! $cloud && ! app(DirectServing::class)->active($this->disk)) {
             return null;
         }
 
