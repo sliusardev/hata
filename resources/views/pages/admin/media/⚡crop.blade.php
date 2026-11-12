@@ -430,12 +430,13 @@ new #[Title('media.crop.title'), Layout('layouts::focus')] class extends Compone
                 <div class="space-y-2.5">
                     <flux:heading size="sm" level="2">{{ __('media.crop.ratio') }}</flux:heading>
                     <div class="grid grid-cols-3 gap-2">
+                        {{-- Js::from(), not @js(): Blade compiles no directives inside a component's attribute, only echoes. --}}
                         @foreach (array_keys($this::RATIOS) as $key)
                             <flux:button
                                 size="sm"
                                 :variant="$ratio === $key ? 'primary' : 'outline'"
                                 aria-pressed="{{ $ratio === $key ? 'true' : 'false' }}"
-                                x-on:click="setRatio(@js($key))"
+                                x-on:click="setRatio({{ Illuminate\Support\Js::from($key) }})"
                                 wire:key="ratio-{{ $key }}"
                             >
                                 {{ match ($key) { 'free' => __('media.crop.ratios.free'), 'social' => __('media.crop.ratios.social'), default => $key } }}

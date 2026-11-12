@@ -236,10 +236,11 @@ new #[Title('media.index.title')] class extends Component {
     public ?int $expandFolderId = null;
 
     /**
-     * The action that just ran narrowed its own render (see renderOnly()).
+     * This request's calls and property updates of this component (see requestChanges()); false until asked.
+     *
+     * @var array{calls: int, updates: int}|null|false
      */
-    protected bool $narrowed = false;
-
+    protected array|null|false $requestChanges = false;
 
     public function mount(): void
     {
@@ -316,21 +317,19 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Unlike Livewire's own method this renders nothing for a queued upload: the queue is drawn by the browser.
-     * A replacement renders as usual.
+     * Renderless, unlike Livewire's own method: the queue is drawn by the browser, and a finished replacement is
+     * followed by confirmReplace(), which renders. The attribute only skips the render when every call of the
+     * request is renderless, so an action sent along with it still gets its page.
      *
      * @param  string  $name
      * @param  iterable<int, string>  $tmpPath
      * @param  bool  $isMultiple
      * @param  bool  $append
      */
+    #[Renderless]
     public function _finishUpload($name, $tmpPath, $isMultiple, $append = true): void
     {
         $this->finishTemporaryUpload($name, $tmpPath, $isMultiple, $append);
-
-        if ($name === 'upload') {
-            $this->skipRender();
-        }
     }
 
     /**
@@ -346,7 +345,8 @@ new #[Title('media.index.title')] class extends Component {
     {
         $this->authorize('create', Media::class);
 
-        if ($defer) {
+        // Only when nothing else rides along: another action in the same request still needs its render.
+        if ($defer && ($this->requestChanges()['calls'] ?? 0) === 1) {
             $this->skipRender();
         }
 
@@ -582,8 +582,9 @@ new #[Title('media.index.title')] class extends Component {
     /**
      * Select every file shown on this page, or unselect them when all of them already are.
      */
-    public function togglePageSelection(): void
+    public function togglePageSelection(bool $narrow = false): void
     {
+        $this->renderOnly($narrow, 'files', 'bulk');
         $pageIds = $this->media->getCollection()->modelKeys();
 
         $this->selected = array_diff($pageIds, $this->selected) === []
@@ -646,7 +647,7 @@ new #[Title('media.index.title')] class extends Component {
         $this->redirect(route('admin.media.zip', ['ids' => $ids]));
     }
 
-    public function sort(string $column): void
+    public function sort(string $column, bool $narrow = false): void
     {
         if (! in_array($column, self::SORTABLE, true)) {
             return;
@@ -659,6 +660,8 @@ new #[Title('media.index.title')] class extends Component {
             $this->sortDirection = 'asc';
         }
 
+        // The page links are outside the islands, so going back to page 1 needs the whole page.
+        $this->renderOnly($narrow && $this->getPage() === 1, 'files');
         $this->resetPage();
     }
 
@@ -732,19 +735,20 @@ new #[Title('media.index.title')] class extends Component {
 
     /**
      * With $narrow, render only the named islands (none: nothing) instead of the whole page. The browser passes
-     * true for the hot actions of the grid (a tile click, the mouse box, "Show more", closing the panel), so a
-     * click in a grid of hundreds of tiles runs the grid's query and the panel's, not the folder tree, counters
-     * and months. Everything else renders the whole page as usual: other actions, these without the flag, the
-     * list view (it is outside the islands), and a request that carries anything besides this one call, because
-     * a second call or a property update may change something outside the islands.
+     * true for the hot actions (a tile or row click, the mouse box, a checkbox, "Show more", a sort, closing the
+     * panel), so a click in a grid of hundreds of tiles runs the files' query and the panel's, not the folder
+     * tree, counters and months. Everything else renders the whole page as usual: other actions, these without
+     * the flag, and a request that carries anything besides this one call, because a second call or a property
+     * update may change something outside the islands.
      */
     private function renderOnly(bool $narrow, string ...$islands): void
     {
-        if (! $narrow || $this->narrowed || $this->view !== 'grid' || ! $this->isOnlyChange()) {
+        $changes = $narrow ? $this->requestChanges() : null;
+
+        if ($changes === null || $changes['calls'] !== 1 || $changes['updates'] !== 0) {
             return;
         }
 
-        $this->narrowed = true;
         $this->skipRender();
 
         foreach ($islands as $island) {
@@ -753,21 +757,28 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Whether this request changes this component with exactly one action call and no property update. Read from
-     * Livewire's update payload; if its shape ever changes this answers false and the page renders whole.
+     * How many action calls and property updates this request carries for this component, read from Livewire's
+     * update payload; null when it can't be read (the payload's shape changed), which callers treat as "render
+     * the whole page".
+     *
+     * @return array{calls: int, updates: int}|null
      */
-    private function isOnlyChange(): bool
+    private function requestChanges(): ?array
     {
-        foreach ((array) request()->input('components', []) as $component) {
-            $snapshot = json_decode((string) data_get($component, 'snapshot', ''), true);
-
-            if (data_get($snapshot, 'memo.id') === $this->getId()) {
-                return count((array) data_get($component, 'calls', [])) === 1
-                    && (array) data_get($component, 'updates', []) === [];
-            }
+        if ($this->requestChanges !== false) {
+            return $this->requestChanges;
         }
 
-        return false;
+        $components = array_values((array) request()->input('components', []));
+
+        // The usual request has one component; only a bundled one needs its snapshots read to find ours.
+        $own = count($components) === 1 ? $components[0] : collect($components)->first(
+            fn (mixed $component): bool => data_get(json_decode((string) data_get($component, 'snapshot', ''), true), 'memo.id') === $this->getId(),
+        );
+
+        return $this->requestChanges = is_array($own) && is_array($own['calls'] ?? null)
+            ? ['calls' => count($own['calls']), 'updates' => count((array) ($own['updates'] ?? []))]
+            : null;
     }
 
     /**
@@ -1704,21 +1715,8 @@ new #[Title('media.index.title')] class extends Component {
                 @include('partials.admin.media.subfolders', ['subfolders' => $subfolders, 'canMove' => $canManageFolders])
             @endif
 
-            {{-- The list is outside the islands: its sort, checkboxes and pagination are wire: actions, which Livewire would scope to an island. --}}
-            @if ($view === 'list' && $this->media->isNotEmpty())
-                <div wire:key="media-list" data-media-area x-on:click="mediaDetailsClose.emptyClick($event, $wire)">
-                @include('partials.admin.media.list', [
-                    'media' => $this->media,
-                    'selectedId' => $selectedId,
-                    'selected' => $selected,
-                    'sortBy' => $sortBy,
-                    'sortDirection' => $sortDirection,
-                    'canMove' => $canManageFolders,
-                ])
-                </div>
-            @endif
-
             @island(name: 'files', always: true)
+                @php $canMoveFiles = auth()->user()->can('manageFolders', App\Models\Media::class); @endphp
                 @if ($this->media->isEmpty() && $this->hasSubfolders)
                     <flux:text size="sm" variant="subtle" data-test="media-no-files">{{ __('media.index.subfolders.no_files') }}</flux:text>
                 @elseif ($this->media->isEmpty())
@@ -1727,7 +1725,18 @@ new #[Title('media.index.title')] class extends Component {
                         :heading="$this->totals['all'] > 0 ? __('media.index.no_results.title') : __('media.index.empty.title')"
                         :description="$this->totals['all'] > 0 ? __('media.index.no_results.description') : __('media.index.empty.description')"
                     />
-                @elseif ($view !== 'list')
+                @elseif ($view === 'list')
+                    <div wire:key="media-list" data-media-area x-on:click="mediaDetailsClose.emptyClick($event, $wire)">
+                    @include('partials.admin.media.list', [
+                        'media' => $this->media,
+                        'selectedId' => $selectedId,
+                        'selected' => $selected,
+                        'sortBy' => $sortBy,
+                        'sortDirection' => $sortDirection,
+                        'canMove' => $canMoveFiles,
+                    ])
+                    </div>
+                @else
                     @include('partials.admin.media.grid', [
                         'media' => $this->media,
                         'selectedId' => $selectedId,
@@ -1735,10 +1744,15 @@ new #[Title('media.index.title')] class extends Component {
                         'selecting' => $selecting,
                         'gridStep' => $this::GRID_STEP,
                         'canShowMore' => $gridLimit < $this::GRID_MAX,
-                        'canMove' => auth()->user()->can('manageFolders', App\Models\Media::class),
+                        'canMove' => $canMoveFiles,
                     ])
                 @endif
             @endisland
+
+            {{-- The page links are wire: actions (Flux's), so they stay outside the islands. --}}
+            @if ($view === 'list' && $this->media->hasPages())
+                <flux:pagination :paginator="$this->media" class="shrink-0" />
+            @endif
         </div>
 
         @island(name: 'details', always: true)

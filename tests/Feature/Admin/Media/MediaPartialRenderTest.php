@@ -105,14 +105,30 @@ it('renders only the files for "Show more"', function () {
         ->and(substr_count($component->effects['islandFragments'][0], 'data-test="media-tile"'))->toBe(45);
 });
 
-it('renders the whole page in the list view, which is outside the islands', function () {
-    $media = Media::factory()->create();
+it('narrows the list view too: opening a row, a checkbox and a sort on the first page', function () {
+    Media::factory()->count(30)->create();
+    $media = Media::query()->latest('id')->firstOrFail();
 
     $component = Livewire::test('pages::admin.media.index')->set('view', 'list')->call('select', $media->id, true);
 
-    expect($component->effects)->toHaveKey('html')
-        ->and($component->effects)->not->toHaveKey('islandFragments');
-    $component->assertSeeHtml('data-test="media-details-actions"');
+    expect($component->effects)->not->toHaveKey('html')
+        ->and(renderedIslands($component))->toBe(['details', 'files']);
+
+    $component->call('toggleSelected', $media->id, true);
+
+    expect($component->effects)->not->toHaveKey('html')
+        ->and(renderedIslands($component))->toBe(['bulk', 'files'])
+        ->and(implode("\n", $component->effects['islandFragments']))->toContain('wire:key="media-pick-'.$media->id.'-on"');
+
+    $component->call('sort', 'name', true)->assertSet('sortBy', 'name');
+
+    expect($component->effects)->not->toHaveKey('html')
+        ->and(renderedIslands($component))->toBe(['files']);
+
+    // From page 2 a sort goes back to page 1, and the page links are outside the islands.
+    $component->call('gotoPage', 2)->call('sort', 'size', true)->assertSet('sortBy', 'size');
+
+    expect($component->effects)->toHaveKey('html');
 });
 
 it('counts no files when a narrowed action renders an empty folder', function () {
@@ -130,13 +146,23 @@ it('counts no files when a narrowed action renders an empty folder', function ()
 
 it('uses no wire: actions inside the islands, so Livewire never scopes a request to one', function () {
     [$media, $other] = Media::factory()->count(2)->create(['original_path' => 'media/originals/o.jpg']);
+    $plain = Media::factory()->document()->create();
+    $page = fn () => Livewire::test('pages::admin.media.index');
 
-    $picked = Livewire::test('pages::admin.media.index')->call('toggleSelected', $media->id)->call('toggleSelected', $other->id, true);
-    $opened = Livewire::test('pages::admin.media.index')->call('select', $media->id, true);
-    $islands = implode("\n", [...$picked->effects['islandFragments'], ...$opened->effects['islandFragments']]);
+    $islands = implode("\n", [
+        ...$page()->call('toggleSelected', $media->id)->call('toggleSelected', $other->id, true)->effects['islandFragments'],
+        ...$page()->call('select', $media->id, true)->effects['islandFragments'],
+        ...$page()->call('select', $plain->id, true)->effects['islandFragments'],
+        ...$page()->set('view', 'list')->call('toggleSelected', $media->id, true)->effects['islandFragments'],
+        ...$page()->set('search', 'matches-nothing')->call('selectBox', [], false, true)->effects['islandFragments'],
+    ]);
 
-    expect($islands)->toContain('data-test="media-bulk-bar"', 'data-test="media-details-actions"', 'data-test="media-tile"')
-        ->and($islands)->not->toContain('wire:click', 'wire:submit', 'wire:model.live', 'wire:change');
+    // Anything but these marks an action as coming from the island (wire:model without a modifier sends nothing by itself).
+    preg_match_all('/\swire:[a-z.:-]+/', $islands, $found);
+    $directives = collect($found[0])->map(fn (string $name): string => trim($name))->unique()->values();
+
+    expect($islands)->toContain('data-test="media-bulk-bar"', 'data-test="media-details-actions"', 'data-test="media-tile"', 'data-test="media-select-page"')
+        ->and($directives->diff(['wire:key', 'wire:model', 'wire:navigate', 'wire:ignore'])->all())->toBe([]);
 });
 
 it('renders the whole page when the same actions are called without the flag', function () {
@@ -208,14 +234,19 @@ it('renders the whole page for an action Livewire marks as coming from an island
     $component->assertSet('showDeleteModal', true);
 });
 
-it('renders the page for a finished replacement upload but not for a queued one', function () {
-    $media = mediaWithFiles();
-    $file = fn (): UploadedFile => UploadedFile::fake()->createWithContent('new.jpg', makeImage('jpg', 300, 200));
+it('still renders the page for an action that shares a request with an upload step', function () {
+    $media = Media::factory()->create();
+    $file = UploadedFile::fake()->createWithContent('queued.jpg', makeImage('jpg', 300, 200));
 
-    $component = Livewire::test('pages::admin.media.index')->call('select', $media->id);
+    // A tile click held back while the queue's request was in flight goes out together with the next one.
+    $component = Livewire::test('pages::admin.media.index')->set('upload', $file);
+    $component->update(calls: [
+        ['method' => 'storeUpload', 'params' => [true], 'path' => ''],
+        ['method' => 'select', 'params' => [$media->id, true], 'path' => ''],
+    ]);
 
-    expect($component->set('replacement', $file())->effects)->toHaveKey('html')
-        ->and(Livewire::test('pages::admin.media.index')->upload('upload', [$file()])->effects)->not->toHaveKey('html');
+    expect($component->effects)->toHaveKey('html');
+    $component->assertSet('selectedId', $media->id)->assertSeeHtml('data-test="media-details-actions"');
 });
 
 it('stores a queued upload without rendering the page, and renders it when asked to', function () {

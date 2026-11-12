@@ -29,7 +29,7 @@
         aria-hidden="true"
     ></div>
 
-    <div class="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    <div class="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]">
         @foreach ($media as $item)
             @php $isPicked = in_array($item->id, $selected, true); @endphp
             <button

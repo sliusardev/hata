@@ -8,7 +8,7 @@
 --}}
 @php $noFolderCount ??= null; @endphp
 <div
-    class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+    class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]"
     role="group"
     aria-label="{{ __('media.index.subfolders.label') }}"
     data-test="media-subfolders"

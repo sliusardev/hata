@@ -4,7 +4,7 @@
     disappear from here and come back as regular tiles from the server.
 --}}
 <div wire:ignore>
-    <div x-cloak x-show="pendingTiles.length > 0" class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" data-test="media-upload-tiles">
+    <div x-cloak x-show="pendingTiles.length > 0" class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" data-test="media-upload-tiles">
         <template x-for="item in pendingTiles" :key="item.id">
             <div class="min-w-0">
                 <div

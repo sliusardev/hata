@@ -59,7 +59,8 @@
         </a>
     </div>
 
-    <form x-on:submit.prevent="$wire.saveDetails()">
+    {{-- Not wire:submit (see the page's islands); the guard stands in for its protection against a second submit. --}}
+    <form x-data="{ saving: false }" x-on:submit.prevent="if (! saving) { saving = true; $wire.saveDetails().finally(() => { saving = false }) }">
         <div class="space-y-5 p-4">
             <div>
                 <div class="text-sm font-semibold break-all text-zinc-800 dark:text-white">{{ $media->name }}</div>
@@ -198,7 +199,7 @@
 
         <div class="flex flex-wrap items-center gap-2 border-t border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-white/5">
             @if ($canEdit)
-                <flux:button type="submit" variant="primary" size="sm" data-test="media-details-save">{{ __('common.actions.save') }}</flux:button>
+                <flux:button type="submit" variant="primary" size="sm" x-bind:disabled="saving" data-test="media-details-save">{{ __('common.actions.save') }}</flux:button>
             @endif
             <flux:button size="sm" icon="arrow-top-right-on-square" :href="$media->url()" target="_blank" rel="noopener" :aria-label="__('media.details.open')" :tooltip="__('media.details.open')" data-test="media-details-open" />
             <flux:button size="sm" icon="arrow-down-tray" :href="$media->appUrl().'?download=1'" :aria-label="__('media.details.download')" :tooltip="__('media.details.download')" />

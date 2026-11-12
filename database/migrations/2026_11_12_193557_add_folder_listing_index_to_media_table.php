@@ -28,7 +28,7 @@ return new class extends Migration
         );
 
         Schema::table('media', function (Blueprint $table) use ($hasOtherIndex) {
-            if (! $hasOtherIndex && Schema::getConnection()->getDriverName() !== 'sqlite') {
+            if (! $hasOtherIndex && in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
                 $table->index('folder_id', 'media_folder_id_foreign');
             }
 

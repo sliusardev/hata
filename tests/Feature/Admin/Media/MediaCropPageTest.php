@@ -46,6 +46,16 @@ it('opens the crop page for an editable image', function () {
         ->assertSee(__('media.crop.apply'));
 });
 
+it('gives the ratio buttons a click expression the browser can run', function () {
+    $media = cropPageMedia(makeImage('webp', 800, 600));
+
+    $this->get(route('admin.media.crop', $media))
+        ->assertOk()
+        ->assertSee('x-on:click="setRatio(\'free\')"', escape: false)
+        ->assertSee('x-on:click="setRatio(\'16:9\')"', escape: false)
+        ->assertDontSee('@js(', escape: false);
+});
+
 it('is forbidden without media.edit', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
     $media = cropPageMedia(makeImage('webp'));

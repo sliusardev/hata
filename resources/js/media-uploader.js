@@ -30,6 +30,9 @@ const JPEG_QUALITY = 0.92;
 /** With config.deferRefresh, the page is refreshed at most this often (ms) while files are still waiting. */
 const REFRESH_INTERVAL = 2000;
 
+/** How many times a failed refresh is retried before the stored files' queue tiles are dropped anyway. */
+const REFRESH_RETRIES = 3;
+
 /** The overlay hides when no dragover arrived for this long (the cursor left the window, the drag was cancelled). */
 const DRAG_TIMEOUT = 300;
 
@@ -124,6 +127,7 @@ export default function mediaUploader(config) {
     let nextId = 1;
     let dragTimer = null;
     let refreshedAt = 0;
+    let refreshFailures = 0;
 
     return {
         queue: [],
@@ -316,7 +320,7 @@ export default function mediaUploader(config) {
         /**
          * With config.deferRefresh the server stores a file without rendering the page; this shows the stored
          * files with one refresh: at once when nothing is waiting, else at most every REFRESH_INTERVAL ms. Their
-         * queue tiles stay until that refresh has drawn the real ones; if it fails they stay for the next one.
+         * queue tiles stay until that refresh has drawn the real ones; a failed refresh is retried.
          */
         refreshList(force = false) {
             const stored = this.queue.filter((item) => item.status === 'done' && !item.listed && !item.refreshing);
@@ -335,8 +339,23 @@ export default function mediaUploader(config) {
             stored.forEach((item) => { item.refreshing = true; });
 
             Promise.resolve(this.$wire.$refresh()).then(
-                () => stored.forEach((item) => { item.listed = true; }),
-                () => stored.forEach((item) => { item.refreshing = false; }),
+                () => {
+                    refreshFailures = 0;
+                    stored.forEach((item) => { item.listed = true; });
+                },
+                () => {
+                    // Try again shortly; after REFRESH_RETRIES failures drop the tiles, the next render shows the files.
+                    const giveUp = ++refreshFailures > REFRESH_RETRIES;
+
+                    stored.forEach((item) => {
+                        item.refreshing = false;
+                        item.listed = giveUp;
+                    });
+
+                    if (!giveUp) {
+                        setTimeout(() => this.refreshList(true), REFRESH_INTERVAL);
+                    }
+                },
             );
         },
 
