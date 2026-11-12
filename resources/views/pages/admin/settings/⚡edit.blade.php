@@ -507,12 +507,27 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     /**
+     * The count behind filesOnOtherDisk(), kept in the component's state: no update of the tab can change it (the
+     * saved storage changes only on save, which reloads the page, and moves run on another page).
+     */
+    #[Locked]
+    public ?int $filesOnOtherDiskCount = null;
+
+    /**
      * Number of media files the move page would offer for the saved storage: files not where an upload would put them.
+     * Counted once per page load, when the Media tab first renders. None while the storage is not one the move page
+     * can move to (the private `local` mode set in `.env`).
      */
     #[Computed]
     public function filesOnOtherDisk(): int
     {
-        return MoveMediaToDisk::candidates((string) config('media.disk'))->count();
+        $disk = (string) config('media.disk');
+
+        if (! in_array($disk, MoveMediaToDisk::TARGETS, true)) {
+            return 0;
+        }
+
+        return $this->filesOnOtherDiskCount ??= MoveMediaToDisk::candidates($disk)->count();
     }
 
     /**

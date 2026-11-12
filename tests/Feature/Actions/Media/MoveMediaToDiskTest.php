@@ -5,6 +5,7 @@ use App\Actions\Media\PruneMediaDeletions;
 use App\Actions\Media\RebuildMediaFile;
 use App\Enums\MediaKind;
 use App\Enums\MoveOutcome;
+use App\Exceptions\MediaWriteException;
 use App\Models\Media;
 use App\Models\MediaPendingDeletion;
 use App\Models\User;
@@ -591,4 +592,29 @@ it('still moves a file when the time-limit functions are disabled on the host', 
     expect(moverWithTimeLimitFunctions(false, $calls)->moveOne($media, 's3'))->toBe(MoveOutcome::Moved)
         ->and($calls)->toBe([])
         ->and($media->refresh()->disk)->toBe('s3');
+});
+
+it('refuses to copy an svg onto the publishing disk and writes nothing', function () {
+    $svg = diskNonRaster('local', 'svg');
+
+    expect(fn () => (fn () => $this->copy(Storage::disk('local'), $svg->path, 'public', "media/2026/11/{$svg->key}-v2.svg", 'image/svg+xml'))->call(mover()))
+        ->toThrow(MediaWriteException::class);
+
+    expect(Storage::disk('public')->allFiles())->toBe([]);
+});
+
+it('deletes only the new versioned original when a move from the private disk to this server fails after copying it', function () {
+    $media = diskMedia('local');
+    $before = $media->fresh()->getAttributes();
+    $localBefore = Storage::disk('local')->allFiles();
+    Media::updating(fn () => throw new RuntimeException('boom'));
+
+    expect(mover()->moveOne($media, 'public'))->toBe(MoveOutcome::Failed);
+
+    expect($this->local->options)->toHaveKey("media/originals/{$media->key}-v2.png")
+        ->and($media->fresh()->getAttributes())->toBe($before)
+        ->and(Storage::disk('local')->allFiles())->toEqualCanonicalizing($localBefore)
+        ->and(Storage::disk('local')->get((string) $media->original_path))->toBe('original-bytes')
+        ->and(Storage::disk('public')->allFiles())->toBe([])
+        ->and(MediaPendingDeletion::query()->count())->toBe(0);
 });

@@ -10,6 +10,7 @@ use App\Support\Media\DirectServing;
 use App\Support\Media\MediaDisks;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
@@ -254,6 +255,7 @@ it('refuses to clear the connection while files are on s3', function () {
 });
 
 it('says how many files are on the other disk', function () {
+    config(['media.disk' => 'public']);
     Media::factory()->count(2)->create(['disk' => 's3']);
 
     storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
@@ -277,15 +279,43 @@ it('counts rasters on the private disk and anything on s3 as being on the other 
 });
 
 it('links the files on the other disk to the move page for users who may move them', function () {
+    config(['media.disk' => 'public']);
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
         ->assertSee(route('admin.media.move'), escape: false)
-        ->assertSee(__('site_settings.media.storage.move_link', ['storage' => __('site_settings.media.storage.local')]));
+        ->assertSee(__('site_settings.media.storage.move_link', ['storage' => __('site_settings.media.storage.public')]));
 
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.edit'])->create());
 
     storageTab()->assertDontSee(route('admin.media.move'), escape: false);
+});
+
+it('advertises no move while the private local mode from .env is in effect', function () {
+    config(['media.disk' => 'local']);
+    Media::factory()->count(2)->create(['disk' => 's3']);
+    Media::factory()->create(['disk' => 'public']);
+
+    storageTab()
+        ->assertDontSeeHtml('data-test="files-on-other-disk"')
+        ->assertDontSee(route('admin.media.move'), escape: false);
+});
+
+it('counts the files on the other disk once, not on every update of the tab', function () {
+    config(['media.disk' => 'public']);
+    Media::factory()->count(2)->create(['disk' => 's3']);
+    $component = storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
+
+    $counts = 0;
+    DB::listen(function ($query) use (&$counts) {
+        // The candidates count (MoveMediaToDisk::candidates()->count()); the optimization card has its own query.
+        $counts += str_contains($query->sql, 'count(*) as') && str_contains($query->sql, 'aggregate') ? 1 : 0;
+    });
+
+    $component->set('form.media_quality', 70)->set('form.media_max_image_mb', 12)
+        ->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
+
+    expect($counts)->toBe(0);
 });
 
 it('treats any non-local driver as a cloud disk', function () {

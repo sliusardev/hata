@@ -127,3 +127,25 @@ it('does not fail when the settings cache cannot be cleared', function () {
 
     expect(true)->toBeTrue();
 });
+
+it('removes the original from the private disk when it discards an import onto the public disk', function () {
+    usePublicMediaDisk();
+    Storage::disk('local')->put('branding/a.png', makeImage('png'));
+    Setting::create(['key' => 'logo_light', 'value' => 'branding/a.png']);
+    $localBefore = Storage::disk('local')->allFiles();
+    app()->instance(SetLogo::class, new class(app(SiteSettings::class)) extends SetLogo
+    {
+        public function assign(string $variant, int $mediaId): void
+        {
+            expect(Media::query()->sole()->original_path)->not->toBeNull();
+
+            throw new RuntimeException('Setting write failed.');
+        }
+    });
+
+    runLogoImport();
+
+    expect(Media::query()->count())->toBe(0)
+        ->and(Storage::disk('public')->allFiles())->toBe([])
+        ->and(Storage::disk('local')->allFiles())->toEqualCanonicalizing($localBefore);
+});

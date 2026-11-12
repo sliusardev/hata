@@ -117,9 +117,14 @@ return new class extends Migration
         try {
             $media->delete();
             Storage::disk($media->disk)->delete(array_values(array_filter(
-                [$media->path, $media->original_path, $media->thumb_path],
+                [$media->path, $media->thumb_path],
                 fn (?string $file): bool => $file !== null && $file !== '',
             )));
+
+            // The original lives on the originals disk: the private one when the file is on the public disk.
+            if ($media->original_path !== null && $media->original_path !== '') {
+                Storage::disk($media->originalsDisk())->delete($media->original_path);
+            }
         } catch (Throwable $e) {
             report($e);
         }

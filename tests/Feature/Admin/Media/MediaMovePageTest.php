@@ -164,3 +164,19 @@ it('offers a new move to the configured storage after a finished move to the oth
 
     expect(app(DiskMoveRunStore::class)->get()->target)->toBe('s3');
 });
+
+it('offers no move while the private local mode from .env is in effect', function () {
+    config(['media.disk' => 'local']);
+    Media::factory()->create(['disk' => 's3']);
+    Media::factory()->create(['disk' => 'public']);
+
+    $this->get(route('admin.media.move'))
+        ->assertOk()
+        ->assertSee(__('media.move.none'));
+
+    Livewire::test('pages::admin.media.move')
+        ->assertSet('candidateCount', 0)
+        ->call('start');
+
+    expect(app(DiskMoveRunStore::class)->get())->toBeNull();
+});

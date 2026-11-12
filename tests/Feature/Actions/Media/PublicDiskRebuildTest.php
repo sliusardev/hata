@@ -9,6 +9,7 @@ use App\Models\MediaPendingDeletion;
 use App\Models\User;
 use App\Support\Media\MediaPaths;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\RecordingDisk;
 
 beforeEach(function () {
     usePublicMediaDisk();
@@ -99,3 +100,34 @@ it('refuses to write an svg to a disk that publishes its files', function () {
 
     expect(Storage::disk('public')->allFiles())->toBe([]);
 });
+
+it('leaves no new object on either disk and the old version intact when a write fails midway', function (string $failingDisk, string $failingPath, bool $throws) {
+    $media = publicRebuildPhoto($this->actor);
+    $before = $media->fresh()->getAttributes();
+    $files = ['public' => Storage::disk('public')->allFiles(), 'local' => Storage::disk('local')->allFiles()];
+
+    foreach (['public', 'local'] as $disk) {
+        $fake = Storage::disk($disk);
+        $recording = new RecordingDisk($fake->getDriver(), $fake->getAdapter(), $fake->getConfig());
+        Storage::set($disk, $recording);
+
+        if ($disk === $failingDisk) {
+            $recording->beforeWrite = function (string $path) use ($recording, $failingPath, $throws): void {
+                if (str_contains($path, $failingPath)) {
+                    $throws ? throw new RuntimeException('disk full') : $recording->failWrites = true;
+                }
+            };
+        }
+    }
+
+    expect(fn () => app(ReplaceMediaFile::class)->handle($this->actor, $media, uploadedImage('new.png', makeImage('png', 900, 600))))
+        ->toThrow(Exception::class);
+
+    expect($media->fresh()->getAttributes())->toBe($before)
+        ->and(Storage::disk('public')->allFiles())->toEqualCanonicalizing($files['public'])
+        ->and(Storage::disk('local')->allFiles())->toEqualCanonicalizing($files['local'])
+        ->and(MediaPendingDeletion::query()->count())->toBe(0);
+})->with([
+    'the thumbnail on the public disk throws' => ['public', 'thumbs/', true],
+    'the original on the private disk is not written' => ['local', 'originals/', false],
+]);

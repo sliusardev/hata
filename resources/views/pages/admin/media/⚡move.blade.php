@@ -23,9 +23,17 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
         return $run !== null && $run->status !== 'done' ? $run->target : (string) config('media.disk');
     }
 
+    /**
+     * None while the target is not a storage files can be moved to (the private `local` mode set in `.env`), so the
+     * page never offers a move the engine refuses.
+     */
     #[Computed]
     public function candidateCount(): int
     {
+        if (! in_array($this->target, MoveMediaToDisk::TARGETS, true)) {
+            return 0;
+        }
+
         return MoveMediaToDisk::candidates($this->target)->count();
     }
 
