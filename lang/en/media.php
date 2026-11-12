@@ -227,6 +227,7 @@ return [
         'working' => 'Uploading the new file…',
         'done' => 'File replaced.',
         'failed' => 'The file couldn’t be replaced.',
+        'svg_boundary' => 'An SVG image can only be replaced with another SVG, and any other image only with a non-SVG one. Upload this file as a new one instead.',
     ],
 
     'restore' => [

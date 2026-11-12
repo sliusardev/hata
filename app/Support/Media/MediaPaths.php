@@ -61,10 +61,17 @@ class MediaPaths
     /**
      * Write one media object with its write options.
      *
-     * @throws MediaWriteException when the disk reports the object was not stored
+     * An SVG is never written to a disk that publishes its files: served as a static file it would run its script on
+     * the site's origin, with no sandbox header.
+     *
+     * @throws MediaWriteException when the disk reports the object was not stored, or an SVG is meant for a publishing disk
      */
     public static function write(Filesystem $storage, string $disk, string $path, string $bytes, string $mime): void
     {
+        if ($mime === 'image/svg+xml' && MediaDisks::publishes($disk)) {
+            throw MediaWriteException::svgOnPublishingDisk($disk, $path);
+        }
+
         if ($storage->put($path, $bytes, self::writeOptions($disk, $mime)) === false) {
             throw MediaWriteException::notWritten($disk, $path);
         }

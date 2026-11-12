@@ -35,6 +35,15 @@ class MediaUploadException extends AuthorizationException
         return new self(__('media.errors.other_kind', ['kind' => __("media.errors.kinds.{$current->value}")]));
     }
 
+    /**
+     * A replacement on the other side of the raster/SVG line: an SVG is stored and served differently from a raster
+     * image (never as a static file), so it has to be uploaded as a new file.
+     */
+    public static function svgBoundary(): self
+    {
+        return new self(__('media.replace.svg_boundary'));
+    }
+
     public static function storageFailed(?Throwable $previous = null): self
     {
         return new self(__('media.errors.storage_failed'), previous: $previous);

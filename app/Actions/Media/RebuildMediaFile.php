@@ -14,7 +14,6 @@ use App\Support\Media\MediaPaths;
 use App\Support\Media\MediaTypes;
 use App\Support\Media\OptimizedImage;
 use Closure;
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -25,8 +24,10 @@ use Throwable;
  * Replaces the stored file of a media row (and its thumbnail, and optionally its kept original) with new bytes,
  * keeping the row's id and key. Used by crop, restore-original and replace; the callers authorize.
  *
- * Old files the new ones don't overwrite are deleted after commit; on a cloud disk, where the paths carry the version,
- * they are scheduled for deletion in 7 days instead (MediaPendingDeletion), so pages rendered before keep working.
+ * The file and thumbnail live on the row's disk, the kept original on its originals disk (Media::originalsDisk()).
+ * Old files the new ones don't overwrite are deleted after commit; on a disk whose paths carry the version (a cloud
+ * disk, or the public disk served as static files) they are scheduled for deletion in 7 days instead
+ * (MediaPendingDeletion), each on the disk it lives on, so pages rendered before keep working.
  * If anything fails, the row and its old files are left exactly as before: paths shared with the old row get their
  * old bytes back, other new files are deleted.
  */
@@ -180,7 +181,7 @@ class RebuildMediaFile
         array $attributes,
         ?int $basis,
     ): Media {
-        // A newer version was committed after the row was loaded: on a cloud disk its objects carry the very paths
+        // A newer version was committed after the row was loaded: with versioned paths its objects carry the very paths
         // built below, so nothing may be written. (A deleted row is caught under the row lock, as before.)
         if ($basis !== null) {
             $stored = Media::query()->whereKey($media->getKey())->value('version');
@@ -194,9 +195,10 @@ class RebuildMediaFile
         [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
 
         $diskName = $media->disk;
-        $disk = Storage::disk($diskName);
-        $cloud = MediaDisks::isCloud($diskName);
-        // On a cloud disk the paths carry the version this rebuild stores, so the new objects never overwrite the old.
+        $originalsDisk = $media->originalsDisk();
+        // On a cloud or publishing disk the paths carry the version this rebuild stores (the original's too: it is
+        // named with the row's disk), so the new objects never overwrite the old.
+        $versioned = MediaDisks::versionsPaths($diskName);
         $nextVersion = ($basis ?? (int) $media->version) + 1;
         $path = MediaPaths::file($diskName, $media->key, $nextVersion, $extension, now());
         $thumbPath = $thumbnail === null ? null : MediaPaths::thumb($diskName, $media->key, $nextVersion);
@@ -211,43 +213,47 @@ class RebuildMediaFile
             ? $media->name
             : MediaNames::unique($media->name, $extension, ignoreId: $media->id));
 
-        $stale = array_values(array_unique(array_filter(
-            [
-                $media->path === $path ? null : $media->path,
-                $media->thumb_path === $thumbPath ? null : $media->thumb_path,
-                $media->original_path === $originalPath ? null : $media->original_path,
-            ],
-            fn (?string $file): bool => $file !== null && $file !== '',
-        )));
+        /** @var array<string, list<string>> $stale Disk => the old paths on it the new row no longer uses. */
+        $stale = [];
+
+        foreach ([[$diskName, $media->path, $path], [$diskName, $media->thumb_path, $thumbPath], [$originalsDisk, $media->original_path, $originalPath]] as [$on, $old, $new]) {
+            if ($old !== null && $old !== '' && $old !== $new && ! in_array($old, $stale[$on] ?? [], true)) {
+                $stale[$on][] = $old;
+            }
+        }
 
         $attributesBefore = $media->getAttributes();
         $originalBefore = $media->getRawOriginal();
+        /** @var array<string, array<string, string>> $backups Disk => path => the bytes it held before. */
         $backups = [];
+        /** @var list<array{0: string, 1: string, 2: string}> $written Disk, path and MIME of each file written. */
         $written = [];
 
         try {
             $targets = [
-                [$path, $contents, $mime],
-                [$thumbPath, $thumbnail, 'image/webp'],
-                [$newOriginal === null ? null : $originalPath, $newOriginal, $newOriginalMime ?? 'application/octet-stream'],
+                [$diskName, $path, $contents, $mime],
+                [$diskName, $thumbPath, $thumbnail, 'image/webp'],
+                [$originalsDisk, $newOriginal === null ? null : $originalPath, $newOriginal, $newOriginalMime ?? 'application/octet-stream'],
             ];
 
-            foreach ($targets as [$target, $bytes, $targetMime]) {
+            foreach ($targets as [$on, $target, $bytes, $targetMime]) {
                 if ($target === null || $bytes === null) {
                     continue;
                 }
 
-                // A new versioned cloud path can't hold a committed object (the version was checked under the lock),
-                // so only local paths, which every version shares, need a backup.
-                if (! $cloud && ! array_key_exists($target, $backups) && $disk->exists($target)) {
-                    $backups[$target] = (string) $disk->get($target);
+                $storage = Storage::disk($on);
+
+                // A new versioned path can't hold a committed object (the version was checked under the lock), so only
+                // unversioned paths, which every version shares, need a backup.
+                if (! $versioned && ! isset($backups[$on][$target]) && $storage->exists($target)) {
+                    $backups[$on][$target] = (string) $storage->get($target);
                 }
 
-                $written[$target] = $targetMime;
-                MediaPaths::write($disk, $diskName, $target, $bytes, $targetMime);
+                $written[] = [$on, $target, $targetMime];
+                MediaPaths::write($storage, $on, $target, $bytes, $targetMime);
             }
 
-            DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $animated, $imageEdits, $keepEdits, $stale, $basis, $cloud): void {
+            DB::transaction(function () use ($media, $attributes, $path, $thumbPath, $originalPath, $name, $mime, $contents, $width, $height, $fingerprint, $failure, $animated, $imageEdits, $keepEdits, $stale, $basis, $versioned): void {
                 $stored = Media::query()->whereKey($media->getKey())->lockForUpdate()->value('version');
 
                 if ($basis !== null && $stored === null) {
@@ -277,26 +283,30 @@ class RebuildMediaFile
                 ]);
                 $media->save();
 
-                if ($cloud) {
-                    // Pages and CDN caches may still point at the replaced objects: they go after a delay, recorded
-                    // in this transaction so they are scheduled exactly when the new version is committed.
-                    MediaPendingDeletion::schedule($media->disk, $stale);
+                if ($versioned) {
+                    // Pages and CDN or browser caches may still point at the replaced objects: they go after a delay,
+                    // recorded in this transaction so they are scheduled exactly when the new version is committed.
+                    foreach ($stale as $on => $paths) {
+                        MediaPendingDeletion::schedule($on, $paths);
+                    }
 
                     return;
                 }
 
-                DB::afterCommit(function () use ($media, $stale): void {
-                    try {
-                        Storage::disk($media->disk)->delete($stale);
-                    } catch (Throwable $e) {
-                        report($e);
+                DB::afterCommit(function () use ($stale): void {
+                    foreach ($stale as $on => $paths) {
+                        try {
+                            Storage::disk($on)->delete($paths);
+                        } catch (Throwable $e) {
+                            report($e);
+                        }
                     }
                 });
             });
         } catch (Throwable $e) {
             // A deleted row's old files belong to its deletion (which may already have removed them): restoring them
             // would leave orphans, so everything written here is removed instead.
-            $this->undoWrites($disk, $diskName, $this->notCommitted($media, $written, $cloud), $e instanceof MediaChangedException && $e->gone ? [] : $backups);
+            $this->undoWrites($this->notCommitted($media, $written, $versioned), $e instanceof MediaChangedException && $e->gone ? [] : $backups);
             $media->setRawAttributes($originalBefore, sync: true);
             $media->setRawAttributes($attributesBefore);
 
@@ -334,40 +344,49 @@ class RebuildMediaFile
     }
 
     /**
-     * The written paths that the stored row doesn't point at now. On a cloud disk a rebuild that won the row after this
-     * one's lock expired committed the same versioned paths: deleting them would leave its row pointing at nothing.
+     * The written files that the stored row doesn't point at now. With versioned paths a rebuild that won the row after
+     * this one's lock expired committed the same paths: deleting them would leave its row pointing at nothing.
      *
-     * @param  array<string, string>  $written
-     * @return array<string, string>
+     * @param  list<array{0: string, 1: string, 2: string}>  $written
+     * @return list<array{0: string, 1: string, 2: string}>
      */
-    private function notCommitted(Media $media, array $written, bool $cloud): array
+    private function notCommitted(Media $media, array $written, bool $versioned): array
     {
-        if (! $cloud || $written === [] || ! $media->exists) {
+        if (! $versioned || $written === [] || ! $media->exists) {
             return $written;
         }
 
-        $stored = Media::query()->whereKey($media->getKey())->first(['path', 'thumb_path', 'original_path']);
+        $stored = Media::query()->whereKey($media->getKey())->first(['disk', 'path', 'thumb_path', 'original_path']);
 
         if ($stored === null) {
             return $written;
         }
 
-        return array_diff_key($written, array_flip(array_filter([$stored->path, $stored->thumb_path, $stored->original_path])));
+        $committed = [
+            [$stored->disk, $stored->path],
+            [$stored->disk, $stored->thumb_path],
+            [$stored->originalsDisk(), $stored->original_path],
+        ];
+
+        return array_values(array_filter(
+            $written,
+            fn (array $file): bool => ! in_array([$file[0], $file[1]], $committed, true),
+        ));
     }
 
     /**
      * Put the old bytes back on paths the old row used, and delete the other new files.
      *
-     * @param  array<string, string>  $written  Path => MIME of each file written.
-     * @param  array<string, string>  $backups
+     * @param  list<array{0: string, 1: string, 2: string}>  $written  Disk, path and MIME of each file written.
+     * @param  array<string, array<string, string>>  $backups  Disk => path => old bytes.
      */
-    private function undoWrites(Filesystem $disk, string $diskName, array $written, array $backups): void
+    private function undoWrites(array $written, array $backups): void
     {
-        foreach ($written as $target => $mime) {
+        foreach ($written as [$on, $target, $mime]) {
             try {
-                array_key_exists($target, $backups)
-                    ? $disk->put($target, $backups[$target], MediaPaths::writeOptions($diskName, $mime))
-                    : $disk->delete($target);
+                isset($backups[$on][$target])
+                    ? Storage::disk($on)->put($target, $backups[$on][$target], MediaPaths::writeOptions($on, $mime))
+                    : Storage::disk($on)->delete($target);
             } catch (Throwable $e) {
                 // The original exception matters more than a failed cleanup.
                 report($e);

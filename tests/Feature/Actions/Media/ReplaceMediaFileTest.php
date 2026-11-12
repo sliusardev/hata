@@ -5,6 +5,7 @@ use App\Enums\MediaKind;
 use App\Exceptions\MediaUploadException;
 use App\Models\Media;
 use App\Models\User;
+use App\Support\Media\MediaDisks;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Storage;
 
@@ -136,3 +137,32 @@ it('requires media.edit', function () {
     expect(fn () => app(ReplaceMediaFile::class)->handle($actor, replaceableMedia(), uploadedImage('a.webp', makeImage('webp'))))
         ->toThrow(AuthorizationException::class);
 });
+
+it('refuses to replace across the raster and svg line on any site disk and writes nothing', function (string $siteDisk, string $from, string $to) {
+    match ($siteDisk) {
+        'public' => usePublicMediaDisk(),
+        's3' => fakeCloudDisk(),
+        default => null,
+    };
+    config(['media.disk' => $siteDisk]);
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>';
+    $files = ['svg' => ['logo.svg', $svg, 'image/svg+xml'], 'png' => ['logo.png', makeImage('png'), 'image/png']];
+    [, $bytes, $mime] = $files[$from];
+    $media = Media::factory()->create(['disk' => MediaDisks::diskFor($siteDisk, MediaKind::Image, $mime), 'mime' => $mime, 'name' => $files[$from][0], 'path' => "media/2020/01/old.{$from}"]);
+    Storage::disk($media->disk)->put($media->path, $bytes);
+    $before = $media->fresh()->getAttributes();
+    $stored = collect(['local', 'public', 's3'])->mapWithKeys(fn (string $disk) => [$disk => Storage::disk($disk)->allFiles()])->all();
+
+    try {
+        app(ReplaceMediaFile::class)->handle($this->actor, $media, uploadedImage($files[$to][0], $files[$to][1]));
+        $this->fail('Expected an exception.');
+    } catch (MediaUploadException $e) {
+        expect($e->getMessage())->toBe(__('media.replace.svg_boundary'));
+    }
+
+    expect($media->fresh()->getAttributes())->toBe($before)
+        ->and(collect(['local', 'public', 's3'])->mapWithKeys(fn (string $disk) => [$disk => Storage::disk($disk)->allFiles()])->all())->toBe($stored);
+})->with(['local', 'public', 's3'])->with([
+    'raster to svg' => ['png', 'svg'],
+    'svg to raster' => ['svg', 'png'],
+]);

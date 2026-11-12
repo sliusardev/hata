@@ -18,7 +18,8 @@ class ReplaceMediaFile
     /**
      * Put a new file in place of the media row's file, keeping its id, key, folder, title, alt and usages.
      *
-     * The new file must be of the same kind. Edits are cleared. As on upload, an image is kept as the new original
+     * The new file must be of the same kind, and on the same side of the raster/SVG line (an SVG never lands on the
+     * row's disk when that disk publishes raster images). Edits are cleared. As on upload, an image is kept as the new original
      * when originals are kept; otherwise the old original is dropped.
      *
      * @param  int|null  $pickedSize  Size of the file the user picked, when the browser shrank it before upload.
@@ -34,6 +35,10 @@ class ReplaceMediaFile
 
         if ($type['kind'] !== $media->kind) {
             throw MediaUploadException::otherKind($media->kind);
+        }
+
+        if (($type['mime'] === 'image/svg+xml') !== ($media->mime === 'image/svg+xml')) {
+            throw MediaUploadException::svgBoundary();
         }
 
         $contents = (string) file_get_contents($file->getRealPath());
