@@ -341,3 +341,43 @@ it('serves files without the web middleware, so no session is started and no coo
 
     $this->get('/media/01ARZ3NDEKTSV4RRFFQ69G5FAV/missing.webp')->assertNotFound()->assertHeaderMissing('Set-Cookie');
 });
+
+it('redirects a public raster to its static url when direct serving is active', function () {
+    usePublicMediaDisk(direct: true);
+    $media = Media::factory()->create(['disk' => 'public', 'thumb_path' => 'media/thumbs/t-v1.webp']);
+    Storage::disk('public')->put($media->path, 'public-body');
+
+    $response = $this->get($media->appUrl())->assertStatus(302);
+
+    expect($response->headers->get('Location'))->toBe($media->url())
+        ->and($response->headers->get('Cache-Control'))->toContain('no-cache');
+
+    $thumb = $this->get($media->appUrl().'?thumb=1')->assertStatus(302);
+
+    expect($thumb->headers->get('Location'))->toBe($media->thumbUrl());
+});
+
+it('still streams a public raster as a download when direct serving is active', function () {
+    usePublicMediaDisk(direct: true);
+    $media = Media::factory()->create(['disk' => 'public']);
+    Storage::disk('public')->put($media->path, 'public-body');
+
+    $response = $this->get($media->appUrl().'?download=1')->assertOk();
+
+    expect($response->headers->get('Content-Disposition'))->toStartWith('attachment')
+        ->and($response->streamedContent())->toBe('public-body');
+});
+
+it('streams a public raster and its thumbnail when direct serving is inactive', function () {
+    usePublicMediaDisk();
+    $media = Media::factory()->create(['disk' => 'public', 'thumb_path' => 'media/thumbs/t-v1.webp']);
+    Storage::disk('public')->put($media->path, 'public-body');
+    Storage::disk('public')->put('media/thumbs/t-v1.webp', 'thumb-body');
+
+    $response = $this->get($media->url())->assertOk();
+
+    expect($response->headers->get('Cache-Control'))->toContain('max-age=604800')
+        ->and($response->headers->get('Content-Disposition'))->toStartWith('inline')
+        ->and($response->streamedContent())->toBe('public-body');
+    expect($this->get($media->thumbUrl())->assertOk()->streamedContent())->toBe('thumb-body');
+});

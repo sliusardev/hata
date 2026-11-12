@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\StaticMediaFallbackController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,15 @@ Route::get('media/{key}/{name}', MediaController::class)
     ->where('name', '[^/]+')
     ->withoutMiddleware('web')
     ->name('media.show');
+
+/*
+| The static address of a locally stored image, for when the `public/storage` link is missing and the web server
+| does not answer it itself. It must not depend on the link's state.
+*/
+Route::get('storage/media/{path}', StaticMediaFallbackController::class)
+    ->where('path', '.+')
+    ->withoutMiddleware('web')
+    ->name('media.static');
 
 require __DIR__.'/admin.php';
 require __DIR__.'/settings.php';

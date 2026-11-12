@@ -2,22 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\StreamsMediaFile;
 use App\Models\Media;
-use App\Support\Media\ByteRange;
 use App\Support\Media\MediaDisks;
 use App\Support\Media\MediaTypes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use League\Flysystem\UnableToReadFile;
-use League\Flysystem\UnableToRetrieveMetadata;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MediaController extends Controller
 {
+    use StreamsMediaFile;
+
     /**
      * Serve a media file by its public URL. The name segment is cosmetic: an old name
      * redirects to the current one, so URLs saved in content keep working after a rename.
@@ -43,6 +42,14 @@ class MediaController extends Controller
             $this->asciiFallback($media->name),
         );
 
+        if (! $download && ! MediaDisks::isCloud($media->disk)) {
+            $direct = $media->directUrl($path, $mime);
+
+            if ($direct !== null) {
+                return $this->uncacheableRedirect($direct, 302);
+            }
+        }
+
         if (MediaDisks::isCloud($media->disk)) {
             if ($mime !== 'image/svg+xml') {
                 return $this->uncacheableRedirect($this->cloudUrl($media, $path, $mime, $download, $disposition), 302);
@@ -51,73 +58,14 @@ class MediaController extends Controller
             abort_unless($disk->exists($path), 404);
         }
 
-        $headers = [
-            'Content-Type' => MediaTypes::responseMime($mime),
-            'Cache-Control' => $request->query('v') === (string) $media->version
-                ? 'public, max-age=604800'
-                : 'no-cache',
-            'X-Content-Type-Options' => 'nosniff',
-            'Accept-Ranges' => 'bytes',
-            'Content-Disposition' => $disposition,
-        ];
-
-        if ($mime === 'image/svg+xml') {
-            $headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
-        }
-
-        $etag = md5($path.$media->size.$media->version.$media->updated_at?->getTimestamp());
-        $notModified = new StreamedResponse(null, 200, $headers);
-        $notModified->setEtag($etag);
-        $notModified->setLastModified($media->updated_at);
-
-        if ($notModified->isNotModified($request)) {
-            return $notModified;
-        }
-
-        try {
-            $size = $disk->size($path);
-            $stream = $request->isMethod('HEAD') ? null : $disk->readStream($path);
-        } catch (UnableToReadFile|UnableToRetrieveMetadata) {
-            abort(404);
-        }
-
-        abort_if($stream === null && ! $request->isMethod('HEAD'), 404);
-
-        $range = ByteRange::parse($request->headers->get('Range'), $request->headers->get('If-Range'), $size, $etag);
-
-        if ($range === false) {
-            return new Response('', 416, [
-                ...$headers,
-                'Cache-Control' => 'no-store',
-                'Content-Range' => "bytes */{$size}",
-            ]);
-        }
-
-        [$start, $end] = $range ?? [0, $size - 1];
-        $status = $range === null ? 200 : 206;
-        $headers['Content-Length'] = (string) max(0, $end - $start + 1);
-
-        if ($status === 206) {
-            $headers['Content-Range'] = "bytes {$start}-{$end}/{$size}";
-            $headers['Cache-Control'] = 'no-store';
-        }
-
-        $response = new StreamedResponse(function () use ($stream, $start, $end, $size): void {
-            if ($stream === null) {
-                return;
-            }
-
-            if ($size > 0) {
-                ByteRange::copy($stream, $start, $end);
-            }
-
-            fclose($stream);
-        }, $status, $headers);
-
-        $response->setEtag($etag);
-        $response->setLastModified($media->updated_at);
-
-        return $response;
+        return $this->streamFile(
+            $request,
+            $media,
+            $path,
+            $mime,
+            $disposition,
+            $request->query('v') === (string) $media->version ? 'public, max-age=604800' : 'no-cache',
+        );
     }
 
     /**
