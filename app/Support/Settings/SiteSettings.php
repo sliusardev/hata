@@ -71,7 +71,13 @@ class SiteSettings
      *
      * @var list<string>
      */
-    public const array STORED_ONLY = ['media_direct_state', 'media_direct_url', 'media_direct_checked_at'];
+    public const array STORED_ONLY = [
+        'media_direct_state',
+        'media_direct_url',
+        'media_direct_checked_at',
+        'media_direct_attempted_at',
+        'media_direct_attempted_url',
+    ];
 
     /**
      * Settings that must reach config as a given type (the code checks with is_int()/is_bool()).
@@ -116,15 +122,28 @@ class SiteSettings
     private array $defaults = [];
 
     /**
+     * The stored values as read once in this process (request, command or job), so the many callers of a request
+     * (every Media::url() asks DirectServing, which reads them) cost one cache read in all. Cleared by apply() and
+     * after every write.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $memo = null;
+
+    /**
      * Stored values, encrypted ones still encrypted. Empty while the settings table does not exist yet.
      *
      * @return array<string, mixed>
      */
     public function stored(): array
     {
+        if ($this->memo !== null) {
+            return $this->memo;
+        }
+
         try {
             /** @var array<string, mixed> */
-            return Cache::rememberForever(
+            return $this->memo = Cache::rememberForever(
                 self::CACHE_KEY,
                 fn (): array => Setting::query()->pluck('value', 'key')->all(),
             );
@@ -148,6 +167,7 @@ class SiteSettings
      */
     public function apply(): void
     {
+        $this->memo = null;
         SiteLogo::flush();
         $s3Before = config('filesystems.disks.s3');
 
@@ -226,10 +246,40 @@ class SiteSettings
         // Inside an enclosing transaction (a library delete) the cache and the config change only once it commits.
         DB::afterCommit(function (): void {
             Cache::forget(self::CACHE_KEY);
+            $this->memo = null;
 
             $this->apply();
 
             Mail::forgetMailers();
+        });
+    }
+
+    /**
+     * Store values the app keeps for itself (STORED_ONLY: probe results), which reach no config. Only the settings
+     * cache and this process's copy are refreshed: no apply(), so logos, mailers and the s3 disk stay as they are. A
+     * null value removes the key; other keys are ignored.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public function putStoredOnly(array $values): void
+    {
+        $values = array_intersect_key($values, array_flip(self::STORED_ONLY));
+
+        if ($values === []) {
+            return;
+        }
+
+        DB::transaction(function () use ($values): void {
+            foreach ($values as $key => $value) {
+                $value === null
+                    ? Setting::query()->where('key', $key)->delete()
+                    : Setting::query()->updateOrCreate(['key' => $key], ['value' => $value]);
+            }
+        });
+
+        DB::afterCommit(function (): void {
+            Cache::forget(self::CACHE_KEY);
+            $this->memo = null;
         });
     }
 }

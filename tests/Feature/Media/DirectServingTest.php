@@ -4,7 +4,10 @@ use App\Models\Media;
 use App\Support\Media\DirectServing;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
@@ -157,6 +160,37 @@ it('keeps svg and documents on the app route even when direct', function () {
         ->and($pdf->url())->toBe(route('media.show', [$pdf->key, $pdf->name, 'v' => 1]));
 });
 
+it('builds the urls of many public rasters without a query per url', function (string $state) {
+    linkPublicDiskInTempDir(link: $state !== 'link_missing');
+    config(['media.disk' => 'public', 'cache.default' => 'database']);
+    Storage::fake('local');
+
+    if ($state !== 'link_missing' && $state !== 'unchecked') {
+        freshDirectServing()->record($state === 'direct', 'https://example.test/storage');
+    }
+
+    $rows = Media::factory()->count(20)->create(['disk' => 'public', 'thumb_path' => 'media/thumbs/t-v1.webp']);
+
+    /** Queries made while building the urls of $count rows, as a fresh request does after reading the settings at boot. */
+    $queriesFor = function (int $count) use ($rows): int {
+        app(SiteSettings::class)->apply();
+        freshDirectServing();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $rows->take($count)->each(fn (Media $media) => [$media->url(), $media->thumbUrl()]);
+
+        $queries = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $queries;
+    };
+
+    expect($queriesFor(20))->toBe($queriesFor(1))
+        ->and($queriesFor(20))->toBe(0)
+        ->and(freshDirectServing()->state())->toBe($state);
+})->with(['direct', 'unchecked', 'unreachable', 'link_missing']);
+
 it('leaves s3 urls unaffected by the direct state', function () {
     config(['filesystems.disks.s3.driver' => 's3', 'filesystems.disks.s3.url' => 'https://cdn.example.test']);
     Storage::fake('s3', ['url' => 'https://cdn.example.test']);
@@ -168,4 +202,17 @@ it('leaves s3 urls unaffected by the direct state', function () {
 
     DirectServing::fake();
     expect($image->url())->toBe($expected);
+});
+
+it('forgets the link check before every queued job, so a long-lived worker sees a removed link', function () {
+    $base = linkPublicDiskInTempDir();
+    $service = freshDirectServing();
+    expect($service->linked())->toBeTrue();
+
+    unlink($base.'/link');
+    expect($service->linked())->toBeTrue();
+
+    event(new JobProcessing('database', new SyncJob(app(), '{}', 'database', 'default')));
+
+    expect($service->linked())->toBeFalse();
 });

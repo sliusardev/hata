@@ -163,13 +163,14 @@ class Media extends Model
     {
         $mime ??= $this->mime;
 
-        $cloud = MediaDisks::isCloud($this->disk) && MediaDisks::publicUrl($this->disk) !== null;
-
-        if (! $cloud && ! app(DirectServing::class)->active($this->disk)) {
+        // The cheap checks first: a document or an SVG never asks DirectServing.
+        if ($this->kind !== MediaKind::Image || $mime === 'image/svg+xml') {
             return null;
         }
 
-        if ($this->kind !== MediaKind::Image || $mime === 'image/svg+xml') {
+        $cloud = MediaDisks::isCloud($this->disk) && MediaDisks::publicUrl($this->disk) !== null;
+
+        if (! $cloud && ! app(DirectServing::class)->active($this->disk)) {
             return null;
         }
 

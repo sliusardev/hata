@@ -52,7 +52,8 @@ class AppServiceProvider extends ServiceProvider
      * and change while it runs; `stored()` reads a cache that saving clears, and `apply()` first restores the config
      * values of settings applied earlier, so a removed setting falls back to `.env` here too. Jobs on the `sync`
      * connection run inside the current request, which applied the settings at boot; re-applying there would write
-     * the site default back into `app.locale` after `SetLocale` set the user's language.
+     * the site default back into `app.locale` after `SetLocale` set the user's language. The storage link check is
+     * forgotten too, so a worker does not keep answering "linked" after the link went away.
      */
     protected function configureQueue(): void
     {
@@ -62,6 +63,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $this->app->make(SiteSettings::class)->apply();
+            $this->app->make(DirectServing::class)->refresh();
             Mail::forgetMailers();
         });
     }
