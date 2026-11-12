@@ -240,12 +240,6 @@ new #[Title('media.index.title')] class extends Component {
      */
     protected bool $narrowed = false;
 
-    /**
-     * An action of this request needs the whole page, so no later action may narrow the render.
-     */
-    protected bool $wholePage = false;
-
-    protected bool $skippedForIslands = false;
 
     public function mount(): void
     {
@@ -299,8 +293,8 @@ new #[Title('media.index.title')] class extends Component {
      * Only the "upload" property (with media.upload) and the "replacement" property (with media.edit on the open file)
      * take temporary uploads, one file at a time.
      *
-     * Renderless like Livewire's own method: the upload queue is drawn by the browser, so starting and finishing a
-     * transfer changes nothing the server renders.
+     * Renderless like Livewire's own method (an override doesn't inherit the attribute): starting a transfer
+     * changes nothing the server renders.
      *
      * @param  array<int, mixed>  $fileInfo
      */
@@ -322,15 +316,21 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
+     * Unlike Livewire's own method this renders nothing for a queued upload: the queue is drawn by the browser.
+     * A replacement renders as usual.
+     *
      * @param  string  $name
      * @param  iterable<int, string>  $tmpPath
      * @param  bool  $isMultiple
      * @param  bool  $append
      */
-    #[Renderless]
     public function _finishUpload($name, $tmpPath, $isMultiple, $append = true): void
     {
         $this->finishTemporaryUpload($name, $tmpPath, $isMultiple, $append);
+
+        if ($name === 'upload') {
+            $this->skipRender();
+        }
     }
 
     /**
@@ -582,9 +582,8 @@ new #[Title('media.index.title')] class extends Component {
     /**
      * Select every file shown on this page, or unselect them when all of them already are.
      */
-    public function togglePageSelection(bool $narrow = false): void
+    public function togglePageSelection(): void
     {
-        $this->renderOnly($narrow, 'files', 'bulk');
         $pageIds = $this->media->getCollection()->modelKeys();
 
         $this->selected = array_diff($pageIds, $this->selected) === []
@@ -647,7 +646,7 @@ new #[Title('media.index.title')] class extends Component {
         $this->redirect(route('admin.media.zip', ['ids' => $ids]));
     }
 
-    public function sort(string $column, bool $narrow = false): void
+    public function sort(string $column): void
     {
         if (! in_array($column, self::SORTABLE, true)) {
             return;
@@ -661,7 +660,6 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         $this->resetPage();
-        $this->renderOnly($narrow, 'files');
     }
 
     public function showMore(bool $narrow = false): void
@@ -734,19 +732,19 @@ new #[Title('media.index.title')] class extends Component {
 
     /**
      * With $narrow, render only the named islands (none: nothing) instead of the whole page. The browser passes
-     * true for the hot actions (a tile click, the mouse box, "Show more", a column sort), so a click in a grid of
-     * hundreds of tiles runs the grid's query and the panel's, not the folder tree, counters and months. Every
-     * other action, and these without the flag, render the whole page as usual; so does a request that carries
-     * more than this one call, because the other call may change something outside the islands.
+     * true for the hot actions of the grid (a tile click, the mouse box, "Show more", closing the panel), so a
+     * click in a grid of hundreds of tiles runs the grid's query and the panel's, not the folder tree, counters
+     * and months. Everything else renders the whole page as usual: other actions, these without the flag, the
+     * list view (it is outside the islands), and a request that carries anything besides this one call, because
+     * a second call or a property update may change something outside the islands.
      */
     private function renderOnly(bool $narrow, string ...$islands): void
     {
-        if (! $narrow || $this->wholePage || ! $this->isOnlyCall()) {
+        if (! $narrow || $this->narrowed || $this->view !== 'grid' || ! $this->isOnlyChange()) {
             return;
         }
 
         $this->narrowed = true;
-        $this->skippedForIslands = $this->skippedForIslands || ! $this->shouldSkipRender();
         $this->skipRender();
 
         foreach ($islands as $island) {
@@ -755,15 +753,17 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Whether this request calls exactly one action of this component.
+     * Whether this request changes this component with exactly one action call and no property update. Read from
+     * Livewire's update payload; if its shape ever changes this answers false and the page renders whole.
      */
-    private function isOnlyCall(): bool
+    private function isOnlyChange(): bool
     {
         foreach ((array) request()->input('components', []) as $component) {
             $snapshot = json_decode((string) data_get($component, 'snapshot', ''), true);
 
             if (data_get($snapshot, 'memo.id') === $this->getId()) {
-                return count((array) data_get($component, 'calls', [])) === 1;
+                return count((array) data_get($component, 'calls', [])) === 1
+                    && (array) data_get($component, 'updates', []) === [];
             }
         }
 
@@ -771,32 +771,17 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
-     * Livewire calls this after an action the browser sent as coming from inside an island, and would then render
-     * only that island. On this page islands are render targets, not scopes: the browser strips that mark
-     * (`data-serial-islands`, resources/js/app.js), which also keeps the page's requests in one queue. Should the
-     * mark arrive anyway, an action that didn't narrow itself gets the whole page, because most actions change
-     * something outside their island (a dialog, the folder tree, the counters).
+     * Livewire calls this after an action started by a wire: directive inside an island, and would then render
+     * only that island (and send such actions in parallel with the page's other requests). Here the islands are
+     * render targets only, so nothing inside them uses a wire: action (Alpine calls $wire instead, see the
+     * partials); should one be added, it renders the whole page, because most actions change something outside
+     * their island (a dialog, the folder tree, the counters).
      *
      * @param  string  $name
      * @param  string  $mode
      * @param  bool  $mount
      */
-    public function triggerImplicitIslandRender($name, $mode = 'morph', $mount = false): void
-    {
-        if ($this->narrowed) {
-            $this->narrowed = false;
-
-            return;
-        }
-
-        $this->wholePage = true;
-        $this->implicitIslandMorphs = [];
-
-        if ($this->skippedForIslands) {
-            \Livewire\store($this)->set('skipRender', false);
-            $this->skippedForIslands = false;
-        }
-    }
+    public function triggerImplicitIslandRender($name, $mode = 'morph', $mount = false): void {}
 
     /**
      * Drop the unsaved changes and go where the user asked to.
@@ -1044,7 +1029,7 @@ new #[Title('media.index.title')] class extends Component {
         $target = $targetId === null ? null : MediaFolder::query()->find($targetId);
 
         if ($folder === null || ($targetId !== null && $target === null)) {
-            unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders);
+            unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders, $this->hasSubfolders);
 
             return;
         }
@@ -1066,7 +1051,7 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         $this->expandFolderId = $target?->id;
-        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders);
+        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders, $this->hasSubfolders);
         Flux::toast(variant: 'success', text: __('media.messages.folder_moved'));
     }
 
@@ -1212,7 +1197,7 @@ new #[Title('media.index.title')] class extends Component {
             $this->resetPage();
         }
 
-        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders);
+        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders, $this->hasSubfolders);
         $this->forgetDeletedMedia();
         Flux::toast(variant: 'success', text: __('media.messages.folder_deleted'));
     }
@@ -1308,13 +1293,22 @@ new #[Title('media.index.title')] class extends Component {
     #[Computed]
     public function subfolders(): Collection
     {
+        return $this->hasSubfolders ? MediaFolder::childrenOf($this->folders, $this->currentFolder?->id) : collect();
+    }
+
+    /**
+     * Whether subfolders() has anything, answered from the folder list alone (no file counts).
+     */
+    #[Computed]
+    public function hasSubfolders(): bool
+    {
         $current = $this->currentFolder;
 
         if ($current === null || $this->search !== '' || $this->type !== '' || $this->month !== '' || $this->unused) {
-            return collect();
+            return false;
         }
 
-        return MediaFolder::childrenOf($this->folders, $current->id);
+        return collect($this->folderList)->contains(fn (array $row): bool => $row['folder']->parent_id === $current->id);
     }
 
     /**
@@ -1444,7 +1438,7 @@ new #[Title('media.index.title')] class extends Component {
         $this->showFolderModal = false;
         $this->folderName = '';
         $this->renamingFolderId = null;
-        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders);
+        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders, $this->hasSubfolders);
         Flux::toast(variant: 'success', text: $success);
     }
 
@@ -1555,7 +1549,6 @@ new #[Title('media.index.title')] class extends Component {
 
 <section
     class="w-full space-y-6"
-    data-serial-islands
     x-data="mediaUploader(@js($uploaderConfig))"
     x-on:dragenter.window="dragEnter($event)"
     x-on:dragover.window="dragOver($event)"
@@ -1690,7 +1683,8 @@ new #[Title('media.index.title')] class extends Component {
                 @endif
             </div>
 
-            {{-- Islands: the hot actions render only these (see renderOnly()); every other action renders them with the page. --}}
+            {{-- Islands: the grid's hot actions render only these (see renderOnly()); every other action renders them with the page.
+                 Nothing inside an island may use wire:click, wire:submit or wire:model.live (see triggerImplicitIslandRender()). --}}
             @island(name: 'bulk', always: true)
                 @if ($selected !== [])
                     @include('partials.admin.media.bulk-bar', [
@@ -1710,9 +1704,22 @@ new #[Title('media.index.title')] class extends Component {
                 @include('partials.admin.media.subfolders', ['subfolders' => $subfolders, 'canMove' => $canManageFolders])
             @endif
 
+            {{-- The list is outside the islands: its sort, checkboxes and pagination are wire: actions, which Livewire would scope to an island. --}}
+            @if ($view === 'list' && $this->media->isNotEmpty())
+                <div wire:key="media-list" data-media-area x-on:click="mediaDetailsClose.emptyClick($event, $wire)">
+                @include('partials.admin.media.list', [
+                    'media' => $this->media,
+                    'selectedId' => $selectedId,
+                    'selected' => $selected,
+                    'sortBy' => $sortBy,
+                    'sortDirection' => $sortDirection,
+                    'canMove' => $canManageFolders,
+                ])
+                </div>
+            @endif
+
             @island(name: 'files', always: true)
-                @php $canMoveFiles = auth()->user()->can('manageFolders', App\Models\Media::class); @endphp
-                @if ($this->media->isEmpty() && $this->subfolders->isNotEmpty())
+                @if ($this->media->isEmpty() && $this->hasSubfolders)
                     <flux:text size="sm" variant="subtle" data-test="media-no-files">{{ __('media.index.subfolders.no_files') }}</flux:text>
                 @elseif ($this->media->isEmpty())
                     <x-admin.empty-state
@@ -1720,18 +1727,7 @@ new #[Title('media.index.title')] class extends Component {
                         :heading="$this->totals['all'] > 0 ? __('media.index.no_results.title') : __('media.index.empty.title')"
                         :description="$this->totals['all'] > 0 ? __('media.index.no_results.description') : __('media.index.empty.description')"
                     />
-                @elseif ($view === 'list')
-                    <div wire:key="media-list" data-media-area x-on:click="mediaDetailsClose.emptyClick($event, $wire)">
-                    @include('partials.admin.media.list', [
-                        'media' => $this->media,
-                        'selectedId' => $selectedId,
-                        'selected' => $selected,
-                        'sortBy' => $sortBy,
-                        'sortDirection' => $sortDirection,
-                        'canMove' => $canMoveFiles,
-                    ])
-                    </div>
-                @else
+                @elseif ($view !== 'list')
                     @include('partials.admin.media.grid', [
                         'media' => $this->media,
                         'selectedId' => $selectedId,
@@ -1739,7 +1735,7 @@ new #[Title('media.index.title')] class extends Component {
                         'selecting' => $selecting,
                         'gridStep' => $this::GRID_STEP,
                         'canShowMore' => $gridLimit < $this::GRID_MAX,
-                        'canMove' => $canMoveFiles,
+                        'canMove' => auth()->user()->can('manageFolders', App\Models\Media::class),
                     ])
                 @endif
             @endisland

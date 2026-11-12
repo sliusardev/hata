@@ -91,7 +91,7 @@
     @if ($media->hasMorePages())
         <div class="flex justify-center">
             @if ($canShowMore)
-                <flux:button wire:click="showMore(true)" data-test="media-show-more">
+                <flux:button x-on:click="$wire.showMore(true)" data-test="media-show-more">
                     {{ __('media.index.show_more', ['count' => min($gridStep, $media->total() - $media->count())]) }}
                 </flux:button>
             @else

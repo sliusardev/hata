@@ -16,18 +16,18 @@
             <input
                 type="checkbox"
                 wire:key="media-select-page-{{ $allOnPage ? 'on' : 'off' }}"
-                wire:click="togglePageSelection(true)"
+                wire:click="togglePageSelection"
                 @checked($allOnPage)
                 class="{{ $checkboxClasses }}"
                 aria-label="{{ __('media.bulk.select_page') }}"
                 data-test="media-select-page"
             />
         </flux:table.column>
-        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name', true)">{{ __('media.index.columns.file') }}</flux:table.column>
+        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">{{ __('media.index.columns.file') }}</flux:table.column>
         <flux:table.column class="max-md:hidden">{{ __('media.index.columns.type') }}</flux:table.column>
-        <flux:table.column sortable :sorted="$sortBy === 'size'" :direction="$sortDirection" wire:click="sort('size', true)">{{ __('media.index.columns.size') }}</flux:table.column>
+        <flux:table.column sortable :sorted="$sortBy === 'size'" :direction="$sortDirection" wire:click="sort('size')">{{ __('media.index.columns.size') }}</flux:table.column>
         <flux:table.column class="max-lg:hidden">{{ __('media.index.columns.usage') }}</flux:table.column>
-        <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" wire:click="sort('created_at', true)" class="max-lg:hidden">{{ __('media.index.columns.uploaded') }}</flux:table.column>
+        <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" wire:click="sort('created_at')" class="max-lg:hidden">{{ __('media.index.columns.uploaded') }}</flux:table.column>
         <flux:table.column align="end"><span class="sr-only">{{ __('media.index.columns.actions') }}</span></flux:table.column>
     </flux:table.columns>
 
@@ -64,7 +64,7 @@
                             @endif
                         </div>
                         <div class="min-w-0">
-                            <button type="button" wire:click="select({{ $item->id }}, true)" class="block max-w-full truncate text-start font-medium text-zinc-800 hover:underline dark:text-white">{{ $item->name }}</button>
+                            <button type="button" wire:click="select({{ $item->id }})" class="block max-w-full truncate text-start font-medium text-zinc-800 hover:underline dark:text-white">{{ $item->name }}</button>
                             @if ($alt !== '')
                                 <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $alt }}</div>
                             @elseif ($item->isImage())
@@ -85,7 +85,7 @@
                 <flux:table.cell class="whitespace-nowrap max-lg:hidden">{{ $item->created_at?->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
                 <flux:table.cell align="end">
                     <x-admin.row-actions data-test="media-actions-{{ $item->id }}">
-                        <flux:menu.item icon="information-circle" wire:click="select({{ $item->id }}, true)">{{ __('media.details.heading') }}</flux:menu.item>
+                        <flux:menu.item icon="information-circle" wire:click="select({{ $item->id }})">{{ __('media.details.heading') }}</flux:menu.item>
                         <flux:menu.item icon="arrow-top-right-on-square" :href="$item->url()" target="_blank">{{ __('media.index.open') }}</flux:menu.item>
                         <flux:menu.item icon="arrow-down-tray" :href="$item->appUrl().'?download=1'">{{ __('media.details.download') }}</flux:menu.item>
                         @can('delete', $item)

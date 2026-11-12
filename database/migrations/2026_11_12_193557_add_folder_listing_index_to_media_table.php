@@ -18,11 +18,20 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * MySQL needs an index that starts with folder_id for the foreign key and may have dropped its own once this
+     * one existed, so make sure another one is there before dropping it.
      */
     public function down(): void
     {
-        Schema::table('media', function (Blueprint $table) {
+        $hasOtherIndex = collect(Schema::getIndexes('media'))->contains(
+            fn (array $index): bool => $index['name'] !== 'media_folder_listing_index' && ($index['columns'][0] ?? null) === 'folder_id',
+        );
+
+        Schema::table('media', function (Blueprint $table) use ($hasOtherIndex) {
+            if (! $hasOtherIndex && Schema::getConnection()->getDriverName() !== 'sqlite') {
+                $table->index('folder_id', 'media_folder_id_foreign');
+            }
+
             $table->dropIndex('media_folder_listing_index');
         });
     }

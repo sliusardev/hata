@@ -95,7 +95,7 @@ it('renders only the files and the bulk bar when tiles are picked', function (st
     'the mouse box' => ['selectBox', ['ids', false, true]],
 ]);
 
-it('renders only the files for "Show more" and a column sort', function () {
+it('renders only the files for "Show more"', function () {
     Media::factory()->count(45)->create();
 
     $component = Livewire::test('pages::admin.media.index')->call('showMore', true);
@@ -103,12 +103,40 @@ it('renders only the files for "Show more" and a column sort', function () {
     expect($component->effects)->not->toHaveKey('html')
         ->and(renderedIslands($component))->toBe(['files'])
         ->and(substr_count($component->effects['islandFragments'][0], 'data-test="media-tile"'))->toBe(45);
+});
 
-    $list = Livewire::test('pages::admin.media.index')->set('view', 'list')->call('sort', 'name', true);
+it('renders the whole page in the list view, which is outside the islands', function () {
+    $media = Media::factory()->create();
 
-    expect($list->effects)->not->toHaveKey('html')
-        ->and(renderedIslands($list))->toBe(['files']);
-    $list->assertSet('sortBy', 'name');
+    $component = Livewire::test('pages::admin.media.index')->set('view', 'list')->call('select', $media->id, true);
+
+    expect($component->effects)->toHaveKey('html')
+        ->and($component->effects)->not->toHaveKey('islandFragments');
+    $component->assertSeeHtml('data-test="media-details-actions"');
+});
+
+it('counts no files when a narrowed action renders an empty folder', function () {
+    $folder = MediaFolder::factory()->create();
+    MediaFolder::factory()->create(['parent_id' => $folder->id]);
+    Media::factory()->create();
+
+    $component = Livewire::withQueryParams(['folder' => (string) $folder->id])->test('pages::admin.media.index');
+    $queries = queriesOf($component, 'selectBox', [], false, true);
+
+    expect($component->effects)->not->toHaveKey('html')
+        ->and(implode("\n", $component->effects['islandFragments']))->toContain('data-test="media-no-files"')
+        ->and(collect($queries)->filter(fn (string $query): bool => str_contains($query, 'group by')))->toBeEmpty();
+});
+
+it('uses no wire: actions inside the islands, so Livewire never scopes a request to one', function () {
+    [$media, $other] = Media::factory()->count(2)->create(['original_path' => 'media/originals/o.jpg']);
+
+    $picked = Livewire::test('pages::admin.media.index')->call('toggleSelected', $media->id)->call('toggleSelected', $other->id, true);
+    $opened = Livewire::test('pages::admin.media.index')->call('select', $media->id, true);
+    $islands = implode("\n", [...$picked->effects['islandFragments'], ...$opened->effects['islandFragments']]);
+
+    expect($islands)->toContain('data-test="media-bulk-bar"', 'data-test="media-details-actions"', 'data-test="media-tile"')
+        ->and($islands)->not->toContain('wire:click', 'wire:submit', 'wire:model.live', 'wire:change');
 });
 
 it('renders the whole page when the same actions are called without the flag', function () {
@@ -136,6 +164,22 @@ it('renders the whole page when opening a file has to ask about unsaved changes'
     $component->assertSet('showDiscardModal', true)->assertSet('selectedId', $open->id);
 });
 
+it('renders the whole page when a narrowed action comes with a property update', function () {
+    $media = Media::factory()->create(['name' => 'kept.webp']);
+    Media::factory()->create(['name' => 'filtered-out.webp']);
+
+    // A search typed just before the click: it changes the file count and tiles outside the islands.
+    $component = Livewire::test('pages::admin.media.index');
+    $component->update(
+        calls: [['method' => 'select', 'params' => [$media->id, true], 'path' => '']],
+        updates: ['search' => 'kept'],
+    );
+
+    expect($component->effects)->toHaveKey('html')
+        ->and($component->effects)->not->toHaveKey('islandFragments');
+    $component->assertSet('selectedId', $media->id)->assertDontSee('filtered-out.webp');
+});
+
 it('renders the whole page when a narrowed action shares a request with another one', function () {
     $media = Media::factory()->create();
 
@@ -155,22 +199,23 @@ it('renders the whole page for an action Livewire marks as coming from an island
     $media = Media::factory()->create();
     $island = ['island' => ['name' => 'details', 'mode' => 'morph']];
 
-    // The browser strips this mark (data-serial-islands); if it ever arrives, Livewire must not render the island alone.
-    $component = Livewire::test('pages::admin.media.index')
-        ->assertSeeHtml('data-serial-islands')
-        ->call('select', $media->id);
+    // Nothing inside the islands sends this mark; if something ever does, Livewire must not render the island alone.
+    $component = Livewire::test('pages::admin.media.index')->call('select', $media->id);
     $component->update(calls: [['method' => 'confirmDelete', 'params' => [$media->id], 'path' => '', 'metadata' => $island]]);
 
     expect($component->effects)->toHaveKey('html')
         ->and($component->effects)->not->toHaveKey('islandFragments');
     $component->assertSet('showDeleteModal', true);
+});
 
-    // A narrowed action with the mark still renders just its islands.
-    $component->call('cancelPending');
-    $component->update(calls: [['method' => 'closeDetails', 'params' => [true], 'path' => '', 'metadata' => $island]]);
+it('renders the page for a finished replacement upload but not for a queued one', function () {
+    $media = mediaWithFiles();
+    $file = fn (): UploadedFile => UploadedFile::fake()->createWithContent('new.jpg', makeImage('jpg', 300, 200));
 
-    expect($component->effects)->not->toHaveKey('html')
-        ->and(renderedIslands($component))->toBe(['details', 'files']);
+    $component = Livewire::test('pages::admin.media.index')->call('select', $media->id);
+
+    expect($component->set('replacement', $file())->effects)->toHaveKey('html')
+        ->and(Livewire::test('pages::admin.media.index')->upload('upload', [$file()])->effects)->not->toHaveKey('html');
 });
 
 it('stores a queued upload without rendering the page, and renders it when asked to', function () {

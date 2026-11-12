@@ -35,7 +35,7 @@
 >
     <div class="flex items-center justify-between border-b border-zinc-200 py-2 ps-4 pe-2 dark:border-white/10">
         <flux:heading size="sm" level="2">{{ __('media.details.heading') }}</flux:heading>
-        <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="closeDetails(true)" :aria-label="__('media.details.close')" />
+        <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.closeDetails(true)" :aria-label="__('media.details.close')" />
     </div>
 
     <div class="flex aspect-[3/2] items-center justify-center bg-zinc-100 dark:bg-white/5">
@@ -59,7 +59,7 @@
         </a>
     </div>
 
-    <form wire:submit="saveDetails">
+    <form x-on:submit.prevent="$wire.saveDetails()">
         <div class="space-y-5 p-4">
             <div>
                 <div class="text-sm font-semibold break-all text-zinc-800 dark:text-white">{{ $media->name }}</div>
@@ -224,7 +224,7 @@
                         {{ __('media.details.replace') }}
                     </flux:menu.item>
                     @if ($media->original_path)
-                        <flux:menu.item icon="arrow-uturn-left" wire:click="confirmRestore" data-test="media-details-restore">
+                        <flux:menu.item icon="arrow-uturn-left" x-on:click="$wire.confirmRestore()" data-test="media-details-restore">
                             {{ __('media.details.restore') }}
                         </flux:menu.item>
                     @endif
@@ -233,7 +233,7 @@
                     @if ($canEdit)
                         <flux:menu.separator />
                     @endif
-                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $media->id }})" data-test="media-details-delete">
+                    <flux:menu.item variant="danger" icon="trash" x-on:click="$wire.confirmDelete({{ $media->id }})" data-test="media-details-delete">
                         {{ __('common.actions.delete') }}
                     </flux:menu.item>
                 @endcan

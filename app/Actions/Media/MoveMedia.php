@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Gate;
 class MoveMedia
 {
     /**
+     * Move the files into the folder (null = no folder) with one statement for the whole selection: only the
+     * folder changes, so no model needs saving on its own.
+     *
      * @param  iterable<Media>|Media  $media
      */
     public function handle(User $actor, iterable|Media $media, ?MediaFolder $folder): void
@@ -24,7 +27,6 @@ class MoveMedia
             return;
         }
 
-        // One statement for the whole selection: only the folder changes, so no model needs saving on its own.
         Media::query()
             ->whereKey(array_map(fn (Media $item): int => $item->id, $items))
             ->update(['folder_id' => $folder?->id]);

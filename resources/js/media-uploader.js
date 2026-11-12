@@ -245,6 +245,7 @@ export default function mediaUploader(config) {
                     percent: 0,
                     meta: '',
                     listed: false,
+                    refreshing: false,
                     error,
                 });
             }
@@ -315,10 +316,10 @@ export default function mediaUploader(config) {
         /**
          * With config.deferRefresh the server stores a file without rendering the page; this shows the stored
          * files with one refresh: at once when nothing is waiting, else at most every REFRESH_INTERVAL ms. Their
-         * queue tiles stay until that refresh has drawn the real ones.
+         * queue tiles stay until that refresh has drawn the real ones; if it fails they stay for the next one.
          */
         refreshList(force = false) {
-            const stored = this.queue.filter((item) => item.status === 'done' && !item.listed);
+            const stored = this.queue.filter((item) => item.status === 'done' && !item.listed && !item.refreshing);
 
             if (!config.deferRefresh || stored.length === 0) {
                 return;
@@ -331,9 +332,12 @@ export default function mediaUploader(config) {
             }
 
             refreshedAt = Date.now();
-            const shown = () => stored.forEach((item) => { item.listed = true; });
+            stored.forEach((item) => { item.refreshing = true; });
 
-            Promise.resolve(this.$wire.$refresh()).then(shown, shown);
+            Promise.resolve(this.$wire.$refresh()).then(
+                () => stored.forEach((item) => { item.listed = true; }),
+                () => stored.forEach((item) => { item.refreshing = false; }),
+            );
         },
 
         async process(item) {
