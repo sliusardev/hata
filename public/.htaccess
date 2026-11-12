@@ -24,12 +24,14 @@
     RewriteRule ^ index.php [L]
 </IfModule>
 
-# Let browsers cache the static images that Laravel's public disk serves under /storage/media/ for a week.
-# The file names carry the media version, so a changed image always gets a new address.
+# Let browsers cache the static images that Laravel's public disk serves under /storage/media/ for a week,
+# and forbid type sniffing as the app does for every media response. The file names carry the media version,
+# so a changed image always gets a new address. The path test assumes the site is at the domain root.
 <IfModule mod_headers.c>
     <FilesMatch "\.(webp|jpe?g|png|gif|avif)$">
         <If "%{REQUEST_URI} =~ m#^/storage/media/#">
             Header set Cache-Control "public, max-age=604800"
+            Header set X-Content-Type-Options "nosniff"
         </If>
     </FilesMatch>
 </IfModule>

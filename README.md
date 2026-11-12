@@ -117,11 +117,12 @@ Admin → Media stores raster images (and their thumbnails) on Laravel's `public
 
 Without the storage link nothing breaks: the same images are served through the app, which is just slower. The admin shows a warning in the media library to users who may edit site settings, and Admin → Site settings → Media has a "Create the storage link" button (and "Check again", which asks the browser to fetch a test file and so also catches a web server that does not follow symlinks or a wrong `APP_URL`). Until the first administrator opens an admin page after installation, images also go through the app.
 
-Static files get their cache headers from the web server. Apache gets them from `public/.htaccess` (one week, only for images under `storage/media/`), so there is nothing to do. On nginx, add this to the site's `server` block, before the generic `location /`:
+Static files get their headers from the web server. Apache gets them from `public/.htaccess` (a week of caching and `X-Content-Type-Options: nosniff`, only for images under `storage/media/`), so there is nothing to do; that rule assumes the site is served at the domain root, not from a subdirectory. On nginx, add this to the site's `server` block, before the generic `location /` (an `add_header` inside a `location` replaces the ones inherited from the `server` block, so keep both lines):
 
 ```nginx
 location ^~ /storage/media/ {
     add_header Cache-Control "public, max-age=604800";
+    add_header X-Content-Type-Options nosniff;
     try_files $uri /index.php?$query_string;
 }
 ```
