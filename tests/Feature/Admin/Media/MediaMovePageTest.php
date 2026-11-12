@@ -12,6 +12,7 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     Storage::fake('local');
+    Storage::fake('public');
     fakeCloudDisk('s3');
     seedRolesAndPermissions();
     config(['media.disk' => 's3', 'filesystems.disks.s3.bucket' => 'media', 'queue.default' => 'sync']);
@@ -49,6 +50,20 @@ it('shows how many files are on the other disk and where they go', function () {
         ->assertSee(trans_choice('media.move.candidates', 2, ['count' => 2]))
         ->assertSee(__('media.move.start'))
         ->assertSee(__('media.move.large_files_note'));
+});
+
+it('counts only the files this server would place elsewhere and calls it this server', function () {
+    config(['media.disk' => 'public']);
+    movePageCandidate();
+    Media::factory()->document()->create(['disk' => 'local']);
+    Media::factory()->create(['disk' => 'local', 'mime' => 'image/svg+xml', 'path' => 'media/x.svg']);
+    Media::factory()->create(['disk' => 'public']);
+    Media::factory()->document()->create(['disk' => 's3']);
+
+    $this->get(route('admin.media.move'))
+        ->assertOk()
+        ->assertSee(__('media.move.target', ['storage' => __('site_settings.media.storage.public')]))
+        ->assertSee(trans_choice('media.move.candidates', 2, ['count' => 2]));
 });
 
 it('says when nothing is left to move', function () {
@@ -131,13 +146,13 @@ it('lists failed files after the run', function () {
 });
 
 it('offers a new move to the configured storage after a finished move to the other one', function () {
-    config(['media.disk' => 'local']);
+    config(['media.disk' => 'public']);
     $media = Media::factory()->create(['disk' => 's3', 'size' => 4]);
     Storage::disk('s3')->put($media->path, 'data');
 
     $component = Livewire::test('pages::admin.media.move')->call('start')->call('tick')
         ->assertSee(__('media.move.status.done'));
-    expect($media->fresh()->disk)->toBe('local');
+    expect($media->fresh()->disk)->toBe('public');
 
     // The admin switched the storage back afterwards: what is left and a new move both concern that storage.
     config(['media.disk' => 's3']);

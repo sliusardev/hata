@@ -45,7 +45,8 @@ afterEach(function () {
     }
 });
 
-it('uploads, serves directly, moves to local and back, and deletes on a real store', function () {
+it('uploads, serves directly, moves to this server and back, and deletes on a real store', function () {
+    Storage::fake('public');
     $media = app(UploadMedia::class)->handle($this->actor, uploadedImage('photo.jpg', makeImage('jpg', 1200, 800)));
     $cloud = Storage::disk('s3');
 
@@ -68,10 +69,11 @@ it('uploads, serves directly, moves to local and back, and deletes on a real sto
     $mover = app(MoveMediaToDisk::class);
     $cloudPaths = [$media->path, $media->thumb_path, $media->original_path];
 
-    expect($mover->moveOne($media, 'local'))->toBe(MoveOutcome::Moved);
+    expect($mover->moveOne($media, 'public'))->toBe(MoveOutcome::Moved);
     $media->refresh();
-    expect($media->disk)->toBe('local')
-        ->and(Storage::disk('local')->exists($media->path))->toBeTrue()
+    expect($media->disk)->toBe('public')
+        ->and(Storage::disk('public')->exists($media->path))->toBeTrue()
+        ->and(Storage::disk('local')->exists((string) $media->original_path))->toBeTrue()
         ->and($cloud->exists($cloudPaths[0]))->toBeTrue();
 
     expect($mover->moveOne($media, 's3'))->toBe(MoveOutcome::Moved);

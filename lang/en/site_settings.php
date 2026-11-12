@@ -151,7 +151,6 @@ return [
             'public' => 'This server',
             'public_description' => 'Images are served as static files by the web server; originals, SVG and documents stay private. Simple, but it uses the hosting’s disk space.',
             'local' => 'This server',
-            'local_description' => 'The private disk of the site. Simple, but it uses the hosting’s disk space.',
             's3' => 'S3-compatible storage',
             's3_description' => 'AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, MinIO and others. The site can move between servers without moving the files.',
             'other_disk' => ':count file is stored on the other disk.|:count files are stored on the other disk.',

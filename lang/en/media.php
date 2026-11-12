@@ -337,10 +337,10 @@ return [
 
     'move' => [
         'title' => 'Move files between disks',
-        'description' => 'Copy the files stored on the other disk to the current storage and remove them from the old one. Their links keep working.',
+        'description' => 'Copy the files that are not where the current storage keeps them, and remove them from the old place. On this server images are served publicly, while originals, SVG and documents stay private. Their links keep working.',
         'target' => 'Files go to: :storage',
         'idle_heading' => 'Ready to move',
-        'candidates' => ':count file is stored on the other disk.|:count files are stored on the other disk.',
+        'candidates' => ':count file is not where this storage keeps it.|:count files are not where this storage keeps them.',
         'none' => 'Every file is already stored there.',
         'start' => 'Start moving',
         'start_new' => 'Start a new move',

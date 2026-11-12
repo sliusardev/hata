@@ -3,19 +3,23 @@
 use App\Actions\Media\MoveMediaToDisk;
 use App\Actions\Media\PruneMediaDeletions;
 use App\Actions\Media\RebuildMediaFile;
+use App\Enums\MediaKind;
 use App\Enums\MoveOutcome;
 use App\Models\Media;
 use App\Models\MediaPendingDeletion;
 use App\Models\User;
 use App\Support\Media\DiskMoveRunStore;
+use App\Support\Media\MediaDisks;
 use App\Support\Media\OptimizationRunStore;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\RecordingDisk;
 
 beforeEach(function () {
-    Storage::fake('local');
+    $this->local = recordingLocalDisk('local');
+    $this->public = recordingLocalDisk('public');
     $cloud = fakeCloudDisk('s3');
     config(['filesystems.disks.s3.url' => 'https://cdn.test', 'filesystems.disks.s3.bucket' => 'media']);
     $this->cloud = $cloud;
@@ -24,12 +28,26 @@ beforeEach(function () {
 });
 
 /**
- * A JPEG row on the given disk with its file, thumbnail and original written there (cloud paths versioned like uploads).
+ * A faked local disk that records its writes and can be told to fail them (see RecordingDisk).
+ */
+function recordingLocalDisk(string $disk): RecordingDisk
+{
+    /** @var FilesystemAdapter $fake */
+    $fake = Storage::fake($disk);
+    $recording = new RecordingDisk($fake->getDriver(), $fake->getAdapter(), $fake->getConfig());
+    Storage::set($disk, $recording);
+
+    return $recording;
+}
+
+/**
+ * A JPEG row on the given disk with its file and thumbnail written there and its original on the disk's originals
+ * disk (paths versioned like uploads where the disk versions them).
  */
 function diskMedia(string $disk = 'local', int $version = 1): Media
 {
     $media = Media::factory()->create(['disk' => $disk, 'mime' => 'image/jpeg', 'version' => $version]);
-    $suffix = $disk === 'local' ? '' : "-v{$version}";
+    $suffix = MediaDisks::versionsPaths($disk) ? "-v{$version}" : '';
     $media->forceFill([
         'path' => "media/2025/01/{$media->key}{$suffix}.jpg",
         'thumb_path' => "media/thumbs/{$media->key}{$suffix}.webp",
@@ -40,7 +58,27 @@ function diskMedia(string $disk = 'local', int $version = 1): Media
 
     Storage::disk($disk)->put($media->path, 'file-data');
     Storage::disk($disk)->put($media->thumb_path, 'thumb');
-    Storage::disk($disk)->put($media->original_path, 'original-bytes');
+    Storage::disk(MediaDisks::originalsDisk($disk))->put($media->original_path, 'original-bytes');
+
+    return $media;
+}
+
+/**
+ * A row that is not a raster image (a PDF or an SVG) on the given disk, with only its file written there.
+ */
+function diskNonRaster(string $disk, string $type = 'pdf', int $version = 1): Media
+{
+    [$kind, $mime] = $type === 'svg' ? [MediaKind::Image, 'image/svg+xml'] : [MediaKind::Document, 'application/pdf'];
+    $suffix = MediaDisks::versionsPaths($disk) ? "-v{$version}" : '';
+    $media = Media::factory()->create(['disk' => $disk, 'kind' => $kind, 'mime' => $mime, 'version' => $version, 'size' => 5]);
+    $media->forceFill([
+        'path' => "media/2025/01/{$media->key}{$suffix}.{$type}",
+        'thumb_path' => null,
+        'original_path' => null,
+        'name' => "{$media->key}.{$type}",
+    ])->save();
+
+    Storage::disk($disk)->put($media->path, $type === 'svg' ? '<svg/>' : '%PDF-');
 
     return $media;
 }
@@ -101,26 +139,185 @@ it('moves a local file, its thumbnail and original to the cloud disk under versi
     expect(MediaPendingDeletion::query()->count())->toBe(0);
 });
 
-it('moves a cloud file back to local paths and keeps the old objects for seven days', function () {
+it('moves a cloud image to this server, its original to the private disk, and keeps the old objects for seven days', function () {
     $media = diskMedia('s3', version: 3);
     $old = [$media->path, $media->thumb_path, $media->original_path];
 
-    expect(mover()->moveOne($media, 'local'))->toBe(MoveOutcome::Moved);
+    expect(mover()->moveOne($media, 'public'))->toBe(MoveOutcome::Moved);
 
     $media->refresh();
-    expect($media->disk)->toBe('local')
+    expect($media->disk)->toBe('public')
         ->and($media->version)->toBe(4)
-        ->and($media->path)->toEndWith("{$media->key}.jpg")
-        ->and($media->thumb_path)->toBe("media/thumbs/{$media->key}.webp")
-        ->and($media->original_path)->toBe("media/originals/{$media->key}.png")
+        ->and($media->path)->toEndWith("{$media->key}-v4.jpg")
+        ->and($media->thumb_path)->toBe("media/thumbs/{$media->key}-v4.webp")
+        ->and($media->original_path)->toBe("media/originals/{$media->key}-v4.png")
         ->and($media->url())->toContain('/media/'.$media->key.'/')->toContain('?v=4');
-    expect(Storage::disk('local')->get($media->path))->toBe('file-data');
+    expect(Storage::disk('public')->get($media->path))->toBe('file-data')
+        ->and(Storage::disk('public')->get($media->thumb_path))->toBe('thumb')
+        ->and(Storage::disk('local')->get($media->original_path))->toBe('original-bytes');
+    Storage::disk('public')->assertMissing($media->original_path);
 
     // Pages and CDN caches rendered before still find the old objects until the deferred deletion.
     foreach ($old as $path) {
         Storage::disk('s3')->assertExists($path);
     }
-    expect(MediaPendingDeletion::query()->where('disk', 's3')->pluck('path')->sort()->values()->all())->toBe(collect($old)->sort()->values()->all());
+    expect(MediaPendingDeletion::query()->where('disk', 's3')->pluck('path')->sort()->values()->all())->toBe(collect($old)->sort()->values()->all())
+        ->and(MediaPendingDeletion::query()->where('disk', '!=', 's3')->count())->toBe(0);
+});
+
+it('moves a local image to this server under versioned paths, keeps its original private and deletes the old files at once', function () {
+    $media = diskMedia('local');
+    $old = [$media->path, $media->thumb_path, $media->original_path];
+
+    expect(mover()->moveOne($media, 'public'))->toBe(MoveOutcome::Moved);
+
+    $media->refresh();
+    expect($media->disk)->toBe('public')
+        ->and($media->version)->toBe(2)
+        ->and($media->path)->toBe('media/'.now()->format('Y/m')."/{$media->key}-v2.jpg")
+        ->and($media->thumb_path)->toBe("media/thumbs/{$media->key}-v2.webp")
+        ->and($media->original_path)->toBe("media/originals/{$media->key}-v2.png")
+        ->and($media->originalsDisk())->toBe('local');
+    expect(Storage::disk('public')->allFiles())->toEqualCanonicalizing([$media->path, $media->thumb_path])
+        ->and(Storage::disk('local')->allFiles())->toBe([$media->original_path])
+        ->and(Storage::disk('local')->get($media->original_path))->toBe('original-bytes')
+        ->and(MediaPendingDeletion::query()->count())->toBe(0);
+    foreach ($old as $path) {
+        Storage::disk('local')->assertMissing($path);
+    }
+});
+
+it('leaves an svg and a document on the private disk when moving to this server, and does not count them', function () {
+    $svg = diskNonRaster('local', 'svg');
+    $pdf = diskNonRaster('local', 'pdf');
+    $image = diskMedia('local');
+
+    expect(mover()->moveOne($svg, 'public'))->toBe(MoveOutcome::Changed)
+        ->and(mover()->moveOne($pdf, 'public'))->toBe(MoveOutcome::Changed)
+        ->and($svg->fresh()->version)->toBe(1)
+        ->and(Storage::disk('public')->allFiles())->toBe([]);
+
+    $run = mover()->start($this->actor, 'public');
+    expect($run->total)->toBe(1);
+
+    $run = mover()->processBatch('cli', 60);
+    expect($run->counts)->toBe(['moved' => 1])
+        ->and($image->fresh()->disk)->toBe('public')
+        ->and($svg->fresh()->disk)->toBe('local')
+        ->and($pdf->fresh()->disk)->toBe('local');
+});
+
+it('moves a cloud svg and document to the private disk when moving to this server', function () {
+    $svg = diskNonRaster('s3', 'svg', version: 2);
+    $pdf = diskNonRaster('s3', 'pdf', version: 2);
+    $old = [$svg->path, $pdf->path];
+
+    expect(mover()->moveOne($svg, 'public'))->toBe(MoveOutcome::Moved)
+        ->and(mover()->moveOne($pdf, 'public'))->toBe(MoveOutcome::Moved);
+
+    foreach ([$svg->refresh(), $pdf->refresh()] as $media) {
+        expect($media->disk)->toBe('local')
+            ->and($media->version)->toBe(3)
+            ->and($media->path)->toBe('media/'.now()->format('Y/m').'/'.$media->key.'.'.pathinfo($media->name, PATHINFO_EXTENSION));
+        Storage::disk('local')->assertExists($media->path);
+    }
+    expect(Storage::disk('public')->allFiles())->toBe([])
+        ->and(MediaPendingDeletion::query()->where('disk', 's3')->pluck('path')->sort()->values()->all())->toBe(collect($old)->sort()->values()->all());
+});
+
+it('moves an image from this server to the cloud with its private original, deferring the public files only', function () {
+    $media = diskMedia('public', version: 2);
+    [$path, $thumb, $original] = [$media->path, $media->thumb_path, $media->original_path];
+
+    expect(mover()->moveOne($media, 's3'))->toBe(MoveOutcome::Moved);
+
+    $media->refresh();
+    expect($media->disk)->toBe('s3')
+        ->and($media->version)->toBe(3)
+        ->and($media->original_path)->toBe("media/originals/{$media->key}-v3.png")
+        ->and(Storage::disk('s3')->get($media->path))->toBe('file-data')
+        ->and(Storage::disk('s3')->get($media->original_path))->toBe('original-bytes');
+
+    // Static links rendered before keep working until the deferred deletion; the private original goes at once.
+    Storage::disk('public')->assertExists($path);
+    Storage::disk('public')->assertExists($thumb);
+    Storage::disk('local')->assertMissing($original);
+    expect(MediaPendingDeletion::query()->where('disk', 'public')->pluck('path')->sort()->values()->all())->toBe(collect([$path, $thumb])->sort()->values()->all())
+        ->and(MediaPendingDeletion::query()->where('disk', '!=', 'public')->count())->toBe(0);
+});
+
+it('moves a private document to the cloud', function () {
+    $pdf = diskNonRaster('local', 'pdf');
+    $old = $pdf->path;
+
+    expect(mover()->moveOne($pdf, 's3'))->toBe(MoveOutcome::Moved);
+
+    expect($pdf->refresh()->disk)->toBe('s3')
+        ->and($pdf->path)->toEndWith("{$pdf->key}-v2.pdf")
+        ->and(Storage::disk('s3')->get($pdf->path))->toBe('%PDF-')
+        ->and(MediaPendingDeletion::query()->count())->toBe(0);
+    Storage::disk('local')->assertMissing($old);
+});
+
+it('leaves no copy on any disk and the row untouched when the original fails to copy to the private disk', function () {
+    $media = diskMedia('s3', version: 2);
+    $before = $media->fresh()->getAttributes();
+    $this->local->beforeWrite = function (string $path): void {
+        if (str_contains($path, 'originals/')) {
+            throw new RuntimeException('Disk full');
+        }
+    };
+
+    expect(mover()->moveOne($media, 'public'))->toBe(MoveOutcome::Failed);
+
+    expect($media->fresh()->getAttributes())->toBe($before)
+        ->and(Storage::disk('public')->allFiles())->toBe([])
+        ->and(Storage::disk('local')->allFiles())->toBe([])
+        ->and(MediaPendingDeletion::query()->count())->toBe(0);
+    foreach ([$media->path, $media->thumb_path, $media->original_path] as $path) {
+        Storage::disk('s3')->assertExists($path);
+    }
+});
+
+it('insures each copy on the disk it is written to and drops the insurance on success', function () {
+    $media = diskMedia('s3');
+    $seen = null;
+    $this->local->beforeWrite = function () use (&$seen): void {
+        $seen = MediaPendingDeletion::query()->orderBy('disk')->get()
+            ->map(fn (MediaPendingDeletion $row): array => [$row->disk, $row->path, $row->delete_after->diffInHours(now(), true) > 23])->all();
+    };
+
+    expect(mover()->moveOne($media, 'public'))->toBe(MoveOutcome::Moved);
+    $media->refresh();
+
+    expect($seen)->toEqualCanonicalizing([
+        ['local', $media->original_path, true],
+        ['public', $media->path, true],
+        ['public', $media->thumb_path, true],
+    ])->and(MediaPendingDeletion::query()->where('disk', '!=', 's3')->count())->toBe(0);
+});
+
+it('picks exactly the rows whose disk differs from where the target puts them', function () {
+    $rows = [
+        'local image' => diskMedia('local'),
+        'public image' => diskMedia('public'),
+        'cloud image' => diskMedia('s3'),
+        'local pdf' => diskNonRaster('local', 'pdf'),
+        'local svg' => diskNonRaster('local', 'svg'),
+        'cloud pdf' => diskNonRaster('s3', 'pdf'),
+        'cloud svg' => diskNonRaster('s3', 'svg'),
+        'public pdf' => diskNonRaster('public', 'pdf'),
+    ];
+
+    foreach (MoveMediaToDisk::TARGETS as $target) {
+        $expected = collect($rows)->filter(fn (Media $media): bool => $media->disk !== MoveMediaToDisk::destinationFor($media, $target))->keys()->sort()->values()->all();
+        $picked = MoveMediaToDisk::candidates($target)->pluck('id')->map(fn (int $id): string => array_search($id, array_map(fn (Media $media): int => $media->id, $rows), true))->sort()->values()->all();
+
+        expect($picked)->toBe($expected);
+    }
+
+    expect(MoveMediaToDisk::candidates('public')->count())->toBe(5)
+        ->and(MoveMediaToDisk::candidates('s3')->count())->toBe(5);
 });
 
 it('leaves the row and its old files untouched and removes partial copies when a copy fails halfway', function () {
@@ -337,13 +534,15 @@ it('pauses, resumes and stops a move', function () {
 });
 
 it('refuses an unknown or unconfigured target and users without media.edit', function () {
-    expect(fn () => mover()->start($this->actor, 'ftp'))->toThrow(InvalidArgumentException::class);
+    expect(fn () => mover()->start($this->actor, 'ftp'))->toThrow(InvalidArgumentException::class)
+        // Everything to the private disk is not a direction: this server keeps images public and the rest private.
+        ->and(fn () => mover()->start($this->actor, 'local'))->toThrow(InvalidArgumentException::class, 'use one of: public, s3');
 
     config(['filesystems.disks.s3.bucket' => null]);
     expect(fn () => mover()->start($this->actor, 's3'))->toThrow(InvalidArgumentException::class);
 
     $viewer = User::factory()->withPermissions(['admin.access', 'media.view'])->create();
-    expect(fn () => mover()->start($viewer, 'local'))->toThrow(AuthorizationException::class)
+    expect(fn () => mover()->start($viewer, 'public'))->toThrow(AuthorizationException::class)
         ->and(app(DiskMoveRunStore::class)->get())->toBeNull();
 });
 

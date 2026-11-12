@@ -11,8 +11,9 @@ use Livewire\Attributes\Title;
 
 new #[Title('media.move.title')] class extends MediaBatchPage {
     /**
-     * The disk the candidates are counted against: the target of a move that is going on, else (no move, or a
-     * finished one) the configured storage, which is also where a new move goes.
+     * The storage the candidates are counted against: the target of a move that is going on, else (no move, or a
+     * finished one) the configured storage, which is also where a new move goes. For "this server" (`public`) a row is
+     * a candidate only when it is not where an upload would put it (MoveMediaToDisk::candidates()).
      */
     #[Computed]
     public function target(): string
@@ -25,7 +26,7 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
     #[Computed]
     public function candidateCount(): int
     {
-        return Media::query()->where('disk', '!=', $this->target)->count();
+        return MoveMediaToDisk::candidates($this->target)->count();
     }
 
     protected function engine(): MoveMediaToDisk

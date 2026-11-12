@@ -9,6 +9,7 @@ use Illuminate\Support\Sleep;
 
 beforeEach(function () {
     Storage::fake('local');
+    Storage::fake('public');
     fakeCloudDisk('s3');
     config(['filesystems.disks.s3.bucket' => 'media']);
 });
@@ -35,17 +36,20 @@ it('moves every file to the given disk and reports progress', function () {
     expect(Media::query()->where('disk', 's3')->count())->toBe(3);
 });
 
-it('moves files back to the local disk', function () {
+it('moves files back to this server', function () {
     $media = moveCommandCandidate('s3');
 
-    $this->artisan('media:move-disk local')->assertSuccessful();
+    $this->artisan('media:move-disk public')
+        ->expectsOutputToContain('Starting a new move to This server (public): 1 file(s) to move.')
+        ->assertSuccessful();
 
-    expect($media->fresh()->disk)->toBe('local');
-    Storage::disk('local')->assertExists($media->fresh()->path);
+    expect($media->fresh()->disk)->toBe('public');
+    Storage::disk('public')->assertExists($media->fresh()->path);
 });
 
 it('refuses an unknown or unconfigured disk', function () {
     $this->artisan('media:move-disk ftp')->expectsOutputToContain('Unknown disk')->assertFailed();
+    $this->artisan('media:move-disk local')->expectsOutputToContain('Unknown disk [local]; use one of: public, s3.')->assertFailed();
 
     config(['filesystems.disks.s3.bucket' => null]);
     $this->artisan('media:move-disk s3')->expectsOutputToContain('not configured')->assertFailed();
@@ -63,9 +67,9 @@ it('resumes a paused move to the same disk and starts over for another one', fun
     $this->artisan('media:move-disk s3')->expectsOutputToContain('Resuming')->assertSuccessful();
     expect(app(DiskMoveRunStore::class)->get()->id)->toBe($paused->id);
 
-    $this->artisan('media:move-disk local')->expectsOutputToContain('Starting a new move')->assertSuccessful();
+    $this->artisan('media:move-disk public')->expectsOutputToContain('Starting a new move')->assertSuccessful();
     expect(app(DiskMoveRunStore::class)->get()->id)->not->toBe($paused->id)
-        ->and(Media::query()->where('disk', 'local')->count())->toBe(2);
+        ->and(Media::query()->where('disk', 'public')->count())->toBe(2);
 });
 
 it('gives up when another batch keeps the lock', function () {

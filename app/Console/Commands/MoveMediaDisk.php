@@ -12,8 +12,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use InvalidArgumentException;
 
-#[Signature('media:move-disk {to : The disk to move the files to (local or s3)} {--restart : Discard the current move and start over}')]
-#[Description('Move media files between the local disk and the cloud disk')]
+#[Signature('media:move-disk {to : Where to move the files: public (this server: images public, the rest private) or s3} {--restart : Discard the current move and start over}')]
+#[Description('Move media files between this server and the cloud disk')]
 class MoveMediaDisk extends MediaBatchCommand
 {
     public function handle(MoveMediaToDisk $engine, DiskMoveRunStore $runs, SiteSettings $settings): int
@@ -33,7 +33,8 @@ class MoveMediaDisk extends MediaBatchCommand
                 return self::FAILURE;
             }
 
-            $this->components->info("Starting a new move to [{$target}]: {$run->total} file(s) to move.");
+            $storage = __("site_settings.media.storage.{$target}", locale: 'en');
+            $this->components->info("Starting a new move to {$storage} ({$target}): {$run->total} file(s) to move.");
         }
 
         $run = $this->processBatches($engine, $run, $settings);

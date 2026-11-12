@@ -16,6 +16,9 @@ class MediaDisks
     /** The local disk nobody can reach over HTTP: originals, SVG and documents when the site disk is `public`. */
     public const string PRIVATE = 'local';
 
+    /** The one image type that never goes to a publishing disk: served as a static file its script would run. */
+    public const string SVG_MIME = 'image/svg+xml';
+
     /**
      * Whether files on the disk live off this server: the disk's configured driver is anything but `local`.
      * An unknown disk is not a cloud disk.
@@ -63,7 +66,16 @@ class MediaDisks
             return $siteDisk;
         }
 
-        return $kind === MediaKind::Image && $mime !== 'image/svg+xml' ? $siteDisk : self::PRIVATE;
+        return self::isRasterImage($kind, $mime) ? $siteDisk : self::PRIVATE;
+    }
+
+    /**
+     * Whether a file may be served as a static file: an image that is not SVG. MoveMediaToDisk::candidates() states
+     * the same rule in SQL.
+     */
+    public static function isRasterImage(MediaKind $kind, string $mime): bool
+    {
+        return $kind === MediaKind::Image && $mime !== self::SVG_MIME;
     }
 
     /**
