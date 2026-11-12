@@ -1,6 +1,6 @@
 # Media library: local images served by the web server — design
 
-> Status: built on branch `media-direct-local`. The current behaviour is in `docs/specs/media.md` and `docs/specs/site-settings.md`; this document keeps the intent and the reasons.
+> Status: built and merged into `main` (2026-11-12). The current behaviour is in `docs/specs/media.md` and `docs/specs/site-settings.md`; this document keeps the intent and the reasons. Where they differ, the specs are right: after the final review the probe became a small image (`media/probe.png`) loaded like an `<img>` instead of a `media/.probe` file read by a script, unconfirmed states retry every 30 minutes, `MEDIA_DISK=local` stayed as a private mode set only in `.env`, and the fallback route looks the row up by the key in the file name.
 
 Date: 2026-11-12. Builds on `docs/specs/media.md` ("Storage disks", the serving route, "Move files between disks"), `docs/specs/site-settings.md` (Media tab) and CLAUDE.md decisions 41, 45, 50 and 51. Read those first; this document overrides them where it says so.
 
