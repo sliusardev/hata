@@ -11,6 +11,7 @@ test('it loads the permissions from the configuration', function () {
         'roles' => ['roles.view', 'roles.create', 'roles.edit', 'roles.delete'],
         'media' => ['media.view', 'media.upload', 'media.edit', 'media.delete'],
         'settings' => ['settings.edit'],
+        'maintenance' => ['maintenance.run'],
     ]);
 });
 

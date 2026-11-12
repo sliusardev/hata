@@ -129,6 +129,19 @@ location ^~ /storage/media/ {
 
 The `try_files` fallback sends a request for a missing file to Laravel, so an address that was handed out before the link broke still answers. Without these rules browsers still cache the files, because the file names change with every edit.
 
+## Maintenance page
+
+`/admin/maintenance` runs a few service commands from the admin, for hosting where a console is inconvenient:
+pending migrations (`migrate --force`), one seeder from `database/seeders` (`db:seed --class`), clearing the
+caches (`optimize:clear`) and rebuilding them (`optimize`). Every run is confirmed first and written to a
+journal with who ran it and the command's output.
+
+Only a super admin can open it. The permission `maintenance.run` is reserved: the `admin` role does not get it
+from `*`; a super admin can give it to a role in the role's matrix.
+
+If "Rebuild caches" ever leaves the site unable to open, delete the files in `bootstrap/cache/` (keep
+`.gitignore`) over SFTP or SSH; the site then reads `.env` and the routes directly again.
+
 ## Development
 
 ```bash

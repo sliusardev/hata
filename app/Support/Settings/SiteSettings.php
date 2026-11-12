@@ -3,6 +3,7 @@
 namespace App\Support\Settings;
 
 use App\Models\Setting;
+use Closure;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class SiteSettings
 {
+    private static int $suspended = 0;
+
     public const string CACHE_KEY = 'site_settings';
 
     /**
@@ -163,10 +166,59 @@ class SiteSettings
     }
 
     /**
-     * Write stored settings over the config.
+     * Run the callback with apply() switched off.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $callback
+     * @return TReturn
+     */
+    public static function withoutApplying(Closure $callback): mixed
+    {
+        self::suspend();
+
+        try {
+            return $callback();
+        } finally {
+            self::resume();
+        }
+    }
+
+    /**
+     * Switch apply() off until resume(); calls nest.
+     */
+    public static function suspend(): void
+    {
+        self::$suspended++;
+    }
+
+    public static function resume(): void
+    {
+        self::$suspended = max(0, self::$suspended - 1);
+    }
+
+    /**
+     * Whether this process is building the config cache. Laravel boots a fresh application to collect the
+     * config; if the stored settings were applied to it, they would be frozen into bootstrap/cache/config.php:
+     * a setting removed later would keep its old value, and the decrypted SMTP password and S3 secret would be
+     * written to that file. AppServiceProvider suspends applying while `config:cache` or `optimize` runs (by
+     * the console's command events, so options, abbreviations and Artisan::call() are covered), and the
+     * maintenance page does the same around "Rebuild caches".
+     */
+    public static function buildingConfigCache(): bool
+    {
+        return self::$suspended > 0;
+    }
+
+    /**
+     * Write stored settings over the config. Nothing while the config cache is being built.
      */
     public function apply(): void
     {
+        if (self::buildingConfigCache()) {
+            return;
+        }
+
         $this->memo = null;
         SiteLogo::flush();
         $s3Before = config('filesystems.disks.s3');

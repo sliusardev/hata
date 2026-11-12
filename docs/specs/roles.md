@@ -25,9 +25,11 @@ Components: `resources/views/pages/admin/roles/`. The create and edit pages exte
 | Role | Permissions | Note |
 |---|---|---|
 | `super-admin` | all, through `Gate::before` | can't be changed or deleted |
-| `admin` | all registered (`*`) | |
+| `admin` | all registered (`*`), except the reserved ones | |
 | `editor` | `admin.access` | |
 | `author` | `admin.access` | |
+
+**Reserved permissions** (`config/permissions.php` → `reserved`, currently `maintenance.run`): `*` in a role's defaults does not grant them (`RoleSeeder` subtracts the list when it expands `*`). They are listed in the registry, the matrix and `permissions:sync` like any permission, so a super admin can give one to a role on purpose; rule 5 keeps everyone else from granting what they don't have.
 
 - Created by `RoleSeeder` (from `DatabaseSeeder`) with `is_system = true`. Reseeding only adds permissions, never removes them.
 - Default permissions are in `config/permissions.php` → `roles`. Names are translated via `roles.names.<name>`.

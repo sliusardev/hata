@@ -11,7 +11,8 @@ use Illuminate\Database\Seeder;
  * Create the system roles and grant their default permissions.
  *
  * Safe to run repeatedly: permissions are only added, never revoked, so changes made
- * by administrators survive. Run `permissions:sync` first.
+ * by administrators survive. Run `permissions:sync` first. "*" grants every permission but the
+ * reserved ones (config/permissions.php).
  */
 class RoleSeeder extends Seeder
 {
@@ -29,7 +30,7 @@ class RoleSeeder extends Seeder
 
             $defaults = config("permissions.roles.{$systemRole->value}", []);
             $permissions = in_array('*', $defaults, true)
-                ? $registry->all()
+                ? array_values(array_diff($registry->all(), config('permissions.reserved', [])))
                 : array_values(array_intersect($defaults, $registry->all()));
 
             $missing = array_values(array_diff($permissions, $role->permissions()->pluck('name')->all()));

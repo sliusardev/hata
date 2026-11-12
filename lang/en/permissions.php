@@ -8,6 +8,7 @@ return [
         'roles' => 'Roles',
         'media' => 'Media library',
         'settings' => 'Site settings',
+        'maintenance' => 'Maintenance',
     ],
 
     'items' => [
@@ -34,6 +35,9 @@ return [
         ],
         'settings' => [
             'edit' => 'Editing site settings',
+        ],
+        'maintenance' => [
+            'run' => 'Run migrations, seeders and cache commands',
         ],
     ],
 

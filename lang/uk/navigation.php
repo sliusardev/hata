@@ -15,6 +15,7 @@ return [
     'administration' => 'Адміністрування',
     'users' => 'Користувачі',
     'site_settings' => 'Налаштування сайту',
+    'maintenance' => 'Обслуговування',
     'content' => 'Контент',
     'media' => 'Медіа',
     'roles' => 'Ролі',

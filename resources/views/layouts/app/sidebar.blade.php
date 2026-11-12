@@ -30,7 +30,7 @@
                         </flux:sidebar.group>
                     @endcan
 
-                    @canany(['users.view', 'roles.view', 'settings.edit'])
+                    @canany(['users.view', 'roles.view', 'settings.edit', 'maintenance.run'])
                         <flux:sidebar.group :heading="__('navigation.administration')" :class="$groupClasses">
                             @can('users.view')
                                 <flux:sidebar.item icon="users" :icon:variant="request()->routeIs('admin.users.*') ? 'solid' : 'outline'" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>
@@ -45,6 +45,11 @@
                             @can('settings.edit')
                                 <flux:sidebar.item icon="adjustments-horizontal" :icon:variant="request()->routeIs('admin.settings.*') ? 'solid' : 'outline'" :href="route('admin.settings.edit')" :current="request()->routeIs('admin.settings.*')" wire:navigate>
                                     {{ __('navigation.site_settings') }}
+                                </flux:sidebar.item>
+                            @endcan
+                            @can('maintenance.run')
+                                <flux:sidebar.item icon="wrench-screwdriver" :icon:variant="request()->routeIs('admin.maintenance') ? 'solid' : 'outline'" :href="route('admin.maintenance')" :current="request()->routeIs('admin.maintenance')" wire:navigate>
+                                    {{ __('navigation.maintenance') }}
                                 </flux:sidebar.item>
                             @endcan
                         </flux:sidebar.group>

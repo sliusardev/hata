@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\MaintenanceRunController;
 use App\Http\Controllers\Admin\MediaDirectCheckController;
 use App\Http\Controllers\MediaSourcePreviewController;
 use App\Http\Controllers\MediaZipController;
@@ -38,4 +39,6 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
         Route::livewire('roles/{role}/edit', 'pages::admin.roles.edit')->name('roles.edit');
 
         Route::livewire('settings', 'pages::admin.settings.edit')->name('settings.edit');
+        Route::livewire('maintenance', 'pages::admin.maintenance.index')->middleware('can:maintenance.run')->name('maintenance');
+        Route::post('maintenance/run', MaintenanceRunController::class)->middleware('can:maintenance.run')->name('maintenance.run');
     });

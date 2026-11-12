@@ -15,6 +15,7 @@ return [
     'administration' => 'Administration',
     'users' => 'Users',
     'site_settings' => 'Site settings',
+    'maintenance' => 'Maintenance',
     'content' => 'Content',
     'media' => 'Media',
     'roles' => 'Roles',

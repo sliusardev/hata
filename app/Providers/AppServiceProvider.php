@@ -8,9 +8,12 @@ use App\Support\Permissions\PermissionRegistry;
 use App\Support\Settings\SiteSettings;
 use App\Support\Translation\VendorTranslations;
 use Carbon\CarbonImmutable;
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Mail;
@@ -35,10 +38,39 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * The commands that write bootstrap/cache/config.php.
+     *
+     * @var list<string>
+     */
+    private const array CONFIG_CACHE_COMMANDS = ['config:cache', 'optimize'];
+
+    /**
+     * While `config:cache` or `optimize` runs, the stored site settings are not applied, so the fresh application
+     * Laravel boots to collect the config holds the `.env`-level values only (see
+     * SiteSettings::buildingConfigCache()). The console's events carry the resolved command name, however it
+     * was typed or called.
+     */
+    private function keepSettingsOutOfTheConfigCache(): void
+    {
+        Event::listen(function (CommandStarting $event): void {
+            if (in_array($event->command, self::CONFIG_CACHE_COMMANDS, true)) {
+                SiteSettings::suspend();
+            }
+        });
+
+        Event::listen(function (CommandFinished $event): void {
+            if (in_array($event->command, self::CONFIG_CACHE_COMMANDS, true)) {
+                SiteSettings::resume();
+            }
+        });
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
     {
+        $this->keepSettingsOutOfTheConfigCache();
         $this->app->make(SiteSettings::class)->apply();
         $this->configureQueue();
         $this->configureMedia();

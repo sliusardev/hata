@@ -962,25 +962,34 @@ new #[Title('site_settings.title')] class extends Component {
             </flux:select>
 
             @if ($form->mail_mailer === 'smtp')
-                <div class="grid gap-6 sm:grid-cols-6">
-                    <flux:input wire:model="form.mail_host" :label="__('site_settings.mail.host')" placeholder="smtp.example.com" class="sm:col-span-3" required />
-                    <flux:input wire:model="form.mail_port" type="number" min="1" max="65535" :label="__('site_settings.mail.port')" placeholder="587" class="sm:col-span-1" required />
-                    <flux:select wire:model="form.mail_scheme" :label="__('site_settings.mail.scheme')" class="sm:col-span-2">
-                        <flux:select.option value="smtp">{{ __('site_settings.mail.scheme_starttls') }}</flux:select.option>
-                        <flux:select.option value="smtps">{{ __('site_settings.mail.scheme_ssl') }}</flux:select.option>
-                    </flux:select>
-                </div>
+                {{-- The span sits on a wrapper: a class on a Flux field with a label goes to the input, not to the grid cell. --}}
+                <div class="space-y-6 rounded-xl border border-zinc-200 p-5 dark:border-white/10" data-test="smtp-fields">
+                    <div class="grid gap-6 sm:grid-cols-6">
+                        <div class="sm:col-span-3">
+                            <flux:input wire:model="form.mail_host" :label="__('site_settings.mail.host')" placeholder="smtp.example.com" required />
+                        </div>
+                        <div class="sm:col-span-1">
+                            <flux:input wire:model="form.mail_port" type="number" min="1" max="65535" :label="__('site_settings.mail.port')" placeholder="587" required />
+                        </div>
+                        <div class="sm:col-span-2">
+                            <flux:select wire:model="form.mail_scheme" :label="__('site_settings.mail.scheme')">
+                                <flux:select.option value="smtp">{{ __('site_settings.mail.scheme_starttls') }}</flux:select.option>
+                                <flux:select.option value="smtps">{{ __('site_settings.mail.scheme_ssl') }}</flux:select.option>
+                            </flux:select>
+                        </div>
+                    </div>
 
-                <div class="grid gap-6 sm:grid-cols-2">
-                    <flux:input wire:model="form.mail_username" :label="__('site_settings.mail.username')" autocomplete="off" />
-                    <flux:input
-                        wire:model="form.mail_password"
-                        type="password"
-                        viewable
-                        :label="__('site_settings.mail.password')"
-                        :description="$this->hasStoredMailPassword ? __('site_settings.mail.password_keep') : null"
-                        autocomplete="new-password"
-                    />
+                    <div class="grid gap-6 sm:grid-cols-2">
+                        <flux:input wire:model="form.mail_username" :label="__('site_settings.mail.username')" autocomplete="off" />
+                        <flux:input
+                            wire:model="form.mail_password"
+                            type="password"
+                            viewable
+                            :label="__('site_settings.mail.password')"
+                            :description="$this->hasStoredMailPassword ? __('site_settings.mail.password_keep') : null"
+                            autocomplete="new-password"
+                        />
+                    </div>
                 </div>
             @endif
         @endif
@@ -1002,11 +1011,6 @@ new #[Title('site_settings.title')] class extends Component {
                         {{ __('site_settings.media.storage.test') }}
                     </flux:button>
                 @endif
-                @if ($tab === 'mail')
-                    <flux:button variant="ghost" icon="paper-airplane" wire:click="sendTestEmail" data-test="send-test-email-button">
-                        {{ __('site_settings.mail.send_test') }}
-                    </flux:button>
-                @endif
             </div>
 
             @unless ($tab === 'logo')
@@ -1017,7 +1021,12 @@ new #[Title('site_settings.title')] class extends Component {
         </div>
 
         @if ($tab === 'mail')
-            <flux:text class="text-xs">{{ __('site_settings.mail.send_test_hint') }}</flux:text>
+            <div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/5">
+                <flux:text size="sm" class="max-w-prose flex-1">{{ __('site_settings.mail.send_test_hint') }}</flux:text>
+                <flux:button size="sm" icon="paper-airplane" wire:click="sendTestEmail" data-test="send-test-email-button">
+                    {{ __('site_settings.mail.send_test') }}
+                </flux:button>
+            </div>
         @endif
     </form>
 

@@ -24,6 +24,7 @@ return [
         'roles' => ['view', 'create', 'edit', 'delete'],
         'media' => ['view', 'upload', 'edit', 'delete'],
         'settings' => ['edit'],
+        'maintenance' => ['run'],
     ],
 
     /*
@@ -43,5 +44,18 @@ return [
         'editor' => ['admin.access', 'media.view', 'media.upload', 'media.edit', 'media.delete'],
         'author' => ['admin.access'],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reserved Permissions
+    |--------------------------------------------------------------------------
+    |
+    | Permissions that "*" above does not grant. They reach a role only when a
+    | super admin ticks them in the role's matrix on purpose. maintenance.run
+    | runs migrations and seeders, so no role gets it by default.
+    |
+    */
+
+    'reserved' => ['maintenance.run'],
 
 ];
