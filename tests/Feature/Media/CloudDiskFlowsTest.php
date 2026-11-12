@@ -189,6 +189,16 @@ it('decides isEditable on a cloud row with one existence check, memoized', funct
     expect(Media::query()->findOrFail($media->id)->isEditable())->toBeFalse();
 });
 
+it('offers editing for a cloud image without asking the bucket, and for a local one only when the file exists', function () {
+    $cloud = Media::query()->findOrFail(cloudUploadedPhoto($this->actor)->id);
+    Storage::disk('s3')->delete($cloud->path);
+
+    // The menu trusts the row (the crop page checks the object); a local file is checked, a stat costs nothing.
+    expect($cloud->offersEditing())->toBeTrue()
+        ->and(Media::factory()->create(['disk' => 'local', 'path' => 'media/gone.webp'])->offersEditing())->toBeFalse()
+        ->and(Media::factory()->create(['disk' => 's3', 'mime' => 'image/svg+xml'])->offersEditing())->toBeFalse();
+});
+
 it('refuses an upload the cloud disk did not store and creates no row', function () {
     Storage::disk('s3')->failWrites = true;
 

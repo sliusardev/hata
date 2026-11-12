@@ -257,7 +257,7 @@ it('redirects a cloud raster to the direct url when public, else to a signed url
 
     $this->get($media->appUrl())->assertStatus(302)
         ->assertRedirect(Storage::disk('s3')->url($media->path).'?v=1')
-        ->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-cache, private');
+        ->assertHeader('Cache-Control', 'max-age=300, public');
 });
 
 it('answers range requests with 206 and 416', function () {
@@ -349,8 +349,10 @@ it('redirects a public raster to its static url when direct serving is active', 
 
     $response = $this->get($media->appUrl())->assertStatus(302);
 
+    // The redirect may be kept for a few minutes, so embedded permanent addresses don't start PHP on every view.
     expect($response->headers->get('Location'))->toBe($media->url())
-        ->and($response->headers->get('Cache-Control'))->toContain('no-cache');
+        ->and($response->headers->get('Cache-Control'))->toBe('max-age=300, public')
+        ->and($response->headers->get('X-Content-Type-Options'))->toBe('nosniff');
 
     $thumb = $this->get($media->appUrl().'?thumb=1')->assertStatus(302);
 

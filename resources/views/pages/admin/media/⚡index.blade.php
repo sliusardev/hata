@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -42,6 +43,7 @@ use Livewire\WithPagination;
 new #[Title('media.index.title')] class extends Component {
     use WithFileUploads {
         _startUpload as startTemporaryUpload;
+        _finishUpload as finishTemporaryUpload;
     }
     use WithPagination;
 
@@ -233,6 +235,18 @@ new #[Title('media.index.title')] class extends Component {
     #[Locked]
     public ?int $expandFolderId = null;
 
+    /**
+     * The action that just ran narrowed its own render (see renderOnly()).
+     */
+    protected bool $narrowed = false;
+
+    /**
+     * An action of this request needs the whole page, so no later action may narrow the render.
+     */
+    protected bool $wholePage = false;
+
+    protected bool $skippedForIslands = false;
+
     public function mount(): void
     {
         $this->authorize('viewAny', Media::class);
@@ -285,8 +299,12 @@ new #[Title('media.index.title')] class extends Component {
      * Only the "upload" property (with media.upload) and the "replacement" property (with media.edit on the open file)
      * take temporary uploads, one file at a time.
      *
+     * Renderless like Livewire's own method: the upload queue is drawn by the browser, so starting and finishing a
+     * transfer changes nothing the server renders.
+     *
      * @param  array<int, mixed>  $fileInfo
      */
+    #[Renderless]
     public function _startUpload(string $name, array $fileInfo, bool $isMultiple): void
     {
         abort_unless(in_array($name, ['upload', 'replacement'], true) && ! $isMultiple, 403);
@@ -304,14 +322,33 @@ new #[Title('media.index.title')] class extends Component {
     }
 
     /**
+     * @param  string  $name
+     * @param  iterable<int, string>  $tmpPath
+     * @param  bool  $isMultiple
+     * @param  bool  $append
+     */
+    #[Renderless]
+    public function _finishUpload($name, $tmpPath, $isMultiple, $append = true): void
+    {
+        $this->finishTemporaryUpload($name, $tmpPath, $isMultiple, $append);
+    }
+
+    /**
      * Turn the file the upload queue just sent into a library file in the folder it was queued in.
      * A rejected file returns its error text instead of throwing, so the queue shows it on the tile and goes on.
      *
+     * With $defer the page isn't rendered: the queue keeps the file's tile itself and refreshes the page once for
+     * several files (resources/js/media-uploader.js), instead of re-rendering the whole library after each one.
+     *
      * @return array{ok: bool, id?: int, name?: string, meta?: string, error?: string}
      */
-    public function storeUpload(StoreUploadedMedia $storeUploadedMedia): array
+    public function storeUpload(StoreUploadedMedia $storeUploadedMedia, bool $defer = false): array
     {
         $this->authorize('create', Media::class);
+
+        if ($defer) {
+            $this->skipRender();
+        }
 
         $file = $this->upload;
         $pickedSize = $this->uploadPickedSize !== null && $this->uploadPickedSize > 0 ? $this->uploadPickedSize : null;
@@ -462,20 +499,22 @@ new #[Title('media.index.title')] class extends Component {
      * Ctrl/Cmd + click ("toggle") adds a file to the selection or takes it out; Shift + click ("range")
      * selects every file shown between the last clicked one and this one, in the order they're shown.
      */
-    public function pick(int $id, string $mode): void
+    public function pick(int $id, string $mode, bool $narrow = false): void
     {
         if ($mode !== 'range') {
-            $this->toggleSelected($id);
+            $this->toggleSelected($id, $narrow);
 
             return;
         }
+
+        $this->renderOnly($narrow, 'files', 'bulk');
 
         $shown = $this->media->getCollection()->modelKeys();
         $from = $this->selectionAnchor === null ? false : array_search($this->selectionAnchor, $shown, true);
         $to = array_search($id, $shown, true);
 
         if ($from === false || $to === false) {
-            $this->toggleSelected($id);
+            $this->toggleSelected($id, $narrow);
 
             return;
         }
@@ -490,8 +529,9 @@ new #[Title('media.index.title')] class extends Component {
      *
      * @param  array<int|string>  $ids
      */
-    public function selectBox(array $ids, bool $add = false): void
+    public function selectBox(array $ids, bool $add = false, bool $narrow = false): void
     {
+        $this->renderOnly($narrow, 'files', 'bulk');
         $ids = MediaIds::normalize($ids);
 
         $this->selected = MediaIds::existing($add ? [...$this->selected, ...$ids] : $ids);
@@ -525,8 +565,9 @@ new #[Title('media.index.title')] class extends Component {
     /**
      * Add a file to the bulk selection or take it out ("Select several" in the grid).
      */
-    public function toggleSelected(int $id): void
+    public function toggleSelected(int $id, bool $narrow = false): void
     {
+        $this->renderOnly($narrow, 'files', 'bulk');
         $this->selectionAnchor = $id;
 
         if (in_array($id, $this->selected, true)) {
@@ -541,8 +582,9 @@ new #[Title('media.index.title')] class extends Component {
     /**
      * Select every file shown on this page, or unselect them when all of them already are.
      */
-    public function togglePageSelection(): void
+    public function togglePageSelection(bool $narrow = false): void
     {
+        $this->renderOnly($narrow, 'files', 'bulk');
         $pageIds = $this->media->getCollection()->modelKeys();
 
         $this->selected = array_diff($pageIds, $this->selected) === []
@@ -605,7 +647,7 @@ new #[Title('media.index.title')] class extends Component {
         $this->redirect(route('admin.media.zip', ['ids' => $ids]));
     }
 
-    public function sort(string $column): void
+    public function sort(string $column, bool $narrow = false): void
     {
         if (! in_array($column, self::SORTABLE, true)) {
             return;
@@ -619,22 +661,30 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         $this->resetPage();
+        $this->renderOnly($narrow, 'files');
     }
 
-    public function showMore(): void
+    public function showMore(bool $narrow = false): void
     {
+        $this->renderOnly($narrow, 'files');
         $this->gridLimit = min($this->gridLimit + self::GRID_STEP, self::GRID_MAX);
     }
 
     /**
      * Open a file in the details panel, or ask first when the open one has unsaved changes.
      */
-    public function select(int $id): void
+    public function select(int $id, bool $narrow = false): void
     {
         $this->authorize('viewAny', Media::class);
         $this->selectionAnchor = $id;
 
-        if ($id === $this->selectedId || ! Media::query()->whereKey($id)->exists()) {
+        if ($id === $this->selectedId) {
+            $this->renderOnly($narrow);
+
+            return;
+        }
+
+        if (! Media::query()->whereKey($id)->exists()) {
             return;
         }
 
@@ -646,21 +696,106 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         $this->openDetails($id);
+        $this->renderOnly($narrow, 'files', 'details');
     }
 
     /**
      * Close the details panel (the × button, a click on empty space, Escape), or ask first when it has unsaved changes.
      */
-    public function closeDetails(): void
+    public function closeDetails(bool $narrow = false): void
+    {
+        if ($this->selectedId === null) {
+            $this->renderOnly($narrow);
+
+            return;
+        }
+
+        if ($this->closeDetailsOrAsk()) {
+            $this->renderOnly($narrow, 'files', 'details');
+        }
+    }
+
+    /**
+     * Whether the panel closed; false when it has unsaved changes and the discard dialog was opened instead.
+     */
+    private function closeDetailsOrAsk(): bool
     {
         if ($this->hasUnsavedDetails()) {
             $this->pendingSelectId = 0;
             $this->showDiscardModal = true;
 
-            return;
+            return false;
         }
 
         $this->openDetails(null);
+
+        return true;
+    }
+
+    /**
+     * With $narrow, render only the named islands (none: nothing) instead of the whole page. The browser passes
+     * true for the hot actions (a tile click, the mouse box, "Show more", a column sort), so a click in a grid of
+     * hundreds of tiles runs the grid's query and the panel's, not the folder tree, counters and months. Every
+     * other action, and these without the flag, render the whole page as usual; so does a request that carries
+     * more than this one call, because the other call may change something outside the islands.
+     */
+    private function renderOnly(bool $narrow, string ...$islands): void
+    {
+        if (! $narrow || $this->wholePage || ! $this->isOnlyCall()) {
+            return;
+        }
+
+        $this->narrowed = true;
+        $this->skippedForIslands = $this->skippedForIslands || ! $this->shouldSkipRender();
+        $this->skipRender();
+
+        foreach ($islands as $island) {
+            parent::triggerImplicitIslandRender($island);
+        }
+    }
+
+    /**
+     * Whether this request calls exactly one action of this component.
+     */
+    private function isOnlyCall(): bool
+    {
+        foreach ((array) request()->input('components', []) as $component) {
+            $snapshot = json_decode((string) data_get($component, 'snapshot', ''), true);
+
+            if (data_get($snapshot, 'memo.id') === $this->getId()) {
+                return count((array) data_get($component, 'calls', [])) === 1;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Livewire calls this after an action the browser sent as coming from inside an island, and would then render
+     * only that island. On this page islands are render targets, not scopes: the browser strips that mark
+     * (`data-serial-islands`, resources/js/app.js), which also keeps the page's requests in one queue. Should the
+     * mark arrive anyway, an action that didn't narrow itself gets the whole page, because most actions change
+     * something outside their island (a dialog, the folder tree, the counters).
+     *
+     * @param  string  $name
+     * @param  string  $mode
+     * @param  bool  $mount
+     */
+    public function triggerImplicitIslandRender($name, $mode = 'morph', $mount = false): void
+    {
+        if ($this->narrowed) {
+            $this->narrowed = false;
+
+            return;
+        }
+
+        $this->wholePage = true;
+        $this->implicitIslandMorphs = [];
+
+        if ($this->skippedForIslands) {
+            \Livewire\store($this)->set('skipRender', false);
+            $this->skippedForIslands = false;
+        }
     }
 
     /**
@@ -823,7 +958,7 @@ new #[Title('media.index.title')] class extends Component {
             $this->savedDetails['folder_id'] = $folderValue;
         }
 
-        unset($this->folders, $this->totals, $this->media);
+        unset($this->folders, $this->folderList, $this->totals, $this->media);
         $this->closeDetailsWhenHidden();
         Flux::toast(variant: 'success', text: trans_choice('media.messages.moved', $items->count()));
     }
@@ -909,7 +1044,7 @@ new #[Title('media.index.title')] class extends Component {
         $target = $targetId === null ? null : MediaFolder::query()->find($targetId);
 
         if ($folder === null || ($targetId !== null && $target === null)) {
-            unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
+            unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders);
 
             return;
         }
@@ -931,7 +1066,7 @@ new #[Title('media.index.title')] class extends Component {
         }
 
         $this->expandFolderId = $target?->id;
-        unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
+        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders);
         Flux::toast(variant: 'success', text: __('media.messages.folder_moved'));
     }
 
@@ -1004,7 +1139,7 @@ new #[Title('media.index.title')] class extends Component {
         $excluded = [$moving->id, ...$moving->descendantIds()];
         $targets = [];
 
-        foreach ($this->folders as $row) {
+        foreach ($this->folderList as $row) {
             if (! in_array($row['folder']->id, $excluded, true)) {
                 $targets[] = [
                     'id' => $row['folder']->id,
@@ -1077,7 +1212,7 @@ new #[Title('media.index.title')] class extends Component {
             $this->resetPage();
         }
 
-        unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
+        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders);
         $this->forgetDeletedMedia();
         Flux::toast(variant: 'success', text: __('media.messages.folder_deleted'));
     }
@@ -1143,7 +1278,25 @@ new #[Title('media.index.title')] class extends Component {
     #[Computed]
     public function folders(): array
     {
-        return MediaFolder::treeRows();
+        $counts = MediaFolder::fileCounts();
+
+        foreach ($this->folderList as $row) {
+            $row['folder']->setFileCount($counts[$row['folder']->id] ?? 0);
+        }
+
+        return $this->folderList;
+    }
+
+    /**
+     * The same rows without file counts: one query on the folders table. Enough for the open folder, the
+     * breadcrumb and the "Move to" menus, so a render that shows no folder tree never counts the files.
+     *
+     * @return array<int, array{folder: MediaFolder, depth: int}>
+     */
+    #[Computed]
+    public function folderList(): array
+    {
+        return MediaFolder::treeRows(withCounts: false);
     }
 
     /**
@@ -1182,7 +1335,7 @@ new #[Title('media.index.title')] class extends Component {
             return null;
         }
 
-        return collect($this->folders)->firstWhere('folder.id', (int) $this->folder)['folder'] ?? null;
+        return collect($this->folderList)->firstWhere('folder.id', (int) $this->folder)['folder'] ?? null;
     }
 
     /**
@@ -1191,7 +1344,7 @@ new #[Title('media.index.title')] class extends Component {
     #[Computed]
     public function breadcrumb(): Collection
     {
-        return $this->currentFolder?->breadcrumb() ?? collect();
+        return $this->currentFolder?->breadcrumb(collect($this->folderList)->pluck('folder')) ?? collect();
     }
 
     /**
@@ -1216,7 +1369,7 @@ new #[Title('media.index.title')] class extends Component {
     #[Computed]
     public function uploaderConfig(): array
     {
-        return UploaderConfig::for($this->actor());
+        return [...UploaderConfig::for($this->actor()), 'deferRefresh' => true];
     }
 
     /**
@@ -1291,7 +1444,7 @@ new #[Title('media.index.title')] class extends Component {
         $this->showFolderModal = false;
         $this->folderName = '';
         $this->renamingFolderId = null;
-        unset($this->folders, $this->currentFolder, $this->breadcrumb, $this->subfolders);
+        unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders);
         Flux::toast(variant: 'success', text: $success);
     }
 
@@ -1332,7 +1485,7 @@ new #[Title('media.index.title')] class extends Component {
             return;
         }
 
-        $this->closeDetails();
+        $this->closeDetailsOrAsk();
     }
 
     private function hasUnsavedDetails(): bool
@@ -1402,6 +1555,7 @@ new #[Title('media.index.title')] class extends Component {
 
 <section
     class="w-full space-y-6"
+    data-serial-islands
     x-data="mediaUploader(@js($uploaderConfig))"
     x-on:dragenter.window="dragEnter($event)"
     x-on:dragover.window="dragOver($event)"
@@ -1536,9 +1690,16 @@ new #[Title('media.index.title')] class extends Component {
                 @endif
             </div>
 
-            @if ($selected !== [])
-                @include('partials.admin.media.bulk-bar', ['count' => count($selected), 'canMove' => $canManageFolders, 'folders' => $this->folders])
-            @endif
+            {{-- Islands: the hot actions render only these (see renderOnly()); every other action renders them with the page. --}}
+            @island(name: 'bulk', always: true)
+                @if ($selected !== [])
+                    @include('partials.admin.media.bulk-bar', [
+                        'count' => count($selected),
+                        'canMove' => auth()->user()->can('manageFolders', App\Models\Media::class),
+                        'folders' => $this->folderList,
+                    ])
+                @endif
+            @endisland
 
             @if ($canUpload)
                 @include('partials.admin.media.upload-tiles')
@@ -1549,44 +1710,49 @@ new #[Title('media.index.title')] class extends Component {
                 @include('partials.admin.media.subfolders', ['subfolders' => $subfolders, 'canMove' => $canManageFolders])
             @endif
 
-            @if ($this->media->isEmpty() && $subfolders->isNotEmpty())
-                <flux:text size="sm" variant="subtle" data-test="media-no-files">{{ __('media.index.subfolders.no_files') }}</flux:text>
-            @elseif ($this->media->isEmpty())
-                <x-admin.empty-state
-                    icon="photo"
-                    :heading="$this->totals['all'] > 0 ? __('media.index.no_results.title') : __('media.index.empty.title')"
-                    :description="$this->totals['all'] > 0 ? __('media.index.no_results.description') : __('media.index.empty.description')"
-                />
-            @elseif ($view === 'list')
-                <div data-media-area x-on:click="mediaDetailsClose.emptyClick($event, $wire)">
-                @include('partials.admin.media.list', [
-                    'media' => $this->media,
-                    'selectedId' => $selectedId,
-                    'selected' => $selected,
-                    'sortBy' => $sortBy,
-                    'sortDirection' => $sortDirection,
-                    'canMove' => $canManageFolders,
-                ])
-                </div>
-            @else
-                @include('partials.admin.media.grid', [
-                    'media' => $this->media,
-                    'selectedId' => $selectedId,
-                    'selected' => $selected,
-                    'selecting' => $selecting,
-                    'gridStep' => $this::GRID_STEP,
-                    'canShowMore' => $gridLimit < $this::GRID_MAX,
-                    'canMove' => $canManageFolders,
-                ])
-            @endif
+            @island(name: 'files', always: true)
+                @php $canMoveFiles = auth()->user()->can('manageFolders', App\Models\Media::class); @endphp
+                @if ($this->media->isEmpty() && $this->subfolders->isNotEmpty())
+                    <flux:text size="sm" variant="subtle" data-test="media-no-files">{{ __('media.index.subfolders.no_files') }}</flux:text>
+                @elseif ($this->media->isEmpty())
+                    <x-admin.empty-state
+                        icon="photo"
+                        :heading="$this->totals['all'] > 0 ? __('media.index.no_results.title') : __('media.index.empty.title')"
+                        :description="$this->totals['all'] > 0 ? __('media.index.no_results.description') : __('media.index.empty.description')"
+                    />
+                @elseif ($view === 'list')
+                    <div wire:key="media-list" data-media-area x-on:click="mediaDetailsClose.emptyClick($event, $wire)">
+                    @include('partials.admin.media.list', [
+                        'media' => $this->media,
+                        'selectedId' => $selectedId,
+                        'selected' => $selected,
+                        'sortBy' => $sortBy,
+                        'sortDirection' => $sortDirection,
+                        'canMove' => $canMoveFiles,
+                    ])
+                    </div>
+                @else
+                    @include('partials.admin.media.grid', [
+                        'media' => $this->media,
+                        'selectedId' => $selectedId,
+                        'selected' => $selected,
+                        'selecting' => $selecting,
+                        'gridStep' => $this::GRID_STEP,
+                        'canShowMore' => $gridLimit < $this::GRID_MAX,
+                        'canMove' => $canMoveFiles,
+                    ])
+                @endif
+            @endisland
         </div>
 
-        @if ($this->selectedMedia)
-            @include('partials.admin.media.details', [
-                'media' => $this->selectedMedia,
-                'folders' => $this->folders,
-            ])
-        @endif
+        @island(name: 'details', always: true)
+            @if ($this->selectedMedia)
+                @include('partials.admin.media.details', [
+                    'media' => $this->selectedMedia,
+                    'folders' => $this->folderList,
+                ])
+            @endif
+        @endisland
         </div>
     </div>
 

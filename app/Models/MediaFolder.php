@@ -64,17 +64,49 @@ class MediaFolder extends Model
      */
     public static function tree(): Collection
     {
-        return self::query()->withCount('media')->orderBy('name')->get();
+        $counts = self::fileCounts();
+
+        return self::query()->orderBy('name')->get()->each(
+            fn (MediaFolder $folder) => $folder->setFileCount($counts[$folder->id] ?? 0),
+        );
+    }
+
+    /**
+     * How many files each folder holds, by folder id (folders without files are absent): one grouped query
+     * instead of a count per folder.
+     *
+     * @return array<int, int>
+     */
+    public static function fileCounts(): array
+    {
+        return Media::query()
+            ->toBase()
+            ->whereNotNull('folder_id')
+            ->groupBy('folder_id')
+            ->selectRaw('folder_id, count(*) as files')
+            ->pluck('files', 'folder_id')
+            ->map(fn (mixed $count): int => (int) $count)
+            ->all();
+    }
+
+    /**
+     * Set `media_count` without marking the folder as changed.
+     */
+    public function setFileCount(int $count): static
+    {
+        return $this->setAttribute('media_count', $count)->syncOriginalAttribute('media_count');
     }
 
     /**
      * Folders in tree order (each followed by its subfolders), with their depth, for the library and the picker.
+     * Without counts it is one query on the folders table and never touches the files.
      *
      * @return array<int, array{folder: MediaFolder, depth: int}>
      */
-    public static function treeRows(): array
+    public static function treeRows(bool $withCounts = true): array
     {
-        $byParent = self::tree()->groupBy(fn (MediaFolder $folder): int => $folder->parent_id ?? 0);
+        $folders = $withCounts ? self::tree() : self::query()->orderBy('name')->get();
+        $byParent = $folders->groupBy(fn (MediaFolder $folder): int => $folder->parent_id ?? 0);
         $rows = [];
 
         $walk = function (int $parentId, int $depth) use (&$walk, &$rows, $byParent): void {
@@ -156,13 +188,14 @@ class MediaFolder extends Model
     }
 
     /**
-     * The folder chain from the root down to this folder.
+     * The folder chain from the root down to this folder. Pass the folders already loaded to save the query.
      *
+     * @param  iterable<MediaFolder>|null  $folders
      * @return \Illuminate\Support\Collection<int, MediaFolder>
      */
-    public function breadcrumb(): \Illuminate\Support\Collection
+    public function breadcrumb(?iterable $folders = null): \Illuminate\Support\Collection
     {
-        $all = static::query()->get()->keyBy('id');
+        $all = collect($folders ?? static::query()->get())->keyBy('id');
         $chain = collect();
         $current = $this;
 

@@ -111,7 +111,16 @@ new #[Title('users.index.title')] class extends Component {
     public function canDelete(User $user): bool
     {
         return Auth::user()->can('delete', $user)
-            && app(AccessRules::class)->userDeletionDenial(Auth::user(), $user) === null;
+            && app(AccessRules::class)->userDeletionDenial(Auth::user(), $user, $this->superAdminCount) === null;
+    }
+
+    /**
+     * Counted once per render, so the "last super admin" rule costs no query per row.
+     */
+    #[Computed]
+    public function superAdminCount(): int
+    {
+        return app(AccessRules::class)->superAdminCount();
     }
 
     #[Computed]

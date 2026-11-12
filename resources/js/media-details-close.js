@@ -40,7 +40,8 @@ export function emptyClick(event, wire) {
         return;
     }
 
-    wire.closeDetails();
+    // true: the server renders the files and the panel, not the whole page.
+    wire.closeDetails(true);
 }
 
 /** Escape closes the panel unless focus is in a form field, a dialog or a dropdown. */
@@ -60,5 +61,6 @@ export function escapeKey(event, wire) {
         return;
     }
 
-    wire.closeDetails();
+    // true: the server renders the files and the panel, not the whole page.
+    wire.closeDetails(true);
 }

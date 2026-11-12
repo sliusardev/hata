@@ -1,5 +1,5 @@
 {{--
-    Tiles of the files still in the upload queue (waiting, uploading or failed), shown before the grid.
+    Tiles of the files still in the upload queue (waiting, uploading or failed, and stored ones until the page shows them), shown before the grid.
     Rendered by Alpine from the page's mediaUploader state, so Livewire leaves it alone. Uploaded files
     disappear from here and come back as regular tiles from the server.
 --}}
@@ -21,7 +21,7 @@
                     <template x-if="item.status !== 'failed'">
                         <div class="absolute inset-x-2.5 bottom-2.5 flex flex-col gap-1.5">
                             <span class="self-start rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium text-zinc-800" x-text="statusText(item)"></span>
-                            <div class="h-1.5 overflow-hidden rounded-full bg-white/75">
+                            <div class="h-1.5 overflow-hidden rounded-full bg-white/75" x-show="item.status !== 'done'">
                                 <div class="h-full rounded-full bg-zinc-800 transition-all" x-bind:style="{ width: (item.status === 'compressing' ? 100 : item.percent) + '%' }"></div>
                             </div>
                         </div>

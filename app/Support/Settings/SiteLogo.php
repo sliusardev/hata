@@ -57,7 +57,26 @@ class SiteLogo
         $memo = self::memo();
 
         if (! $memo->offsetExists($id)) {
-            $media = Media::query()->find($id);
+            self::load();
+        }
+
+        return $memo[$id] ?? null;
+    }
+
+    /**
+     * Look both variants up in one query and remember the usable ones for this request.
+     */
+    private static function load(): void
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map(fn (string $variant): mixed => config("admin.logo.{$variant}"), self::VARIANTS),
+            is_int(...),
+        )));
+        $found = Media::query()->whereKey($ids)->get()->keyBy('id');
+        $memo = self::memo();
+
+        foreach ($ids as $id) {
+            $media = $found->get($id);
 
             $memo[$id] = $media !== null
                 && (new MediaAcceptance('image', self::EXTENSIONS))->allows($media)
@@ -65,8 +84,6 @@ class SiteLogo
                 ? $media
                 : null;
         }
-
-        return $memo[$id];
     }
 
     /**

@@ -145,6 +145,20 @@ test('it loads roles without a query per user', function () {
     expect($roleQueries->count())->toBeLessThanOrEqual(3);
 });
 
+test('it applies the last super admin rule without a query per super admin', function () {
+    $this->actingAs(User::factory()->withRole('super-admin')->create());
+    User::factory()->count(4)->withRole('super-admin')->create();
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    Livewire::test('pages::admin.users.index')->assertSeeHtml('wire:click="confirmDelete(');
+    $ruleQueries = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'exists') || str_contains($query['query'], 'count(*)'));
+    DB::disableQueryLog();
+
+    // The page's own counts (pagination, "any users") plus one count of super admins, however many rows show one.
+    expect($ruleQueries->count())->toBeLessThanOrEqual(4);
+});
+
 describe('deleting from the list', function () {
     test('users with users.delete can delete another user', function () {
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'users.view', 'users.delete'])->create());

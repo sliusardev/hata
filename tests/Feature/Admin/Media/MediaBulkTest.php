@@ -301,8 +301,8 @@ it('lets a plain click unpick tiles once anything is selected', function () {
     [$one, $two] = Media::factory()->count(2)->create();
 
     Livewire::test('pages::admin.media.index')
-        ->assertSeeHtml('$wire.select('.$one->id.')')
+        ->assertSeeHtml('$wire.select('.$one->id.', true)')
         ->call('selectBox', [$one->id, $two->id])
-        ->assertSeeHtml('$wire.toggleSelected('.$one->id.')')
-        ->assertDontSeeHtml('$wire.select('.$one->id.')');
+        ->assertSeeHtml('$wire.toggleSelected('.$one->id.', true)')
+        ->assertDontSeeHtml('$wire.select('.$one->id.', true)');
 });

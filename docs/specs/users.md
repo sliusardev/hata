@@ -24,6 +24,8 @@ Admin group (`routes/admin.php`): `auth, verified, can:admin.access`. Components
 - Roles are eager loaded (`with('roles')`).
 - Deleting goes through `<x-confirm-modal>` with the user's name. The menu item is hidden when deletion isn't allowed.
 
+- The "last super admin" rule in the list is decided from one count of super admins per render (`AccessRules::superAdminCount()`, passed to `userDeletionDenial()`), not a query per super-admin row.
+
 ## Form (create / edit)
 
 Livewire Form object `App\Livewire\Forms\UserForm`, shared partial `partials/admin/user-form.blade.php`.

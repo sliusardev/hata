@@ -5,10 +5,15 @@
     $gridStep (files added by "Show more"), $canShowMore (false once the grid reached its cap; then a hint points to the list),
     $canMove (tiles can be dragged onto a folder in the tree).
     Drawing a box on empty space selects the tiles it touches (resources/js/media-marquee.js).
+    Rendered inside the page's "files" island: tile clicks and "Show more" pass true (narrow), so the server
+    renders only the islands the action names instead of the whole page.
 --}}
 @php $clickPicks = $selecting || $selected !== []; @endphp
 
+{{-- The key keeps a morph from turning the empty state's element into this one: Alpine would then set up the
+     children before this x-data exists ("box is not defined") and the mouse box would stay dead until a reload. --}}
 <div
+    wire:key="media-grid"
     class="relative -m-4 min-h-[50vh] space-y-6 p-4 pb-24 select-none"
     x-data="mediaMarquee"
     x-on:pointerdown="begin($event)"
@@ -34,9 +39,9 @@
                 {{-- Shift + mousedown: no text selection across tiles during a Shift + click range (a Shift-drag of a tile is intentionally not supported). --}}
                 x-on:mousedown="if ($event.shiftKey) $event.preventDefault()"
                 x-on:click="
-                    if ($event.shiftKey) { $wire.pick({{ $item->id }}, 'range') }
-                    else if ($event.metaKey || $event.ctrlKey) { $wire.pick({{ $item->id }}, 'toggle') }
-                    else { $wire.{{ $clickPicks ? 'toggleSelected' : 'select' }}({{ $item->id }}) }
+                    if ($event.shiftKey) { $wire.pick({{ $item->id }}, 'range', true) }
+                    else if ($event.metaKey || $event.ctrlKey) { $wire.pick({{ $item->id }}, 'toggle', true) }
+                    else { $wire.{{ $clickPicks ? 'toggleSelected' : 'select' }}({{ $item->id }}, true) }
                 "
                 @if ($canMove)
                     draggable="true"
@@ -86,7 +91,7 @@
     @if ($media->hasMorePages())
         <div class="flex justify-center">
             @if ($canShowMore)
-                <flux:button wire:click="showMore" data-test="media-show-more">
+                <flux:button wire:click="showMore(true)" data-test="media-show-more">
                     {{ __('media.index.show_more', ['count' => min($gridStep, $media->total() - $media->count())]) }}
                 </flux:button>
             @else

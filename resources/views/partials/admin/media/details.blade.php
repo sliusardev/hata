@@ -35,7 +35,7 @@
 >
     <div class="flex items-center justify-between border-b border-zinc-200 py-2 ps-4 pe-2 dark:border-white/10">
         <flux:heading size="sm" level="2">{{ __('media.details.heading') }}</flux:heading>
-        <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="closeDetails" :aria-label="__('media.details.close')" />
+        <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="closeDetails(true)" :aria-label="__('media.details.close')" />
     </div>
 
     <div class="flex aspect-[3/2] items-center justify-center bg-zinc-100 dark:bg-white/5">
@@ -214,7 +214,7 @@
             @endif
             <flux:spacer />
             <x-admin.row-actions :label="__('media.details.actions')" data-test="media-details-actions">
-                @if ($canEdit && $media->isEditable())
+                @if ($canEdit && $media->offersEditing())
                     <flux:menu.item icon="scissors" :href="route('admin.media.crop', $media)" wire:navigate data-test="media-details-crop">
                         {{ __('media.details.crop') }}
                     </flux:menu.item>

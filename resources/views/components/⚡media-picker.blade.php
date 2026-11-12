@@ -368,7 +368,7 @@ new class extends Component {
             $this->search = '';
             $this->month = '';
             $this->tab = 'library';
-            unset($this->files, $this->hasMore, $this->months);
+            unset($this->files, $this->loaded, $this->hasMore, $this->months);
         }
 
         return $result;
@@ -401,13 +401,25 @@ new class extends Component {
     #[Computed]
     public function files(): Collection
     {
-        return $this->query()->latest()->orderByDesc('id')->limit($this->limit)->get();
+        return $this->loaded()->take($this->limit);
     }
 
+    /**
+     * Whether "Load more" has anything to load: files() asks for one row more than it shows, so no count is needed.
+     */
     #[Computed]
     public function hasMore(): bool
     {
-        return $this->query()->count() > $this->limit;
+        return $this->loaded()->count() > $this->limit;
+    }
+
+    /**
+     * @return Collection<int, Media>
+     */
+    #[Computed]
+    public function loaded(): Collection
+    {
+        return $this->query()->latest()->orderByDesc('id')->limit($this->limit + 1)->get();
     }
 
     #[Computed]
@@ -449,7 +461,7 @@ new class extends Component {
     #[Computed]
     public function breadcrumb(): \Illuminate\Support\Collection
     {
-        return $this->currentFolder?->breadcrumb() ?? collect();
+        return $this->currentFolder?->breadcrumb(collect($this->folders)->pluck('folder')) ?? collect();
     }
 
     /**
@@ -518,7 +530,7 @@ new class extends Component {
      */
     private function query(): Builder
     {
-        $folder = ctype_digit($this->folder) ? MediaFolder::query()->find((int) $this->folder) : null;
+        $folder = $this->currentFolder;
 
         return (new MediaFilters(
             search: $this->search,

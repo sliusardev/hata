@@ -139,7 +139,8 @@ export default function mediaMarquee() {
                     .map(({ tile }) => Number(tile.dataset.mediaId));
 
                 window.mediaMarqueeEndedAt = Date.now();
-                this.$wire.selectBox(ids, this.add);
+                // true: the server renders the grid and the bulk bar, not the whole page.
+                this.$wire.selectBox(ids, this.add, true);
             }
 
             for (const { tile } of this.rects ?? []) {

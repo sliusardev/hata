@@ -217,11 +217,28 @@ class Media extends Model
             return $this->editable;
         }
 
-        if (! $this->isImage() || $this->mime === 'image/svg+xml' || $this->animated) {
+        if (! $this->isEditableKind()) {
             return $this->editable = false;
         }
 
         return $this->editable = Storage::disk($this->disk)->exists($this->path);
+    }
+
+    /**
+     * Whether to offer editing in a menu: isEditable(), except that a cloud file is trusted to exist. The check
+     * would be a request to the bucket on every render of the details panel; the crop page checks for real.
+     */
+    public function offersEditing(): bool
+    {
+        return MediaDisks::isCloud($this->disk) ? $this->isEditableKind() : $this->isEditable();
+    }
+
+    /**
+     * A raster image that isn't animated, judged by the row alone.
+     */
+    private function isEditableKind(): bool
+    {
+        return $this->isImage() && $this->mime !== 'image/svg+xml' && ! $this->animated;
     }
 
     /**

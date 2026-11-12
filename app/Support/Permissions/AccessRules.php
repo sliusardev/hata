@@ -57,6 +57,14 @@ class AccessRules
     }
 
     /**
+     * How many super admins there are, for userDeletionDenial() in a list.
+     */
+    public function superAdminCount(): int
+    {
+        return User::role(SystemRole::SuperAdmin->value)->count();
+    }
+
+    /**
      * The translation key explaining why the actor may not edit the user, or null when allowed.
      *
      * Only super admins edit super admins: changing their email or password would let
@@ -71,12 +79,19 @@ class AccessRules
 
     /**
      * The translation key explaining why the actor may not delete the user, or null when allowed.
+     *
+     * A list that asks for many users passes $superAdminCount (counted once), so the "last super admin" rule
+     * costs no query per row; without it the rule asks the database.
      */
-    public function userDeletionDenial(User $actor, User $user): ?string
+    public function userDeletionDenial(User $actor, User $user, ?int $superAdminCount = null): ?string
     {
+        $isLastSuperAdmin = $superAdminCount === null
+            ? $this->isLastSuperAdmin($user)
+            : $user->isSuperAdmin() && $superAdminCount <= 1;
+
         return match (true) {
             $actor->is($user) => 'users.errors.cannot_delete_self',
-            $this->isLastSuperAdmin($user) => 'users.errors.cannot_delete_last_super_admin',
+            $isLastSuperAdmin => 'users.errors.cannot_delete_last_super_admin',
             $user->isSuperAdmin() && ! $actor->isSuperAdmin() => 'users.errors.cannot_manage_super_admin',
             default => null,
         };

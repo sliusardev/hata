@@ -8,6 +8,7 @@
  * The details panel's "Replace file" reuses prepareFile() and sends the file as the "replacement" property.
  *
  * Config (from the page): canUpload, clientResize, clientSide (px), accept (extensions), types ({ext: kind}),
+ * deferRefresh (true: the server stores a file without rendering and the queue refreshes the page itself),
  * limits ({kind: bytes}), uploadCap (PHP's upload cap in bytes, null = none), locale and texts
  * (translated strings with :placeholders); the media picker adds single (true: only the first of several files is queued).
  */
@@ -25,6 +26,9 @@ const MAY_HAVE_ALPHA = ['png', 'webp'];
 const PREVIEWABLE = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 
 const JPEG_QUALITY = 0.92;
+
+/** With config.deferRefresh, the page is refreshed at most this often (ms) while files are still waiting. */
+const REFRESH_INTERVAL = 2000;
 
 /** The overlay hides when no dragover arrived for this long (the cursor left the window, the drag was cancelled). */
 const DRAG_TIMEOUT = 300;
@@ -119,6 +123,7 @@ export default function mediaUploader(config) {
     const files = new Map();
     let nextId = 1;
     let dragTimer = null;
+    let refreshedAt = 0;
 
     return {
         queue: [],
@@ -136,9 +141,9 @@ export default function mediaUploader(config) {
             return this.queue.some((item) => !['done', 'failed'].includes(item.status));
         },
 
-        /** Files still on their way (or failed), shown as tiles before the grid. */
+        /** Files still on their way (or failed) and stored files the page hasn't rendered yet, shown as tiles before the grid. */
         get pendingTiles() {
-            return this.queue.filter((item) => item.status !== 'done');
+            return this.queue.filter((item) => item.status !== 'done' || !item.listed);
         },
 
         get queueTitle() {
@@ -239,6 +244,7 @@ export default function mediaUploader(config) {
                     status: error === null ? 'waiting' : 'failed',
                     percent: 0,
                     meta: '',
+                    listed: false,
                     error,
                 });
             }
@@ -302,7 +308,32 @@ export default function mediaUploader(config) {
                 }
             } finally {
                 this.running = false;
+                this.refreshList(true);
             }
+        },
+
+        /**
+         * With config.deferRefresh the server stores a file without rendering the page; this shows the stored
+         * files with one refresh: at once when nothing is waiting, else at most every REFRESH_INTERVAL ms. Their
+         * queue tiles stay until that refresh has drawn the real ones.
+         */
+        refreshList(force = false) {
+            const stored = this.queue.filter((item) => item.status === 'done' && !item.listed);
+
+            if (!config.deferRefresh || stored.length === 0) {
+                return;
+            }
+
+            const waiting = this.queue.some((item) => item.status === 'waiting');
+
+            if (!force && waiting && Date.now() - refreshedAt < REFRESH_INTERVAL) {
+                return;
+            }
+
+            refreshedAt = Date.now();
+            const shown = () => stored.forEach((item) => { item.listed = true; });
+
+            Promise.resolve(this.$wire.$refresh()).then(shown, shown);
         },
 
         async process(item) {
@@ -343,12 +374,14 @@ export default function mediaUploader(config) {
                 this.$wire.uploadPickedSize = picked.size;
                 this.$wire.uploadPickedExtension = item.extension;
                 this.$wire.uploadFolderId = item.folderId;
-                const result = await this.$wire.storeUpload();
+                const result = config.deferRefresh ? await this.$wire.storeUpload(true) : await this.$wire.storeUpload();
 
                 if (result?.ok) {
+                    item.listed = !config.deferRefresh;
                     item.status = 'done';
                     item.meta = result.meta;
                     files.delete(item.id);
+                    this.refreshList();
                 } else {
                     this.fail(item, result?.error ?? config.texts.failed);
                 }

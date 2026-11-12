@@ -5,7 +5,6 @@ namespace App\Actions\Media;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class MoveMedia
@@ -21,10 +20,17 @@ class MoveMedia
             Gate::forUser($actor)->authorize('update', $item);
         }
 
-        DB::transaction(function () use ($items, $folder): void {
-            foreach ($items as $item) {
-                $item->forceFill(['folder_id' => $folder?->id])->save();
-            }
-        });
+        if ($items === []) {
+            return;
+        }
+
+        // One statement for the whole selection: only the folder changes, so no model needs saving on its own.
+        Media::query()
+            ->whereKey(array_map(fn (Media $item): int => $item->id, $items))
+            ->update(['folder_id' => $folder?->id]);
+
+        foreach ($items as $item) {
+            $item->forceFill(['folder_id' => $folder?->id])->syncOriginalAttribute('folder_id');
+        }
     }
 }

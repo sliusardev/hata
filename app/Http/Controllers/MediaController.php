@@ -18,6 +18,11 @@ class MediaController extends Controller
     use StreamsMediaFile;
 
     /**
+     * How long a redirect to a static image URL may be cached.
+     */
+    private const int STATIC_REDIRECT_SECONDS = 300;
+
+    /**
      * Serve a media file by its public URL. The name segment is cosmetic: an old name
      * redirects to the current one, so URLs saved in content keep working after a rename.
      */
@@ -42,17 +47,15 @@ class MediaController extends Controller
             $this->asciiFallback($media->name),
         );
 
-        if (! $download && ! MediaDisks::isCloud($media->disk)) {
-            $direct = $media->directUrl($path, $mime);
+        $direct = $download ? null : $media->directUrl($path, $mime);
 
-            if ($direct !== null) {
-                return $this->uncacheableRedirect($direct, 302);
-            }
+        if ($direct !== null) {
+            return $this->staticRedirect($direct);
         }
 
         if (MediaDisks::isCloud($media->disk)) {
             if ($mime !== 'image/svg+xml') {
-                return $this->uncacheableRedirect($this->cloudUrl($media, $path, $mime, $download, $disposition), 302);
+                return $this->uncacheableRedirect($this->signedUrl($media, $path, $mime, $disposition), 302);
             }
         } else {
             abort_unless($disk->exists($path), 404);
@@ -69,22 +72,16 @@ class MediaController extends Controller
     }
 
     /**
-     * Where a cloud file is fetched from: the public/CDN URL for a raster image on a disk that has one (not for a
-     * download, which needs the real name), otherwise a signed URL whose disposition and type carry the real name.
+     * The signed URL of a cloud file that has no public address (or is downloaded, which needs the real name); its
+     * disposition and type carry the real name.
      *
      * The signature is made for the start of the current clock hour and expires two hours after it (so at least an
      * hour from now): every request within the hour gets the same URL, and the browser can reuse the object it cached
      * instead of fetching a new URL each time. The SDK reads `start_time` as a presign option (Laravel passes the
      * options to the command too, which ignores unknown keys).
      */
-    private function cloudUrl(Media $media, string $path, string $mime, bool $download, string $disposition): string
+    private function signedUrl(Media $media, string $path, string $mime, string $disposition): string
     {
-        $direct = $download ? null : $media->directUrl($path, $mime);
-
-        if ($direct !== null) {
-            return $direct;
-        }
-
         $signedAt = now()->startOfHour();
 
         return Storage::disk($media->disk)->temporaryUrl($path, $signedAt->addHours(2), [
@@ -122,6 +119,21 @@ class MediaController extends Controller
     {
         return redirect()->away($url, $status)->withHeaders([
             'Cache-Control' => 'no-cache, must-revalidate, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * The redirect of a permanent address to the image's static (or CDN) URL. Browsers and proxies may keep it for
+     * STATIC_REDIRECT_SECONDS, so a page that embeds permanent addresses doesn't start PHP for every image on every
+     * view. It is safe to keep: the target is found by the file's key, not its name (no rename loop), a replaced
+     * file's old version stays on the disk for a week, and without the storage link the static address is answered
+     * by the fallback route.
+     */
+    private function staticRedirect(string $url): RedirectResponse
+    {
+        return redirect()->away($url, 302)->withHeaders([
+            'Cache-Control' => 'public, max-age='.self::STATIC_REDIRECT_SECONDS,
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

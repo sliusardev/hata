@@ -268,6 +268,23 @@ test('a delete that fails after the logo was forgotten leaves the setting, the c
     Storage::disk('local')->assertExists($media->path);
 });
 
+test('both logo variants are looked up with one query per request', function () {
+    $actor = logoAdmin();
+    app(SetLogo::class)->handle($actor, 'light', logoMedia()->id);
+    app(SetLogo::class)->handle($actor, 'dark', logoMedia('logo-dark.webp')->id);
+    SiteLogo::flush();
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $urls = [SiteLogo::url('light'), SiteLogo::url('dark'), SiteLogo::isCustom()];
+    $queries = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from "media"') || str_contains($query['query'], 'from `media`'));
+    DB::disableQueryLog();
+
+    expect($queries)->toHaveCount(1)
+        ->and($urls[0])->not->toBeNull()
+        ->and($urls[1])->not->toBe($urls[0]);
+});
+
 test('the library details panel names the logo usage and links it only to users who may edit the settings', function () {
     $media = logoMedia();
     app(SetLogo::class)->handle(logoAdmin(), 'dark', $media->id);

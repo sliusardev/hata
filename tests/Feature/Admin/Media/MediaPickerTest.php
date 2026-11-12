@@ -62,10 +62,12 @@ it('narrows the library by search, month and folder and loads 30 files at a time
     $old = Media::factory()->image()->create(['name' => 'old-shot.webp', 'created_at' => now()->subYear()]);
 
     $picker = testPicker()->call('openPicker');
-    expect($picker->instance()->files)->toHaveCount(30);
+    expect($picker->instance()->files)->toHaveCount(30)
+        ->and($picker->instance()->hasMore)->toBeTrue();
 
     $picker->call('loadMore');
-    expect($picker->instance()->files)->toHaveCount(33);
+    expect($picker->instance()->files)->toHaveCount(33)
+        ->and($picker->instance()->hasMore)->toBeFalse();
 
     $picker->set('search', 'brand-mark');
     expect($picker->instance()->files->modelKeys())->toBe([$inFolder->id]);
