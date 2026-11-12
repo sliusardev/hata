@@ -1,16 +1,20 @@
+{{-- The settings page needs the config for its "Check again" button even when no check is due (then `auto` is false). --}}
 @php
     $mediaDirectProbe = null;
+    $forceMediaDirectProbe = $forceMediaDirectProbe ?? request()->routeIs('admin.settings.edit');
 
     if (auth()->user()?->can('settings.edit') && \App\Support\Media\MediaDisks::publishes((string) config('media.disk'))) {
         $directServing = app(\App\Support\Media\DirectServing::class);
 
-        if ($directServing->dueForCheck()) {
+        $due = $directServing->dueForCheck();
+
+        if ($due || $forceMediaDirectProbe) {
             try {
                 $mediaDirectProbe = [
                     'url' => $directServing->probeUrl(),
                     'token' => $directServing->probeToken(),
                     'report' => route('admin.media.direct-check'),
-                    'auto' => true,
+                    'auto' => $due,
                 ];
             } catch (\Throwable $exception) {
                 report($exception);

@@ -89,7 +89,7 @@ class SiteSettingsForm extends Form
     /**
      * Where new files go: "local" or "s3".
      */
-    public string $media_storage = 'local';
+    public string $media_storage = 'public';
 
     public string $media_s3_endpoint = '';
 
@@ -141,7 +141,7 @@ class SiteSettingsForm extends Form
         $this->media_keep_originals = (bool) config('media.optimize.keep_originals');
         $this->media_max_image_mb = (string) config('media.limits.image_mb');
         $this->media_max_document_mb = (string) config('media.limits.document_mb');
-        $this->media_storage = config('media.disk') === 's3' ? 's3' : 'local';
+        $this->media_storage = config('media.disk') === 's3' ? 's3' : 'public';
         $this->media_s3_endpoint = (string) config('filesystems.disks.s3.endpoint');
         $this->media_s3_region = (string) config('filesystems.disks.s3.region');
         $this->media_s3_bucket = (string) config('filesystems.disks.s3.bucket');
@@ -266,7 +266,7 @@ class SiteSettingsForm extends Form
             'media_strip_exif' => ['boolean'],
             'media_client_resize' => ['boolean'],
             'media_keep_originals' => ['boolean'],
-            'media_storage' => ['required', Rule::in(['local', 's3'])],
+            'media_storage' => ['required', Rule::in(['public', 's3'])],
             'media_s3_endpoint' => ['nullable', 'url:http,https', 'max:255'],
             'media_s3_region' => ['nullable', 'required_if:media_storage,s3', 'string', 'max:64'],
             'media_s3_bucket' => ['nullable', 'required_if:media_storage,s3', 'string', 'max:255'],

@@ -1,9 +1,12 @@
 <?php
 
+use App\Actions\Media\CreateStorageLink;
 use App\Actions\Settings\TestStorageConnection;
+use App\Exceptions\StorageLinkException;
 use App\Models\Media;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Media\DirectServing;
 use App\Support\Media\MediaDisks;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Crypt;
@@ -154,7 +157,7 @@ it('saves the connection fields without a test while the storage stays local', f
     $test = fakeConnectionTest(['ok' => false, 'step' => 'endpoint', 'message' => 'x']);
 
     storageTab()
-        ->set(s3FormInput(['form.media_storage' => 'local']))
+        ->set(s3FormInput(['form.media_storage' => 'public']))
         ->call('save')
         ->assertHasNoErrors();
 
@@ -243,7 +246,7 @@ it('refuses to clear the connection while files are on s3', function () {
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
-        ->set(s3FormInput(['form.media_storage' => 'local', 'form.media_s3_bucket' => '', 'form.media_s3_key' => '']))
+        ->set(s3FormInput(['form.media_storage' => 'public', 'form.media_s3_bucket' => '', 'form.media_s3_key' => '']))
         ->call('save')
         ->assertHasErrors('form.media_s3_bucket');
 
@@ -398,10 +401,80 @@ it('lets the storage go back to local while files are on s3, without testing the
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
-        ->set('form.media_storage', 'local')
+        ->set('form.media_storage', 'public')
         ->call('save')
         ->assertHasNoErrors();
 
     expect($test->calls)->toBe([])
-        ->and(Setting::query()->where('key', 'media_storage')->value('value'))->toBe('local');
+        ->and(Setting::query()->where('key', 'media_storage')->value('value'))->toBe('public');
+});
+
+it('accepts public and s3 as the storage and rejects local', function () {
+    storageTab()->set('form.media_storage', 'local')->call('save')->assertHasErrors('form.media_storage');
+
+    storageTab()->set('form.media_storage', 'public')->call('save')->assertHasNoErrors();
+});
+
+it('loads the storage as public unless the disk is s3', function () {
+    config(['media.disk' => 'local']);
+    storageTab()->assertSet('form.media_storage', 'public');
+
+    config(['media.disk' => 'public']);
+    storageTab()->assertSet('form.media_storage', 'public');
+
+    config(['media.disk' => 's3']);
+    storageTab()->assertSet('form.media_storage', 's3');
+});
+
+describe('direct serving status', function () {
+    beforeEach(fn () => config(['media.disk' => 'public']));
+
+    it('shows the status line and the right button for each state', function (string $state, bool $linked, bool $confirmed, bool $create, bool $check) {
+        DirectServing::fake(linked: $linked, confirmed: $confirmed, state: $state);
+
+        $component = storageTab()->assertSeeHtml('data-test="direct-status-'.$state.'"');
+
+        $create ? $component->assertSeeHtml('data-test="create-storage-link"') : $component->assertDontSeeHtml('data-test="create-storage-link"');
+        $check ? $component->assertSeeHtml('data-test="check-direct"') : $component->assertDontSeeHtml('data-test="check-direct"');
+    })->with([
+        'direct' => ['direct', true, true, false, false],
+        'unchecked' => ['unchecked', true, false, false, true],
+        'link missing' => ['link_missing', false, false, true, false],
+        'unreachable' => ['unreachable', true, false, false, true],
+    ]);
+
+    it('names the probed address when the files are unreachable', function () {
+        DirectServing::fake(state: 'unreachable');
+
+        storageTab()->assertSee(__('site_settings.media.storage.direct.unreachable', ['url' => app(DirectServing::class)->probeUrl()]));
+    });
+
+    it('hides the status while the saved storage is not this server', function () {
+        config(['media.disk' => 's3']);
+        DirectServing::fake(state: 'link_missing');
+
+        storageTab()->assertDontSeeHtml('data-test="direct-status-link_missing"');
+    });
+
+    it('creates the storage link and toasts', function () {
+        DirectServing::fake(state: 'link_missing');
+        $this->mock(CreateStorageLink::class)->shouldReceive('handle')->once();
+
+        storageTab()->call('createStorageLink')->assertHasNoErrors()->assertDispatched('toast-show');
+    });
+
+    it('toasts the failure message when the link cannot be created', function () {
+        DirectServing::fake(state: 'link_missing');
+        $this->mock(CreateStorageLink::class)->shouldReceive('handle')->once()->andThrow(new StorageLinkException('No link for you.'));
+
+        storageTab()->call('createStorageLink')->assertDispatched('toast-show', fn ($event, $params) => str_contains(json_encode($params), 'No link for you.'));
+    });
+
+    it('renders the probe config on the settings page even when no check is due', function () {
+        DirectServing::fake(state: 'direct');
+
+        $this->get(route('admin.settings.edit', ['tab' => 'media']))
+            ->assertOk()
+            ->assertSee('window.mediaDirectProbe', false);
+    });
 });

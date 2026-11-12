@@ -4,6 +4,7 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\MediaUsage;
 use App\Models\User;
+use App\Support\Media\DirectServing;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -295,4 +296,40 @@ it('shows the stable app url in the details panel even for a direct cloud file',
         ->call('select', $media->id)
         ->assertSeeHtml('value="'.$media->appUrl().'"')
         ->assertDontSeeHtml('value="'.$media->url().'"');
+});
+
+describe('direct serving warning', function () {
+    beforeEach(function () {
+        config(['media.disk' => 'public']);
+        $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'settings.edit'])->create());
+    });
+
+    it('warns settings editors when the storage link is missing or the files are unreachable', function (string $state) {
+        DirectServing::fake(state: $state);
+
+        $this->get(route('admin.media.index'))
+            ->assertOk()
+            ->assertSee(__('media.index.direct_warning'))
+            ->assertSee(route('admin.settings.edit', ['tab' => 'media']), false);
+    })->with(['link_missing', 'unreachable']);
+
+    it('stays quiet while direct serving works or has not been checked', function (string $state) {
+        DirectServing::fake(state: $state);
+
+        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('media.index.direct_warning'));
+    })->with(['direct', 'unchecked']);
+
+    it('stays quiet without settings.edit', function () {
+        $this->actingAs(mediaViewer());
+        DirectServing::fake(state: 'link_missing');
+
+        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('media.index.direct_warning'));
+    });
+
+    it('stays quiet when the site disk is not served by this server', function () {
+        config(['media.disk' => 's3']);
+        DirectServing::fake(state: 'link_missing');
+
+        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('media.index.direct_warning'));
+    });
 });

@@ -5,6 +5,8 @@ return [
     'index' => [
         'title' => 'Media library',
         'description' => 'Images and documents for pages and posts.',
+        'direct_warning' => 'Images are served through the application because the web server does not serve the storage folder directly. Pages load slower than they could.',
+        'direct_warning_link' => 'Open the storage settings',
         'search' => 'Search by name or alt text',
         'file_count' => ':count file|:count files',
         'unused' => 'unused',

@@ -34,13 +34,14 @@ class DirectServing
 
     /**
      * Replace the container's instance with one that gives fixed answers: `$linked` false is `link_missing`,
-     * linked but not `$confirmed` is `unchecked`, both is `direct`. For tests.
+     * linked but not `$confirmed` is `unchecked`, both is `direct`. An explicit `$state` (a `STATE_*` constant, for
+     * `unreachable`, which the flags cannot express) wins over the flags. For tests.
      */
-    public static function fake(bool $linked = true, bool $confirmed = true): void
+    public static function fake(bool $linked = true, bool $confirmed = true, ?string $state = null): void
     {
-        app()->instance(self::class, new class(app(SiteSettings::class), $linked, $confirmed) extends DirectServing
+        app()->instance(self::class, new class(app(SiteSettings::class), $linked, $confirmed, $state) extends DirectServing
         {
-            public function __construct(SiteSettings $settings, private readonly bool $fakeLinked, private readonly bool $fakeConfirmed)
+            public function __construct(SiteSettings $settings, private readonly bool $fakeLinked, private readonly bool $fakeConfirmed, private readonly ?string $fakeState)
             {
                 parent::__construct($settings);
             }
@@ -52,7 +53,7 @@ class DirectServing
 
             public function state(): string
             {
-                return match (true) {
+                return $this->fakeState ?? match (true) {
                     ! $this->fakeLinked => self::STATE_LINK_MISSING,
                     $this->fakeConfirmed => self::STATE_DIRECT,
                     default => self::STATE_UNCHECKED,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Media\CreateStorageLink;
 use App\Actions\Media\OptimizeImage;
 use App\Actions\Settings\RemoveLogo;
 use App\Actions\Settings\UpdateSiteSettings;
@@ -7,11 +8,13 @@ use App\Actions\Settings\SetLogo;
 use App\Actions\Settings\TestStorageConnection;
 use App\Enums\SystemRole;
 use App\Exceptions\ProtectedActionException;
+use App\Exceptions\StorageLinkException;
 use App\Exceptions\StorageSettingsException;
 use App\Livewire\Forms\SiteSettingsForm;
 use App\Support\ColorScheme\ColorScheme;
 use App\Models\Media;
 use App\Models\Role;
+use App\Support\Media\DirectServing;
 use App\Support\Media\MediaDisks;
 use App\Support\Media\OptimizationRun;
 use App\Support\Media\OptimizationRunStore;
@@ -512,6 +515,33 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     /**
+     * Whether the saved local storage is served as static files, one of the DirectServing states.
+     */
+    #[Computed]
+    public function directState(): string
+    {
+        return app(DirectServing::class)->state();
+    }
+
+    /**
+     * Create the `public/storage` link, then probe it in the browser so the status line settles right away.
+     */
+    public function createStorageLink(CreateStorageLink $createStorageLink): void
+    {
+        try {
+            $createStorageLink->handle(Auth::user());
+        } catch (StorageLinkException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
+
+            return;
+        }
+
+        unset($this->directState);
+        Flux::toast(variant: 'success', text: __('site_settings.media.storage.direct.link_created'));
+        $this->js('window.checkMediaDirect().then(() => $wire.$refresh())');
+    }
+
+    /**
      * Try the storage with the values in the form (saved or not).
      */
     public function testStorageConnection(TestStorageConnection $connectionTest): void
@@ -843,10 +873,23 @@ new #[Title('site_settings.title')] class extends Component {
             <flux:heading level="2">{{ __('site_settings.media.storage.section') }}</flux:heading>
 
             <flux:radio.group wire:model.live="form.media_storage" :label="__('site_settings.media.storage.where')" :description="__('site_settings.media.storage.where_description')">
-                <flux:radio value="local" :label="__('site_settings.media.storage.local')" :description="__('site_settings.media.storage.local_description')" />
+                <flux:radio value="public" :label="__('site_settings.media.storage.public')" :description="__('site_settings.media.storage.public_description')" />
                 <flux:radio value="s3" :label="__('site_settings.media.storage.s3')" :description="__('site_settings.media.storage.s3_description')" />
             </flux:radio.group>
             <flux:error name="form.media_storage" />
+
+            @if (MediaDisks::publishes((string) config('media.disk')))
+                @php($directState = $this->directState)
+                <div class="flex flex-wrap items-center gap-3" x-data="{ checking: false }" data-test="direct-status-{{ $directState }}">
+                    <flux:text @class(['max-w-prose', 'text-amber-600 dark:text-amber-400' => in_array($directState, ['link_missing', 'unreachable'], true)])>{{ __('site_settings.media.storage.direct.'.$directState, ['url' => app(DirectServing::class)->probeUrl()]) }}</flux:text>
+
+                    @if ($directState === 'link_missing')
+                        <flux:button size="sm" wire:click="createStorageLink" data-test="create-storage-link">{{ __('site_settings.media.storage.direct.create_link') }}</flux:button>
+                    @elseif ($directState !== 'direct')
+                        <flux:button size="sm" x-bind:disabled="checking" x-on:click="checking = true; window.checkMediaDirect().then(() => $wire.$refresh()).finally(() => checking = false)" data-test="check-direct">{{ __('site_settings.media.storage.direct.check_again') }}</flux:button>
+                    @endif
+                </div>
+            @endif
 
             @if ($this->filesOnOtherDisk > 0)
                 <flux:callout icon="information-circle" variant="secondary" data-test="files-on-other-disk">

@@ -1441,6 +1441,15 @@ new #[Title('media.index.title')] class extends Component {
         @endif
     </div>
 
+    @if (auth()->user()->can('settings.edit') && \App\Support\Media\MediaDisks::publishes((string) config('media.disk')) && in_array(app(\App\Support\Media\DirectServing::class)->state(), ['link_missing', 'unreachable'], true))
+        <flux:callout icon="exclamation-triangle" variant="warning" data-test="direct-warning">
+            <flux:callout.text>
+                {{ __('media.index.direct_warning') }}
+                <flux:link :href="route('admin.settings.edit', ['tab' => 'media'])" wire:navigate>{{ __('media.index.direct_warning_link') }}</flux:link>
+            </flux:callout.text>
+        </flux:callout>
+    @endif
+
     <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
         <flux:input
             wire:model.live.debounce.300ms="search"
