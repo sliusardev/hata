@@ -259,6 +259,23 @@ it('says how many files are on the other disk', function () {
     storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
 });
 
+it('does not count files that belong on the private disk as being on the other disk', function () {
+    config(['media.disk' => 'public']);
+    Media::factory()->document()->create(['disk' => 'local']);
+    Media::factory()->create(['disk' => 'local', 'mime' => 'image/svg+xml']);
+    Media::factory()->create(['disk' => 'public']);
+
+    storageTab()->assertDontSee('data-test="files-on-other-disk"', escape: false);
+});
+
+it('counts rasters on the private disk and anything on s3 as being on the other disk', function () {
+    config(['media.disk' => 'public']);
+    Media::factory()->create(['disk' => 'local']);
+    Media::factory()->document()->create(['disk' => 's3']);
+
+    storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
+});
+
 it('links the files on the other disk to the move page for users who may move them', function () {
     Media::factory()->create(['disk' => 's3']);
 

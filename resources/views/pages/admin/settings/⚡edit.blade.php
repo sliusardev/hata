@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Media\CreateStorageLink;
+use App\Actions\Media\MoveMediaToDisk;
 use App\Actions\Media\OptimizeImage;
 use App\Actions\Settings\RemoveLogo;
 use App\Actions\Settings\UpdateSiteSettings;
@@ -506,12 +507,12 @@ new #[Title('site_settings.title')] class extends Component {
     }
 
     /**
-     * Number of media files on a disk other than the one new uploads go to.
+     * Number of media files the move page would offer for the saved storage: files not where an upload would put them.
      */
     #[Computed]
     public function filesOnOtherDisk(): int
     {
-        return Media::query()->where('disk', '!=', config('media.disk'))->count();
+        return MoveMediaToDisk::candidates((string) config('media.disk'))->count();
     }
 
     /**

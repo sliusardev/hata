@@ -87,7 +87,7 @@ class SiteSettingsForm extends Form
     public string $media_max_document_mb = '20';
 
     /**
-     * Where new files go: "local" or "s3".
+     * Where new files go: "public" (this server) or "s3".
      */
     public string $media_storage = 'public';
 
