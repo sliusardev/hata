@@ -49,6 +49,7 @@ Switching tabs while the open one has unsaved changes (compared with the values 
 - **Public registration:** switch. Fortify always registers the registration routes; `App\Http\Middleware\EnsureRegistrationIsEnabled` (in `fortify.middleware`) answers 404 while it's off, and the "Sign up" links check the setting.
 - **Role of new users:** "No role" or any role except super-admin. Roles the actor can't assign (rule 5, `RolePolicy::assign`) are disabled. A warning is shown when the role has `admin.access`. `CreateNewUser` gives the role and never gives super-admin.
 - **Email:** sender address (required, email) and name (required). Sending method "Server settings (.env)" or "SMTP server". With SMTP: host and port (1–65535) required, encryption STARTTLS (`smtp`) or SSL/TLS (`smtps`), username, password. The password is stored encrypted with `APP_KEY` (a row that can't be decrypted is ignored), is never sent to the browser, and an empty field keeps the stored one. Choosing the server method deletes every SMTP setting.
+  - Layout (2026-11-12): the SMTP fields sit in a bordered block: server, port and encryption on one row (3/1/2 of six columns; the span is on a wrapper `<div>`, because a class on a Flux field with a label goes to the input, not the grid cell), login and password below. "Send a test email" is its own block under the Save button, with its hint next to the button.
 - **Send a test email** (Email tab only): to the current user's address with the saved settings (not the unsaved form). A transport error is shown in a danger toast.
 - After saving: a full redirect back to the same tab (so the layout shows the new site name) with a success toast.
 
@@ -99,3 +100,15 @@ Details of the settings and their defaults are in [the media spec](media.md#site
 | `SetLogo` | `settings.edit` | stores a library file's id as the logo and records the usage (`assign()` does it without checks, for the import migration) |
 | `RemoveLogo` | `settings.edit` | removes the setting and its usage; the file stays |
 | `UpdateSiteSettings` | `settings.edit` | stores only the keys it's given (one tab); the role of new users must be assignable by the actor and not super-admin (`ProtectedActionException`, shown as a field error) |
+
+## Config cache
+
+`php artisan config:cache`, `php artisan optimize` and the maintenance page's "Rebuild caches" never apply the
+stored settings while they build `bootstrap/cache/config.php` (`SiteSettings::buildingConfigCache()`,
+switched by the console's `CommandStarting`/`CommandFinished` events in `AppServiceProvider`, and by
+`SiteSettings::withoutApplying()` on the page). Laravel boots a fresh application to collect the config;
+applying the settings to it would freeze them into the cache file: a setting removed later would keep its old
+value, and the decrypted SMTP password and S3 secret would be written there. The cache holds the `.env`-level
+values, and the stored settings are applied over them on every request as before. See
+[Maintenance page](maintenance.md).
+
