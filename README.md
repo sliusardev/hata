@@ -26,6 +26,7 @@ Configure the database in `.env` (SQLite works out of the box with `DB_CONNECTIO
 
 ```bash
 php artisan migrate
+php artisan storage:link # lets the web server serve the uploaded images directly
 php artisan db:seed      # creates the permissions and the system roles
 php artisan admin:create # creates the first super admin
 npm install && npm run build
@@ -38,7 +39,8 @@ npm install && npm run build
 1. Build the frontend locally (`npm run build`) and upload `public/build` together with the code.
 2. Set `ADMIN_NAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`.
 3. Run the migrations and the seeder from your hosting control panel (`php artisan migrate --force && php artisan db:seed --force`). The seeder creates that super admin if it does not exist yet.
-4. Remove `ADMIN_PASSWORD` from `.env` after the first deploy.
+4. Create the storage link (`php artisan storage:link`) if the panel can run it. Otherwise open Admin → Site settings → Media and press "Create the storage link"; images work without it, only more slowly.
+5. Remove `ADMIN_PASSWORD` from `.env` after the first deploy.
 
 No job needs a worker. On hosting without workers, set `QUEUE_CONNECTION=sync`: long media tasks (optimizing or moving existing files) then run in the open admin page, or with `php artisan media:optimize` / `media:move-disk` over SSH. With a real queue, run a worker and use one shared cache store (database, redis or file, not `array`) because media jobs use cache locks.
 
@@ -103,12 +105,28 @@ The site settings page also holds the site name, default language, timezone, ema
 
 ## Media library
 
-Admin → Media stores images and documents on a private disk and serves them through the app, so `php artisan storage:link` is not needed.
+Admin → Media stores raster images (and their thumbnails) on Laravel's `public` disk and serves them as static files, so PHP does not run for them; this needs `php artisan storage:link`. SVG, documents and the kept originals stay on a private disk and are always served through the app (see "Serving images" below).
 
 - **Image extension:** PHP needs GD or Imagick, with WebP support, to optimize uploaded images. AVIF and HEIC need an Imagick build that can decode them. HEIC is never stored as HEIC: Safari converts it to JPEG in the browser, otherwise the server converts it to WebP (JPEG when the format setting keeps the original). Without such an Imagick, AVIF is stored as it is, and a HEIC the browser could not convert is refused with a hint to export it as JPG.
 - **Upload limits:** the default limits are 30 MB per image and 20 MB per document (`config/media.php`). Set `upload_max_filesize` and `post_max_size` in `php.ini` to at least `32M`, or uploads fail before the app sees them. The Media tab shows the cap the server actually allows.
-- **Optional S3-compatible storage:** by default files stay on the server. Under Admin → Site settings → Media you can send new uploads to S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces or MinIO (endpoint, region, bucket, keys, path-style for MinIO, optional public/CDN URL; "Test connection" checks them; `AWS_*` in `.env` work as defaults). The adapter `league/flysystem-aws-s3-v3` is already installed. Existing files move between the two with Admin → Media → move page or `php artisan media:move-disk s3|local`. The app keeps serving SVG itself and signs document links, so the bucket can stay private unless you set a public URL. For a long queue move, set `DB_QUEUE_RETRY_AFTER` above 1845 (see `docs/specs/media.md`, Known limitations). `php artisan media:prune-deleted` runs daily from the scheduler and removes replaced cloud objects after 7 days; without a cron the batches and the library page do it.
+- **Optional S3-compatible storage:** by default files stay on the server. Under Admin → Site settings → Media you can send new uploads to S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces or MinIO (endpoint, region, bucket, keys, path-style for MinIO, optional public/CDN URL; "Test connection" checks them; `AWS_*` in `.env` work as defaults). The adapter `league/flysystem-aws-s3-v3` is already installed. Existing files move between the two with Admin → Media → move page or `php artisan media:move-disk s3|public`. The app keeps serving SVG itself and signs document links, so the bucket can stay private unless you set a public URL. For a long queue move, set `DB_QUEUE_RETRY_AFTER` above 1845 (see `docs/specs/media.md`, Known limitations). `php artisan media:prune-deleted` runs daily from the scheduler and removes replaced cloud objects after 7 days; without a cron the batches and the library page do it.
+- **Serving images:** see the section below.
 - **Memory:** very large photos that don't fit in `memory_limit` are stored without optimization, with a note in the file details.
+
+### Serving images
+
+Without the storage link nothing breaks: the same images are served through the app, which is just slower. The admin shows a warning in the media library to users who may edit site settings, and Admin → Site settings → Media has a "Create the storage link" button (and "Check again", which asks the browser to fetch a test file and so also catches a web server that does not follow symlinks or a wrong `APP_URL`). Until the first administrator opens an admin page after installation, images also go through the app.
+
+Static files get their cache headers from the web server. Apache gets them from `public/.htaccess` (one week, only for images under `storage/media/`), so there is nothing to do. On nginx, add this to the site's `server` block, before the generic `location /`:
+
+```nginx
+location ^~ /storage/media/ {
+    add_header Cache-Control "public, max-age=604800";
+    try_files $uri /index.php?$query_string;
+}
+```
+
+The `try_files` fallback sends a request for a missing file to Laravel, so an address that was handed out before the link broke still answers. Without these rules browsers still cache the files, because the file names change with every edit.
 
 ## Development
 

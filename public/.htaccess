@@ -23,3 +23,13 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Let browsers cache the static images that Laravel's public disk serves under /storage/media/ for a week.
+# The file names carry the media version, so a changed image always gets a new address.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(webp|jpe?g|png|gif|avif)$">
+        <If "%{REQUEST_URI} =~ m#^/storage/media/#">
+            Header set Cache-Control "public, max-age=604800"
+        </If>
+    </FilesMatch>
+</IfModule>

@@ -1,6 +1,6 @@
 # Media library: local images served by the web server — design
 
-> Status: design, not built.
+> Status: built on branch `media-direct-local`. The current behaviour is in `docs/specs/media.md` and `docs/specs/site-settings.md`; this document keeps the intent and the reasons.
 
 Date: 2026-11-12. Builds on `docs/specs/media.md` ("Storage disks", the serving route, "Move files between disks"), `docs/specs/site-settings.md` (Media tab) and CLAUDE.md decisions 41, 45, 50 and 51. Read those first; this document overrides them where it says so.
 
