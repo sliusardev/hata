@@ -173,6 +173,14 @@ class Media extends Model
         return Storage::disk($this->disk)->url($path).'?v='.$this->version;
     }
 
+    /**
+     * The disk that keeps this file's original: the private disk when the file itself is served publicly.
+     */
+    public function originalsDisk(): string
+    {
+        return MediaDisks::originalsDisk($this->disk);
+    }
+
     public function isImage(): bool
     {
         return $this->kind === MediaKind::Image;

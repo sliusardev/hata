@@ -2,12 +2,20 @@
 
 namespace App\Support\Media;
 
+use App\Enums\MediaKind;
+
 /**
  * What the media code needs to know about a filesystem disk: whether files on it are reached over the network
  * (so direct URLs and signed links apply) and the public/CDN URL it is configured with.
  */
 class MediaDisks
 {
+    /** The local disk whose files are served straight by the web server (a `/storage` symlink). */
+    public const string PUBLIC = 'public';
+
+    /** The local disk nobody can reach over HTTP: originals, SVG and documents when the site disk is `public`. */
+    public const string PRIVATE = 'local';
+
     /**
      * Whether files on the disk live off this server: the disk's configured driver is anything but `local`.
      * An unknown disk is not a cloud disk.
@@ -17,6 +25,45 @@ class MediaDisks
         $driver = config("filesystems.disks.{$disk}.driver");
 
         return is_string($driver) && $driver !== 'local';
+    }
+
+    /**
+     * Whether files on the disk are served as static files by this server: a local driver with a public URL.
+     */
+    public static function publishes(string $disk): bool
+    {
+        return config("filesystems.disks.{$disk}.driver") === 'local' && self::publicUrl($disk) !== null;
+    }
+
+    /**
+     * Whether object paths on the disk carry the version (`{key}-v{version}`): when a CDN, a browser or a static
+     * file server may cache by path, so a rebuild must write a new path instead of overwriting.
+     */
+    public static function versionsPaths(string $disk): bool
+    {
+        return self::isCloud($disk) || self::publishes($disk);
+    }
+
+    /**
+     * The disk that keeps the originals of files on `$disk`: the private disk when `$disk` is served publicly (an
+     * original must never be reachable by URL), else the disk itself.
+     */
+    public static function originalsDisk(string $disk): string
+    {
+        return self::publishes($disk) ? self::PRIVATE : $disk;
+    }
+
+    /**
+     * The disk a new file is stored on, given the site's media disk: on a publishing disk only raster images go
+     * there, while SVG (always streamed with a sandbox) and documents stay on the private disk.
+     */
+    public static function diskFor(string $siteDisk, MediaKind $kind, string $mime): string
+    {
+        if (! self::publishes($siteDisk)) {
+            return $siteDisk;
+        }
+
+        return $kind === MediaKind::Image && $mime !== 'image/svg+xml' ? $siteDisk : self::PRIVATE;
     }
 
     /**

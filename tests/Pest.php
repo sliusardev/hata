@@ -161,3 +161,14 @@ function fakeCloudDisk(string $disk = 's3'): RecordingDisk
 
     return $recording;
 }
+
+/**
+ * Make the site's media disk the public one: raster images go to the faked `public` disk, originals, SVG and
+ * documents to the faked `local` one.
+ */
+function usePublicMediaDisk(): void
+{
+    Storage::fake('public');
+    Storage::fake('local');
+    config(['media.disk' => 'public']);
+}

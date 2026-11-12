@@ -8,14 +8,17 @@ return [
     |--------------------------------------------------------------------------
     |
     | Filesystem disk (see config/filesystems.php) that stores the media
-    | library files. The default "local" disk is private: files are served
-    | through the application, so shared hosting needs no storage:link.
-    | The admin panel's Media tab can switch it to "s3" (any S3-compatible
-    | storage; connection settings override the AWS_* values of the s3 disk).
+    | library files. The default "public" disk serves raster images as
+    | static files through the storage:link symlink (originals, SVG and
+    | documents stay on the private "local" disk and go through the app).
+    | Set "local" to serve everything through the application, which needs
+    | no symlink. The admin panel's Media tab can switch it to "s3" (any
+    | S3-compatible storage; connection settings override the AWS_* values
+    | of the s3 disk).
     |
     */
 
-    'disk' => env('MEDIA_DISK', 'local'),
+    'disk' => env('MEDIA_DISK', 'public'),
 
     /*
     |--------------------------------------------------------------------------

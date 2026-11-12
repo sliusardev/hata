@@ -9,9 +9,10 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 /**
  * Where media objects are stored and how they are written.
  *
- * On a local disk the paths are the same for every version (`media/{Y/m}/{key}.{ext}`, `media/thumbs/{key}.webp`,
- * `media/originals/{key}.{ext}`), and a rebuild overwrites or deletes them at once. On a cloud disk they carry the
- * version (`{key}-v{version}`), so a CDN that ignores the query string never serves a stale file and a page rendered
+ * On a private local disk the paths are the same for every version (`media/{Y/m}/{key}.{ext}`, `media/thumbs/{key}.webp`,
+ * `media/originals/{key}.{ext}`), and a rebuild overwrites or deletes them at once. On a cloud disk or a disk served
+ * as static files they carry the version
+ * (`{key}-v{version}`), so a CDN that ignores the query string never serves a stale file and a page rendered
  * before a rebuild keeps working while the replaced objects wait for their deferred deletion.
  */
 class MediaPaths
@@ -71,6 +72,6 @@ class MediaPaths
 
     private static function name(string $disk, string $key, int $version): string
     {
-        return MediaDisks::isCloud($disk) ? "{$key}-v{$version}" : $key;
+        return MediaDisks::versionsPaths($disk) ? "{$key}-v{$version}" : $key;
     }
 }
