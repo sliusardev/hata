@@ -93,6 +93,7 @@ return [
         'copied' => 'Link copied.',
         'copy_failed' => 'The browser didn\'t allow copying. The link is selected: press Ctrl+C (⌘C on a Mac) to copy it.',
         'download' => 'Download to your computer',
+        'actions' => 'File actions',
         'crop' => 'Crop',
         'replace' => 'Replace file',
         'restore' => 'Restore original',

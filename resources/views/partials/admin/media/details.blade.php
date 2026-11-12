@@ -202,21 +202,7 @@
             @endif
             <flux:button size="sm" icon="arrow-top-right-on-square" :href="$media->url()" target="_blank" rel="noopener" :aria-label="__('media.details.open')" :tooltip="__('media.details.open')" data-test="media-details-open" />
             <flux:button size="sm" icon="arrow-down-tray" :href="$media->appUrl().'?download=1'" :aria-label="__('media.details.download')" :tooltip="__('media.details.download')" />
-            @if ($canEdit && $media->isEditable())
-                <flux:button size="sm" icon="scissors" :href="route('admin.media.crop', $media)" wire:navigate data-test="media-details-crop">
-                    {{ __('media.details.crop') }}
-                </flux:button>
-            @endif
             @if ($canEdit)
-                <flux:button
-                    size="sm"
-                    icon="arrow-path"
-                    x-on:click="$refs.replaceInput.click()"
-                    x-bind:disabled="replacing"
-                    data-test="media-details-replace"
-                >
-                    <span x-text="replacing ? @js(__('media.replace.working')) : @js(__('media.details.replace'))">{{ __('media.details.replace') }}</span>
-                </flux:button>
                 <input
                     type="file"
                     x-ref="replaceInput"
@@ -224,18 +210,34 @@
                     class="hidden"
                     x-on:change="replaceFile($event.target)"
                 />
-                @if ($media->original_path)
-                    <flux:button size="sm" icon="arrow-uturn-left" wire:click="confirmRestore" data-test="media-details-restore">
-                        {{ __('media.details.restore') }}
-                    </flux:button>
-                @endif
+                <span x-show="replacing" x-cloak role="status" class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('media.replace.working') }}</span>
             @endif
             <flux:spacer />
-            @can('delete', $media)
-                <flux:button size="sm" variant="ghost" icon="trash" class="text-red-600! dark:text-red-400!" wire:click="confirmDelete({{ $media->id }})" data-test="media-details-delete">
-                    {{ __('common.actions.delete') }}
-                </flux:button>
-            @endcan
+            <x-admin.row-actions :label="__('media.details.actions')" data-test="media-details-actions">
+                @if ($canEdit && $media->isEditable())
+                    <flux:menu.item icon="scissors" :href="route('admin.media.crop', $media)" wire:navigate data-test="media-details-crop">
+                        {{ __('media.details.crop') }}
+                    </flux:menu.item>
+                @endif
+                @if ($canEdit)
+                    <flux:menu.item icon="arrow-path" x-on:click="$refs.replaceInput.click()" x-bind:disabled="replacing" data-test="media-details-replace">
+                        {{ __('media.details.replace') }}
+                    </flux:menu.item>
+                    @if ($media->original_path)
+                        <flux:menu.item icon="arrow-uturn-left" wire:click="confirmRestore" data-test="media-details-restore">
+                            {{ __('media.details.restore') }}
+                        </flux:menu.item>
+                    @endif
+                @endif
+                @can('delete', $media)
+                    @if ($canEdit)
+                        <flux:menu.separator />
+                    @endif
+                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $media->id }})" data-test="media-details-delete">
+                        {{ __('common.actions.delete') }}
+                    </flux:menu.item>
+                @endcan
+            </x-admin.row-actions>
         </div>
     </form>
 </aside>
