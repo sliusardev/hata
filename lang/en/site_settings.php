@@ -135,6 +135,10 @@ return [
         'server_cap' => 'The server accepts files up to :size (upload_max_filesize and post_max_size), a higher limit cannot be set here.',
 
         'storage' => [
+            'direct' => [
+                'link_created' => 'The storage link was created.',
+                'link_failed' => 'The storage link could not be created. Run :command on the server.',
+            ],
             'section' => 'Storage',
             'where' => 'Where new files are stored',
             'where_description' => 'Only new uploads go here; files already uploaded stay where they are.',

@@ -70,6 +70,14 @@ class DirectServing
     }
 
     /**
+     * Forget the memoized link check, after the link was created or removed.
+     */
+    public function refresh(): void
+    {
+        $this->linked = null;
+    }
+
+    /**
      * One of the `STATE_*` constants.
      */
     public function state(): string

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\MediaDirectCheckController;
 use App\Http\Controllers\MediaSourcePreviewController;
 use App\Http\Controllers\MediaZipController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,7 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
         Route::get('media/zip', MediaZipController::class)->middleware('can:media.view')->name('media.zip');
         Route::livewire('media/optimize', 'pages::admin.media.optimize')->middleware('can:media.edit')->name('media.optimize');
         Route::livewire('media/move', 'pages::admin.media.move')->middleware('can:media.edit')->name('media.move');
+        Route::post('media/direct-check', MediaDirectCheckController::class)->middleware('can:settings.edit')->name('media.direct-check');
         Route::livewire('media/{media}/crop', 'pages::admin.media.crop')->middleware('can:update,media')->name('media.crop');
         Route::get('media/{media}/source', MediaSourcePreviewController::class)->middleware('can:update,media')->name('media.source');
 

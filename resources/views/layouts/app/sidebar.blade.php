@@ -135,6 +135,7 @@
         @endpersist
 
         <x-flash-toast />
+        @include('partials.media-direct-probe')
 
         @fluxScripts
     </body>
