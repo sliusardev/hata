@@ -8,7 +8,9 @@
     $mediaDirectProbe = null;
     $forceMediaDirectProbe = $forceMediaDirectProbe ?? request()->routeIs('admin.settings.edit');
 
-    if (auth()->user()?->can('settings.edit') && \App\Support\Media\MediaDisks::publishes((string) config('media.disk'))) {
+    if (auth()->user()?->can('settings.edit')
+        && \App\Support\Media\MediaDisks::publishes((string) config('media.disk'))
+        && \App\Support\Media\MediaDisks::publicUrl(\App\Support\Media\MediaDisks::PUBLIC) !== null) {
         $directServing = app(\App\Support\Media\DirectServing::class);
 
         $due = $directServing->dueForCheck();

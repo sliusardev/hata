@@ -57,3 +57,28 @@ it('opts a test into the public media disk', function () {
 
     expect(config('media.disk'))->toBe('public');
 });
+
+it('treats the public disk as publishing by its name even without a url, and no other local disk', function () {
+    config([
+        'filesystems.disks.public.url' => '',
+        'filesystems.disks.assets' => ['driver' => 'local', 'root' => storage_path('app/assets'), 'url' => 'https://example.test/assets'],
+    ]);
+
+    expect(MediaDisks::publishes('public'))->toBeTrue()
+        ->and(MediaDisks::originalsDisk('public'))->toBe('local')
+        ->and(MediaDisks::diskFor('public', MediaKind::Image, 'image/svg+xml'))->toBe('local')
+        ->and(MediaDisks::diskFor('public', MediaKind::Document, 'application/pdf'))->toBe('local')
+        ->and(MediaDisks::publishes('assets'))->toBeFalse()
+        ->and(MediaDisks::publishes('local'))->toBeFalse();
+
+    config(['filesystems.disks.public.driver' => 's3']);
+    expect(MediaDisks::publishes('public'))->toBeFalse();
+});
+
+it('hands out no static url and asks no probe while the public disk has no url', function () {
+    usePublicMediaDisk(direct: true);
+    config(['filesystems.disks.public.url' => null]);
+    $media = Media::factory()->create(['disk' => 'public']);
+
+    expect($media->url())->toBe(route('media.show', [$media->key, $media->name, 'v' => 1]));
+});

@@ -125,11 +125,12 @@ class DirectServing
     }
 
     /**
-     * Whether files on the disk are served by static URLs right now.
+     * Whether files on the disk are served by static URLs right now: a publishing disk with a public URL to build
+     * them from, and a confirmed probe.
      */
     public function active(string $disk): bool
     {
-        return MediaDisks::publishes($disk) && $this->state() === self::STATE_DIRECT;
+        return MediaDisks::publishes($disk) && MediaDisks::publicUrl($disk) !== null && $this->state() === self::STATE_DIRECT;
     }
 
     public function probeUrl(): string

@@ -84,3 +84,30 @@ it('fails with the command to run by hand when the link cannot be created', func
             ->and($exception->getMessage())->not->toContain('media.storage.direct');
     }
 });
+
+it('replaces a stale link that points elsewhere', function () {
+    $base = storageLinkSandbox();
+    File::ensureDirectoryExists($base.'/elsewhere');
+    symlink($base.'/elsewhere', $base.'/web/storage');
+    $actor = User::factory()->withPermissions(['settings.edit'])->create();
+
+    expect(app(DirectServing::class)->linked())->toBeFalse();
+
+    app(CreateStorageLink::class)->handle($actor);
+
+    expect(realpath($base.'/web/storage'))->toBe(realpath($base.'/root'))
+        ->and(app(DirectServing::class)->linked())->toBeTrue();
+});
+
+it('leaves a real directory in the way alone and names the forced command', function () {
+    $base = storageLinkSandbox();
+    File::ensureDirectoryExists($base.'/web/storage');
+    File::put($base.'/web/storage/keep.txt', 'mine');
+    $actor = User::factory()->withPermissions(['settings.edit'])->create();
+
+    expect(fn () => app(CreateStorageLink::class)->handle($actor))
+        ->toThrow(StorageLinkException::class, 'php artisan storage:link --force');
+
+    expect(is_link($base.'/web/storage'))->toBeFalse()
+        ->and(File::get($base.'/web/storage/keep.txt'))->toBe('mine');
+});

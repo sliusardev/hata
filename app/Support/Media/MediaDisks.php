@@ -31,11 +31,14 @@ class MediaDisks
     }
 
     /**
-     * Whether files on the disk are served as static files by this server: a local driver with a public URL.
+     * Whether files on the disk may be reached as static files of this server: the disk named PUBLIC with a local
+     * driver, whatever its URL. Decided by identity, not by URL, because `storage/app/public` is web-reachable through
+     * the link even when the configured URL is blank, so placement must keep SVG, documents and originals off it in
+     * any case. Whether a static URL can be built is DirectServing's question (it needs the URL).
      */
     public static function publishes(string $disk): bool
     {
-        return config("filesystems.disks.{$disk}.driver") === 'local' && self::publicUrl($disk) !== null;
+        return $disk === self::PUBLIC && config("filesystems.disks.{$disk}.driver") === 'local';
     }
 
     /**
