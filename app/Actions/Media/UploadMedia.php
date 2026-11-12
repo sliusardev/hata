@@ -8,6 +8,7 @@ use App\Exceptions\MediaWriteException;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\User;
+use App\Support\Media\MediaDisks;
 use App\Support\Media\MediaNames;
 use App\Support\Media\MediaPaths;
 use App\Support\Media\MediaUploadChecks;
@@ -75,8 +76,8 @@ class UploadMedia
             [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
         }
 
-        $disk = (string) config('media.disk');
-        $storage = Storage::disk($disk);
+        $disk = MediaDisks::diskFor((string) config('media.disk'), $type['kind'], $mime);
+        $originalsDisk = MediaDisks::originalsDisk($disk);
         $key = (string) Str::ulid();
         $version = 1;
         $path = MediaPaths::file($disk, $key, $version, $extension, now());
@@ -88,10 +89,10 @@ class UploadMedia
         $written = [];
 
         try {
-            foreach ([[$path, $contents, $mime], [$originalPath, $original ?? null, $type['mime']], [$thumbPath, $thumbnail, 'image/webp']] as [$target, $bytes, $targetMime]) {
+            foreach ([[$path, $contents, $mime, $disk], [$originalPath, $original ?? null, $type['mime'], $originalsDisk], [$thumbPath, $thumbnail, 'image/webp', $disk]] as [$target, $bytes, $targetMime, $targetDisk]) {
                 if ($target !== null && $bytes !== null) {
-                    $written[] = $target;
-                    MediaPaths::write($storage, $disk, $target, $bytes, $targetMime);
+                    $written[$targetDisk][] = $target;
+                    MediaPaths::write(Storage::disk($targetDisk), $targetDisk, $target, $bytes, $targetMime);
                 }
             }
 
@@ -118,10 +119,12 @@ class UploadMedia
             $media->key = $key;
             $media->save();
         } catch (Throwable $e) {
-            try {
-                $storage->delete($written);
-            } catch (Throwable) {
-                // The original exception matters more than a failed cleanup.
+            foreach ($written as $writtenDisk => $files) {
+                try {
+                    Storage::disk((string) $writtenDisk)->delete($files);
+                } catch (Throwable) {
+                    // The original exception matters more than a failed cleanup.
+                }
             }
 
             if ($e instanceof MediaWriteException) {

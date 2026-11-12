@@ -4,6 +4,7 @@ namespace App\Actions\Media;
 
 use App\Models\Media;
 use App\Models\MediaPendingDeletion;
+use App\Support\Media\MediaDisks;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
@@ -71,9 +72,17 @@ class PruneMediaDeletions
      */
     private function usedPaths(string $disk, array $paths): array
     {
+        // Originals of rows on a publishing disk live on the private disk, so rows of other disks may use them too.
+        $originalDisks = Media::query()->distinct()->pluck('disk')
+            ->filter(fn (string $rowDisk): bool => MediaDisks::originalsDisk($rowDisk) === $disk)
+            ->push($disk)
+            ->unique()
+            ->all();
+
         $rows = Media::query()
-            ->where('disk', $disk)
-            ->where(fn ($query) => $query->whereIn('path', $paths)->orWhereIn('thumb_path', $paths)->orWhereIn('original_path', $paths))
+            ->where(fn ($query) => $query
+                ->where(fn ($query) => $query->where('disk', $disk)->where(fn ($query) => $query->whereIn('path', $paths)->orWhereIn('thumb_path', $paths)))
+                ->orWhere(fn ($query) => $query->whereIn('disk', $originalDisks)->whereIn('original_path', $paths)))
             ->get(['path', 'thumb_path', 'original_path']);
 
         return array_values(array_intersect($paths, $rows->flatMap(fn (Media $media): array => [$media->path, $media->thumb_path, $media->original_path])->all()));

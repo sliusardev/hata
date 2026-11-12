@@ -27,10 +27,11 @@ final readonly class MediaSource
     public static function for(Media $media): self
     {
         $disk = Storage::disk($media->disk);
+        $originals = Storage::disk($media->originalsDisk());
         $original = $media->original_path;
 
-        if ($original !== null && $original !== '' && $disk->exists($original)) {
-            $contents = (string) $disk->get($original);
+        if ($original !== null && $original !== '' && $originals->exists($original)) {
+            $contents = (string) $originals->get($original);
 
             return new self($contents, MediaTypes::sniff($contents, $original) ?? $media->mime, isOriginal: true);
         }

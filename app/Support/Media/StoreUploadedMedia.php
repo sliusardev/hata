@@ -81,18 +81,25 @@ class StoreUploadedMedia
      */
     private function discard(Media $media): void
     {
-        $files = array_values(array_filter([$media->path, $media->original_path, $media->thumb_path]));
-        $disk = $media->disk;
+        $filesByDisk = [];
+
+        foreach ([[$media->disk, $media->path], [$media->originalsDisk(), $media->original_path], [$media->disk, $media->thumb_path]] as [$disk, $file]) {
+            if ($file !== null && $file !== '') {
+                $filesByDisk[$disk][] = $file;
+            }
+        }
 
         try {
-            DB::transaction(function () use ($media, $files, $disk): void {
+            DB::transaction(function () use ($media, $filesByDisk): void {
                 $media->delete();
 
-                DB::afterCommit(function () use ($files, $disk): void {
-                    try {
-                        Storage::disk($disk)->delete($files);
-                    } catch (Throwable $exception) {
-                        report($exception);
+                DB::afterCommit(function () use ($filesByDisk): void {
+                    foreach ($filesByDisk as $disk => $files) {
+                        try {
+                            Storage::disk((string) $disk)->delete($files);
+                        } catch (Throwable $exception) {
+                            report($exception);
+                        }
                     }
                 });
             });

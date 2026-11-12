@@ -5,6 +5,7 @@ namespace App\Actions\Media;
 use App\Models\Media;
 use App\Models\MediaUsage;
 use App\Models\User;
+use App\Support\Media\MediaDisks;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -43,9 +44,11 @@ class DeleteMedia
                 $stored = Media::query()->whereKey($ids)->lockForUpdate()->get(['id', 'disk', 'path', 'original_path', 'thumb_path']);
 
                 foreach ($stored as $row) {
-                    foreach ([$row->path, $row->original_path, $row->thumb_path] as $file) {
+                    $originalsDisk = MediaDisks::originalsDisk($row->disk);
+
+                    foreach ([[$row->disk, $row->path], [$originalsDisk, $row->original_path], [$row->disk, $row->thumb_path]] as [$fileDisk, $file]) {
                         if ($file !== null && $file !== '') {
-                            $filesByDisk[$row->disk][] = $file;
+                            $filesByDisk[$fileDisk][] = $file;
                         }
                     }
                 }
