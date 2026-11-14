@@ -1,0 +1,161 @@
+/**
+ * Alpine component of the record form (resources/views/partials/admin/content/entry-form.blade.php).
+ *
+ * Runs in the browser without a request: the address prefix (it follows the parent select), the search preview,
+ * the leave-page warning, Ctrl/Cmd+S and scrolling to the first error. The one request is the slug suggestion,
+ * 400 ms after the title stops changing, while the slug still follows the title (a new record whose slug was not
+ * typed by hand).
+ *
+ * Dirty tracking compares the form's values with those it opened with, except the rich text ones: the editor's
+ * HTML differs from the stored one (image src), so those count as changed only once an editor reports an edit
+ * (the `rich-text:changed` event).
+ */
+export default function entryForm({ readonly, slugFollows, prefix, parentPaths, siteName, nowLocal, editorModels, leaveModal }) {
+    let initial = null;
+    let ticket = 0;
+
+    return {
+        slugFollows: slugFollows && !readonly,
+        editorChanged: false,
+        pendingUrl: null,
+        leaving: false,
+
+        init() {
+            initial = this.snapshot();
+        },
+
+        /**
+         * The form's values without the rich text ones, as a string to compare.
+         */
+        snapshot() {
+            const form = JSON.parse(JSON.stringify(this.$wire.form ?? {}));
+
+            delete form.body;
+            editorModels.forEach((name) => delete form.fields?.[name]);
+
+            return JSON.stringify(form);
+        },
+
+        isDirty() {
+            if (readonly || this.$wire.finished) {
+                return false;
+            }
+
+            return this.editorChanged || this.snapshot() !== initial;
+        },
+
+        addressPrefix() {
+            const path = parentPaths[String(this.$wire.form.parent_id ?? '')];
+
+            return prefix + (path ? `${path}/` : '');
+        },
+
+        async followTitle() {
+            if (!this.slugFollows) {
+                return;
+            }
+
+            const mine = ++ticket;
+            const slug = await this.$wire.suggestSlug();
+
+            // A later suggestion, or a slug typed meanwhile, wins.
+            if (mine === ticket && this.slugFollows && typeof slug === 'string') {
+                this.$wire.set('form.slug', slug, false);
+            }
+        },
+
+        onSlugInput(event) {
+            // Typing takes the slug over; emptying it lets it follow the title again.
+            this.slugFollows = !readonly && event.target.value.trim() === '';
+        },
+
+        onParentChange() {
+            this.followTitle();
+        },
+
+        seoAddress() {
+            const address = (this.addressPrefix() + (this.$wire.form.slug ?? '')).replace(/\/+$/, '');
+
+            return address.split('/').join(' › ');
+        },
+
+        seoTitle() {
+            const own = String(this.$wire.form.seo_title ?? '').trim();
+
+            if (own !== '') {
+                return own;
+            }
+
+            return [String(this.$wire.form.title ?? '').trim(), siteName].filter((part) => part !== '').join(' — ');
+        },
+
+        seoDescription() {
+            const own = String(this.$wire.form.seo_description ?? '').trim();
+
+            return own !== '' ? own : String(this.$wire.form.excerpt ?? '').trim();
+        },
+
+        isScheduled() {
+            const date = String(this.$wire.form.published_at ?? '');
+
+            return this.$wire.form.status === 'published' && date !== '' && date > nowLocal;
+        },
+
+        publishesNow() {
+            return this.$wire.form.status === 'published' && String(this.$wire.form.published_at ?? '') === '';
+        },
+
+        shortcutHint(text) {
+            const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+            return text.replace(':key', mac ? '⌘' : 'Ctrl');
+        },
+
+        onKeydown(event) {
+            if (readonly || !(event.ctrlKey || event.metaKey) || event.altKey || event.key?.toLowerCase() !== 's') {
+                return;
+            }
+
+            event.preventDefault();
+            this.$refs.form.requestSubmit();
+        },
+
+        /**
+         * After a failed save: bring the first field with an error into view (after Livewire has morphed the page).
+         */
+        scrollToError() {
+            requestAnimationFrame(() => {
+                const error = this.$root.querySelector('[data-flux-error]:not(.hidden)');
+
+                if (!error) {
+                    return;
+                }
+
+                const field = error.closest('[data-flux-field]') ?? error.parentElement ?? error;
+                field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                field.querySelector('input:not([type=hidden]), textarea, select')?.focus({ preventScroll: true });
+            });
+        },
+
+        onNavigate(event) {
+            if (!this.leaving && !event.detail.history && this.isDirty()) {
+                event.preventDefault();
+                this.pendingUrl = event.detail.url.toString();
+                this.$flux.modal(leaveModal).show();
+            }
+        },
+
+        onUnload(event) {
+            if (!this.leaving && this.isDirty()) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        },
+
+        leave() {
+            this.leaving = true;
+            this.$flux.modal(leaveModal).close();
+            window.Livewire.navigate(this.pendingUrl);
+        },
+    };
+}

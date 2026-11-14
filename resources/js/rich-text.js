@@ -173,11 +173,21 @@ export function createEditor({ element, content, images, editable, id, labelledB
             attributes,
             transformPastedHTML: cleanPastedHtml,
         },
-        onUpdate,
+        onUpdate: (event) => isContentEdit(event) && onUpdate(),
         onTransaction: ({ transaction }) => onStateChange(transaction),
         onFocus: () => onStateChange(null),
         onBlur: () => onStateChange(null),
     });
+}
+
+/**
+ * Whether an `update` of the editor is an edit: the root transaction itself changed the document. A focus or click
+ * only moves the selection, but the starter kit's trailing node plugin then appends a transaction that adds an
+ * empty paragraph after a body ending with an image, heading, list, quote, code block or rule; Tiptap emits
+ * `update` for that appended change, which is not an edit and must neither be written back nor mark the form dirty.
+ */
+export function isContentEdit({ transaction }) {
+    return Boolean(transaction?.docChanged);
 }
 
 /**
@@ -203,15 +213,40 @@ export function insertImage(chain, state, attributes) {
 
 const FILE_EXTENSION = /^(html?|php|aspx?|jsp|cgi|pdf|jpe?g|png|gif|webp|svg|avif|txt|rtf|docx?|xlsx?|pptx?|odt|ods|csv|xml|json|js|css|md|zip|rar|mp3|mp4)$/i;
 
+const HOST_LABEL = /^[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?$/u;
+
+/**
+ * Whether a host (without port) looks like a web host: dot-separated labels ending in letters that are not a file
+ * extension ("example.com", but not "page.html").
+ */
+function looksLikeHost(host) {
+    const labels = host.split('.');
+    const last = labels[labels.length - 1];
+
+    return labels.length > 1 && labels.every((label) => HOST_LABEL.test(label)) && /^\p{L}{2,}$/u.test(last) && !FILE_EXTENSION.test(last);
+}
+
 /**
  * A typed address made usable: an email gets mailto:, something that starts with www. or looks like a host
- * ("example.com", "example.com/page") gets https://. Everything else is kept as typed: "/page", "#part", "?q=1",
- * any scheme ("mailto:", "tel:", "https:"), and relative file links such as "page.html" or "docs/index.php".
+ * ("example.com", "example.com/page", also with a port: "example.com:8080/x") gets https://. Everything else is kept
+ * as typed: "/page", "#part", "?q=1", any scheme ("mailto:", "tel:", "https:"), and relative file links such as
+ * "page.html" or "docs/index.php".
  */
 export function normalizeHref(value) {
     const href = String(value ?? '').trim();
 
-    if (href === '' || /^[/#?.]/.test(href) || ANY_SCHEME.test(href)) {
+    if (href === '' || /^[/#?.]/.test(href)) {
+        return href;
+    }
+
+    // "example.com:8080/x" matches the scheme pattern ("example.com:"), but a host followed by a port is a host.
+    const withPort = /^([^\s/?#:@]+):\d{1,5}(?:[/?#]|$)/u.exec(href);
+
+    if (withPort && looksLikeHost(withPort[1])) {
+        return `https://${href}`;
+    }
+
+    if (ANY_SCHEME.test(href)) {
         return href;
     }
 
@@ -223,14 +258,5 @@ export function normalizeHref(value) {
         return `https://${href}`;
     }
 
-    const host = href.split(/[/?#]/, 1)[0];
-    const labels = host.split('.');
-    const last = labels[labels.length - 1];
-    const looksLikeHost =
-        labels.length > 1 &&
-        labels.every((label) => /^[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?$/u.test(label)) &&
-        /^\p{L}{2,}$/u.test(last) &&
-        !FILE_EXTENSION.test(last);
-
-    return looksLikeHost ? `https://${href}` : href;
+    return looksLikeHost(href.split(/[/?#]/, 1)[0]) ? `https://${href}` : href;
 }

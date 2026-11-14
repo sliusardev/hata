@@ -3,6 +3,7 @@
 namespace App\Support\Content;
 
 use App\Support\Content\Fields\Field;
+use Illuminate\Support\Facades\Lang;
 
 /**
  * One kind of content: its address segment, permission group, extra fields and tree shape.
@@ -59,6 +60,17 @@ abstract class ContentType
     public function createLabel(): string
     {
         return __("content.types.{$this->key()}.create");
+    }
+
+    /**
+     * The heading of the form for a new record ("New page"), from `content.types.<key>.new`; the create label
+     * when the type has no such line.
+     */
+    public function newLabel(): string
+    {
+        $key = "content.types.{$this->key()}.new";
+
+        return Lang::has($key) ? __($key) : $this->createLabel();
     }
 
     public function perPage(): int

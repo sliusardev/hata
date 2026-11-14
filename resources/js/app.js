@@ -1,4 +1,5 @@
 import copyText from './copy-text.js';
+import entryForm from './entry-form.js';
 import mediaCropper from './media-cropper.js';
 import { emptyClick, escapeKey } from './media-details-close.js';
 import { checkMediaDirect, probeOnLoad } from './media-direct-probe.js';
@@ -18,6 +19,7 @@ window.checkMediaDirect = checkMediaDirect;
 probeOnLoad();
 
 document.addEventListener('alpine:init', () => {
+    window.Alpine.data('entryForm', entryForm);
     window.Alpine.data('mediaCropper', mediaCropper);
     window.Alpine.data('mediaFolderTiles', mediaFolderTiles);
     window.Alpine.data('mediaMarquee', mediaMarquee);

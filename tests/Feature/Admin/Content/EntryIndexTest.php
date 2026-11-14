@@ -136,6 +136,17 @@ test('a hierarchical type is listed in tree order and indented by depth', functi
         ->assertSeeHtml('data-depth="2" data-test="entry-row-'.$lead->id.'"');
 });
 
+test('rows are indented only on the all tab without a search or a missing filter', function () {
+    $this->actingAs(contentViewer());
+    $about = Entry::factory()->published()->create(['title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    $team = Entry::factory()->childOf($about)->published()->create(['title' => 'Team', 'slug' => 'team', 'path' => 'about/team']);
+    $about->update(['status' => EntryStatus::Draft]);
+
+    entryList()->assertSeeHtml('data-depth="1" data-test="entry-row-'.$team->id.'"');
+    entryList(['tab' => 'published'])->assertSeeHtml('data-depth="0" data-test="entry-row-'.$team->id.'"');
+    entryList(['missing' => 'uk'])->assertSeeHtml('data-depth="0" data-test="entry-row-'.$team->id.'"');
+});
+
 test('sorting by title and back to the tree order', function () {
     $this->actingAs(contentViewer());
     Entry::factory()->create(['title' => 'Zebra', 'slug' => 'a-first', 'path' => 'a-first']);

@@ -81,7 +81,16 @@ export default function richText({ model, target, id, images = {}, readonly = fa
             editor = null;
         },
 
+        /**
+         * Called for edits only (a focus or click that makes the editor append an empty paragraph is not one, see
+         * isContentEdit()). The first edit after a write tells the page through the bubbling `rich-text:changed`
+         * event, so a form can count the editor as changed without comparing HTML.
+         */
         queueSync() {
+            if (!pending) {
+                this.$el.dispatchEvent(new CustomEvent('rich-text:changed', { bubbles: true, detail: { model } }));
+            }
+
             pending = true;
             clearTimeout(timer);
             timer = setTimeout(() => this.sync(), SYNC_DELAY);

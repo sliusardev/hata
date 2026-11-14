@@ -389,7 +389,8 @@ new class extends Component {
     $counts = $this->counts;
     $abilities = $this->abilities;
     $inTrash = $tab === 'trash';
-    $indent = $this->listQuery->isTree() && trim($search) === '';
+    // Only the full tree is indented: a status tab or a filter can hide a row's parent.
+    $indent = $this->listQuery->isTree() && $tab === 'all' && trim($search) === '' && $missing === '';
     $showTranslations = $this->multilingual && ! $inTrash;
     $activeCodes = array_map(fn ($language) => $language->code, app(App\Support\Localization\ContentLocales::class)->active());
     $timezone = config('admin.timezone');

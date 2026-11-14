@@ -21,7 +21,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Route;
 
 /**
  * One content record in one language (a page, later a post). Soft deletes are the trash.
@@ -307,11 +306,11 @@ class Entry extends Model implements UsesMedia
     }
 
     /**
-     * The record's edit page, for a viewer who may view the type. Null until the admin form's route exists.
+     * The record's edit page (read-only while it is in the trash), for a viewer who may view the type.
      */
     public function mediaUsageUrl(string $field, ?User $viewer): ?string
     {
-        if ($viewer === null || ! Route::has('admin.content.edit') || ! Gate::forUser($viewer)->allows('view', $this)) {
+        if ($viewer === null || ! Gate::forUser($viewer)->allows('view', $this)) {
             return null;
         }
 

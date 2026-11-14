@@ -1,0 +1,462 @@
+<?php
+
+use App\Enums\EntryStatus;
+use App\Models\Entry;
+use App\Models\Media;
+use App\Models\MediaUsage;
+use App\Models\User;
+use App\Support\Content\ContentTypes;
+use App\Support\Settings\SiteSettings;
+use App\Support\Toast;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportTesting\Testable;
+use Livewire\Livewire;
+use Tests\Fixtures\ProductsType;
+
+beforeEach(function () {
+    seedRolesAndPermissions();
+
+    app(SiteSettings::class)->put([
+        'content_locales' => [
+            ['code' => 'en', 'active' => true],
+            ['code' => 'uk', 'active' => true],
+            ['code' => 'pl', 'active' => true],
+            ['code' => 'de', 'active' => false],
+        ],
+        'content_default_locale' => 'en',
+    ]);
+});
+
+function formEditor(): User
+{
+    return User::factory()->withRole('editor')->create(['name' => 'Olena']);
+}
+
+/**
+ * @param  array<string, string>  $query
+ */
+function createForm(array $query = ['locale' => 'en'], string $type = 'pages'): Testable
+{
+    return Livewire::withQueryParams($query)->test('pages::admin.content.create', ['type' => $type]);
+}
+
+function editForm(Entry $entry): Testable
+{
+    return Livewire::test('pages::admin.content.edit', ['type' => $entry->type, 'entry' => $entry]);
+}
+
+test('a page is created through the form', function () {
+    $this->actingAs($editor = formEditor());
+
+    $form = createForm()
+        ->set('form.title', 'About us')
+        ->set('form.slug', 'about-us')
+        ->set('form.excerpt', 'Who we are')
+        ->set('form.body', '<p>Hello</p>')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $entry = Entry::query()->where('path', 'about-us')->firstOrFail();
+
+    $form->assertRedirect(route('admin.content.edit', ['type' => 'pages', 'entry' => $entry->id]));
+
+    expect($entry->title)->toBe('About us')
+        ->and($entry->locale)->toBe('en')
+        ->and($entry->excerpt)->toBe('Who we are')
+        ->and($entry->body)->toBe('<p>Hello</p>')
+        ->and($entry->author_id)->toBe($editor->id)
+        ->and($entry->status)->toBe(EntryStatus::Draft)
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('content.form.created'));
+});
+
+test('the new form opens in the requested language and refuses a language that is not on the site', function () {
+    $this->actingAs(formEditor());
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'uk']))
+        ->assertOk()
+        ->assertSee(__('content.form.language.this'))
+        ->assertSee('Українська');
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'xx']))->assertNotFound();
+    $this->get(route('admin.content.create', ['type' => 'pages']))->assertOk();
+
+    createForm(['locale' => 'pl'])->assertSet('locale', 'pl');
+});
+
+test('the page title names the type and the record', function () {
+    $this->actingAs(formEditor());
+    $page = Entry::factory()->create(['title' => 'Contacts']);
+
+    $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))
+        ->assertOk()
+        ->assertSeeInOrder(['<title>', __('content.form.page_title', ['type' => 'Page', 'title' => 'Contacts']), '</title>'], false);
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'en']))
+        ->assertSee(__('content.types.pages.new'));
+});
+
+test('suggestSlug returns a free slug, a suffixed one when it is taken, and follows the parent', function () {
+    $this->actingAs(formEditor());
+    $about = Entry::factory()->create(['title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    Entry::factory()->create(['slug' => 'our-team', 'path' => 'our-team']);
+
+    $form = createForm()->set('form.title', 'Our team');
+
+    expect($form->instance()->suggestSlug())->toBe('our-team-2');
+
+    $form->set('form.parent_id', (string) $about->id);
+    expect($form->instance()->suggestSlug())->toBe('our-team');
+
+    $form->set('form.title', 'Brand new');
+    expect($form->instance()->suggestSlug())->toBe('brand-new');
+});
+
+test('editing changes the title, the parent and the slug', function () {
+    $this->actingAs(formEditor());
+    $company = Entry::factory()->create(['slug' => 'company', 'path' => 'company']);
+    $page = Entry::factory()->create(['title' => 'Team', 'slug' => 'team', 'path' => 'team']);
+
+    editForm($page)
+        ->assertSet('form.title', 'Team')
+        ->assertSet('form.slug', 'team')
+        ->set('form.title', 'Our people')
+        ->set('form.parent_id', (string) $company->id)
+        ->set('form.slug', 'people')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]));
+
+    $page->refresh();
+
+    expect($page->title)->toBe('Our people')
+        ->and($page->parent_id)->toBe($company->id)
+        ->and($page->path)->toBe('company/people')
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('content.form.saved'));
+});
+
+test('validation errors stay on their fields', function () {
+    $this->actingAs(formEditor());
+    Entry::factory()->create(['slug' => 'taken', 'path' => 'taken']);
+
+    createForm()
+        ->set('form.title', '')
+        ->set('form.slug', 'taken')
+        ->set('form.body', '<p>Kept</p>')
+        ->call('save')
+        ->assertHasErrors(['form.title', 'form.slug'])
+        ->assertSet('form.body', '<p>Kept</p>')
+        ->assertDispatched('entry-form-invalid')
+        ->assertNoRedirect();
+
+    expect(Entry::query()->count())->toBe(1);
+});
+
+test('the parent select offers the tree without the record itself and its descendants', function () {
+    $this->actingAs(formEditor());
+    $about = Entry::factory()->create(['title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    $team = Entry::factory()->childOf($about)->create(['title' => 'Team', 'slug' => 'team', 'path' => 'about/team']);
+    $lead = Entry::factory()->childOf($team)->create(['title' => 'Lead', 'slug' => 'lead', 'path' => 'about/team/lead']);
+    $contacts = Entry::factory()->create(['title' => 'Contacts', 'slug' => 'contacts', 'path' => 'contacts']);
+    $other = Entry::factory()->inLocale('uk')->create(['title' => 'Ukrainian only']);
+
+    editForm($team)
+        ->assertSeeHtml('data-test="parent-option-'.$about->id.'"')
+        ->assertSeeHtml('data-test="parent-option-'.$contacts->id.'"')
+        ->assertDontSeeHtml('data-test="parent-option-'.$team->id.'"')
+        ->assertDontSeeHtml('data-test="parent-option-'.$lead->id.'"')
+        ->assertDontSeeHtml('data-test="parent-option-'.$other->id.'"');
+
+    createForm()->assertSeeInOrder(['About', 'Team', 'Lead', 'Contacts']);
+});
+
+test('a tampered parent is a field error, and so is a language removed before saving', function () {
+    $this->actingAs(formEditor());
+    $foreign = Entry::factory()->inLocale('uk')->create();
+    $page = Entry::factory()->create(['slug' => 'page', 'path' => 'page']);
+
+    editForm($page)
+        ->set('form.parent_id', (string) $foreign->id)
+        ->call('save')
+        ->assertHasErrors('form.parent_id');
+
+    editForm($page)->set('form.parent_id', (string) $page->id)->call('save')->assertHasErrors('form.parent_id');
+
+    $form = createForm(['locale' => 'pl'])->set('form.title', 'Polish')->set('form.slug', 'polish');
+
+    app(SiteSettings::class)->put([
+        'content_locales' => [['code' => 'en', 'active' => true]],
+        'content_default_locale' => 'en',
+    ]);
+
+    $form->call('save')->assertHasErrors('form.locale');
+    expect(Entry::query()->where('locale', 'pl')->exists())->toBeFalse();
+});
+
+test('a translation is filled from its source and saved into the same group', function () {
+    $this->actingAs(formEditor());
+    $parent = Entry::factory()->create(['slug' => 'company', 'path' => 'company']);
+    $parentUk = Entry::factory()->translationOf($parent, 'uk')->create(['slug' => 'kompaniia', 'path' => 'kompaniia']);
+    $source = Entry::factory()->childOf($parent)->published()->create([
+        'title' => 'Our history', 'slug' => 'history', 'path' => 'company/history', 'excerpt' => 'Since 1990',
+    ]);
+
+    createForm(['from' => (string) $source->id, 'locale' => 'uk'])
+        ->assertSet('locale', 'uk')
+        ->assertSet('form.title', 'Our history')
+        ->assertSet('form.excerpt', 'Since 1990')
+        ->assertSet('form.parent_id', (string) $parentUk->id)
+        ->assertSet('form.slug', 'our-history')
+        ->assertSet('form.status', 'draft')
+        ->set('form.title', 'Наша історія')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $translation = Entry::query()->where('locale', 'uk')->where('title', 'Наша історія')->firstOrFail();
+
+    expect($translation->entry_group_id)->toBe($source->entry_group_id)
+        ->and($translation->path)->toBe('kompaniia/our-history');
+});
+
+test('opening a translation the group already has goes to its edit page, also when it is in the trash', function () {
+    $this->actingAs(formEditor());
+    $source = Entry::factory()->create();
+    $existing = Entry::factory()->translationOf($source, 'uk')->create();
+    $trashed = Entry::factory()->translationOf($source, 'pl')->create(['deleted_at' => now()]);
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'from' => $source->id, 'locale' => 'uk']))
+        ->assertRedirect(route('admin.content.edit', ['type' => 'pages', 'entry' => $existing->id]));
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'from' => $source->id, 'locale' => 'pl']))
+        ->assertRedirect(route('admin.content.edit', ['type' => 'pages', 'entry' => $trashed->id]));
+
+    $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $trashed->id]))
+        ->assertOk()
+        ->assertSee(__('content.form.trashed.title'))
+        ->assertSeeHtml('data-test="restore-entry"');
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'from' => 999999, 'locale' => 'uk']))->assertNotFound();
+});
+
+test('with view only the form is read-only and refuses saving and trashing', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
+    $page = Entry::factory()->create(['title' => 'Read me']);
+
+    $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))
+        ->assertOk()
+        ->assertSee('Read me')
+        ->assertDontSeeHtml('data-test="save-entry"')
+        ->assertDontSeeHtml('data-test="trash-entry"')
+        ->assertSeeHtml('data-readonly="true"');
+
+    editForm($page)->set('form.title', 'Changed')->call('save')->assertForbidden();
+    editForm($page)->call('confirmTrash')->assertForbidden();
+
+    expect($page->fresh()->title)->toBe('Read me');
+});
+
+test('a creator without edit saves drafts only and sees the author as text', function () {
+    $creator = User::factory()->withPermissions(['admin.access', 'pages.view', 'pages.create'])->create(['name' => 'Taras']);
+    $this->actingAs($creator);
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'en']))
+        ->assertSeeHtml('data-test="status-locked"')
+        ->assertSeeHtml('data-test="author-readonly"')
+        ->assertSee('Taras');
+
+    createForm()->set('form.title', 'Draft')->set('form.slug', 'draft')->set('form.status', 'published')
+        ->call('save')
+        ->assertHasErrors('form.status');
+});
+
+test('moving to the trash asks first, names the subpages and returns to the list', function () {
+    $this->actingAs(formEditor());
+    $page = Entry::factory()->create(['title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    Entry::factory()->childOf($page)->count(2)->sequence(['slug' => 'a', 'path' => 'about/a'], ['slug' => 'b', 'path' => 'about/b'])->create();
+
+    editForm($page)
+        ->assertSet('showTrashModal', false)
+        ->call('confirmTrash')
+        ->assertSet('showTrashModal', true)
+        ->assertSee(trans_choice('content.list.trash.confirm_children', 2, ['title' => 'About']))
+        ->call('trash')
+        ->assertRedirect(route('admin.content.index', ['type' => 'pages', 'locale' => 'en']));
+
+    expect(Entry::onlyTrashed()->count())->toBe(3)
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(trans_choice('content.list.trash.done_with_children', 3));
+});
+
+test('a trashed record opens read-only with the removal date and can be restored with edit', function () {
+    $this->actingAs(formEditor());
+    $page = Entry::factory()->create(['title' => 'Old', 'deleted_at' => now()->subDays(2)]);
+    $removal = $page->deleted_at->copy()->addDays((int) config('content.trash_days'))->tz(config('admin.timezone'))->isoFormat('LL');
+
+    $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))
+        ->assertOk()
+        ->assertSee(__('content.form.trashed.removal', ['date' => $removal]))
+        ->assertDontSeeHtml('data-test="save-entry"')
+        ->assertDontSeeHtml('data-test="trash-entry"');
+
+    editForm($page)->call('save')->assertForbidden();
+
+    editForm($page)
+        ->call('restore')
+        ->assertRedirect(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]));
+
+    expect($page->fresh()->trashed())->toBeFalse();
+
+    $page->delete();
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
+    $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))
+        ->assertSee(__('content.form.trashed.title'))
+        ->assertDontSeeHtml('data-test="restore-entry"');
+    editForm($page)->call('restore')->assertForbidden();
+});
+
+test('a record of another type is 404', function () {
+    app(ContentTypes::class)->register(new ProductsType);
+    seedRolesAndPermissions();
+    $this->actingAs(User::factory()->withRole('super-admin')->create());
+    $page = Entry::factory()->create();
+
+    $this->get('/admin/content/products/'.$page->id.'/edit')->assertNotFound();
+});
+
+test('the header links to the site: View on site for a public record, Preview for a draft', function () {
+    $this->actingAs(formEditor());
+    $public = Entry::factory()->published()->create();
+    $draft = Entry::factory()->create();
+
+    editForm($public)->assertSee(__('content.form.view'))->assertSeeHtml('href="'.$public->url().'"');
+    editForm($draft)->assertSee(__('content.form.preview'))->assertDontSee(__('content.form.view'));
+    createForm()->assertDontSeeHtml('data-test="view-entry"');
+});
+
+test('a type with fields renders one control per field and stores local and shared values in their place', function () {
+    app(ContentTypes::class)->register(new ProductsType);
+    seedRolesAndPermissions();
+    $this->actingAs(User::factory()->withRole('super-admin')->create());
+    $cover = Media::factory()->create();
+
+    $form = createForm(['locale' => 'en'], 'products');
+
+    foreach ((new ProductsType)->fields() as $field) {
+        $form->assertSeeHtml('data-test="field-'.$field->name.'"');
+    }
+
+    $form->assertSee(__('content.form.shared.title'))
+        ->set('form.title', 'Chair')
+        ->set('form.slug', 'chair')
+        ->set('form.fields.subtitle', 'Oak')
+        ->set('form.fields.price', '120')
+        ->set('form.fields.featured', true)
+        ->set('form.fields.size', 'l')
+        ->set('form.fields.released', '2026-01-02')
+        ->set('form.fields.cover', $cover->id)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $entry = Entry::query()->where('type', 'products')->firstOrFail();
+
+    expect($entry->fields)->toMatchArray(['subtitle' => 'Oak', 'featured' => true, 'size' => 'l', 'released' => '2026-01-02', 'cover' => $cover->id])
+        ->and($entry->fields)->not->toHaveKey('price')
+        ->and($entry->group->shared)->toBe(['price' => 120]);
+
+    createForm(['locale' => 'en'], 'products')
+        ->set('form.title', 'Table')
+        ->set('form.slug', 'table')
+        ->set('form.fields.price', 'cheap')
+        ->call('save')
+        ->assertHasErrors('form.fields.price');
+});
+
+test('the pages type has no field cards', function () {
+    $this->actingAs(formEditor());
+
+    createForm()->assertDontSee(__('content.form.shared.title'))->assertDontSee(__('content.form.fields_card'));
+});
+
+test('the language card shows published, draft, missing and trashed translations with their links', function () {
+    $this->actingAs(formEditor());
+    $page = Entry::factory()->published()->create(['title' => 'Home']);
+    $uk = Entry::factory()->translationOf($page, 'uk')->create();
+    $pl = Entry::factory()->translationOf($page, 'pl')->create(['deleted_at' => now()]);
+
+    editForm($page)
+        ->assertSeeHtml('data-test="grid-cell-en" data-state="this"')
+        ->assertSeeHtml('data-test="grid-cell-uk" data-state="draft"')
+        ->assertSeeHtml('data-test="grid-cell-pl" data-state="trashed"')
+        ->assertSeeHtml('data-test="grid-cell-de" data-state="missing"')
+        ->assertSee(route('admin.content.edit', ['type' => 'pages', 'entry' => $uk->id]), false)
+        ->assertSee(route('admin.content.edit', ['type' => 'pages', 'entry' => $pl->id]), false)
+        ->assertSee(route('admin.content.create', ['type' => 'pages', 'from' => $page->id, 'locale' => 'de']))
+        ->assertSee(__('content.grid.trashed', ['language' => 'Polski']));
+
+    editForm($uk)->assertSeeHtml('data-test="grid-cell-en" data-state="published"');
+});
+
+test('the language card is hidden on a site with one language', function () {
+    app(SiteSettings::class)->put([
+        'content_locales' => [['code' => 'en', 'active' => true]],
+        'content_default_locale' => 'en',
+    ]);
+    $this->actingAs(formEditor());
+
+    editForm(Entry::factory()->create())->assertDontSeeHtml('data-test="translations-card"');
+});
+
+test('the editor gets the body images and the page mounts one detached picker', function () {
+    $this->actingAs(formEditor());
+    $image = Media::factory()->create();
+    $page = Entry::factory()->create(['body' => '<p>a</p><img data-media-id="'.$image->id.'" alt="">']);
+
+    editForm($page)
+        ->assertSeeLivewire('media-picker')
+        ->assertSee(Str::afterLast($image->url(), '/'), false);
+});
+
+test('opening the form costs the same number of queries whatever the translations and pages', function () {
+    $this->actingAs(formEditor());
+
+    $measure = function (Entry $entry): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        editForm($entry);
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    $small = Entry::factory()->create();
+    Entry::factory()->translationOf($small, 'uk')->create();
+    Entry::factory()->create();
+    $measure($small);
+    $few = $measure($small);
+
+    $large = Entry::factory()->create();
+    foreach (['uk', 'pl', 'de'] as $locale) {
+        Entry::factory()->translationOf($large, $locale)->create();
+    }
+    Entry::factory()->count(10)->create();
+    $many = $measure($large);
+
+    expect($many)->toBe($few);
+});
+
+test('the media library links a record using a file to its edit page, also from the trash', function () {
+    $editor = formEditor();
+    $image = Media::factory()->create();
+    $page = Entry::factory()->create(['image_id' => $image->id]);
+    MediaUsage::sync($page, 'image', [$image->id]);
+    $usage = MediaUsage::query()->where('media_id', $image->id)->firstOrFail();
+    $edit = route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]);
+
+    expect($usage->url($editor))->toBe($edit)
+        ->and($usage->url(User::factory()->withPermissions(['admin.access'])->create()))->toBeNull();
+
+    $page->delete();
+    expect($usage->fresh()->url($editor))->toBe($edit);
+
+    $this->actingAs($editor)->get($edit)->assertOk()->assertSee(__('content.form.trashed.title'));
+});

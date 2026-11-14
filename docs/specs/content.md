@@ -1,7 +1,7 @@
 # Content
 
 Content types (pages now, posts later) and their extra fields. The registry, the record tables and models, the
-slug and path rules, the body sanitizer, the save actions, the trash and the admin list exist so far; the record form and the public route come next. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
+slug and path rules, the body sanitizer, the save actions, the trash, the admin list and the record form exist so far; the public route comes next. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
 
 ## Content types
 
@@ -17,6 +17,7 @@ slug and path rules, the body sanitizer, the save actions, the trash and the adm
 | `fields()` | the extra fields (none by default); `field($name)`, `sharedFields()`, `localFields()` |
 | `description()` | the line under the admin list's heading, from `content.types.<key>.description` |
 | `createLabel()` | the list's "Create" button ("Create page"), from `content.types.<key>.create` |
+| `newLabel()` | the heading of a new record's form ("New page"), from `content.types.<key>.new`, else `createLabel()` |
 | `perPage()` | admin list page size, 20 by default |
 | `permission($action)` | `"{key}.{action}"` |
 
@@ -147,15 +148,20 @@ box shows a skeleton; if it fails, a message asks to reload.
   Links accept `http`, `https`, `mailto`, `tel` and relative addresses (the same rule as the server); the link form
   adds `mailto:` to an email and `https://` to an address that starts with `www.` or looks like a host
   (`example.com/page`, but not a file name such as `page.html`, `index.php` or `report.pdf`); anything starting with
-  `/`, `#`, `?`, `.` or a scheme is kept as typed. A numbered list always counts from 1 in the editor
+  `/`, `#`, `?`, `.` or a scheme is kept as typed; a host with a port (`example.com:8080/x`) is a host and gets
+  `https://` (the scheme pattern alone would read `example.com:` as a scheme), while `tel:123` stays a scheme. A numbered list always counts from 1 in the editor
   (CSS), as it will once the server has dropped `start`. Harmless leftovers the server drops anyway: an image's `src`,
   a code block's `language-*` class.
 - **Binding.** The component reads the property name from `wire:model` and does not put `wire:model` on the page.
   The editor reads the property once (`$wire.get()`) when it loads and then writes it without a request
-  (`$wire.set(name, html, false)`), 300 ms after the last change and again synchronously whenever the Livewire
+  (`$wire.set(name, html, false)`), 300 ms after the last edit and again synchronously whenever the Livewire
   component starts any action while an edit is still unwritten (`$wire.$intercept`, which runs before Livewire
   collects the property updates), so a save right after typing carries the latest HTML and an untouched body is never
-  sent back. An empty document is `''`. The editor's markup is in `wire:ignore`:
+  sent back. An edit is an `update` whose root transaction changed the document (`isContentEdit()`): a focus or
+  click on a body that ends with an image, heading, list, quote, code block or rule makes the starter kit's trailing
+  node plugin append an empty paragraph, and Tiptap emits `update` for that appended change; it is neither written
+  back nor counted as an edit. The first edit after a write dispatches the bubbling browser event
+  `rich-text:changed` (`{model}`), the change signal a form's leave-page warning uses. An empty document is `''`. The editor's markup is in `wire:ignore`:
   a re-render never resets it or takes the focus, and a value the server writes into the property is not shown.
 - **Toolbar** (hidden when `readonly`): text style (paragraph, heading 2-4), bold, italic, underline, strike, bullet
   and numbered list, quote, link, image, undo, redo. Buttons have `aria-label`s and Flux tooltips, toggles carry
@@ -231,8 +237,8 @@ field (shared ones carry the group's values), `parent_id` = the parent's transla
 empty slug, `draft` and no date. Nothing is stored.
 
 `Entry` and `EntryGroup` implement `UsesMedia`. `Entry::mediaUsageLabel()` is "Page: <title>" (the type's label);
-`mediaUsageUrl()` is the edit page for a viewer who may view the type (null until the admin form's route
-`admin.content.edit` exists); `forgetMedia()` clears `image`, removes the file's images from `body`
+`mediaUsageUrl()` is the edit page for a viewer who may view the type (also for a trashed record, whose form opens
+read-only); `forgetMedia()` clears `image`, removes the file's images from `body`
 (`withoutMedia()`) and empties a `fields.<name>` value or takes the id out of a gallery. `EntryGroup` is named after
 its record in the default content language ("Page: <title> (all languages)") and empties `shared.<name>` the same
 way. Trashed records are reached too: `MediaUsage::usable()` loads with `withTrashed()`, so a file deleted while its
@@ -272,8 +278,8 @@ Routes in `routes/admin.php` (prefix `admin`, `auth`, `verified`, `can:admin.acc
 | Route | Name | Page |
 |---|---|---|
 | `admin/content/{type}` | `admin.content.index` | `pages::admin.content.index`, the list; authorizes `viewAny` |
-| `admin/content/{type}/create` | `admin.content.create` | stub until the form exists: authorizes `create`, heading, back link. Takes `locale` and `from` |
-| `admin/content/{type}/{entry}/edit` | `admin.content.edit` | stub until the form exists: a record of another type is 404, authorizes `view`; trashed records resolve (`withTrashed()`) |
+| `admin/content/{type}/create` | `admin.content.create` | `pages::admin.content.create`, the form for a new record; authorizes `create`. Takes `locale` and `from` |
+| `admin/content/{type}/{entry}/edit` | `admin.content.edit` | `pages::admin.content.edit`, the form of a saved record: a record of another type is 404, authorizes `view`; trashed records resolve (`withTrashed()`) and open read-only |
 
 **Sidebar.** The "Content" group lists every registered type the actor may view (`viewAny`, its plural label and icon),
 then Media; the group shows when any of them or `media.view` holds.
@@ -296,7 +302,8 @@ then Media; the group shows when any of them or `media.view` holds.
 - Sort: title and date (`coalesce(published_at, created_at)`), toggled by the column headers. A hierarchical type
   defaults to tree order and a third click on a header (or the "Tree order" button) goes back to it. Tree order sorts
   by `path` with `/` read as a space, so `about/team` comes right after `about` and before `about-us`; rows are
-  indented by `depth()` while no search is typed.
+  indented by `depth()` only on the All tab with no search and no "Missing" filter (a status tab or a filter can
+  hide a row's parent, and a child would be indented under nothing).
 - Row: thumbnail (`thumbUrl()` of the image, else a neutral block; fixed 40 px), the title linking to the edit page,
   the address (`url(false)`), a Draft or Scheduled badge, the translations bar, author, date, and the "⋮" menu. On a
   phone the translations, author and date columns are hidden.
@@ -322,11 +329,72 @@ count does not depend on the number of rows (asserted with 5 and 20 rows). Permi
 not per row.
 
 **Translations grid** (`partials/admin/content/translations-grid.blade.php`, reused by the form): receives `$entry`,
-`$languages` (`ContentLocales::all()`), `$groupEntries` (the loaded relation) and optionally `$canCreate`. Four codes
-per row: the record's own language filled dark, an existing translation green (published) or amber (draft or
-scheduled) linking to its edit page, a missing one dashed with "+" linking to the create page with `from` and `locale`
-(a plain mark without `create`); a switched-off language is muted with an "off" mark. A legend with the counts follows.
-It makes no query.
+`$languages` (`ContentLocales::all()`), `$groupEntries` (the loaded relation) and optionally `$canCreate`,
+`$trashedEntries` (the group's trashed records keyed by language; only the form passes them) and `$fromId` (what the
+create links copy; `$entry->id` by default). Four codes per row: the record's own language filled dark, an existing
+translation green (published) or amber (draft or scheduled) linking to its edit page, a trashed one (form only) muted,
+struck through, with a trash mark, "in the trash", linking to its read-only edit page, a missing one dashed with "+"
+linking to the create page with `from` and `locale` (a plain mark without `create`); a switched-off language is muted
+with an "off" mark. Each cell carries `data-state` (`this`, `published`, `draft`, `trashed`, `missing`). A legend with
+the counts follows (the trash only when there is any). It makes no query. In the list a trashed translation counts as
+missing, as for `CreateEntry`: its create link redirects to the trashed record.
+
+**Form** (`pages::admin.content.create` and `pages::admin.content.edit`, both on `App\Livewire\Admin\EntryFormPage`
+(decision 32), the markup in `partials/admin/content/entry-form.blade.php`, the values in
+`App\Livewire\Forms\EntryForm`; plain full-page components, no islands, `wire:model` without `.live` everywhere):
+
+- **New record.** `locale` from the query must be a language of the site (`ContentLocales::has()`), else 404; without it
+  the list's remembered language, else the default. With `from` (a live record of the type, else 404): when the group
+  already has that language, trashed or not, the page redirects to that record's edit page (a trashed one opens
+  read-only with Restore); otherwise the form is filled from `copyFor()` and the slug suggested from the copied title
+  under the mapped parent. Nothing is stored before Save. Without `from` the author is the actor. Save calls
+  `CreateEntry` and redirects to the edit page with a toast ("The record is created.", or "already exists" when the
+  action returned an existing translation).
+- **Saved record.** `entryId` is locked; the record is loaded with its group (shared field values). Save calls
+  `UpdateEntry` and redirects back with a toast. A record in the trash is read-only and refuses Save (403).
+- **Header**: a back link to the list (in the record's language), the record's title (or `newLabel()`) with a
+  Draft/Scheduled/"In the trash" badge, "View on site" (a public record) or "Preview" (a draft or scheduled one),
+  both opening `Entry::url()` in a new tab and only for a saved record outside the trash, and Save. Page title:
+  `content.form.page_title` (":type: :title") through `->title()`.
+- **Left column**: a card with the title, the address (the prefix as text: the site address without the scheme, the
+  language prefix when not the default, the type's base, the parent's path; the slug is the input), the body
+  (`<x-admin.rich-text>`, its images given as `editorImages`, id => URL with one query for the body and the rich text
+  fields) and the excerpt; a "Details" card with `localFields()` when the type has any; the "Search engines" card with a
+  live preview (address, title falling back to the title and the site name, description falling back to the excerpt)
+  and the SEO title and description.
+- **Right column**: "Publication" (status Draft/Published, date and time as `datetime-local` in `admin.timezone` with
+  the timezone named under it; a hint when Published with a future date, and when Published without a date); a user
+  without the type's `edit` sees the status fixed to Draft with a line that an editor publishes it. "Language and
+  translations" (hidden on a site with one language): the record's language, `n of total`, a progress bar and the grid
+  (with trashed translations); a new record without a source says translations come after saving; a `locale` error
+  (the language removed before Save) shows here. "For all languages" with `sharedFields()` and the line that a change
+  applies to every translation (absent when the type has none). "Image" (the media picker in field mode,
+  `accept="image"`). "Attributes": the parent (hierarchical types; a native select in tree order, indented by depth,
+  without the record and its descendants, plus "No parent"; one query) and the author (a select of
+  `EntryAuthors::options()` plus the current author; only the name for a user without `edit`). "Move to trash"
+  (`delete`): `<x-confirm-modal>` naming the subpages going with it, then `TrashEntry`, a toast and the list.
+- **Field partials**: `partials/admin/content/fields/<Field::view()>.blade.php` (`text`, `textarea`, `rich-text`,
+  `number`, `date`, `toggle`, `select`, `media-file`, `gallery`) get `$field`, `$model` (`form.fields.<name>`),
+  `$readOnly`, `$images` and `$locale`; the label is `labelText()`, errors sit under each field. `media-file` and
+  `gallery` use the picker in field mode (a read-only form lists the files instead, from one query).
+- **Read-only** (`view` only, or a trashed record): every control disabled, no Save, no trash, no picker. A trashed
+  record shows "This record is in the trash" with the date it will be removed and Restore (`edit`; `RestoreEntry`,
+  then the edit page with a toast); other read-only forms say they can be viewed only.
+- **Validation**: the actions validate (`EntryInput`); their errors are put on `form.<key>` and the browser event
+  `entry-form-invalid` scrolls the first one into view. The editor keeps its content.
+- **Browser side** (Alpine `entryForm`, `resources/js/entry-form.js`): while a new record's slug has not been typed by
+  hand it follows the title: 400 ms after the title (or the parent) changes, `suggestSlug()` (`#[Renderless]`,
+  `EntryPaths::suggest()` for the form's title, parent and language, the record itself ignored) fills it; typing in the
+  slug stops that, emptying it resumes it; a saved record's slug never follows. The prefix follows the parent select at
+  once (the parents' paths are in the page). The SEO preview, the hints and the "Unsaved changes" mark update without a
+  request. Ctrl/Cmd+S saves; a sticky bar at the bottom repeats Save. Leave-page warning (the settings page's
+  pattern): the form's values are compared with those it opened with, rich text excluded, plus the editors' change
+  signal (`rich-text:changed`); it stays quiet once `finished` is set by a successful save or trash.
+- **Cost**: opening the edit form is a fixed number of queries whatever the number of translations or of pages
+  offered as parent (asserted): the record with its group, one for the group's other records (trashed ones included),
+  one for the parents, one for the authors, one for the editor's images when the texts have any; typing in the title,
+  excerpt or SEO fields makes no request except the debounced slug suggestion. One detached media picker is mounted
+  for the editors.
 
 ## Tests
 
@@ -334,14 +402,26 @@ It makes no query.
 and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
 the tree, `missing`, the list's language (session, fallback), the translations bar and its create links, the one-language
 site, the Create button, trash/restore/delete for good with their permissions and confirmation texts, the row menu, empty
-states, the query string, the same query count for 5 and 20 rows, the hourly prune, and the create/edit stubs.
+states, the query string, the same query count for 5 and 20 rows, the hourly prune, the indent only on the full tree, and
+that the create and edit pages authorize.
+`tests/Feature/Admin/Content/EntryFormTest.php`: creating through the form (stored, redirect, toast), the language from the
+query (404 for one not on the site), the page title, `suggestSlug()` (free, suffixed, under a parent), editing title,
+parent and slug, errors on their fields with the body kept, the parent options (no own subtree, no other language),
+a tampered parent and a language removed before saving, a translation from `copyFor()` saved into the group, the
+redirect to an existing or trashed translation, view-only (read-only, `save` and `confirmTrash` refused), a creator
+without `edit` (status locked, author as text, publishing refused), trash with its confirmation, a trashed record
+(read-only, removal date, Restore with and without `edit`), another type's record 404, View on site / Preview, a type
+with fields (`ProductsType`: one control per field, local and shared values stored in place, a field error), no field
+cards for `pages`, the language card states and links (trashed included) and its absence on a one-language site, the
+editor's images and the detached picker, the same query count for few and many translations and pages, and the media
+library's usage link to the edit page (also for a trashed record).
 `tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, `pages`, the permissions after a
 sync and for the editor, every field kind's round trip and rules, shared and local fields, media ids.
 `tests/Feature/Models/EntryTest.php`: public/scheduled/trashed visibility, the unique indexes, translations, the
 tree, the null-on-delete keys, `url()`, `fieldValue()` and the search index. The
 test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has one field of every kind with
 `price` shared; tests register it themselves.
-`tests/Feature/Admin/Content/RichTextComponentTest.php`: the editor component's binding config (no `wire:model` on the page), the image button only with `media.view`, read-only without a toolbar. The editor itself runs only in a browser and has no automated test.
+`tests/Feature/Admin/Content/RichTextComponentTest.php`: the editor component's binding config (no `wire:model` on the page), the image button only with `media.view`, read-only without a toolbar. The editor itself runs only in a browser and has no automated test; `isContentEdit()` and `normalizeHref()` were checked once with a Node script against the installed Tiptap (the extension manager's plugins on a headless editor), not kept in the suite. The form's browser side (slug following, SEO preview, leave-page warning, Ctrl/Cmd+S, scrolling to an error) has no automated test either.
 `tests/Feature/Content/BodyTest.php`: hostile inputs as a dataset with the exact output, allowed markup kept, Cyrillic round trip, long body, `mediaIds()`, `withoutMedia()`, rendering (one query, versioned URL, dropped images, alt fallback, no query without images).
 `tests/Feature/Content/EntryPathsTest.php`: suggested slugs, the slug rule, `move()` (descendants, redirects, the same
 query count for 2 and 50 descendants, redirect rows that already exist).
@@ -368,4 +448,4 @@ gallery).
 
 ## Not included yet
 
-The public route, the record form (create and edit are stubs, the editor is not mounted anywhere yet) and the field partials.
+The public route ("View on site" and "Preview" link to addresses it will serve).
