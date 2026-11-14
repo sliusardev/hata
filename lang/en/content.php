@@ -230,4 +230,11 @@ return [
             'placeholder' => 'Describe the image for people who can’t see it',
         ],
     ],
+    'public' => [
+        'draft' => 'Draft',
+        'scheduled' => 'Scheduled for :date',
+        'preview_note' => 'Visitors don’t see this page yet.',
+        'edit' => 'Edit',
+        'language' => 'Language',
+    ],
 ];

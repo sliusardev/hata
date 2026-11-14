@@ -1,7 +1,7 @@
 # Content
 
 Content types (pages now, posts later) and their extra fields. The registry, the record tables and models, the
-slug and path rules, the body sanitizer, the save actions, the trash, the admin list and the record form exist so far; the public route comes next. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
+slug and path rules, the body sanitizer, the save actions, the trash, the admin list, the record form and the public pages exist so far. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
 
 ## Content types
 
@@ -84,7 +84,7 @@ for good removes its redirects.
 | `depth()` | slashes in `path` (0 at the top) |
 | `descendants()` | query of the records under this one: same type and language, `path` starting with this path and `/` (live ones unless the caller adds `withTrashed()`/`onlyTrashed()`) |
 | `descendantsCount()` | how many descendants are in the record's own state, one query; for the confirmation text. For a live record the live ones (what trashing takes along); for a trashed record every trashed record under its path, which is exactly what deleting it for good removes besides itself |
-| `url($absolute = true)` | the site address, the language prefix (none for the default content language, `/<code>` for the others), the type's base for that language, then `path`; built by hand until the public route exists |
+| `url($absolute = true)` | the site address from the `content` route (`ContentLocales::route()` in the record's language): the language prefix (none for the default content language, `/<code>` for the others), the type's base for that language, then `path`. No query |
 | `fieldValue($name)` | a shared field's value from the group's `shared`, any other from `fields` |
 
 `App\Enums\EntryStatus` (`Draft`, `Published`) is stored; `EntryState` is not.
@@ -181,7 +181,7 @@ box shows a skeleton; if it fails, a message asks to reload.
   once; see the media spec's Picker section.
 - **Look**: one bordered rounded box like the other fields, toolbar on a tinted strip with separators, the text below
   with at least 16rem and growing; the focus ring of the other fields while the text has the focus; zinc and accent
-  only. Body typography is the `.rich-text-content` class in `resources/css/app.css`, meant for the public page too.
+  only. Body typography is the `.rich-text-content` class in `resources/css/app.css`, shared with the public page; the editing box (padding, minimum height, a smaller size) is `.rich-text-content.ProseMirror`.
 
 ## Saving records
 
@@ -407,8 +407,92 @@ error instead of creating a record outside the group. Save calls
   excerpt or SEO fields makes no request except the debounced slug suggestion. One detached media picker is mounted
   for the editors.
 
+## Public side
+
+Plain controller and Blade, no Livewire (the user's standing rule: public pages never use Livewire).
+
+**Route.** `routes/web.php`, inside `Route::localized()`: `Route::get('{path}', ContentController::class)->where('path',
+'.*')->fallback()->name('content')`, so `content` and `localized.content` (`{locale}/{path}`). Both copies are fallbacks:
+every explicit route (admin, Fortify, settings, media, `up`, Livewire, the home page) is tried first, and the prefixed
+copy still precedes the plain one, so `/de/about` is the German page `about`, never a default-language page `de/about`
+(a first segment equal to a catalogue code is always a language). GET and HEAD only; a POST to an unknown address
+therefore answers 405 instead of 404, as with Laravel's own `Route::fallback()`. The routes serialize and the compiled
+(cached) collection keeps both content routes last. `ReservedSlugs` skips them (they carry `SetContentLocale`, and their
+first segment is a parameter).
+
+**Resolution** (`App\Support\Content\ContentRouter::resolve($locale, $path, $viewer): ?ContentMatch`), in the request's
+language (`ContentLocales::current()`, set by `SetContentLocale`, which also removes `{locale}`):
+
+1. A first segment equal to a registered type's `base($locale)`: the rest is that type's record path. A bare base is the
+   type's list, which a later part builds: null (404) for now, with no query.
+2. Otherwise a record of the types without a base (`pages`) by the full path (one indexed lookup on `type, locale,
+   path` for any depth; with several such types the earliest registered wins).
+3. On a miss, one lookup in `entry_redirects` (`type, locale, path`, joined to the live record by a subquery): found →
+   `ContentMatch::redirect($record->url())` when that record is public or previewable by the viewer, else null.
+4. Null.
+
+A path with a capital letter is no record's (slugs are lowercase) and is refused before any query, so SQLite and MySQL
+(whose comparison ignores case) agree. A trailing slash is removed by the router as before. No other normalising and no
+redirect for those.
+
+`ContentMatch` (`entry`, `preview`, `redirectTo`): `ContentMatch::entry($entry, $preview)` or `::redirect($url)`.
+
+**Visibility.** A public record (`isPublic()`) is shown to everyone. A draft or scheduled record resolves only for a
+signed-in user who may edit its type (`EntryPolicy::preview`), with `preview: true`; everyone else gets the same 404 as
+for a missing page (no redirect lookup is made for it either). A trashed record is 404 for everyone.
+
+**Controller** (`App\Http\Controllers\ContentController`): null → 404; a redirect → 301 with `Cache-Control: no-cache`
+(the old path may be taken by a new record later, so a browser must not keep it for good); else the view `site.entry`
+with the record, the body through `BodyRenderer::render()`, `preview` and `editUrl` (the admin edit page, only for a
+viewer with the type's `edit`). A preview answers `Cache-Control: no-store`.
+
+**Alternates.** The controller passes `ContentLocales::useAlternates()` the addresses of the group's records that are
+public and in an active language (the record itself included when public), in the site's order of languages. The
+`hreflang` partial prints them plus `x-default` (the default language's address, left out when the default language has
+no public translation), and nothing when there is only one. The switcher lists every active language.
+
+**Templates** (a folder of their own so a theme can replace them):
+
+- `layouts/site.blade.php`: `<html lang dir>` from the content language, `<title>` (`seo_title`, else the title, then
+  " - " and the site name), `<meta name="robots" content="noindex">` in preview, the favicons, the site's CSS only
+  (`@vite('resources/css/app.css')`), the color scheme (`partials.color-scheme`), a small inline script that sets the
+  `dark` class from the stored appearance or the system (no Flux, Livewire or admin JavaScript is loaded), `hreflang`,
+  and a header with the site logo (when one is chosen) or the site name linking to the home page in that language, and
+  the switcher. No description, canonical or Open Graph tags yet.
+- `partials/site/language-switcher.blade.php`: a `<details>` with plain links, no JavaScript; each active language links
+  to the translation when it is among the alternates, else to that language's home (`ContentLocales::route('home', [],
+  $code)`); the current language links to the current page and carries `aria-current`. Absent with one language.
+- `site/entry.blade.php`: the preview strip ("Draft", or "Scheduled for <date and time in `admin.timezone`>", a note that
+  visitors do not see the page yet, and an "Edit" link), the title as `<h1>`, a small "Edit" link for an editor on a
+  published page (guests see neither), the image (current URL, `width`/`height`, the file's alt in the page's
+  language), and the body in `.rich-text-content` (the editor's typography: headings, lists, quotes, code, rules, images
+  `max-width: 100%; height: auto`), in a column of `max-w-3xl`. The type's own fields are not printed. Strings:
+  `content.public.*`.
+
+**Cost per page view** (asserted: at most 5 queries more than the home page in the same setup; the home page makes none
+in the tests):
+
+1. `select * from entries where locale = ? and path = ? and type in (?) and deleted_at is null`
+2. `select id, entry_group_id, type, locale, path from entries where entry_group_id in (?) and status = 'published' and
+   published_at <= ? and locale in (<active>) and deleted_at is null` (the public translations)
+3. `select * from media where id in (?)`, the record's image, only when it has one
+4. `select * from media where id in (…)`, the body's images, only when the body has any
+
+Plus the site logo (one query, only when a custom logo is chosen) and, for a signed-in viewer, what the session and
+permission checks cost. A miss is two queries (1 and the redirect lookup), a redirect the same two, a draft for a guest
+one; a bare base or a path with a capital letter none.
+
 ## Tests
 
+`tests/Feature/Content/PublicContentTest.php`: a page in the default language and its translation under the prefix, a
+nested path, a record under a type's base and the bare base, uppercase and trailing slash, the image, the SEO title, the
+rendered body, no Livewire or script files; preview (draft, scheduled and trashed are 404 for a guest and a user without
+`pages.edit`; the strip, `noindex`, `no-store` and the edit link for an editor; the scheduled date in the site's
+timezone; the Edit link on a published page); `hreflang` (public translations in active languages, `x-default`, none for
+one, no `x-default` without the default language) and the switcher; `/de/about`; languages off or not added; no leak of
+alternates into the next request; redirects in both languages, to a draft only for an editor, after a `move()`; every
+other route unchanged (by the router's match), reserved slugs, `url()` from the route without a query, the compiled route
+cache; the query budget and the cost of a miss and a redirect; the list's "View on site" and the form's "Preview".
 `tests/Feature/Admin/Content/EntryIndexTest.php`: access (guest, 403, unknown type), the sidebar item and group, tabs
 and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
 the tree, `missing`, the list's language (session, fallback), the translations bar and its create links, the one-language
@@ -459,4 +543,5 @@ gallery).
 
 ## Not included yet
 
-The public route ("View on site" and "Preview" link to addresses it will serve).
+Lists of a type under its base, head tags beyond the title (description, canonical, Open Graph), `sitemap.xml` and the
+home page setting (a later part).

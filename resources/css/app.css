@@ -107,16 +107,22 @@ select:focus[data-flux-control] {
 }
 
 /*
- * Body text: the rich text editor (Tiptap, <x-admin.rich-text>) and, later, the public page use the same rules.
+ * Body text: the rich text editor (Tiptap, <x-admin.rich-text>) and the public page (site/entry) use the same rules.
  * Zinc and accent variables only, so color schemes and dark mode reach it.
  */
 .rich-text-content {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: var(--color-zinc-800);
+    overflow-wrap: anywhere;
+}
+
+/* The editing box (Tiptap gives its editable element the ProseMirror class): denser text in a padded field. */
+.rich-text-content.ProseMirror {
     min-height: 16rem;
     padding: 0.75rem 1rem;
     font-size: 0.9375rem;
     line-height: 1.7;
-    color: var(--color-zinc-800);
-    overflow-wrap: anywhere;
     outline: none;
 }
 

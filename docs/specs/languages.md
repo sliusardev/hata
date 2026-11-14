@@ -1,7 +1,7 @@
 # Content languages
 
-The languages of the site's content and how a language shows in an address. A foundation: there are no content
-types yet (pages, posts and themes come later and build on this). Design:
+The languages of the site's content and how a language shows in an address. Pages are the first content type built on
+it (`docs/specs/content.md`); posts and themes come later. Design:
 `docs/superpowers/specs/2026-11-14-content-languages-design.md`. Decision 56 in CLAUDE.md.
 
 ## Two sets of languages
@@ -52,6 +52,9 @@ Two site settings, applied over config like the others (`docs/specs/site-setting
 - `current()`: the content language of this request (the default outside public pages).
 - `route($name, $parameters, $locale = null)`: the address of a localized route in a language.
 - `alternates()`: the current public page in every active language (code → address); empty elsewhere.
+- `useAlternates($alternates)`: a page whose address differs per language (a content record) hands over its own
+  alternates (code → address); `alternates()` then returns exactly these. `setCurrent()` clears them, so they never
+  reach the next request (the singleton lives as long as the container).
 
 ## Addresses
 
@@ -84,10 +87,16 @@ only `app()->getLocale()`, so Livewire re-runs it against the page's own address
 the real request's route being Livewire's update route, not by a header a visitor could send) it does not redirect and does not write the session; a language switched off meanwhile still
 answers 404.
 
-Public pages today: the home page (`home` / `localized.home`). It prints `<html lang dir>`, the `hreflang`
-alternates (`partials/hreflang.blade.php`: one per active language plus `x-default`, nothing with a single
-language) and a minimal language switcher, so the foundation can be seen; its text is still Laravel's demo
-page (decision 10).
+Public pages today:
+
+- The home page (`home` / `localized.home`). It prints `<html lang dir>`, the `hreflang` alternates
+  (`partials/hreflang.blade.php`: one per active language plus `x-default`, nothing with a single language) and a
+  minimal language switcher; its text is still Laravel's demo page (decision 10).
+- Content records (`content` / `localized.content`, `{path}` matching anything, registered as fallbacks inside
+  `Route::localized()` so every explicit route wins; `docs/specs/content.md`, Public side). They hand their public
+  translations to `useAlternates()`, so `hreflang` lists only those, with `x-default` only when the default language has
+  one, and the switcher (`partials/site/language-switcher.blade.php`) links a language without a translation to that
+  language's home page.
 
 ## Service pages
 
@@ -134,7 +143,8 @@ default, so the first change also stores what was derived until then.
 
 `App\Support\Localization\ReservedSlugs::contains($slug)` (case-insensitive), for the content types to check
 when a slug is saved: every catalogue code (not only the added ones), the first segment of every route that
-is not a localized public one (computed from the router), and `content.reserved_slugs` (what the web server
+is not a localized public one (computed from the router; a first segment that is a parameter, as in the content
+route, is skipped), and `content.reserved_slugs` (what the web server
 answers itself: `storage`, `build`, `robots.txt`, …). Nothing calls it on a public request.
 
 ## Performance

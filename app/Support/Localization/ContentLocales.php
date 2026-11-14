@@ -33,6 +33,13 @@ class ContentLocales
      */
     private ?array $currentRoute = null;
 
+    /**
+     * The alternates the current page handed over itself (a content record), or null to build them from the route.
+     *
+     * @var array<string, string>|null
+     */
+    private ?array $alternates = null;
+
     public function __construct(private readonly LanguageCatalog $catalog) {}
 
     /**
@@ -134,6 +141,8 @@ class ContentLocales
     {
         $this->current = $code;
         $this->currentRoute = $route;
+        // A new request starts without the alternates a previous page handed over.
+        $this->alternates = null;
     }
 
     /**
@@ -153,12 +162,17 @@ class ContentLocales
 
     /**
      * The current page in every active language, for a language switcher and `hreflang`. Empty outside a
-     * localized route.
+     * localized route. A page whose address differs per language (a content record) hands its own over with
+     * useAlternates().
      *
      * @return array<string, string> code => address
      */
     public function alternates(): array
     {
+        if ($this->alternates !== null) {
+            return $this->alternates;
+        }
+
         if ($this->currentRoute === null || ! Route::has(self::ROUTE_PREFIX.$this->currentRoute['name'])) {
             return [];
         }
@@ -170,6 +184,17 @@ class ContentLocales
         }
 
         return $alternates;
+    }
+
+    /**
+     * Use exactly these addresses as the current page's alternates (code => address), in place of the current route
+     * rebuilt in every active language. Reset when the next request sets the current language.
+     *
+     * @param  array<string, string>  $alternates
+     */
+    public function useAlternates(array $alternates): void
+    {
+        $this->alternates = $alternates;
     }
 
     /**

@@ -222,27 +222,19 @@ class Entry extends Model implements UsesMedia
     }
 
     /**
-     * The public address in the record's language: the language prefix (none for the default one), the base of
-     * the type, then the path.
+     * The public address in the record's language (the `content` route): the language prefix (none for the default
+     * one), the base of the type, then the path. No query.
      */
     public function url(bool $absolute = true): string
     {
-        $segments = [];
+        $base = trim((string) $this->type()->base($this->locale), '/');
 
-        if ($this->locale !== app(ContentLocales::class)->defaultCode()) {
-            $segments[] = $this->locale;
-        }
-
-        $base = $this->type()->base($this->locale);
-
-        if ($base !== null && $base !== '') {
-            $segments[] = trim($base, '/');
-        }
-
-        $segments[] = $this->path;
-        $path = '/'.implode('/', $segments);
-
-        return $absolute ? url($path) : $path;
+        return app(ContentLocales::class)->route(
+            'content',
+            ['path' => $base === '' ? $this->path : $base.'/'.$this->path],
+            $this->locale,
+            $absolute,
+        );
     }
 
     /**

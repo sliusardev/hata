@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ContentController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\StaticMediaFallbackController;
 use Illuminate\Http\Request;
@@ -44,3 +45,11 @@ Route::get('storage/media/{path}', StaticMediaFallbackController::class)
 
 require __DIR__.'/admin.php';
 require __DIR__.'/settings.php';
+
+/*
+| Content records (pages, later posts) at their public addresses. A fallback in both copies, so every other route
+| (admin, Fortify, media, Livewire, the home page) wins; ContentRouter resolves the path from code-defined bases.
+*/
+Route::localized(function () {
+    Route::get('{path}', ContentController::class)->where('path', '.*')->fallback()->name('content');
+});
