@@ -1,7 +1,7 @@
 # Content
 
-Content types (pages now, posts later) and their extra fields. Only the registry exists so far: there are no
-records, routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
+Content types (pages now, posts later) and their extra fields. The registry and the record tables and models
+exist so far: there are no routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
 
 ## Content types
 
@@ -46,13 +46,48 @@ the same in every language of a record group) and `required()`. `Select` adds `o
 
 A toggle has no required state: it is always true or false.
 
+## Records
+
+Tables: `entry_groups` (`type`, `shared` JSON), `entries` and `entry_redirects`. Columns as in the design. Lengths:
+`type` 40, `locale` 12, `title`, `slug` and `path` 255. Unique indexes: (`entry_group_id`, `locale`) and
+(`type`, `locale`, `path`); (`type`, `locale`, `status`, `published_at`) and `parent_id` are plain indexes. The
+path index is 307 characters wide, which fits MySQL's limit on utf8mb4 (checked on MySQL 8). Deleting a user
+nulls `author_id`, deleting a media file nulls `image_id`, deleting a parent nulls `parent_id`, deleting an entry
+for good removes its redirects.
+
+`App\Models\EntryGroup`: casts `shared` to an array; `entries()`. `App\Models\EntryRedirect`: `entry()`.
+
+`App\Models\Entry` (soft deletes are the trash; `HasSearchIndex` from title and slug):
+
+| Member | Meaning |
+|---|---|
+| `group()`, `parent()`, `children()`, `author()`, `image()` | relations |
+| `translations()` | the other records of the group; trashed ones are left out |
+| `ofType($type)`, `inLocale($locale)` | scopes |
+| `public()` | scope: `published`, `published_at <= now()`, not trashed |
+| `type()` | the registered `ContentType` |
+| `state()` | `EntryState`: `Draft`, `Scheduled` (published with a future date) or `Published`; derived, never stored |
+| `isPublic()` | the same rule as `public()` for one record |
+| `depth()` | slashes in `path` (0 at the top) |
+| `url($absolute = true)` | the site address, the language prefix (none for the default content language, `/<code>` for the others), the type's base for that language, then `path`; built by hand until the public route exists |
+| `fieldValue($name)` | a shared field's value from the group's `shared`, any other from `fields` |
+
+`App\Enums\EntryStatus` (`Draft`, `Published`) is stored; `EntryState` is not.
+
+Factories: `Entry::factory()` makes a draft in `pages` and `en`, with its own group and a `path` taken from the
+parent. States: `page()`, `draft()`, `published()` (a day ago), `scheduled()` (a day ahead), `inLocale()`,
+`childOf($parent)` (same type and language, path under the parent) and `translationOf($source, $locale)` (same
+group and type).
+
 ## Tests
 
 `tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, `pages`, the permissions after a
-sync and for the editor, every field kind's round trip and rules, shared and local fields, media ids. The
+sync and for the editor, every field kind's round trip and rules, shared and local fields, media ids.
+`tests/Feature/Models/EntryTest.php`: public/scheduled/trashed visibility, the unique indexes, translations, the
+tree, the null-on-delete keys, `url()`, `fieldValue()` and the search index. The
 test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has one field of every kind with
 `price` shared; tests register it themselves.
 
 ## Not included yet
 
-Records, addresses, the admin screens, the editor and the field partials.
+Redirect writing, the public route, the admin screens, the editor and the field partials.
