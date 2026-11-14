@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  */
 class EntryPaths
 {
-    public function __construct(private readonly ReservedSlugs $reserved) {}
+    public function __construct(private readonly ReservedSlugs $reserved, private readonly ContentTypes $types) {}
 
     /**
      * The slug a title gives; empty when the title has nothing to make one from.
@@ -38,8 +38,6 @@ class EntryPaths
             return '';
         }
 
-        $topLevel = $parent === null && $type->base($locale) === null;
-        $reserved = $topLevel ? array_flip($this->reserved->all()) : [];
         $prefix = $this->pathFor($type, $parent, $base);
 
         $taken = $this->scope($type, $locale, $ignore)
@@ -49,11 +47,34 @@ class EntryPaths
 
         $slug = $base;
 
-        for ($number = 2; isset($reserved[$slug]) || isset($taken[$this->pathFor($type, $parent, $slug)]); $number++) {
+        for ($number = 2; $this->isReserved($type, $locale, $parent, $slug) || isset($taken[$this->pathFor($type, $parent, $slug)]); $number++) {
             $slug = $base.'-'.$number;
         }
 
         return $slug;
+    }
+
+    /**
+     * Whether a slug may not be used because it would sit at the top of the address (no parent, and a type with
+     * no base) and means something else: a reserved name, or the base of any registered type in that language.
+     */
+    public function isReserved(ContentType $type, string $locale, ?Entry $parent, string $slug): bool
+    {
+        if ($parent !== null || $type->base($locale) !== null) {
+            return false;
+        }
+
+        if ($this->reserved->contains($slug)) {
+            return true;
+        }
+
+        foreach ($this->types->all() as $registered) {
+            if ($registered->base($locale) === $slug) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function pathFor(ContentType $type, ?Entry $parent, string $slug): string

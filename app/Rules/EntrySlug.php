@@ -4,9 +4,7 @@ namespace App\Rules;
 
 use App\Models\Entry;
 use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypes;
 use App\Support\Content\EntryPaths;
-use App\Support\Localization\ReservedSlugs;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 
@@ -32,19 +30,20 @@ class EntrySlug implements ValidationRule
     {
         $slug = is_string($value) ? $value : '';
 
+        $paths = app(EntryPaths::class);
+
         if (preg_match(self::FORMAT, $slug) !== 1) {
             $fail('content.slug.format')->translate();
 
             return;
         }
 
-        if ($this->isReserved($slug)) {
+        if ($paths->isReserved($this->type, $this->locale, $this->parent, $slug)) {
             $fail('content.slug.reserved')->translate();
 
             return;
         }
 
-        $paths = app(EntryPaths::class);
         $path = $paths->pathFor($this->type, $this->parent, $slug);
 
         if (strlen($path) > self::MAX_PATH) {
@@ -56,27 +55,5 @@ class EntrySlug implements ValidationRule
         if ($paths->scope($this->type, $this->locale, $this->ignore)->where('path', $path)->exists()) {
             $fail('content.slug.taken')->translate();
         }
-    }
-
-    /**
-     * Only a slug at the top of the address can collide with a route, a language or the base of a type.
-     */
-    private function isReserved(string $slug): bool
-    {
-        if ($this->parent !== null || $this->type->base($this->locale) !== null) {
-            return false;
-        }
-
-        if (app(ReservedSlugs::class)->contains($slug)) {
-            return true;
-        }
-
-        foreach (app(ContentTypes::class)->all() as $type) {
-            if ($type->base($this->locale) === $slug) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

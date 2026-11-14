@@ -79,6 +79,18 @@ test('suggest never gives a reserved name and looks under the parent', function 
     expect($this->paths->suggest($this->pages, 'en', $parent, 'Admin'))->toBe('admin-2');
 });
 
+test('suggest agrees with the slug rule on what is reserved', function (string $title, string $expected) {
+    $slug = $this->paths->suggest($this->pages, 'en', null, $title);
+
+    expect($slug)->toBe($expected)
+        ->and(slugErrors($slug))->toBe([]);
+})->with([
+    'a type base' => ['Products', 'products-2'],
+    'a route' => ['Admin', 'admin-2'],
+    'a language code' => ['En', 'en-2'],
+    'a free name' => ['About', 'about'],
+]);
+
 test('the path is the parent path and the slug', function () {
     $parent = Entry::factory()->page()->create(['slug' => 'info', 'path' => 'info']);
 

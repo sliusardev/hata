@@ -87,9 +87,10 @@ group and type).
 | Method | Meaning |
 |---|---|
 | `slugFrom($title)` | `Str::slug`; may be empty |
-| `suggest($type, $locale, $parent, $title, $ignore = null)` | the generated slug with `-2`, `-3`... added while its path is taken. Taken means a record of the same type and language holds the path, trashed or not, or (at the top of the address) the slug is reserved. One query. A path held only by a redirect row is free |
+| `suggest($type, $locale, $parent, $title, $ignore = null)` | the generated slug with `-2`, `-3`... added while its path is taken. Taken means a record of the same type and language holds the path, trashed or not, or the slug is reserved at the top of the address (`isReserved()`). One query. A path held only by a redirect row is free |
 | `pathFor($type, $parent, $slug)` | the parent's path and the slug |
 | `move($entry, $newPath)` | for the caller's transaction: sets the record's path, rewrites the path of every descendant (same type and language, trashed included, matched by the old path followed by `/`) with one `UPDATE`, deletes the redirect rows whose path a record now holds, and stores every old path in `entry_redirects` with one upsert (an existing row for that path is pointed at the record). Five queries whatever the number of descendants. The SQL concat is the one driver-specific part (`||` on SQLite, `CONCAT` on MySQL) |
+| `isReserved($type, $locale, $parent, $slug)` | the one answer to "reserved at the top of the address": no parent, a type with no base, and the slug is in `ReservedSlugs` or is the base of any registered type in that language. Used by both `suggest()` and `EntrySlug` |
 
 `App\Rules\EntrySlug($type, $locale, $parent, $ignore)` checks, in this order: the format
 `^[a-z0-9]+(-[a-z0-9]+)*$`; not reserved (only for a record at the top of the address, that is without a parent
