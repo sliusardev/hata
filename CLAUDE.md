@@ -20,6 +20,7 @@ Admin panel starter kit (users, roles, permissions; later pages, posts, themes).
 | league/flysystem-aws-s3-v3 | 3.35 (S3 adapter for the optional cloud media disk; any S3-compatible service) |
 | symfony/html-sanitizer | 8.1 (allowlist sanitizer for record bodies, `App\Support\Content\BodySanitizer`; PHP's `Dom\HTMLDocument` parser) |
 | Tailwind | 4, built by vite-plus (`npm run build`) |
+| @tiptap/core, @tiptap/pm, @tiptap/starter-kit | 3.34.0 (npm, the rich text editor; loaded with `import()` only on pages with an editor) |
 
 ## Starter kit structure
 

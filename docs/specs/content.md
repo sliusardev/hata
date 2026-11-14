@@ -129,6 +129,48 @@ Images are stored as `<img data-media-id="12" alt="...">`, never with an address
 image whose file is gone or is not an image is dropped. One `whereIn` query for a body with images, none without.
 It does not sanitize again: it trusts that the body was cleaned on save.
 
+## Editor
+
+`<x-admin.rich-text wire:model="form.body" :label="…" :images="$images" :locale="$entry->locale" :readonly="false" />`
+(`resources/views/components/admin/rich-text.blade.php`) is a Tiptap 3 editor (npm `@tiptap/core`, `@tiptap/pm`,
+`@tiptap/starter-kit`, pinned to 3.34.0; approved by the user) driven by the Alpine component `richText`
+(`resources/js/rich-text-field.js`, registered in `app.js`). The Tiptap code (`resources/js/rich-text.js`) is loaded
+with `import()` when an editor initializes, so it is a chunk of its own (about 386 KB, 122 KB gzipped) that only pages
+with an editor download; the `app` entry grew by the Alpine component only (19.3 KB to 22.6 KB). Until it loads, the
+box shows a skeleton; if it fails, a message asks to reload.
+
+- **What it produces** is exactly what `BodySanitizer::clean()` keeps: the starter kit (paragraph, headings limited to
+  levels 2-4, bold, italic, underline, strike, inline code, link, bullet and numbered lists, blockquote, hard break,
+  horizontal rule, code block, undo/redo) plus the node `mediaImage`, `<img data-media-id alt>`. The schema reduces
+  pasted content to that set (an `h1` or `h5` becomes a paragraph, an image without a valid `data-media-id` is
+  dropped), and pasted links keep only `href` and `target="_blank"`, pasted numbered lists lose `start` and `type`.
+  Links accept `http`, `https`, `mailto`, `tel` and relative addresses (the same rule as the server); the link form
+  adds `https://` to a typed domain and `mailto:` to an email. A numbered list always counts from 1 in the editor
+  (CSS), as it will once the server has dropped `start`. Harmless leftovers the server drops anyway: an image's `src`,
+  a code block's `language-*` class.
+- **Binding.** The component reads the property name from `wire:model` and does not put `wire:model` on the page.
+  The editor reads the property once (`$wire.get()`) when it loads and then writes it without a request
+  (`$wire.set(name, html, false)`), 300 ms after the last change and again synchronously whenever the Livewire
+  component starts any action (`$wire.$intercept`, which runs before Livewire collects the property updates), so a
+  save right after typing carries the latest HTML. An empty document is `''`. The editor's markup is in `wire:ignore`:
+  a re-render never resets it or takes the focus, and a value the server writes into the property is not shown.
+- **Toolbar** (hidden when `readonly`): text style (paragraph, heading 2-4), bold, italic, underline, strike, bullet
+  and numbered list, quote, link, image, undo, redo. Buttons have `aria-label`s and Flux tooltips, toggles carry
+  `aria-pressed` and an active look; the toolbar wraps on a phone. Ctrl/Cmd+K opens the link form.
+- **Link form**: an inline strip (not a `<form>`, since the editor sits inside the page's form) with the address, "Open
+  in a new tab", Apply, Remove link and Cancel; Enter applies, Escape closes. With nothing selected the address is
+  inserted as the link's text.
+- **Images**: the image button (only with `media.view`) dispatches the browser event `media-picker:open` with
+  `{target: 'rich-text:<property>', locale}`; the page's one detached media picker answers with `media-picker:picked`
+  and only the editor with that target inserts the image at its selection (`src` from the event's `url`). For a body
+  opened again, `images` maps each media id to its current URL and fills the `src` when the content loads; an image
+  with no URL shows as a neutral block. Selecting an image shows an "Image alt text" field that edits that image's
+  `alt` in the body (not the library's alt). The page must mount `<livewire:media-picker detached accept="image" />`
+  once; see the media spec's Picker section.
+- **Look**: one bordered rounded box like the other fields, toolbar on a tinted strip with separators, the text below
+  with at least 16rem and growing; the focus ring of the other fields while the text has the focus; zinc and accent
+  only. Body typography is the `.rich-text-content` class in `resources/css/app.css`, meant for the public page too.
+
 ## Saving records
 
 `App\Support\Content\EntryInput` (static) holds the form's rules and turns the data into what is written.
@@ -295,6 +337,7 @@ sync and for the editor, every field kind's round trip and rules, shared and loc
 tree, the null-on-delete keys, `url()`, `fieldValue()` and the search index. The
 test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has one field of every kind with
 `price` shared; tests register it themselves.
+`tests/Feature/Admin/Content/RichTextComponentTest.php`: the editor component's binding config (no `wire:model` on the page), the image button only with `media.view`, read-only without a toolbar. The editor itself runs only in a browser and has no automated test.
 `tests/Feature/Content/BodyTest.php`: hostile inputs as a dataset with the exact output, allowed markup kept, Cyrillic round trip, long body, `mediaIds()`, `withoutMedia()`, rendering (one query, versioned URL, dropped images, alt fallback, no query without images).
 `tests/Feature/Content/EntryPathsTest.php`: suggested slugs, the slug rule, `move()` (descendants, redirects, the same
 query count for 2 and 50 descendants, redirect rows that already exist).
@@ -321,4 +364,4 @@ gallery).
 
 ## Not included yet
 
-The public route, the record form (create and edit are stubs), the editor and the field partials.
+The public route, the record form (create and edit are stubs, the editor is not mounted anywhere yet) and the field partials.

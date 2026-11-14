@@ -466,3 +466,113 @@ it('ties its label to the field group', function () {
     $picker->assertSeeHtml('aria-labelledby="'.$labelId.'"')
         ->assertSeeHtml('id="'.$labelId.'"');
 });
+
+/**
+ * @param  array<string, mixed>  $props
+ */
+function testDetachedPicker(array $props = []): Testable
+{
+    return Livewire::test('media-picker', ['detached' => true, 'accept' => 'image', ...$props]);
+}
+
+it('renders only the modal in detached mode, listening for the open event', function () {
+    $this->actingAs(pickerUser());
+    $image = Media::factory()->image()->create();
+
+    testDetachedPicker(['value' => $image->id])
+        ->assertSeeHtml('data-test="media-picker-detached"')
+        ->assertSeeHtml('x-on:media-picker:open.window')
+        ->assertDontSeeHtml('data-test="media-picker-open"')
+        ->assertDontSeeHtml('data-test="media-picker-chosen"')
+        ->assertDontSee(__('media.picker.none'))
+        ->assertDontSee($image->name);
+});
+
+it('opens for a target in detached mode and hands the chosen image back with that target', function () {
+    $this->actingAs(pickerUser());
+    $image = Media::factory()->image()->create(['alt' => ['en' => 'A bowl of porridge'], 'width' => 800, 'height' => 600]);
+
+    testDetachedPicker()
+        ->call('openFor', 'body-editor')
+        ->assertSet('showModal', true)
+        ->assertSet('target', 'body-editor')
+        ->assertSet('picked', [])
+        ->call('pick', $image->id)
+        ->call('choose')
+        ->assertDispatched('media-picker:picked', target: 'body-editor', id: $image->id, url: $image->url(), alt: 'A bowl of porridge', width: 800, height: 600)
+        ->assertSet('showModal', false)
+        ->assertSet('value', null);
+});
+
+it('hands the image back on a double click in detached mode', function () {
+    $this->actingAs(pickerUser());
+    $image = Media::factory()->image()->create();
+
+    testDetachedPicker()
+        ->call('openFor', 'intro')
+        ->call('pickAndChoose', $image->id)
+        ->assertDispatched('media-picker:picked', target: 'intro', id: $image->id)
+        ->assertSet('showModal', false);
+});
+
+it('starts every detached opening with nothing picked', function () {
+    $this->actingAs(pickerUser());
+    [$first, $second] = Media::factory()->image()->count(2)->create()->all();
+
+    $picker = testDetachedPicker()
+        ->call('openFor', 'one')
+        ->call('pickAndChoose', $first->id)
+        ->call('openFor', 'two')
+        ->assertSet('picked', [])
+        ->assertSet('target', 'two');
+
+    $picker->call('pick', $second->id)->call('choose')
+        ->assertDispatched('media-picker:picked', target: 'two', id: $second->id);
+});
+
+it('refuses a document or an unknown id in detached mode', function () {
+    $this->actingAs(pickerUser());
+    $document = Media::factory()->document()->create();
+    $missing = $document->id + 1000;
+
+    testDetachedPicker()
+        ->call('openFor', 'body')
+        ->call('pick', $document->id)
+        ->call('pick', $missing)
+        ->call('pickAndChoose', $document->id)
+        ->call('choose')
+        ->assertNotDispatched('media-picker:picked')
+        ->assertSet('picked', []);
+});
+
+it('does not open in detached mode without media.view', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.upload'])->create());
+
+    testDetachedPicker()
+        ->assertDontSeeHtml('x-on:media-picker:open.window')
+        ->call('openFor', 'body')
+        ->assertForbidden();
+});
+
+it('keeps only a short plain target', function () {
+    $this->actingAs(pickerUser());
+
+    testDetachedPicker()
+        ->call('openFor', '<script>alert(1)</script>')
+        ->assertSet('target', '')
+        ->call('openFor', str_repeat('a', 101))
+        ->assertSet('target', '');
+});
+
+it('hands back the alt text of the language the editor asked for, else the primary one', function () {
+    $this->actingAs(pickerUser());
+    $image = Media::factory()->image()->create(['alt' => ['en' => 'Porridge', 'uk' => 'Каша']]);
+
+    testDetachedPicker()
+        ->call('openFor', 'body', 'uk')
+        ->call('pickAndChoose', $image->id)
+        ->assertDispatched('media-picker:picked', alt: 'Каша')
+        ->call('openFor', 'body', 'xx')
+        ->call('pickAndChoose', $image->id)
+        ->assertDispatched('media-picker:picked', alt: 'Porridge');
+});

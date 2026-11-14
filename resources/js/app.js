@@ -7,6 +7,7 @@ import * as mediaFolderDrag from './media-folder-drag.js';
 import { mediaFolderTiles } from './media-folder-drag.js';
 import mediaMarquee from './media-marquee.js';
 import mediaUploader from './media-uploader.js';
+import richText from './rich-text-field.js';
 
 window.copyText = copyText;
 window.mediaDragStart = mediaDragStart;
@@ -21,4 +22,5 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('mediaFolderTiles', mediaFolderTiles);
     window.Alpine.data('mediaMarquee', mediaMarquee);
     window.Alpine.data('mediaUploader', mediaUploader);
+    window.Alpine.data('richText', richText);
 });

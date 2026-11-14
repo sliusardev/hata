@@ -26,6 +26,10 @@ use Livewire\WithFileUploads;
  * Usage: <livewire:media-picker wire:model="form.field" accept="image" :multiple="false" :extensions="[...]" :label="__('…')" />
  * The value is a media id (or null), or with `multiple` a list of ids in the order they were picked.
  * The parent validates the value again on save (App\Rules\MediaSelection): the browser can send any id.
+ *
+ * Detached mode (<livewire:media-picker detached accept="image" />, one per page) renders only the modal, for the rich
+ * text editor: the browser event `media-picker:open` with `{target, locale}` opens it, and a choice dispatches
+ * `media-picker:picked` with `{target, id, url, alt, width, height}` instead of setting the value.
  */
 new class extends Component {
     use WithFileUploads {
@@ -84,6 +88,24 @@ new class extends Component {
     #[Locked]
     public ?string $label = null;
 
+    /**
+     * Only the modal, opened by a browser event and answering with one (see the class comment); always a single file.
+     */
+    #[Locked]
+    public bool $detached = false;
+
+    /**
+     * Detached mode: who opened the modal (an editor's own name), handed back with the pick so only it reacts.
+     */
+    #[Locked]
+    public string $target = '';
+
+    /**
+     * Detached mode: the language whose alt text the pick carries ('' = the primary alt language).
+     */
+    #[Locked]
+    public string $altLocale = '';
+
     public bool $showModal = false;
 
     /**
@@ -140,15 +162,15 @@ new class extends Component {
     /**
      * @param  list<string>|null  $extensions
      */
-    public function mount(string $accept = 'any', bool $multiple = false, ?array $extensions = null, ?string $label = null): void
+    public function mount(string $accept = 'any', bool $multiple = false, ?array $extensions = null, ?string $label = null, bool $detached = false): void
     {
         $acceptance = new MediaAcceptance($accept, $extensions);
 
         $this->accept = $acceptance->accept;
-        $this->multiple = $multiple;
+        $this->multiple = $multiple && ! $detached;
         $this->extensions = $acceptance->extensions;
         $this->label = $label;
-
+        $this->detached = $detached;
     }
 
     /**
@@ -201,6 +223,24 @@ new class extends Component {
         $this->tab = 'library';
         $this->limit = self::STEP;
         $this->focus($this->picked === [] ? null : end($this->picked));
+        $this->showModal = true;
+    }
+
+    /**
+     * Detached mode: open the modal for an editor, with nothing picked. The target and the language come from the
+     * browser, so anything but a short plain name (or a known interface language) is dropped.
+     */
+    public function openFor(string $target = '', string $locale = ''): void
+    {
+        $this->authorize('viewAny', Media::class);
+
+        $this->target = preg_match('/^[A-Za-z0-9_.:-]{1,100}$/', $target) === 1 ? $target : '';
+        $this->altLocale = array_key_exists($locale, (array) config('app.available_locales')) ? $locale : '';
+        $this->picked = [];
+        $this->lastUnpicked = null;
+        $this->tab = 'library';
+        $this->limit = self::STEP;
+        $this->focus(null);
         $this->showModal = true;
     }
 
@@ -263,6 +303,12 @@ new class extends Component {
         $this->authorize('viewAny', Media::class);
 
         $ids = $this->acceptance()->filterIds($this->picked);
+
+        if ($this->detached) {
+            $this->handBack($ids[0] ?? null);
+
+            return;
+        }
 
         if ($this->multiple) {
             $this->value = $ids;
@@ -520,6 +566,31 @@ new class extends Component {
         ];
     }
 
+    /**
+     * Detached mode: tell the editor that opened the modal which image was chosen, then close. Nothing chosen keeps
+     * the modal open.
+     */
+    private function handBack(?int $id): void
+    {
+        $media = $id === null ? null : Media::query()->find($id);
+
+        if ($media === null) {
+            return;
+        }
+
+        $this->dispatch(
+            'media-picker:picked',
+            target: $this->target,
+            id: $media->id,
+            url: $media->url(),
+            alt: $media->altFor($this->altLocale !== '' ? $this->altLocale : Media::primaryAltLocale()),
+            width: $media->width,
+            height: $media->height,
+        );
+
+        $this->showModal = false;
+    }
+
     protected function acceptance(): MediaAcceptance
     {
         return new MediaAcceptance($this->accept, $this->extensions);
@@ -598,11 +669,19 @@ new class extends Component {
 
 @php
     $canView = auth()->user()?->can('viewAny', App\Models\Media::class) ?? false;
-    $chosen = $this->chosen;
+    $chosen = $detached ? new Illuminate\Database\Eloquent\Collection : $this->chosen;
     $modalName = 'media-picker-'.$this->getId();
 @endphp
 
-<div class="space-y-2" role="group" @if ($label) aria-labelledby="media-picker-label-{{ $this->getId() }}" @endif data-test="media-picker">
+<div
+    @if ($detached)
+        data-test="media-picker-detached"
+        @if ($canView) x-on:media-picker:open.window="$wire.openFor(String($event.detail?.target ?? ''), String($event.detail?.locale ?? ''))" @endif
+    @else
+        class="space-y-2" role="group" @if ($label) aria-labelledby="media-picker-label-{{ $this->getId() }}" @endif data-test="media-picker"
+    @endif
+>
+    @unless ($detached)
     @if ($label)
         <flux:label id="media-picker-label-{{ $this->getId() }}">{{ $label }}</flux:label>
     @endif
@@ -645,6 +724,7 @@ new class extends Component {
             {{ $multiple && $chosen->isNotEmpty() ? __('media.picker.add') : __('media.picker.choose') }}
         </flux:button>
     @endif
+    @endunless
 
     @if ($canView)
         <flux:modal :name="$modalName" wire:model.self="showModal" class="w-full max-w-5xl p-0!">
