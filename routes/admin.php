@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\MaintenanceRunController;
 use App\Http\Controllers\Admin\MediaDirectCheckController;
 use App\Http\Controllers\MediaSourcePreviewController;
 use App\Http\Controllers\MediaZipController;
+use App\Support\Content\ContentTypes;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,6 +23,11 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
     ->name('admin.')
     ->group(function () {
         Route::view('/', 'dashboard')->name('dashboard');
+
+        $contentTypes = app(ContentTypes::class)->pattern();
+        Route::livewire('content/{type}', 'pages::admin.content.index')->where('type', $contentTypes)->name('content.index');
+        Route::livewire('content/{type}/create', 'pages::admin.content.create')->where('type', $contentTypes)->name('content.create');
+        Route::livewire('content/{type}/{entry}/edit', 'pages::admin.content.edit')->where('type', $contentTypes)->whereNumber('entry')->withTrashed()->name('content.edit');
 
         Route::livewire('media', 'pages::admin.media.index')->name('media.index');
         Route::get('media/zip', MediaZipController::class)->middleware('can:media.view')->name('media.zip');

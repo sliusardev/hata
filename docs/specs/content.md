@@ -1,7 +1,7 @@
 # Content
 
 Content types (pages now, posts later) and their extra fields. The registry, the record tables and models, the
-slug and path rules, the body sanitizer, the save actions and the trash exist so far: there are no routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
+slug and path rules, the body sanitizer, the save actions, the trash and the admin list exist so far; the record form and the public route come next. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
 
 ## Content types
 
@@ -15,6 +15,8 @@ slug and path rules, the body sanitizer, the save actions and the trash exist so
 | `hierarchical()` | records form a tree with a parent and a path |
 | `base($locale)` | first address segment of the type in a language, or null for the root |
 | `fields()` | the extra fields (none by default); `field($name)`, `sharedFields()`, `localFields()` |
+| `description()` | the line under the admin list's heading, from `content.types.<key>.description` |
+| `createLabel()` | the list's "Create" button ("Create page"), from `content.types.<key>.create` |
 | `perPage()` | admin list page size, 20 by default |
 | `permission($action)` | `"{key}.{action}"` |
 
@@ -211,13 +213,82 @@ media usages, the rows (their redirects follow by foreign key), then every group
 counted) with its usages. Six queries whatever the number of records. A group that still has a record in another language stays.
 
 `content:prune-trash` prints "Removed N trashed record(s)." and runs `daily()` in `routes/console.php` next to
-`media:prune-deleted`. The admin list will prune too, so no cron is required.
+`media:prune-deleted`. The admin list prunes too, so no cron is required.
 
 A content language that has records, trashed ones included, cannot be removed (`RemoveContentLocale`, see the
 languages spec).
 
+## Admin
+
+Routes in `routes/admin.php` (prefix `admin`, `auth`, `verified`, `can:admin.access`), `{type}` constrained by
+`ContentTypes::pattern()` (an unknown type is 404):
+
+| Route | Name | Page |
+|---|---|---|
+| `admin/content/{type}` | `admin.content.index` | `pages::admin.content.index`, the list; authorizes `viewAny` |
+| `admin/content/{type}/create` | `admin.content.create` | stub until the form exists: authorizes `create`, heading, back link. Takes `locale` and `from` |
+| `admin/content/{type}/{entry}/edit` | `admin.content.edit` | stub until the form exists: a record of another type is 404, authorizes `view`; trashed records resolve (`withTrashed()`) |
+
+**Sidebar.** The "Content" group lists every registered type the actor may view (`viewAny`, its plural label and icon),
+then Media; the group shows when any of them or `media.view` holds.
+
+**List** (`pages::admin.content.index`, a plain full-page component, no islands):
+
+- Header: the type's plural label and description; "Create page" (`create`) links to `admin.content.create` with the
+  list's language.
+- Tabs All, Published, Drafts, Scheduled, Trash with counts. Published is `public()`; Drafts is `draft` or a published
+  record without a date; Scheduled is published with a future date. The counts are of the type and language, whatever
+  the search and the filter.
+- Filters: search (`search_index`, title and slug, case-insensitive with Cyrillic); the list's language (every
+  language added to the site, a switched-off one marked "off"); "Missing: <language>" (records whose group has no live
+  record in that language, trashed translations count as missing). Both language selects and the Translations column
+  are absent on a site with one language.
+- State in the query string: `tab` (default `all`), `q`, `locale`, `missing`, `sort`, `dir`, `page`, so a filtered list
+  can be bookmarked and Back works. The language is remembered in the session (`content.list_locale`) and defaults to
+  the default content language; a value that is not a language of the site falls back to the default. An unknown tab is
+  `all`.
+- Sort: title and date (`coalesce(published_at, created_at)`), toggled by the column headers. A hierarchical type
+  defaults to tree order and a third click on a header (or the "Tree order" button) goes back to it. Tree order sorts
+  by `path` with `/` read as a space, so `about/team` comes right after `about` and before `about-us`; rows are
+  indented by `depth()` while no search is typed.
+- Row: thumbnail (`thumbUrl()` of the image, else a neutral block; fixed 40 px), the title linking to the edit page,
+  the address (`url(false)`), a Draft or Scheduled badge, the translations bar, author, date, and the "⋮" menu. On a
+  phone the translations, author and date columns are hidden.
+- Translations bar: green = published, amber = draft or scheduled, `n/total` where total is every language added to
+  the site (switched-off ones included). Hovering (or focusing) it opens `partials/admin/content/translations-grid`.
+- Menu: Edit (`edit`), View on site (public records), Add translation (`create`; a submenu of the languages the group
+  lacks, each to `admin.content.create` with `from` and `locale`), Move to trash (`delete`).
+- Trash tab: a flat list by `deleted_at`, newest first, with "Removed on <date>" (`deleted_at` + `trash_days`). Menu:
+  Restore (`edit`, `RestoreEntry`) and Delete for good (`delete`, `DeleteEntry`).
+- Confirmations (`<x-confirm-modal>`): moving to the trash names the number of subpages going with it
+  (`descendantsCount()`); deleting for good is always confirmed and names the number of trashed records under it.
+  Results are toasts; a `ProtectedActionException` (a restore conflict) is a danger toast.
+- Empty states: no records at all invites creating the first; a search or filter with no match offers "Clear filters";
+  an empty trash says how long records stay there; an empty tab says so.
+- Opening the list prunes the trash (`PruneEntryTrash`) after the response at most once an hour per type (cache key
+  `content.prune_trash.<type>`), so no cron is required.
+
+`App\Support\Content\EntryListQuery::for($type, $locale)` builds the list: `tab()`, `search()`, `missingIn()` (a `not
+exists` on the group), `sort('title'|'date'|'tree', 'asc'|'desc')`, `isTree()`, `query()`, `paginate($perPage)` and
+`counts()` (one aggregate query). It selects only the columns a row shows and eager loads `image`, `author` (`id`,
+`name`) and `groupEntries` (`id`, `entry_group_id`, `locale`, `title`, `status`, `published_at`), so the page's query
+count does not depend on the number of rows (asserted with 5 and 20 rows). Permissions are checked once per render,
+not per row.
+
+**Translations grid** (`partials/admin/content/translations-grid.blade.php`, reused by the form): receives `$entry`,
+`$languages` (`ContentLocales::all()`), `$groupEntries` (the loaded relation) and optionally `$canCreate`. Four codes
+per row: the record's own language filled dark, an existing translation green (published) or amber (draft or
+scheduled) linking to its edit page, a missing one dashed with "+" linking to the create page with `from` and `locale`
+(a plain mark without `create`); a switched-off language is muted with an "off" mark. A legend with the counts follows.
+It makes no query.
+
 ## Tests
 
+`tests/Feature/Admin/Content/EntryIndexTest.php`: access (guest, 403, unknown type), the sidebar item and group, tabs
+and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
+the tree, `missing`, the list's language (session, fallback), the translations bar and its create links, the one-language
+site, the Create button, trash/restore/delete for good with their permissions and confirmation texts, the row menu, empty
+states, the query string, the same query count for 5 and 20 rows, the hourly prune, and the create/edit stubs.
 `tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, `pages`, the permissions after a
 sync and for the editor, every field kind's round trip and rules, shared and local fields, media ids.
 `tests/Feature/Models/EntryTest.php`: public/scheduled/trashed visibility, the unique indexes, translations, the
@@ -250,4 +321,4 @@ gallery).
 
 ## Not included yet
 
-The public route, the admin screens (and the list's own prune), the editor and the field partials.
+The public route, the record form (create and edit are stubs), the editor and the field partials.

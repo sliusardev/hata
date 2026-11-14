@@ -1,0 +1,201 @@
+<?php
+
+namespace App\Support\Content;
+
+use App\Enums\EntryStatus;
+use App\Models\Entry;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+/**
+ * The records of one type and language as the admin list shows them: a tab, a search, a "missing translation in"
+ * filter and a sort. The query count does not depend on the number of rows: the image, the author and the group's
+ * records are eager loaded with only the columns a row shows.
+ */
+final class EntryListQuery
+{
+    public const array TABS = ['all', 'published', 'drafts', 'scheduled', 'trash'];
+
+    public const array SORTS = ['title', 'date', 'tree'];
+
+    /**
+     * The columns a row needs: no body, excerpt or SEO texts.
+     */
+    private const array COLUMNS = [
+        'id', 'entry_group_id', 'type', 'locale', 'parent_id', 'author_id', 'image_id', 'title', 'slug', 'path',
+        'status', 'published_at', 'created_at', 'deleted_at',
+    ];
+
+    private string $tab = 'all';
+
+    private ?string $search = null;
+
+    private ?string $missing = null;
+
+    private string $sort;
+
+    /**
+     * @var 'asc'|'desc'
+     */
+    private string $direction;
+
+    private function __construct(private readonly ContentType $type, private readonly string $locale)
+    {
+        $this->sort = $type->hierarchical() ? 'tree' : 'date';
+        $this->direction = $type->hierarchical() ? 'asc' : 'desc';
+    }
+
+    public static function for(ContentType $type, string $locale): self
+    {
+        return new self($type, $locale);
+    }
+
+    /**
+     * An unknown tab is `all`.
+     */
+    public function tab(string $tab): self
+    {
+        $this->tab = in_array($tab, self::TABS, true) ? $tab : 'all';
+
+        return $this;
+    }
+
+    public function search(?string $term): self
+    {
+        $this->search = $term;
+
+        return $this;
+    }
+
+    /**
+     * Only records whose group has no live record in that language. Ignored for the list's own language.
+     */
+    public function missingIn(?string $locale): self
+    {
+        $this->missing = $locale !== null && $locale !== '' && $locale !== $this->locale ? $locale : null;
+
+        return $this;
+    }
+
+    /**
+     * `tree` is path order and only applies to a hierarchical type; an unknown sort keeps the type's default.
+     */
+    public function sort(string $column, string $direction): self
+    {
+        if (in_array($column, self::SORTS, true) && ($column !== 'tree' || $this->type->hierarchical())) {
+            $this->sort = $column;
+        }
+
+        $this->direction = $direction === 'desc' ? 'desc' : 'asc';
+
+        return $this;
+    }
+
+    /**
+     * Whether rows come in tree order, so the list may indent them by depth: a hierarchical type sorted as a tree,
+     * outside the trash (which is a flat list by trashing time).
+     */
+    public function isTree(): bool
+    {
+        return $this->sort === 'tree' && $this->tab !== 'trash';
+    }
+
+    /**
+     * @return Builder<Entry>
+     */
+    public function query(): Builder
+    {
+        $query = Entry::query()
+            ->select(self::COLUMNS)
+            ->ofType($this->type->key())
+            ->inLocale($this->locale)
+            ->with([
+                'image' => fn (BelongsTo $image) => $image->select(['id', 'key', 'name', 'disk', 'thumb_path', 'kind', 'mime', 'version']),
+                'author' => fn (BelongsTo $author) => $author->select(['id', 'name']),
+                'groupEntries' => fn (HasMany $entries) => $entries->select(['id', 'entry_group_id', 'locale', 'title', 'status', 'published_at']),
+            ])
+            ->search($this->search);
+
+        $now = now();
+
+        match ($this->tab) {
+            'published' => $query->where('status', EntryStatus::Published->value)->where('published_at', '<=', $now),
+            'drafts' => $query->where(fn (Builder $drafts) => $drafts->where('status', EntryStatus::Draft->value)->orWhereNull('published_at')),
+            'scheduled' => $query->where('status', EntryStatus::Published->value)->where('published_at', '>', $now),
+            'trash' => $query->onlyTrashed(),
+            default => null,
+        };
+
+        if ($this->missing !== null) {
+            $query->whereNotExists(fn ($others) => $others
+                ->selectRaw('1')
+                ->from('entries as translated')
+                ->whereColumn('translated.entry_group_id', 'entries.entry_group_id')
+                ->where('translated.locale', $this->missing)
+                ->whereNull('translated.deleted_at'));
+        }
+
+        return $this->order($query);
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, Entry>
+     */
+    public function paginate(int $perPage): LengthAwarePaginator
+    {
+        return $this->query()->paginate($perPage);
+    }
+
+    /**
+     * How many records of the type and language each tab holds, whatever the search and filter: one query.
+     *
+     * @return array{all: int, published: int, drafts: int, scheduled: int, trash: int}
+     */
+    public function counts(): array
+    {
+        $now = (new Entry)->fromDateTime(now());
+        $published = EntryStatus::Published->value;
+
+        $row = Entry::withTrashed()
+            ->ofType($this->type->key())
+            ->inLocale($this->locale)
+            ->toBase()
+            ->selectRaw('sum(case when deleted_at is null then 1 else 0 end) as all_count')
+            ->selectRaw('sum(case when deleted_at is null and status = ? and published_at <= ? then 1 else 0 end) as published_count', [$published, $now])
+            ->selectRaw('sum(case when deleted_at is null and (status <> ? or published_at is null) then 1 else 0 end) as drafts_count', [$published])
+            ->selectRaw('sum(case when deleted_at is null and status = ? and published_at > ? then 1 else 0 end) as scheduled_count', [$published, $now])
+            ->selectRaw('sum(case when deleted_at is not null then 1 else 0 end) as trash_count')
+            ->first();
+
+        return [
+            'all' => (int) ($row->all_count ?? 0),
+            'published' => (int) ($row->published_count ?? 0),
+            'drafts' => (int) ($row->drafts_count ?? 0),
+            'scheduled' => (int) ($row->scheduled_count ?? 0),
+            'trash' => (int) ($row->trash_count ?? 0),
+        ];
+    }
+
+    /**
+     * @param  Builder<Entry>  $query
+     * @return Builder<Entry>
+     */
+    private function order(Builder $query): Builder
+    {
+        if ($this->tab === 'trash') {
+            return $query->orderByDesc('deleted_at')->orderByDesc('id');
+        }
+
+        return match ($this->sort) {
+            'title' => $query->orderBy('title', $this->direction)->orderBy('id', $this->direction),
+            'date' => $query
+                ->orderByRaw($this->direction === 'asc' ? 'coalesce(published_at, created_at) asc' : 'coalesce(published_at, created_at) desc')
+                ->orderBy('id', $this->direction),
+            // A slug never holds a space, and a space sorts before `-` and every letter and digit, so this keeps
+            // `about/team` right after `about` and before `about-us` (plain path order would not).
+            default => $query->orderByRaw("replace(path, '/', ' ') asc")->orderBy('id'),
+        };
+    }
+}

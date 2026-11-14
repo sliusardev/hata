@@ -123,7 +123,7 @@ Short specs for each section of the site. Read the relevant one before changing 
 - [Users page](docs/specs/users.md): list, create/edit form, user actions and protection rules
 - [Roles and permissions page](docs/specs/roles.md): permission registry, system roles, permission matrix, role actions
 - [Content languages](docs/specs/languages.md): the language catalogue, the site's languages and the default, address prefixes, `Route::localized()`, the language of service pages, reserved slugs, the Languages settings tab
-- [Content](docs/specs/content.md): content types and their fields, the type registry, the per-type permissions
+- [Content](docs/specs/content.md): content types and their fields, the type registry, the per-type permissions, the admin list of entries
 - [Site settings page](docs/specs/site-settings.md): site name, languages, timezone, registration, default role, email, logo, colors, media (optimization, storage/S3)
 - [Media library](docs/specs/media.md): files and folders, upload, image optimization, crop/replace, picker, storage (public disk served by the web server, S3-compatible), optimizing and moving existing files, permissions
 - [Maintenance page](docs/specs/maintenance.md): migrations, seeders and cache commands from the admin, the run journal, the log viewer, the reserved `maintenance.run` permission

@@ -22,13 +22,27 @@
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 
-                    @can('media.view')
+                    @php
+                        $contentTypes = array_filter(
+                            app(App\Support\Content\ContentTypes::class)->all(),
+                            fn ($contentType) => auth()->user()->can('viewAny', [App\Models\Entry::class, $contentType->key()]),
+                        );
+                    @endphp
+                    @if ($contentTypes !== [] || auth()->user()->can('media.view'))
                         <flux:sidebar.group :heading="__('navigation.content')" :class="$groupClasses">
-                            <flux:sidebar.item icon="photo" :icon:variant="request()->routeIs('admin.media.*') ? 'solid' : 'outline'" :href="route('admin.media.index')" :current="request()->routeIs('admin.media.*')" wire:navigate>
-                                {{ __('navigation.media') }}
-                            </flux:sidebar.item>
+                            @foreach ($contentTypes as $contentType)
+                                @php $isCurrent = request()->routeIs('admin.content.*') && request()->route('type') === $contentType->key(); @endphp
+                                <flux:sidebar.item :icon="$contentType->icon()" :icon:variant="$isCurrent ? 'solid' : 'outline'" :href="route('admin.content.index', $contentType->key())" :current="$isCurrent" wire:navigate wire:key="nav-content-{{ $contentType->key() }}">
+                                    {{ $contentType->pluralLabel() }}
+                                </flux:sidebar.item>
+                            @endforeach
+                            @can('media.view')
+                                <flux:sidebar.item icon="photo" :icon:variant="request()->routeIs('admin.media.*') ? 'solid' : 'outline'" :href="route('admin.media.index')" :current="request()->routeIs('admin.media.*')" wire:navigate>
+                                    {{ __('navigation.media') }}
+                                </flux:sidebar.item>
+                            @endcan
                         </flux:sidebar.group>
-                    @endcan
+                    @endif
 
                     @canany(['users.view', 'roles.view', 'settings.edit', 'maintenance.run'])
                         <flux:sidebar.group :heading="__('navigation.administration')" :class="$groupClasses">

@@ -45,6 +45,22 @@ abstract class ContentType
         return __("content.types.{$this->key()}.plural");
     }
 
+    /**
+     * One line under the admin list's heading, from `content.types.<key>.description`.
+     */
+    public function description(): string
+    {
+        return __("content.types.{$this->key()}.description");
+    }
+
+    /**
+     * The admin list's "Create" button, from `content.types.<key>.create` ("Create page").
+     */
+    public function createLabel(): string
+    {
+        return __("content.types.{$this->key()}.create");
+    }
+
     public function perPage(): int
     {
         return 20;
