@@ -1,7 +1,8 @@
 # Maintenance page
 
-Service commands for after a deploy, run from the admin instead of a console. Design:
-`docs/superpowers/specs/2026-11-12-maintenance-page-design.md`. Decision 54 in CLAUDE.md.
+Service commands for after a deploy, run from the admin instead of a console, and the log files. Designs:
+`docs/superpowers/specs/2026-11-12-maintenance-page-design.md` (decision 54 in CLAUDE.md) and
+`docs/superpowers/specs/2026-11-14-log-viewer-design.md` (decision 55).
 
 ## Why
 
@@ -14,7 +15,7 @@ see what the command printed and who ran what.
 - `GET /admin/maintenance` (`admin.maintenance`, Livewire SFC `pages::admin.maintenance.index`), admin group
   plus `can:maintenance.run`; `mount()` authorizes again. Sidebar item "Maintenance" under Administration,
   after "Site settings", shown with the permission.
-- Tabs like Site settings (`flux:navbar`; `#[Url] tab`, `TABS` in the page; an unknown value falls back to `actions`): **Actions** and **Journal**. Each tab loads only its own data: the Actions tab never queries the journal, the Journal tab never reads the migration state. The user asked for tabs because database tools will be added later as another tab.
+- Tabs like Site settings (`flux:navbar`; `#[Url] tab`, `TABS` in the page; an unknown value falls back to `actions`): **Actions**, **Journal** and **Logs**. Each tab loads only its own data: the Actions tab never queries the journal, the Journal tab never reads the migration state, and only the Logs tab lists the logs folder. The user asked for tabs because database tools will be added later as another tab.
 - Actions tab: four cards, each with what the action does:
   - **Run migrations**: the names `migrate` would run now (`PendingMigrations::names()`, read through the
     migrator: migration files minus the ran ones), with their count. With nothing pending it says so and has
@@ -112,6 +113,40 @@ every other action is refused with "run the migrations first".
 `Illuminate\Database\Seeder`, by its name relative to `Database\Seeders`, sorted, `DatabaseSeeder` first.
 Seeders run through `db:seed --class`, so the container builds them.
 
+## Logs tab
+
+The owner reads Laravel's logs here instead of opening the files over SSH or FTP. The user asked for the files
+as they are, in a viewer with highlighting, every file of the folder, view and delete; no package.
+
+- **Files** (`App\Support\Maintenance\LogFiles`): the regular files directly in `storage/logs`, newest first,
+  so `single`, `daily` and custom channels need no setting. Dot files, subfolders and symbolic links are left
+  out. `resolve($name)` returns a path only for a name the listing holds; every read and delete goes through
+  it, so nothing outside the folder can be read or deleted. The page's actions take the file's `key` (an md5
+  of the name), so a file name is never written into a script.
+- **List**: `flux:table` with name, size and change time (site timezone); the name opens the viewer, the "⋮"
+  menu has Open and Delete. No files: an empty state.
+- **Viewer** (`#[Url] file`, a listed name; anything else falls back to the list with a danger toast; leaving
+  the tab closes it): a dark monospace panel that shows the file in file order, opened scrolled to the end,
+  where the newest lines are. The content is **not** rendered by Livewire: the panel (`wire:ignore`) fetches
+  it from `GET admin/maintenance/logs/{file}?before={offset}` (`admin.maintenance.logs.chunk`,
+  `Admin\MaintenanceLogChunkController`, admin group plus `can:maintenance.run`, `no-store`), so a log never
+  travels in the component's responses. "Load earlier lines" fetches the chunk above and keeps the scroll
+  position.
+- **Reading** (`App\Support\Maintenance\LogReader::chunk($path, $before)`): at most 256 KB (`CHUNK`) ending at
+  `$before` (the end of the file when null), moved to the start of a line unless that line alone is longer
+  than a chunk. Returns `html`, `start` (pass it as the next `before`; 0 is the top), `end`, `size`; the
+  route adds `remaining` (the size above, formatted). The text is made valid UTF-8 and escaped before any
+  markup is added.
+- **Highlighting**, per line, on the server, no JavaScript library: an entry line
+  (`[date] env.LEVEL:`) gets `log-date` and `log-level log-level-{level}`; stack frames (`#12 …`),
+  `[stacktrace]` and `[previous exception]` get `log-trace`. The colors are in `resources/css/app.css`
+  (`.log-text`). Nothing is parsed into entries, so files that are not Laravel logs show as plain text.
+- **Deleting** (`App\Actions\Maintenance\DeleteLogFile::handle(User $actor, string $name)`): authorizes
+  `maintenance.run`, resolves the name, deletes the file; an unlisted name or a failed delete throws
+  `MaintenanceException`. Called from a Livewire action behind `<x-confirm-modal>` (deleting a file touches
+  nothing Livewire depends on). A channel that was writing to the file creates it again on its next write.
+  Deletions are not written to the journal, which records command runs.
+
 ## Config cache and stored settings
 
 `config:cache` boots a fresh application to collect the config. `AppServiceProvider::boot()` applies the
@@ -129,11 +164,14 @@ then holds the `.env`-level values, and the stored settings are applied over the
 Nothing runs outside this page: no middleware, no provider work, no query elsewhere; the sidebar item is one
 permission check. Opening the page costs the pending-migrations check (one query on `migrations` and a
 directory listing), the seeder discovery (a directory listing) and one page of the journal without outputs.
+The Logs tab lists one directory; opening a file reads at most 256 KB per request, whatever the file's size,
+and runs no query of its own.
 
 ## Not included
 
 Arbitrary commands or options, rollback, `migrate:fresh`, the storage link (Settings → Media has it),
-maintenance mode, queue or scheduler control, a CLI twin.
+maintenance mode, queue or scheduler control, a CLI twin. For logs: parsing into entries, filters, search,
+download, live tail, subfolders of `storage/logs`, changing the logging channel.
 
 ## Tests
 
@@ -146,6 +184,13 @@ folder (redirect, flash, application state, no stored setting in the cache file)
 actions, failed and throwing commands, invalid UTF-8, the lock and its release, truncation, pruning, the tabs
 and the journal with its output modal. Other cache runs go through a fake `ArtisanRunner`.
 
+`tests/Feature/Admin/Maintenance/LogViewerTest.php` (a scratch folder stands in for `storage/logs`): access
+to the chunk route and the delete action, the listing (dot files, folders, links, order), tampered names on
+resolve, the route and delete, chunk boundaries on real files (line alignment, chunks joining back into the
+file, a line longer than a chunk, an empty file, positions out of range), escaping and invalid UTF-8, the
+highlight classes, and the page (the tab, the empty state, open/close, the `file` address, delete with its
+confirmation, a file gone meanwhile, the folder is not read on other tabs, the content is not in the page).
+
 ## Known limitations
 
 - A `migrate` started over SSH at the same moment is not detected.
@@ -157,5 +202,10 @@ and the journal with its output modal. Other cache runs go through a fake `Artis
   stores its lock could be lost (media batches are checked).
 - If "Rebuild caches" leaves the site unable to boot, the page can't help: delete `bootstrap/cache/*.php`
   by hand (README).
+- The log viewer's Alpine code (fetching, prepending, scroll position) is covered only by a browser check, not
+  by tests.
+- A log line longer than 256 KB is split across chunks, and its later part is highlighted as plain text.
+- A file replaced or truncated while it is open (rotation) can show a mismatched part after "Load earlier
+  lines"; reopening the file fixes it.
 - Runs happen inside the request; a host with a hard request time limit can cut a long migration (the entry
   then reads "interrupted").

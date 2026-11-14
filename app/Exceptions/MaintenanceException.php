@@ -28,4 +28,14 @@ class MaintenanceException extends RuntimeException
     {
         return new self(__('maintenance.errors.media_batch_running'));
     }
+
+    public static function logFileMissing(): self
+    {
+        return new self(__('maintenance.logs.errors.missing'));
+    }
+
+    public static function logFileNotDeleted(): self
+    {
+        return new self(__('maintenance.logs.errors.not_deleted'));
+    }
 }

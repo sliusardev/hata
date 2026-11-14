@@ -70,3 +70,38 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+/* The log viewer of the maintenance page: lines arrive as HTML from LogReader, on an always-dark panel. */
+.log-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.log-text .log-date {
+    color: var(--color-zinc-500);
+}
+
+.log-text .log-level {
+    font-weight: 600;
+}
+
+.log-text .log-level-emergency,
+.log-text .log-level-alert,
+.log-text .log-level-critical,
+.log-text .log-level-error {
+    color: var(--color-red-400);
+}
+
+.log-text .log-level-warning {
+    color: var(--color-amber-400);
+}
+
+.log-text .log-level-notice,
+.log-text .log-level-info {
+    color: var(--color-sky-400);
+}
+
+.log-text .log-level-debug,
+.log-text .log-trace {
+    color: var(--color-zinc-400);
+}

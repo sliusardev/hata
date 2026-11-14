@@ -1,9 +1,12 @@
 <?php
 
+use App\Actions\Maintenance\DeleteLogFile;
 use App\Actions\Maintenance\RunMaintenanceAction;
+use App\Exceptions\MaintenanceException;
 use App\Http\Controllers\Admin\MaintenanceRunController;
 use App\Enums\MaintenanceAction;
 use App\Models\MaintenanceRun;
+use App\Support\Maintenance\LogFiles;
 use App\Support\Maintenance\PendingMigrations;
 use App\Support\Maintenance\SeederCatalog;
 use Flux\Flux;
@@ -30,7 +33,7 @@ new #[Title('maintenance.title')] class extends Component {
      *
      * @var array<string, string>
      */
-    public const array TABS = ['actions' => 'wrench-screwdriver', 'journal' => 'clipboard-document-list'];
+    public const array TABS = ['actions' => 'wrench-screwdriver', 'journal' => 'clipboard-document-list', 'logs' => 'document-text'];
 
     #[Url(except: 'actions')]
     public string $tab = 'actions';
@@ -68,11 +71,26 @@ new #[Title('maintenance.title')] class extends Component {
 
     public bool $showOutputModal = false;
 
+    /**
+     * The log file open in the viewer, a name LogFiles lists; empty shows the list of files.
+     */
+    #[Url(except: '')]
+    public string $file = '';
+
+    /**
+     * The log file the open delete confirmation is about.
+     */
+    #[Locked]
+    public ?string $deletingLog = null;
+
+    public bool $showDeleteLogModal = false;
+
     public function mount(): void
     {
         $this->authorize('maintenance.run');
 
         $this->keepKnownTab();
+        $this->keepKnownFile();
         $this->pickDefaultSeeder();
 
         $lastRun = session(MaintenanceRunController::LAST_RUN_KEY);
@@ -84,6 +102,33 @@ new #[Title('maintenance.title')] class extends Component {
         $this->keepKnownTab();
         $this->pickDefaultSeeder();
         $this->resetPage();
+        $this->file = '';
+    }
+
+    public function updatedFile(): void
+    {
+        $this->keepKnownFile();
+    }
+
+    /**
+     * A file is open only on the logs tab, and only one the logs folder lists.
+     */
+    private function keepKnownFile(): void
+    {
+        if ($this->file === '') {
+            return;
+        }
+
+        if ($this->tab !== 'logs') {
+            $this->file = '';
+
+            return;
+        }
+
+        if ($this->openedLog === null) {
+            $this->file = '';
+            Flux::toast(variant: 'danger', text: __('maintenance.logs.errors.missing'));
+        }
     }
 
     /**
@@ -151,6 +196,101 @@ new #[Title('maintenance.title')] class extends Component {
         $this->viewingRunId = $id;
         unset($this->viewingRun);
         $this->showOutputModal = $this->viewingRun !== null;
+    }
+
+    /**
+     * Open a log file in the viewer. The key comes from LogFiles, so a file name never travels in a script.
+     */
+    public function openLog(string $key): void
+    {
+        $this->authorize('maintenance.run');
+
+        $file = app(LogFiles::class)->findByKey($key);
+
+        if ($file === null) {
+            $this->logFileGone();
+
+            return;
+        }
+
+        $this->file = $file['name'];
+        unset($this->openedLog);
+    }
+
+    public function closeLog(): void
+    {
+        $this->file = '';
+        unset($this->openedLog, $this->logFiles);
+    }
+
+    public function confirmDeleteLog(string $key): void
+    {
+        $this->authorize('maintenance.run');
+
+        $file = app(LogFiles::class)->findByKey($key);
+
+        if ($file === null) {
+            $this->logFileGone();
+
+            return;
+        }
+
+        $this->deletingLog = $file['name'];
+        $this->showDeleteLogModal = true;
+    }
+
+    public function deleteLog(): void
+    {
+        $this->authorize('maintenance.run');
+
+        $name = $this->deletingLog;
+        $this->deletingLog = null;
+        $this->showDeleteLogModal = false;
+
+        if ($name === null) {
+            return;
+        }
+
+        try {
+            app(DeleteLogFile::class)->handle(auth()->user(), $name);
+            Flux::toast(variant: 'success', text: __('maintenance.logs.messages.deleted', ['name' => $name]));
+        } catch (MaintenanceException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
+        }
+
+        if ($this->file === $name) {
+            $this->file = '';
+        }
+
+        unset($this->openedLog, $this->logFiles);
+    }
+
+    private function logFileGone(): void
+    {
+        unset($this->logFiles);
+        Flux::toast(variant: 'danger', text: __('maintenance.logs.errors.missing'));
+    }
+
+    /**
+     * The files of the logs folder, newest first.
+     *
+     * @return list<array{key: string, name: string, size: int, modified: int}>
+     */
+    #[Computed]
+    public function logFiles(): array
+    {
+        return app(LogFiles::class)->all();
+    }
+
+    /**
+     * The file open in the viewer. Its content is not loaded here: the viewer fetches it in chunks.
+     *
+     * @return array{key: string, name: string, size: int, modified: int}|null
+     */
+    #[Computed]
+    public function openedLog(): ?array
+    {
+        return $this->file === '' ? null : app(LogFiles::class)->find($this->file);
     }
 
     /**
@@ -223,12 +363,15 @@ new #[Title('maintenance.title')] class extends Component {
     $pending = $tab === 'actions' ? $this->pendingMigrations : [];
     $seeders = $tab === 'actions' ? $this->seeders : [];
     $lastRun = $tab === 'actions' ? $this->lastRun : null;
+    $openedLog = $tab === 'logs' ? $this->openedLog : null;
+    $logFiles = $tab === 'logs' && $openedLog === null ? $this->logFiles : [];
+    $logDate = fn (int $timestamp): string => Illuminate\Support\Facades\Date::createFromTimestamp($timestamp)->tz(config('admin.timezone'))->isoFormat('LL, LT');
     $cardClasses = 'flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-zinc-900';
     $iconClasses = 'flex size-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-white/10 dark:text-zinc-200';
     $outputClasses = 'max-h-96 overflow-auto rounded-lg bg-zinc-900 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-100 dark:bg-black/40';
 @endphp
 
-<section class="w-full max-w-5xl space-y-8">
+<section class="w-full space-y-8 {{ $openedLog ? 'max-w-7xl' : 'max-w-5xl' }}">
     <div>
         <flux:heading size="xl" level="1">{{ __('maintenance.title') }}</flux:heading>
         <flux:subheading>{{ __('maintenance.description') }}</flux:subheading>
@@ -407,6 +550,156 @@ new #[Title('maintenance.title')] class extends Component {
         @endif
     </div>
     @endif
+
+    @if ($tab === 'logs' && $openedLog === null)
+    <div class="space-y-4" data-test="maintenance-logs-tab">
+        <flux:text>{{ __('maintenance.logs.description') }}</flux:text>
+
+        @if ($logFiles === [])
+            <x-admin.empty-state
+                icon="document-text"
+                :heading="__('maintenance.logs.empty_title')"
+                :description="__('maintenance.logs.empty_description')"
+            />
+        @else
+            <flux:table data-test="maintenance-logs">
+                <flux:table.columns>
+                    <flux:table.column>{{ __('maintenance.logs.file') }}</flux:table.column>
+                    <flux:table.column align="end">{{ __('maintenance.logs.size') }}</flux:table.column>
+                    <flux:table.column class="max-sm:hidden">{{ __('maintenance.logs.changed') }}</flux:table.column>
+                    <flux:table.column align="end"><span class="sr-only">{{ __('maintenance.journal.actions') }}</span></flux:table.column>
+                </flux:table.columns>
+
+                <flux:table.rows>
+                    @foreach ($logFiles as $logFile)
+                        <flux:table.row :key="$logFile['key']">
+                            <flux:table.cell>
+                                <button type="button" wire:click="openLog('{{ $logFile['key'] }}')" class="flex max-w-80 items-center gap-2 text-start font-medium text-zinc-800 hover:underline dark:text-white">
+                                    <flux:icon name="document-text" variant="mini" class="size-4 shrink-0 text-zinc-400" />
+                                    <span class="truncate">{{ $logFile['name'] }}</span>
+                                </button>
+                            </flux:table.cell>
+                            <flux:table.cell align="end" class="whitespace-nowrap tabular-nums">{{ App\Models\Media::formatBytes($logFile['size']) }}</flux:table.cell>
+                            <flux:table.cell class="whitespace-nowrap max-sm:hidden">{{ $logDate($logFile['modified']) }}</flux:table.cell>
+                            <flux:table.cell align="end">
+                                <x-admin.row-actions data-test="maintenance-log-actions-{{ $logFile['key'] }}">
+                                    <flux:menu.item icon="eye" wire:click="openLog('{{ $logFile['key'] }}')">{{ __('maintenance.logs.open') }}</flux:menu.item>
+                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDeleteLog('{{ $logFile['key'] }}')">{{ __('common.actions.delete') }}</flux:menu.item>
+                                </x-admin.row-actions>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
+        @endif
+    </div>
+    @endif
+
+    @if ($openedLog)
+    <div class="space-y-4" data-test="maintenance-log-viewer">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <flux:button size="sm" variant="ghost" icon="arrow-left" wire:click="closeLog" data-test="maintenance-log-back">
+                {{ __('maintenance.logs.back') }}
+            </flux:button>
+
+            <div class="min-w-0 flex-1">
+                <flux:heading level="2" class="truncate">{{ $openedLog['name'] }}</flux:heading>
+                <flux:text size="sm">{{ App\Models\Media::formatBytes($openedLog['size']) }} · {{ $logDate($openedLog['modified']) }}</flux:text>
+            </div>
+
+            <flux:button size="sm" variant="danger" icon="trash" wire:click="confirmDeleteLog('{{ $openedLog['key'] }}')" data-test="maintenance-log-delete">
+                {{ __('common.actions.delete') }}
+            </flux:button>
+        </div>
+
+        {{-- The content is fetched in chunks from the chunk route and kept out of Livewire's renders. --}}
+        <div
+            wire:ignore
+            wire:key="log-viewer-{{ $openedLog['key'] }}"
+            data-url="{{ route('admin.maintenance.logs.chunk', $openedLog['name']) }}"
+            class="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-900 dark:border-white/10 dark:bg-black/40"
+            x-data="{
+                before: null,
+                start: 0,
+                remaining: '',
+                loading: false,
+                failed: false,
+                empty: false,
+                async load() {
+                    if (this.loading) {
+                        return;
+                    }
+
+                    this.loading = true;
+                    this.failed = false;
+
+                    try {
+                        const url = new URL(this.$root.dataset.url, window.location.origin);
+
+                        if (this.before !== null) {
+                            url.searchParams.set('before', this.before);
+                        }
+
+                        const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+
+                        if (! response.ok) {
+                            throw new Error(response.status);
+                        }
+
+                        const chunk = await response.json();
+                        const box = this.$refs.box;
+                        const first = this.before === null;
+                        const fromBottom = box.scrollHeight - box.scrollTop;
+
+                        this.$refs.text.insertAdjacentHTML('afterbegin', chunk.html);
+                        this.before = chunk.start;
+                        this.start = chunk.start;
+                        this.remaining = chunk.remaining ?? '';
+                        this.empty = first && chunk.size === 0;
+
+                        this.$nextTick(() => {
+                            box.scrollTop = first ? box.scrollHeight : box.scrollHeight - fromBottom;
+                        });
+                    } catch (error) {
+                        this.failed = true;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+            }"
+            x-init="load()"
+        >
+            <div x-ref="box" class="h-[70vh] overflow-auto p-4 font-mono text-xs leading-relaxed text-zinc-100">
+                <div class="mb-3 flex justify-center" x-show="start > 0" x-cloak>
+                    <button
+                        type="button"
+                        class="rounded-md bg-white/10 px-3 py-1.5 font-sans text-xs font-medium text-zinc-100 hover:bg-white/20 disabled:opacity-50"
+                        x-on:click="load()"
+                        x-bind:disabled="loading"
+                        data-test="maintenance-log-earlier"
+                    >
+                        {{ __('maintenance.logs.load_earlier') }} · <span x-text="remaining"></span>
+                    </button>
+                </div>
+
+                <p class="font-sans text-sm text-zinc-400" x-show="loading && before === null" role="status">{{ __('maintenance.logs.loading') }}</p>
+                <p class="font-sans text-sm text-zinc-400" x-show="empty" x-cloak>{{ __('maintenance.logs.empty_file') }}</p>
+                <p class="font-sans text-sm text-red-300" x-show="failed" x-cloak role="alert">{{ __('maintenance.logs.failed') }}</p>
+
+                <div x-ref="text" class="log-text"></div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <x-confirm-modal
+        wire:model.self="showDeleteLogModal"
+        :heading="__('maintenance.logs.delete.title')"
+        :confirm-label="__('maintenance.logs.delete.submit')"
+        confirm-action="deleteLog"
+    >
+        {{ __('maintenance.logs.delete.confirm', ['name' => (string) $deletingLog]) }}
+    </x-confirm-modal>
 
     {{-- Not <x-confirm-modal>: its button calls a Livewire action, and these commands must run in a plain request. --}}
     <flux:modal wire:model.self="showConfirmModal" wire:close="cancelConfirm" class="max-w-md md:min-w-md">

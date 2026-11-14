@@ -6,6 +6,7 @@ return [
     'tabs' => [
         'actions' => 'Actions',
         'journal' => 'Journal',
+        'logs' => 'Logs',
     ],
     'actions' => [
         'migrate' => [
@@ -62,6 +63,32 @@ return [
         'actions' => 'Actions',
         'view_output' => 'Show output',
         'output_heading' => 'Output',
+    ],
+    'logs' => [
+        'description' => 'The files of storage/logs, shown as they are. A big file opens at its end, where the newest lines are; earlier lines load on request.',
+        'empty_title' => 'No log files',
+        'empty_description' => 'When the site writes a log, its file appears here.',
+        'file' => 'File',
+        'size' => 'Size',
+        'changed' => 'Changed',
+        'open' => 'Open',
+        'back' => 'All files',
+        'load_earlier' => 'Load earlier lines',
+        'loading' => 'Loading…',
+        'empty_file' => 'The file is empty.',
+        'failed' => 'The file could not be loaded. It may have been deleted or replaced.',
+        'delete' => [
+            'title' => 'Delete this log file?',
+            'confirm' => 'The file :name will be deleted for good. If the site is still writing to it, a new file appears with the next entry.',
+            'submit' => 'Delete file',
+        ],
+        'messages' => [
+            'deleted' => 'The file :name was deleted.',
+        ],
+        'errors' => [
+            'missing' => 'This file is no longer in the logs folder.',
+            'not_deleted' => 'The file could not be deleted. Check the permissions of the logs folder.',
+        ],
     ],
     'statuses' => [
         'running' => 'Running',
