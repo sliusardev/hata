@@ -2,11 +2,19 @@
 
 namespace App\Support\Content\Fields;
 
+use App\Rules\MediaSelection;
+
+/**
+ * Library images in the order they were picked.
+ */
 class Gallery extends Field
 {
+    /**
+     * Each item must be an existing image.
+     */
     protected function typeRules(): array
     {
-        return ['array', 'max:100'];
+        return ['array', 'max:100', new MediaSelection('image', multiple: true)];
     }
 
     /**
@@ -33,6 +41,19 @@ class Gallery extends Field
     public function mediaIds(mixed $stored): array
     {
         return $this->ids($stored);
+    }
+
+    public function holdsMedia(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function withoutMedia(mixed $stored, int $mediaId): mixed
+    {
+        return array_values(array_diff($this->ids($stored), [$mediaId]));
     }
 
     /**

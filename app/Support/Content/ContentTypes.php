@@ -2,6 +2,7 @@
 
 namespace App\Support\Content;
 
+use App\Support\Permissions\PermissionRegistry;
 use InvalidArgumentException;
 
 /**
@@ -10,10 +11,26 @@ use InvalidArgumentException;
 class ContentTypes
 {
     /**
+     * The permission actions every type gets under its key.
+     */
+    public const array ACTIONS = ['view', 'create', 'edit', 'delete'];
+
+    /**
      * @var array<string, ContentType>
      */
     private array $types = [];
 
+    private readonly PermissionRegistry $permissions;
+
+    public function __construct(?PermissionRegistry $permissions = null)
+    {
+        $this->permissions = $permissions ?? app(PermissionRegistry::class);
+    }
+
+    /**
+     * Adds the type and registers its permissions, so a type registered at any time (by a module, or a test)
+     * is seen by `permissions:sync` and the role matrix.
+     */
     public function register(ContentType $type): static
     {
         if (preg_match('/^[a-z0-9_-]+$/', $type->key()) !== 1) {
@@ -21,6 +38,7 @@ class ContentTypes
         }
 
         $this->types[$type->key()] = $type;
+        $this->permissions->register($type->key(), self::ACTIONS);
 
         return $this;
     }

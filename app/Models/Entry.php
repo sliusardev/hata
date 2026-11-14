@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Contracts\UsesMedia;
 use App\Enums\EntryState;
 use App\Enums\EntryStatus;
 use App\Models\Concerns\HasSearchIndex;
+use App\Support\Content\BodySanitizer;
 use App\Support\Content\ContentType;
 use App\Support\Content\ContentTypes;
 use App\Support\Localization\ContentLocales;
@@ -18,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 
 /**
  * One content record in one language (a page, later a post). Soft deletes are the trash.
@@ -52,7 +56,7 @@ use Illuminate\Support\Carbon;
     'entry_group_id', 'type', 'locale', 'parent_id', 'author_id', 'title', 'slug', 'path', 'body', 'excerpt',
     'seo_title', 'seo_description', 'image_id', 'fields', 'status', 'published_at',
 ])]
-class Entry extends Model
+class Entry extends Model implements UsesMedia
 {
     /** @use HasFactory<EntryFactory> */
     use HasFactory, HasSearchIndex, SoftDeletes;
@@ -227,5 +231,99 @@ class Entry extends Model
         }
 
         return $this->fields[$name] ?? null;
+    }
+
+    /**
+     * The form data of a new translation of this record into a language: a copy of its texts, image, author, SEO
+     * and fields (shared ones carry the group's values), the parent's translation in that language (or none), an
+     * empty slug and the draft status. Nothing is stored.
+     *
+     * @return array<string, mixed>
+     */
+    public function copyFor(string $locale): array
+    {
+        $parentId = null;
+
+        if ($this->parent_id !== null) {
+            $parentId = self::query()
+                ->where('locale', $locale)
+                ->where('entry_group_id', self::query()->select('entry_group_id')->whereKey($this->parent_id))
+                ->value('id');
+        }
+
+        $fields = [];
+
+        foreach ($this->type()->fields() as $field) {
+            $fields[$field->name] = $field->toForm($this->fieldValue($field->name));
+        }
+
+        return [
+            'title' => $this->title,
+            'slug' => '',
+            'parent_id' => $parentId,
+            'author_id' => $this->author_id,
+            'image_id' => $this->image_id,
+            'status' => EntryStatus::Draft->value,
+            'published_at' => null,
+            'excerpt' => $this->excerpt,
+            'seo_title' => $this->seo_title,
+            'seo_description' => $this->seo_description,
+            'body' => $this->body,
+            'fields' => $fields,
+        ];
+    }
+
+    /**
+     * "Page: About us", by the type's label.
+     */
+    public function mediaUsageLabel(string $field): string
+    {
+        return __('content.usage.entry', ['type' => $this->typeLabel(), 'title' => $this->title]);
+    }
+
+    /**
+     * The record's edit page, for a viewer who may view the type. Null until the admin form's route exists.
+     */
+    public function mediaUsageUrl(string $field, ?User $viewer): ?string
+    {
+        if ($viewer === null || ! Route::has('admin.content.edit') || ! Gate::forUser($viewer)->allows('view', $this)) {
+            return null;
+        }
+
+        return route('admin.content.edit', ['type' => $this->type, 'entry' => $this->id]);
+    }
+
+    /**
+     * Stops using a file that is being deleted: the image is cleared, the body loses the file's images, a file
+     * field is emptied and a gallery loses the item. Runs inside the delete's transaction.
+     */
+    public function forgetMedia(string $field, int $mediaId): void
+    {
+        if ($field === 'image' && $this->image_id === $mediaId) {
+            $this->image_id = null;
+        } elseif ($field === 'body') {
+            $this->body = app(BodySanitizer::class)->withoutMedia($this->body, $mediaId);
+        } elseif (str_starts_with($field, 'fields.')) {
+            $name = substr($field, strlen('fields.'));
+            $definition = app(ContentTypes::class)->find($this->type)?->field($name);
+            $fields = $this->fields ?? [];
+
+            if ($definition !== null && array_key_exists($name, $fields)) {
+                $fields[$name] = $definition->withoutMedia($fields[$name], $mediaId);
+                $this->fields = $fields;
+            }
+        }
+
+        if ($this->isDirty()) {
+            $this->save();
+        }
+    }
+
+    /**
+     * The type's label, or its key when the type is no longer registered.
+     */
+    public function typeLabel(): string
+    {
+        return app(ContentTypes::class)->find($this->type)?->label() ?? $this->type;
     }
 }

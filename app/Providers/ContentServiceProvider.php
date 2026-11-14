@@ -13,19 +13,16 @@ class ContentServiceProvider extends ServiceProvider
     {
         $this->app->singleton(
             ContentTypes::class,
-            fn (): ContentTypes => (new ContentTypes)->register(new PagesType),
+            fn (): ContentTypes => (new ContentTypes($this->app->make(PermissionRegistry::class)))->register(new PagesType),
         );
     }
 
     /**
-     * Every type gets view, create, edit and delete permissions under its key.
+     * Builds the registry, so the kit's types have registered their permissions before anything (such as
+     * `permissions:sync`) reads them. A type registered later registers its own.
      */
     public function boot(): void
     {
-        $registry = $this->app->make(PermissionRegistry::class);
-
-        foreach ($this->app->make(ContentTypes::class)->all() as $type) {
-            $registry->register($type->key(), ['view', 'create', 'edit', 'delete']);
-        }
+        $this->app->make(ContentTypes::class);
     }
 }

@@ -52,6 +52,15 @@ test('the four permissions of pages exist after a sync and the editor has them',
         ->and(app(PermissionRegistry::class)->groups()['pages'])->toBe($names);
 });
 
+test('a type registered after the providers booted still gets its four permissions', function () {
+    seedRolesAndPermissions();
+
+    $names = ['products.view', 'products.create', 'products.edit', 'products.delete'];
+
+    expect(app(PermissionRegistry::class)->groups()['products'])->toBe($names)
+        ->and(Permission::whereIn('name', $names)->count())->toBe(4);
+});
+
 test('every field kind round-trips between the form and storage', function () {
     $cases = [
         'subtitle' => ['  Hi ', 'Hi', 'Hi'],
@@ -85,6 +94,12 @@ test('empty form values are stored as null, a toggle as false', function () {
         ->and($this->products->field('featured')->toStorage(null))->toBeFalse()
         ->and($this->products->field('photos')->toStorage(null))->toBe([])
         ->and($this->products->field('price')->toForm(null))->toBe('');
+});
+
+test('a malformed date is stored as null, never an exception', function () {
+    expect($this->products->field('released')->toStorage('2026-13-45'))->toBeNull()
+        ->and($this->products->field('released')->toStorage('not a date'))->toBeNull()
+        ->and($this->products->field('released')->toStorage('2026-02-03'))->toBe('2026-02-03');
 });
 
 test('rules reflect required and the select options', function () {

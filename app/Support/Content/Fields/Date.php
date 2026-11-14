@@ -2,6 +2,7 @@
 
 namespace App\Support\Content\Fields;
 
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Carbon;
 
 class Date extends Field
@@ -11,9 +12,20 @@ class Date extends Field
         return ['date_format:Y-m-d'];
     }
 
+    /**
+     * A malformed date gives null; validation reports it.
+     */
     public function toStorage(mixed $formValue): mixed
     {
-        return is_string($formValue) && $formValue !== '' ? Carbon::parse($formValue)->format('Y-m-d') : null;
+        if (! is_string($formValue) || $formValue === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($formValue)->format('Y-m-d');
+        } catch (InvalidFormatException) {
+            return null;
+        }
     }
 
     public function toForm(mixed $stored): mixed

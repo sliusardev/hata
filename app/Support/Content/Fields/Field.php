@@ -94,4 +94,20 @@ abstract class Field
     {
         return [];
     }
+
+    /**
+     * Whether the field refers to media files, so its usages are recorded.
+     */
+    public function holdsMedia(): bool
+    {
+        return false;
+    }
+
+    /**
+     * The stored value without a media file that is being deleted.
+     */
+    public function withoutMedia(mixed $stored, int $mediaId): mixed
+    {
+        return $stored;
+    }
 }

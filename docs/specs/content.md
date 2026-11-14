@@ -1,7 +1,7 @@
 # Content
 
-Content types (pages now, posts later) and their extra fields. The registry and the record tables and models
-and the slug and path rules exist so far: there are no routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
+Content types (pages now, posts later) and their extra fields. The registry, the record tables and models, the
+slug and path rules, the body sanitizer and the save actions exist so far: there are no routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
 
 ## Content types
 
@@ -20,11 +20,13 @@ and the slug and path rules exist so far: there are no routes or admin screens y
 
 `App\Support\Content\ContentTypes` (singleton) holds the registered types: `register()`, `all()`, `find()`,
 `get()` (throws on an unknown key) and `pattern()`, an alternation of the keys for route constraints (it
-matches nothing while no type is registered). Keys follow the permission segment format.
+matches nothing while no type is registered). Keys follow the permission segment format. `register()` also
+registers the type's `view`, `create`, `edit` and `delete` (`ContentTypes::ACTIONS`) with `PermissionRegistry`, so
+a type registered at any time (a module's, or a test's) is seen by `permissions:sync` and the role matrix.
 
 `App\Providers\ContentServiceProvider` binds the singleton and registers `PagesType` (key `pages`,
-hierarchical, no base, no fields). In `boot()` it registers `view`, `create`, `edit` and `delete` for every
-type with `PermissionRegistry`, so `permissions:sync` and the role matrix see them. Publishing and restoring
+hierarchical, no base, no fields). Its `boot()` builds the registry, so the kit's types have registered their
+permissions before anything reads them. Publishing and restoring
 need `edit`; trashing and deleting for good need `delete`. The `editor` role gets the four `pages.*`
 permissions by default; `admin` gets them through `*`.
 
@@ -43,8 +45,13 @@ the same in every language of a record group) and `required()`. `Select` adds `o
 | `toForm($stored)` | the value as the form binds it (null becomes `''` for text, number, date and select) |
 | `view()` | Blade partial name under `partials.admin.content.fields`; the partials come with the editor |
 | `mediaIds($stored)` | media ids a value refers to; empty except for `MediaFile` and `Gallery` |
+| `holdsMedia()` | true for `MediaFile` and `Gallery`: their usages are recorded |
+| `withoutMedia($stored, $id)` | the value without a file being deleted: a file field emptied, the id taken out of a gallery |
 
-A toggle has no required state: it is always true or false.
+A toggle has no required state: it is always true or false. A malformed date is stored as null (its rule reports
+it). `MediaFile` takes a file of any kind unless narrowed with `accept('image')` or `accept('document')`; `Gallery`
+takes images only. Both validate with `App\Rules\MediaSelection`, so every id, each gallery item included, must be
+an existing file of the right kind.
 
 ## Records
 
@@ -118,6 +125,66 @@ Images are stored as `<img data-media-id="12" alt="...">`, never with an address
 image whose file is gone or is not an image is dropped. One `whereIn` query for a body with images, none without.
 It does not sanitize again: it trusts that the body was cleaned on save.
 
+## Saving records
+
+`App\Support\Content\EntryInput` (static) holds the form's rules and turns the data into what is written.
+`rules($type, $locale, $entry)` and `validate($type, $locale, $entry, $data)`:
+
+| Key | Rule |
+|---|---|
+| `title` | required, at most 255 |
+| `slug` | required, `EntrySlug` under the parent the data names (not checked while that parent is invalid) |
+| `parent_id` | hierarchical type: nullable, a record of the same type and language, not trashed, neither the record itself nor one of its descendants (by path); flat type: prohibited. One message, `content.entry.parent_invalid` |
+| `author_id` | nullable, one of `EntryAuthors`, or the record's current author (who may have lost the permission since) |
+| `image_id` | nullable, `MediaSelection('image')` |
+| `status` | required, `draft` or `published` (the stored status; a future date with `published` schedules) |
+| `published_at` | nullable date, read in the site's display timezone (`admin.timezone`) and returned in UTC (decision 38) |
+| `excerpt`, `seo_title` / `seo_description` | at most 255 / at most 500; trimmed, empty becomes null |
+| `body` | nullable string of at most `EntryInput::BODY_MAX_BYTES` (1 000 000 bytes, under the sanitizer's cut), so a long body is a field error, never cut |
+| `fields.<name>` | each field's own `rules()` |
+
+`validate()` throws `ValidationException`, or returns the values: ids as integers, `parent` as the record (the
+lookup is shared by the parent rule, the slug rule and the caller), the status enum, the UTC date, and every field of
+the type by name as its form value.
+
+`App\Support\Content\EntryAuthors::query($type)`: the users who hold `<type>.create` directly or through a role, and
+super admins; `options($type)` gives `id => name` by name.
+
+`App\Policies\EntryPolicy` checks the type's own permission: `viewAny($user, $type)` and `view` → `view`,
+`create($user, $type)` → `create`, `update`, `restore` and `preview` → `edit`, `delete` and `forceDelete` →
+`delete`. Use `can('create', [Entry::class, 'pages'])` for the two that take a type key.
+
+`App\Actions\Content\CreateEntry::handle($actor, $type, $locale, $data, $source = null)`: authorizes `create`;
+refuses a language that is not on the site (`ContentLocales::has()`, a `locale` field error); with `$source` joins
+its group, else makes a group. When the group already has a record in that language (trashed ones count, as in the
+unique index), that record is returned unchanged; also when another request created it meanwhile: a slug that then
+looks taken, or the unique index refusing the insert, ends in a look-up that returns the winner. The author defaults
+to the actor; choosing someone else needs the type's `edit`. A path held by a redirect row takes it over (the row
+goes).
+
+`App\Actions\Content\UpdateEntry::handle($actor, $entry, $data)`: authorizes `update`; the record's type and
+language never change, whatever the data says. A changed slug or parent goes through `EntryPaths::move()`. A path
+taken by another request between the check and the write is a `slug` field error.
+
+Both validate the data themselves (`EntryInput`), so a tampered value is a field error with nothing stored, and write
+in one transaction through `App\Actions\Content\EntryWriter`: the body through `BodySanitizer::clean()`;
+`published_at` set to now when publishing without one; per-language field values (`toStorage()`) into
+`entries.fields`, shared ones into `entry_groups.shared` (merged, so a value written from one translation reads the
+same from every other); then the media usages: `image`, `body` (only ids of existing files) and `fields.<name>` on the
+record, `shared.<name>` on the group. A new record with no files makes no usage query.
+
+`Entry::copyFor($locale)` is the form data of a new translation: title, body, excerpt, SEO, image, author and every
+field (shared ones carry the group's values), `parent_id` = the parent's translation in that language or null, an
+empty slug, `draft` and no date. Nothing is stored.
+
+`Entry` and `EntryGroup` implement `UsesMedia`. `Entry::mediaUsageLabel()` is "Page: <title>" (the type's label);
+`mediaUsageUrl()` is the edit page for a viewer who may view the type (null until the admin form's route
+`admin.content.edit` exists); `forgetMedia()` clears `image`, removes the file's images from `body`
+(`withoutMedia()`) and empties a `fields.<name>` value or takes the id out of a gallery. `EntryGroup` is named after
+its record in the default content language ("Page: <title> (all languages)") and empties `shared.<name>` the same
+way. Trashed records are not reached yet (`MediaUsage::forgetAll()` loads usables through `morphTo`): the trash task
+changes that.
+
 ## Tests
 
 `tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, `pages`, the permissions after a
@@ -129,7 +196,14 @@ test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has 
 `tests/Feature/Content/BodyTest.php`: hostile inputs as a dataset with the exact output, allowed markup kept, Cyrillic round trip, long body, `mediaIds()`, `withoutMedia()`, rendering (one query, versioned URL, dropped images, alt fallback, no query without images).
 `tests/Feature/Content/EntryPathsTest.php`: suggested slugs, the slug rule, `move()` (descendants, redirects, the same
 query count for 2 and 50 descendants, redirect rows that already exist).
+`tests/Feature/Actions/Content/SaveEntryTest.php`: create (group, path, author, cleaned body, usages, a redirect row
+taken over), update (slug and parent moves, type and language kept), translate (group, `copyFor()`, parent mapping),
+the existing translation returned (also trashed, also after losing the race: a query listener inserts the competing
+record right after the action's own look-up, once failing validation and once the unique index), publishing dates
+and the timezone, shared fields, tampered values as a dataset (nothing stored), permissions, the policy,
+`EntryAuthors`, and usages and `forgetMedia()` for every kind (a test type with a file field, a gallery and a shared
+gallery).
 
 ## Not included yet
 
-The public route, the admin screens, the editor and the field partials. `BodySanitizer` is not called by anything yet.
+The public route, the admin screens, the editor and the field partials, the trash actions.
