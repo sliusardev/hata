@@ -115,8 +115,9 @@ Site settings → Languages (`?tab=languages`, `settings.edit`). Partials
 - **Make default**: a confirmation that states that every public address changes. When the admin is
   translated into the language, it carries a checkbox "Use it for the admin and sign-in pages too" (ticked):
   the stored `default_locale` follows only when it is ticked.
-- **Remove**: after a confirmation. No content exists yet, so nothing else is lost; a rule for languages that
-  hold content belongs to the content stage.
+- **Remove**: after a confirmation. A language that has content records (those in the trash count too) is
+  refused with a danger toast that says how many (`site_settings.languages.errors.has_content`): delete them
+  for good first, or switch the language off to hide it.
 - Every change is stored at once and reloads the tab with a toast; a refusal is a danger toast. An unsaved
   choice in the field below is dropped by that reload (so the leave-page warning does not fire).
 - **Language of the admin and sign-in pages**: the field `default_locale` (moved here from the General tab),
@@ -125,7 +126,8 @@ Site settings → Languages (`?tab=languages`, `settings.edit`). Partials
 Actions (`App\Actions\Settings`, each `handle(User $actor, …)`, authorizing `settings.edit`; refusals throw
 `App\Exceptions\ContentLocaleException`): `AddContentLocale` (unknown, already added),
 `SetContentLocaleActive` (not added, the default), `SetDefaultContentLocale` (not added, off;
-`$alsoInterface`), `RemoveContentLocale` (not added, the default). They always store the whole list with its
+`$alsoInterface`), `RemoveContentLocale` (not added, the default, has records: `Entry::withTrashed()` counted by `locale`,
+`ContentLocaleException::hasContent($count)`). They always store the whole list with its
 default, so the first change also stores what was derived until then.
 
 ## Reserved slugs

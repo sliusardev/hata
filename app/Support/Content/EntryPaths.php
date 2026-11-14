@@ -100,8 +100,10 @@ class EntryPaths
      * Gives the record a new path and every descendant (same type and language, trashed ones included) the new
      * prefix, stores the old paths as redirects, and removes the redirects whose path a record now holds. Runs
      * inside the caller's transaction, in a fixed number of queries whatever the number of descendants.
+     * `$keepOldPaths = false` stores no redirects: for a record restored from the trash, whose old paths answered
+     * nothing while it was there.
      */
-    public function move(Entry $entry, string $newPath): void
+    public function move(Entry $entry, string $newPath, bool $keepOldPaths = true): void
     {
         $oldPath = $entry->path;
 
@@ -128,6 +130,10 @@ class EntryPaths
             ->where('locale', $entry->locale)
             ->whereIn('path', $moved->map(fn (string $path): string => $newPath.substr($path, strlen($oldPath)))->values())
             ->delete();
+
+        if (! $keepOldPaths) {
+            return;
+        }
 
         $now = now();
 

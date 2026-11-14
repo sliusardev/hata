@@ -70,6 +70,7 @@ return [
             'not_added' => 'This language is not on the site.',
             'is_default' => 'The default language is always on and cannot be removed. Make another language the default first.',
             'inactive' => 'Turn the language on before making it the default.',
+            'has_content' => 'The site has :count record in this language (those in the trash count too). Delete them for good first, or turn the language off to hide it.|The site has :count records in this language (those in the trash count too). Delete them for good first, or turn the language off to hide it.',
         ],
     ],
 

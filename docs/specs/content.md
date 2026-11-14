@@ -1,7 +1,7 @@
 # Content
 
 Content types (pages now, posts later) and their extra fields. The registry, the record tables and models, the
-slug and path rules, the body sanitizer and the save actions exist so far: there are no routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
+slug and path rules, the body sanitizer, the save actions and the trash exist so far: there are no routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
 
 ## Content types
 
@@ -30,7 +30,7 @@ permissions before anything reads them. Publishing and restoring
 need `edit`; trashing and deleting for good need `delete`. The `editor` role gets the four `pages.*`
 permissions by default; `admin` gets them through `*`.
 
-`config/content.php` → `trash_days` (30): how long a trashed record is kept. Nothing uses it yet.
+`config/content.php` → `trash_days` (30): how long a trashed record is kept (`PruneEntryTrash`).
 
 ## Fields
 
@@ -77,6 +77,8 @@ for good removes its redirects.
 | `state()` | `EntryState`: `Draft` (also a published record with no date), `Scheduled` (published with a future date) or `Published`; derived, never stored |
 | `isPublic()` | the same rule as `public()` for one record |
 | `depth()` | slashes in `path` (0 at the top) |
+| `descendants()` | query of the records under this one: same type and language, `path` starting with this path and `/` (live ones unless the caller adds `withTrashed()`/`onlyTrashed()`) |
+| `descendantsCount()` | how many descendants are in the record's own state (live ones for a live record, trashed ones for a trashed one), one query; for the confirmation text |
 | `url($absolute = true)` | the site address, the language prefix (none for the default content language, `/<code>` for the others), the type's base for that language, then `path`; built by hand until the public route exists |
 | `fieldValue($name)` | a shared field's value from the group's `shared`, any other from `fields` |
 
@@ -96,7 +98,7 @@ group and type).
 | `slugFrom($title)` | `Str::slug`; may be empty |
 | `suggest($type, $locale, $parent, $title, $ignore = null)` | the generated slug with `-2`, `-3`... added while its path is taken. Taken means a record of the same type and language holds the path, trashed or not, or the slug is reserved at the top of the address (`isReserved()`). One query. A path held only by a redirect row is free |
 | `pathFor($type, $parent, $slug)` | the parent's path and the slug |
-| `move($entry, $newPath)` | for the caller's transaction: sets the record's path, rewrites the path of every descendant (same type and language, trashed included, matched by the old path followed by `/`) with one `UPDATE`, deletes the redirect rows whose path a record now holds, and stores every old path in `entry_redirects` with one upsert (an existing row for that path is pointed at the record). Five queries whatever the number of descendants. The SQL concat is the one driver-specific part (`||` on SQLite, `CONCAT` on MySQL) |
+| `move($entry, $newPath, $keepOldPaths = true)` | for the caller's transaction: sets the record's path, rewrites the path of every descendant (same type and language, trashed included, matched by the old path followed by `/`) with one `UPDATE`, deletes the redirect rows whose path a record now holds, and stores every old path in `entry_redirects` with one upsert (an existing row for that path is pointed at the record). Five queries whatever the number of descendants. With `$keepOldPaths = false` no redirect is stored (a record restored from the trash). The SQL concat is the one driver-specific part (`||` on SQLite, `CONCAT` on MySQL) |
 | `isReserved($type, $locale, $parent, $slug)` | the one answer to "reserved at the top of the address": no parent, a type with no base, and the slug is in `ReservedSlugs` or is the base of any registered type in that language. Used by both `suggest()` and `EntrySlug` |
 
 `App\Rules\EntrySlug($type, $locale, $parent, $ignore)` checks, in this order: the format
@@ -185,8 +187,30 @@ empty slug, `draft` and no date. Nothing is stored.
 `admin.content.edit` exists); `forgetMedia()` clears `image`, removes the file's images from `body`
 (`withoutMedia()`) and empties a `fields.<name>` value or takes the id out of a gallery. `EntryGroup` is named after
 its record in the default content language ("Page: <title> (all languages)") and empties `shared.<name>` the same
-way. Trashed records are not reached yet (`MediaUsage::forgetAll()` loads usables through `morphTo`): the trash task
-changes that.
+way. Trashed records are reached too: `MediaUsage::usable()` loads with `withTrashed()`, so a file deleted while its
+record is in the trash is gone from the record (image cleared, body without its images) when it is restored.
+
+## Trash
+
+Soft deletes are the trash. A trashed record keeps its path, which stays taken for slugs (`EntrySlug`, `suggest()`)
+while it is there; `public()` leaves it out.
+
+| Action | Permission | Meaning |
+|---|---|---|
+| `TrashEntry::handle($actor, $entry): int` | `delete` | trashes the record and its live descendants with one shared `deleted_at` (to the second), in one `UPDATE` whatever their number; returns how many (0 when the record already was in the trash) |
+| `RestoreEntry::handle($actor, $entry): Entry` | `restore` (`edit`) | restores the record and the descendants carrying exactly its `deleted_at` (trashed with it); a child trashed earlier on its own keeps its own time and stays. A record below the top level whose parent is in the trash or gone (deleting for good nulls `parent_id`) becomes top level: the slug gets a suffix when that path is taken or reserved (`suggest()`), and `move(..., keepOldPaths: false)` carries its descendants' paths along without redirects. A live record is returned unchanged |
+| `DeleteEntry::handle($actor, $entry): void` | `forceDelete` (`delete`) | only a trashed record (`ProtectedActionException`, `content.entry.not_trashed`); removes it and the descendants trashed with it (same `deleted_at`, the set a restore would bring back). A descendant trashed earlier on its own stays in the trash and is restored at the top level |
+| `PruneEntryTrash::handle(): int` | none (decision 16) | deletes for good what was trashed more than `content.trash_days` days ago, 200 ids per chunk, a transaction per chunk |
+
+`DeleteEntry::purge($entries)` (records loaded with `id` and `entry_group_id`) is the removal both share, without authorization: the records' media usages, the rows
+(their redirects follow by foreign key), then every group left with no record (trashed ones counted) with its
+usages. Five queries whatever the number of records. A group that still has a record in another language stays.
+
+`content:prune-trash` prints "Removed N trashed record(s)." and runs `daily()` in `routes/console.php` next to
+`media:prune-deleted`. The admin list will prune too, so no cron is required.
+
+A content language that has records, trashed ones included, cannot be removed (`RemoveContentLocale`, see the
+languages spec).
 
 ## Tests
 
@@ -199,6 +223,13 @@ test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has 
 `tests/Feature/Content/BodyTest.php`: hostile inputs as a dataset with the exact output, allowed markup kept, Cyrillic round trip, long body, `mediaIds()`, `withoutMedia()`, rendering (one query, versioned URL, dropped images, alt fallback, no query without images).
 `tests/Feature/Content/EntryPathsTest.php`: suggested slugs, the slug rule, `move()` (descendants, redirects, the same
 query count for 2 and 50 descendants, redirect rows that already exist).
+`tests/Feature/Actions/Content/EntryTrashTest.php`: trashing a tree (one instant, out of `public()`, the path still
+taken, `descendantsCount()`), the same query count for 2 and 30 descendants, restoring exactly what was trashed
+together, restoring to the top level after the parent was deleted for good or while it is in the trash (suffix for a
+taken path and for a reserved name), deleting for good (redirects, usages, an emptied group, a group kept for another
+language), a live record refused, permissions, pruning at 31 and 29 days, the command and its schedule, and a file
+deleted while its record is in the trash. `tests/Feature/Models/MediaUsageTest.php` checks that `forgetAll()` reaches
+a trashed record and a `Setting`; `tests/Feature/Localization/ContentLanguagesTest.php` the language removal rule.
 `tests/Feature/Actions/Content/SaveEntryTest.php`: create (group, path, author, cleaned body, usages, a redirect row
 taken over), update (slug and parent moves, type and language kept), translate (group, `copyFor()`, parent mapping),
 a creator without `edit` (publishing refused, translating from `copyFor()` makes them the author), a descendant
@@ -211,4 +242,4 @@ gallery).
 
 ## Not included yet
 
-The public route, the admin screens, the editor and the field partials, the trash actions.
+The public route, the admin screens (and the list's own prune), the editor and the field partials.

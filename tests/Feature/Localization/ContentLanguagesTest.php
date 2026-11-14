@@ -5,6 +5,7 @@ use App\Actions\Settings\RemoveContentLocale;
 use App\Actions\Settings\SetContentLocaleActive;
 use App\Actions\Settings\SetDefaultContentLocale;
 use App\Exceptions\ContentLocaleException;
+use App\Models\Entry;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Localization\ContentLocales;
@@ -217,6 +218,22 @@ describe('actions', function () {
         expect(app(ContentLocales::class)->entries())->toBe([['code' => 'en', 'active' => true]])
             ->and(fn () => app(RemoveContentLocale::class)->handle($actor, 'en'))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.is_default'))
             ->and(fn () => app(RemoveContentLocale::class)->handle($actor, 'uk'))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.not_added'));
+    });
+
+    it('refuses to remove a language that has records, those in the trash included, and says how many', function () {
+        siteLanguages(['en' => true, 'uk' => true], 'en');
+        $actor = languagesAdmin();
+        Entry::factory()->page()->inLocale('uk')->create()->delete();
+
+        expect(fn () => app(RemoveContentLocale::class)->handle($actor, 'uk'))
+            ->toThrow(ContentLocaleException::class, trans_choice('site_settings.languages.errors.has_content', 1))
+            ->and(app(ContentLocales::class)->has('uk'))->toBeTrue()
+            ->and(trans_choice('site_settings.languages.errors.has_content', 1))->toContain('1');
+
+        Entry::factory()->page()->inLocale('uk')->create();
+
+        expect(fn () => app(RemoveContentLocale::class)->handle($actor, 'uk'))
+            ->toThrow(ContentLocaleException::class, trans_choice('site_settings.languages.errors.has_content', 2));
     });
 });
 

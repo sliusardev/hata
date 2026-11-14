@@ -22,6 +22,7 @@ return [
         'body_too_long' => 'The text is too long.',
         'publish_forbidden' => 'Publishing or scheduling needs the right to edit this content. Save it as a draft.',
         'trashed' => 'Restore the record from the trash before editing it.',
+        'not_trashed' => 'Move the record to the trash before deleting it for good.',
         'descendants_too_long' => 'The address of a subpage would be longer than :max characters.',
     ],
     'usage' => [

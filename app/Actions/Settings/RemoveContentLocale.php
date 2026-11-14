@@ -3,12 +3,14 @@
 namespace App\Actions\Settings;
 
 use App\Exceptions\ContentLocaleException;
+use App\Models\Entry;
 use App\Models\User;
 
 class RemoveContentLocale extends ContentLocaleAction
 {
     /**
-     * Take a language off the site's list. Not the default one.
+     * Take a language off the site's list. Not the default one, nor one that has content records (those in the trash
+     * count too): switching it off is how such a language is hidden.
      *
      * @throws ContentLocaleException
      */
@@ -22,6 +24,12 @@ class RemoveContentLocale extends ContentLocaleAction
 
         if ($code === $this->locales->defaultCode()) {
             throw ContentLocaleException::isDefault();
+        }
+
+        $records = Entry::withTrashed()->where('locale', $code)->count();
+
+        if ($records > 0) {
+            throw ContentLocaleException::hasContent($records);
         }
 
         $this->store(

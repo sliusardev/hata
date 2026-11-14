@@ -2,10 +2,13 @@
 
 use App\Actions\Media\DeleteFolder;
 use App\Actions\Media\DeleteMedia;
+use App\Models\Entry;
 use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\MediaUsage;
+use App\Models\Setting;
 use App\Models\User;
+use App\Support\Settings\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
@@ -112,4 +115,32 @@ it('shows the usage label and link in the details panel and the delete dialog', 
         ->assertSee($label)
         ->call('confirmDelete', $media->id)
         ->assertSee($label);
+});
+
+it('reaches a usable in the trash and keeps reaching usables without soft deletes', function () {
+    $media = Media::factory()->image()->create();
+    $entry = Entry::factory()->page()->create([
+        'title' => 'About',
+        'image_id' => $media->id,
+        'body' => '<p>Text</p><img data-media-id="'.$media->id.'" alt="">',
+    ]);
+    $entry->delete();
+    usageOf($media, $entry, 'image');
+    usageOf($media, $entry, 'body');
+
+    app(SiteSettings::class)->put(['logo_light' => $media->id]);
+    $setting = Setting::query()->where('key', 'logo_light')->firstOrFail();
+    usageOf($media, $setting, 'logo_light');
+
+    expect(MediaUsage::query()->where('usable_id', $entry->id)->where('usable_type', $entry->getMorphClass())->first()->label())
+        ->toBe(__('content.usage.entry', ['type' => __('content.types.pages.label'), 'title' => 'About']));
+
+    MediaUsage::forgetAll([$media]);
+
+    $trashed = Entry::withTrashed()->find($entry->id);
+
+    expect($trashed->image_id)->toBeNull()
+        ->and($trashed->body)->toBe('<p>Text</p>')
+        ->and($trashed->trashed())->toBeTrue()
+        ->and(app(SiteSettings::class)->value('logo_light'))->toBeNull();
 });

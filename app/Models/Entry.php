@@ -198,6 +198,31 @@ class Entry extends Model implements UsesMedia
     }
 
     /**
+     * The records under this one (same type and language, path starting with this path and `/`) in the same state:
+     * the live ones for a live record (what trashing takes along), the trashed ones for a trashed record. One query.
+     */
+    public function descendantsCount(): int
+    {
+        return $this->descendants()
+            ->when($this->trashed(), fn (Builder $query) => $query->onlyTrashed())
+            ->count();
+    }
+
+    /**
+     * Records under this one, by path: same type and language, path starting with this path and `/`. Live ones
+     * only unless the caller asks for trashed ones.
+     *
+     * @return Builder<Entry>
+     */
+    public function descendants(): Builder
+    {
+        return self::query()
+            ->where('type', $this->type)
+            ->where('locale', $this->locale)
+            ->where('path', 'like', $this->path.'/%');
+    }
+
+    /**
      * The public address in the record's language: the language prefix (none for the default one), the base of
      * the type, then the path.
      */

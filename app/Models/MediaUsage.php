@@ -31,11 +31,14 @@ class MediaUsage extends Model
     }
 
     /**
+     * The model that uses the file, trashed ones included (a record in the trash still holds its files and must be
+     * told when one is deleted). Models without soft deletes are loaded as before.
+     *
      * @return MorphTo<Model, $this>
      */
     public function usable(): MorphTo
     {
-        return $this->morphTo();
+        return $this->morphTo()->withTrashed();
     }
 
     /**

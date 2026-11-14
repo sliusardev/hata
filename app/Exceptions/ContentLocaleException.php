@@ -29,6 +29,14 @@ class ContentLocaleException extends RuntimeException
         return new self(__('site_settings.languages.errors.is_default'));
     }
 
+    /**
+     * The language still has content records (those in the trash included); the message says how many.
+     */
+    public static function hasContent(int $count): self
+    {
+        return new self(trans_choice('site_settings.languages.errors.has_content', $count));
+    }
+
     public static function inactive(): self
     {
         return new self(__('site_settings.languages.errors.inactive'));
