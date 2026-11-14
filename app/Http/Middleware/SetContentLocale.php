@@ -29,13 +29,12 @@ class SetContentLocale
     {
         $route = $request->route();
         $prefix = $route?->parameter('locale');
-        $default = $this->locales->defaultCode();
-        $code = is_string($prefix) ? $prefix : $default;
+        $code = $this->locales->codeForPrefix($prefix);
         // Livewire re-runs this middleware on its update requests, against the page's own address. Told by the
         // real request's route, not by a header any visitor could send.
         $fromLivewire = app(HandleRequests::class)->isLivewireRoute();
 
-        if (is_string($prefix) && $prefix === $default && ! $fromLivewire) {
+        if ($this->locales->isDefaultPrefix($prefix) && ! $fromLivewire) {
             // Not cacheable for good: after the default language changes, this prefix is a real address.
             return redirect($this->withoutPrefix($request, $prefix), 301)->header('Cache-Control', 'no-cache');
         }

@@ -86,7 +86,8 @@ export default function entryForm({ readonly, slugFollows, prefix, parentPaths, 
                 return own;
             }
 
-            return [String(this.$wire.form.title ?? '').trim(), siteName].filter((part) => part !== '').join(' — ');
+            // The same rule as Entry::documentTitle(): the SEO title alone, else the title, " - " and the site name.
+            return [String(this.$wire.form.title ?? '').trim(), siteName].filter((part) => part !== '').join(' - ');
         },
 
         seoDescription() {

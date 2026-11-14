@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Gate;
  *
  * The bases come from code (the registered types), so the route is a single cacheable wildcard. A first segment
  * equal to a type's base in that language means a record of that type; anything else is a page by its full path.
- * On a miss the old paths in `entry_redirects` are looked up. A record that is not public is found only for a
- * viewer who may edit its type.
+ * On a miss the old paths in `entry_redirects` are looked up. The lookup needs no viewer and runs before the session
+ * (LookUpContent); a record that is not public is then shown only to a viewer who may edit its type (resolve()).
  */
 class ContentRouter
 {
@@ -34,14 +34,22 @@ class ContentRouter
     ) {}
 
     /**
-     * One query for a record that is found, then one for its public translations (none on a one-language site) and
-     * one for its image when it has one; a miss costs one more query, for the redirects.
+     * The request attribute in which LookUpContent hands its ContentLookup to the controller, so a hit is not
+     * looked up twice.
      */
-    public function resolve(string $locale, string $path, ?User $viewer): ?ContentMatch
+    public const string LOOKUP_ATTRIBUTE = 'content.lookup';
+
+    /**
+     * What the address holds, whoever asks: the record at the path in any status (trashed ones left out), else the
+     * live record an old path points to. Needs no session or user, so it runs before the session starts
+     * (LookUpContent) and a miss costs nothing more. One query for a record, two for a redirect or a miss; none for
+     * an address that cannot be content.
+     */
+    public function lookup(string $locale, string $path): ?ContentLookup
     {
         // The route already holds to this; checked again for direct calls, and because MySQL compares paths
-        // without regard to case.
-        if (preg_match('#^'.self::PATH_PATTERN.'$#', $path) !== 1) {
+        // without regard to case. `\z`, not `$`, which would accept a trailing newline.
+        if (preg_match('#^'.self::PATH_PATTERN.'\z#', $path) !== 1) {
             return null;
         }
 
@@ -53,14 +61,42 @@ class ContentRouter
 
         $entry = $this->first($types, Entry::query()->where('locale', $locale)->where('path', $recordPath));
 
-        if ($entry === null) {
-            return $this->redirect($types, $locale, $recordPath, $viewer);
+        if ($entry !== null) {
+            return new ContentLookup($entry, redirect: false);
         }
 
+        $target = $this->first($types, Entry::query()->whereIn('id', EntryRedirect::query()
+            ->select('entry_id')
+            ->whereIn('type', $types)
+            ->where('locale', $locale)
+            ->where('path', $recordPath)));
+
+        return $target === null ? null : new ContentLookup($target, redirect: true);
+    }
+
+    /**
+     * What the viewer gets at the address: the record (a preview when it is not public and the viewer may edit its
+     * type), the address a redirect leads to (only to a record the viewer may see), or null. Takes the lookup
+     * LookUpContent already made, else makes it. Then one query for the record's public translations (none on a
+     * one-language site) and one for its image when it has one.
+     */
+    public function resolve(string $locale, string $path, ?User $viewer, ?ContentLookup $lookup = null): ?ContentMatch
+    {
+        $lookup ??= $this->lookup($locale, $path);
+
+        if ($lookup === null) {
+            return null;
+        }
+
+        $entry = $lookup->entry;
         $preview = ! $entry->isPublic();
 
         if ($preview && ! $this->mayPreview($entry, $viewer)) {
             return null;
+        }
+
+        if ($lookup->redirect) {
+            return ContentMatch::redirect($entry->url());
         }
 
         $activeLocales = array_map(fn (Language $language): string => $language->code, $this->locales->active());
@@ -106,24 +142,6 @@ class ContentRouter
         }
 
         return [$atRoot, $path];
-    }
-
-    /**
-     * @param  list<string>  $types
-     */
-    private function redirect(array $types, string $locale, string $path, ?User $viewer): ?ContentMatch
-    {
-        $target = $this->first($types, Entry::query()->whereIn('id', EntryRedirect::query()
-            ->select('entry_id')
-            ->whereIn('type', $types)
-            ->where('locale', $locale)
-            ->where('path', $path)));
-
-        if ($target === null || (! $target->isPublic() && ! $this->mayPreview($target, $viewer))) {
-            return null;
-        }
-
-        return ContentMatch::redirect($target->url());
     }
 
     /**

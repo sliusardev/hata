@@ -1,0 +1,14 @@
+/*
+ * The public site's stylesheet: only what the site's templates use (layouts/site, site/*, partials/site and the logo
+ * components), the shared theme and the body typography. The admin's app.css (Flux, every admin view) is not loaded
+ * on public pages.
+ */
+@import 'tailwindcss' source(none);
+@import './theme.css';
+@import './rich-text-content.css';
+
+@source '../views/layouts/site.blade.php';
+@source '../views/site';
+@source '../views/partials/site';
+@source '../views/components/site-logo.blade.php';
+@source '../views/components/app-logo-icon.blade.php';

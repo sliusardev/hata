@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Entry;
 use App\Support\Content\BodyRenderer;
+use App\Support\Content\ContentLookup;
 use App\Support\Content\ContentRouter;
 use App\Support\Localization\ContentLocales;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,14 @@ class ContentController extends Controller
 
     public function __invoke(Request $request, string $path): Response|RedirectResponse
     {
-        $match = $this->router->resolve($this->locales->current()->code, $path, $request->user());
+        $lookup = $request->attributes->get(ContentRouter::LOOKUP_ATTRIBUTE);
+
+        $match = $this->router->resolve(
+            $this->locales->current()->code,
+            $path,
+            $request->user(),
+            $lookup instanceof ContentLookup ? $lookup : null,
+        );
 
         abort_if($match === null, 404);
 

@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Middleware\LookUpContent;
+use App\Http\Middleware\SetContentLocale;
 use App\Models\Entry;
 use App\Models\EntryRedirect;
 use App\Models\Media;
 use App\Models\User;
+use App\Support\Content\ContentRouter;
 use App\Support\Content\ContentTypes;
 use App\Support\Content\EntryPaths;
 use App\Support\Localization\ContentLocales;
@@ -11,8 +14,10 @@ use App\Support\Localization\ReservedSlugs;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Http\Request;
 use Illuminate\Routing\CompiledRouteCollection;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Vite;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\Fixtures\ProductsType;
@@ -134,7 +139,7 @@ describe('pages', function () {
         [$about] = aboutPages(['image_id' => $image->id, 'seo_title' => 'Хто ми']);
 
         $this->get('/about')->assertOk()
-            ->assertSee('<title>Хто ми - '.config('app.name').'</title>', escape: false)
+            ->assertSee('<title>Хто ми</title>', escape: false)
             ->assertSee('src="'.e($image->url()).'"', escape: false)
             ->assertSee('width="1200"', escape: false)
             ->assertSee('height="800"', escape: false)
@@ -167,7 +172,9 @@ describe('pages', function () {
             ->and($html)->not->toMatch('/<script[^>]*\bsrc=/i')
             ->and($html)->not->toMatch('/livewire/i')
             ->and($html)->not->toContain('type="module"')
-            ->and($html)->toContain('rich-text-content');
+            ->and($html)->toContain('rich-text-content')
+            ->and($html)->toContain(Vite::asset('resources/css/site.css'))
+            ->and($html)->not->toContain(Vite::asset('resources/css/app.css'));
     });
 });
 
@@ -434,6 +441,14 @@ describe('addresses that cannot be content', function () {
         $this->get('/logout')->assertNotFound();
     });
 
+    it('never matches a path with a trailing newline when called directly', function () {
+        aboutPages();
+
+        expect(app(ContentRouter::class)->lookup('uk', "about\n"))->toBeNull()
+            ->and(app(ContentRouter::class)->resolve('uk', "about\n", null))->toBeNull()
+            ->and(app(ContentRouter::class)->lookup('uk', 'about'))->not->toBeNull();
+    });
+
     it('builds the address of every path the application can store', function () {
         app(ContentTypes::class)->register(new ProductsType);
         $deep = 'a/b1/2024/x-y-z-9/'.str_repeat('long-slug-', 10).'end/q';
@@ -459,7 +474,8 @@ describe('cost', function () {
 
         $page = publicQueriesOf(fn () => $this->get('/about')->assertOk()->assertSee('<link rel="alternate" hreflang="de"', escape: false));
 
-        expect($page - $home)->toBeLessThanOrEqual(5);
+        expect($page - $home)->toBeLessThanOrEqual(5)
+            ->and(publicQueriesOf(fn () => $this->get('/about')->assertOk(), ['entries', 'entry_redirects', 'media']))->toBeLessThanOrEqual(4);
     });
 
     it('makes one query for a plain page on a one-language site', function () {
@@ -477,6 +493,41 @@ describe('cost', function () {
 
         expect($hidden->headers->get('Cache-Control'))->toBe($missing->headers->get('Cache-Control'))
             ->and($hidden->getContent())->toBe($missing->getContent());
+    });
+
+    it('answers a slug-shaped miss with 404 before the session starts, in at most two queries', function (string $uri) {
+        aboutPages();
+
+        $response = null;
+        $queries = publicQueriesOf(function () use ($uri, &$response): void {
+            $response = $this->get($uri)->assertNotFound();
+        });
+
+        expect($queries)->toBeLessThanOrEqual(2)
+            ->and($response->headers->getCookies())->toBe([])
+            ->and(session()->has(ContentLocales::SESSION_KEY))->toBeFalse();
+    })->with(['/wp-admin', '/xmlrpc', '/en/no-such-page', '/about/no-such-page']);
+
+    it('runs the content lookup before the session on both content routes', function (string $name) {
+        $middleware = app('router')->gatherRouteMiddleware(Route::getRoutes()->getByName($name));
+
+        expect(array_search(LookUpContent::class, $middleware, true))
+            ->toBeLessThan(array_search(StartSession::class, $middleware, true))
+            ->and(array_search(SetContentLocale::class, $middleware, true))
+            ->toBeGreaterThan(array_search(StartSession::class, $middleware, true));
+    })->with(['content', 'localized.content']);
+
+    it('starts the session for a page, a redirect and a hidden record, and keeps their answers', function () {
+        [$about] = aboutPages();
+        EntryRedirect::query()->create(['type' => 'pages', 'locale' => 'uk', 'path' => 'pro-nas', 'entry_id' => $about->id]);
+        Entry::factory()->page()->draft()->inLocale('uk')->create(['slug' => 'hidden', 'path' => 'hidden']);
+
+        $sessionCookie = fn ($response): bool => collect($response->headers->getCookies())->contains(fn ($cookie): bool => $cookie->getName() === config('session.cookie'));
+
+        expect($sessionCookie($this->get('/about')->assertOk()))->toBeTrue()
+            ->and(session(ContentLocales::SESSION_KEY))->toBe('uk')
+            ->and($sessionCookie($this->get('/pro-nas')->assertRedirect('/about')))->toBeTrue()
+            ->and($sessionCookie($this->get('/hidden')->assertNotFound()))->toBeTrue();
     });
 
     it('answers a miss and a redirect with at most two content queries', function () {

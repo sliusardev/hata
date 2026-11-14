@@ -3,7 +3,7 @@
     Receives $entry (with its image loaded), $body (rendered), $preview and $editUrl (null without the type's edit).
 --}}
 @extends('layouts.site', [
-    'pageTitle' => filled($entry->seo_title) ? $entry->seo_title : $entry->title,
+    'pageTitle' => $entry->documentTitle(),
     'noindex' => $preview,
 ])
 

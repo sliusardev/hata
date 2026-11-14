@@ -192,7 +192,9 @@ box shows a skeleton; if it fails, a message asks to reload.
   once; see the media spec's Picker section.
 - **Look**: one bordered rounded box like the other fields, toolbar on a tinted strip with separators, the text below
   with at least 16rem and growing; the focus ring of the other fields while the text has the focus; zinc and accent
-  only. Body typography is the `.rich-text-content` class in `resources/css/app.css`, shared with the public page; the editing box (padding, minimum height, a smaller size) is `.rich-text-content.ProseMirror`.
+  only. Body typography is the `.rich-text-content` class in `resources/css/rich-text-content.css`, imported by both
+  `app.css` (the editor) and `site.css` (the public page), so the rules exist once in the source; the editing box
+  (padding, minimum height, a smaller size) is `.rich-text-content.ProseMirror`.
 
 ## Saving records
 
@@ -393,8 +395,8 @@ error instead of creating a record outside the group. Save calls
   language prefix when not the default, the type's base, the parent's path; the slug is the input), the body
   (`<x-admin.rich-text>`, its images given as `editorImages`, id => URL with one query for the body and the rich text
   fields) and the excerpt; a "Details" card with `localFields()` when the type has any; the "Search engines" card with a
-  live preview (address, title falling back to the title and the site name, description falling back to the excerpt)
-  and the SEO title and description.
+  live preview (address; title: the SEO title alone, else the title, " - " and the site name, the rule of
+  `Entry::documentTitle()`; description falling back to the excerpt) and the SEO title and description.
 - **Right column**: "Publication" (status Draft/Published, date and time as `datetime-local` in `admin.timezone` with
   the timezone named under it; a hint when Published with a future date, and when Published without a date); a user
   without the type's `edit` sees the status fixed to Draft with a line that an editor publishes it. "Language and
@@ -443,7 +445,8 @@ error instead of creating a record outside the group. Save calls
 Plain controller and Blade, no Livewire (the user's standing rule: public pages never use Livewire).
 
 **Route.** `routes/web.php`, inside `Route::localized()`: `Route::get('{path}', ContentController::class)->where('path',
-ContentRouter::PATH_PATTERN)->fallback()->name('content')`, so `content` and `localized.content` (`{locale}/{path}`).
+ContentRouter::PATH_PATTERN)->middleware(LookUpContent::class)->fallback()->name('content')`, so `content` and
+`localized.content` (`{locale}/{path}`).
 `PATH_PATTERN` is lowercase slugs joined by `/` (`[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*`): any other
 address (`/favicon.ico`, `/wp-login.php`, `/.env`, `/about_us`, `/про-нас`, `/about//team`, `/About`, `/en/favicon.ico`)
 matches neither copy and stays the router's own 404, before any middleware: no session, no query (asserted, also in the
@@ -458,19 +461,39 @@ instead of 405 (asserted); an OPTIONS request to an unknown one answers 200 with
 (cached) collection keeps both content routes last. `ReservedSlugs` skips them (they carry `SetContentLocale`, and their
 first segment is a parameter).
 
-**Resolution** (`App\Support\Content\ContentRouter::resolve($locale, $path, $viewer): ?ContentMatch`), in the request's
-language (`ContentLocales::current()`, set by `SetContentLocale`, which also removes `{locale}`):
+**Lookup before the session** (`App\Http\Middleware\LookUpContent`, on the content routes only, which never serve
+Livewire). `bootstrap/app.php` puts it in the middleware priority list right before `StartSession`
+(`prependToPriorityList()`), so the router sorts it ahead of the session (after `EncryptCookies` and
+`AddQueuedCookiesToResponse`), although the route sits in the `web` group (asserted on both routes). It reads the
+language from the address the way `SetContentLocale` does, through the same `ContentLocales` methods:
+`codeForPrefix($prefix)` (the `{locale}` parameter, else the default) and `isDefaultPrefix($prefix)`. The default
+language's own prefix is passed on untouched, so `SetContentLocale` redirects it (after the session, as before); a
+language that is off or not added answers 404 here, before the session. Then `ContentRouter::lookup()`; nothing found
+→ 404 with no session started, no cookie and no `site_locale` write (asserted for `/wp-admin`, `/xmlrpc`,
+`/en/no-such-page` and a missing child). A hit, of any status, goes on with the `ContentLookup` in the request
+attribute `ContentRouter::LOOKUP_ATTRIBUTE`, and the controller hands it to `resolve()`, so a hit is looked up once.
+
+**Lookup** (`ContentRouter::lookup($locale, $path): ?ContentLookup`, no viewer, no session):
 
 1. A first segment equal to a registered type's `base($locale)`: the rest is that type's record path. A bare base is the
    type's list, which a later part builds: null (404) for now, with no query.
 2. Otherwise a record of the types without a base (`pages`) by the full path (one indexed lookup on `type, locale,
-   path` for any depth; with several such types the earliest registered wins).
+   path` for any depth; with several such types the earliest registered wins), whatever its status; trashed records
+   are left out.
 3. On a miss, one lookup in `entry_redirects` (`type, locale, path`, joined to the live record by a subquery): found →
-   `ContentMatch::redirect($record->url())` when that record is public or previewable by the viewer, else null.
+   a `ContentLookup` with `redirect: true` and that record.
 4. Null.
 
-`resolve()` checks `PATH_PATTERN` again (for direct calls, and because MySQL compares paths without regard to case), so a
-path with a capital letter is never matched by the database. A trailing slash gets the framework's trim, as for every
+`ContentLookup` (`entry`, `redirect`) is what the address holds before anything is known about the viewer.
+
+**Resolution** (`ContentRouter::resolve($locale, $path, $viewer, $lookup = null): ?ContentMatch`), in the request's
+language (`ContentLocales::current()`, set by `SetContentLocale`, which also removes `{locale}`): takes the middleware's
+lookup, else looks up itself (direct calls). A record that is not public is null unless the viewer may preview it
+(below); a redirect is `ContentMatch::redirect($record->url())` under the same rule; a record shown loads its public
+translations and its image.
+
+`lookup()` checks `PATH_PATTERN` again, anchored with `\z` so a trailing newline never matches (for direct calls, and
+because MySQL compares paths without regard to case), so a path with a capital letter is never matched by the database. A trailing slash gets the framework's trim, as for every
 route of the application (`/admin/` behaves the same): `/about/` shows `/about`. On Apache the kit's `public/.htaccess`
 redirects it; on nginx both addresses answer until a redirect rule or the canonical tag (head tags, a later part) is
 added. No other normalising.
@@ -479,7 +502,9 @@ added. No other normalising.
 
 **Visibility.** A public record (`isPublic()`) is shown to everyone. A draft or scheduled record resolves only for a
 signed-in user who may edit its type (`EntryPolicy::preview`), with `preview: true`; everyone else gets the same 404 as
-for a missing page (no redirect lookup is made for it either). A trashed record is 404 for everyone.
+for a missing page (status, `Cache-Control` and body; no redirect lookup is made for it either). That decision needs the
+user, so it is made after the session: unlike a miss, the 404 of a hidden record carries the session cookie (a known
+limitation, below). A trashed record is 404 for everyone.
 
 **Controller** (`App\Http\Controllers\ContentController`): null → 404; a redirect → 301 with `Cache-Control: no-cache`
 (the old path may be taken by a new record later, so a browser must not keep it for good); else the view `site.entry`
@@ -493,10 +518,13 @@ no public translation), and nothing when there is only one. The switcher lists e
 
 **Templates** (a folder of their own so a theme can replace them):
 
-- `layouts/site.blade.php`: `<html lang dir>` from the content language, `<title>` (`seo_title`, else the title, then
-  " - " and the site name), `<meta name="robots" content="noindex">` in preview, the favicons, the site's CSS only
-  (`@vite('resources/css/app.css')`), the color scheme (`partials.color-scheme`), a small inline script that sets the
-  `dark` class from the stored appearance or the system (no Flux, Livewire or admin JavaScript is loaded), `hreflang`,
+- `layouts/site.blade.php`: `<html lang dir>` from the content language, `<title>` from `$pageTitle`, which the page
+  builds whole (`Entry::documentTitle()`: the `seo_title` alone when set, else the title, " - " and the site name; the
+  form's search preview uses the same rule and separator), `<meta name="robots" content="noindex">` in preview, the
+  favicons, the public stylesheet only (`@vite('resources/css/site.css')`, below), the color scheme
+  (`partials.color-scheme`), a small inline script that sets the `dark` class from the stored appearance (Flux's
+  `flux.appearance`, when the visitor has used the admin) or else the visitor's system light/dark preference (no Flux,
+  Livewire or admin JavaScript is loaded), `hreflang`,
   and a header with the site logo (when one is chosen) or the site name linking to the home page in that language, and
   the switcher. No description, canonical or Open Graph tags yet.
 - `partials/site/language-switcher.blade.php`: a `<details>` with plain links, no JavaScript; each active language links
@@ -509,8 +537,15 @@ no public translation), and nothing when there is only one. The switcher lists e
   `max-width: 100%; height: auto`), in a column of `max-w-3xl`. The type's own fields are not printed. Strings:
   `content.public.*`.
 
-**Cost per page view** (asserted: at most 5 queries more than the home page in the same setup; the home page makes none
-in the tests):
+**Stylesheet.** `resources/css/site.css` is a Vite entry of its own: Tailwind with automatic source detection off
+(`source(none)`) and `@source` limited to `layouts/site`, `site/*`, `partials/site/*` and the two logo components, the
+shared theme (`resources/css/theme.css`: the dark variant, fonts, zinc, accent and sidebar variables, also imported by
+`app.css`) and the body typography (`rich-text-content.css`). Built: about 16.6 KB (4.3 KB gzipped), against about
+455 KB (48 KB gzipped) for the admin's `app.css`, which public pages no longer load. A class used in a site template
+outside those paths must be added to its `@source` list.
+
+**Cost per page view** (asserted: at most 5 queries more than the home page in the same setup, and at most 4 that read
+`entries`, `entry_redirects` or `media`; the home page makes none in the tests):
 
 1. `select * from entries where locale = ? and path = ? and type in (?) and deleted_at is null`
 2. `select id, entry_group_id, type, locale, path from entries where entry_group_id in (?) and status = 'published' and
@@ -521,9 +556,9 @@ in the tests):
 
 Plus the site logo (one query, only when a custom logo is chosen) and, for a signed-in viewer, what the user and
 permission checks cost. The figures exclude the session's own queries, which depend on the session driver and are the
-same as for the home page. A miss is two queries (1 and the redirect lookup), a redirect the same two, a draft for a
-guest one (its 404 is the same response as a missing path's: status, `Cache-Control` and body, asserted); a bare base
-none; an address that is not slug-shaped never reaches the controller.
+same as for the home page. A miss is two queries (1 and the redirect lookup) and starts no session, a redirect the same
+two, a draft for a guest one (its 404 is the same response as a missing path's: status, `Cache-Control` and body,
+asserted); a bare base none; an address that is not slug-shaped never reaches the controller.
 
 ## Tests
 
@@ -531,13 +566,16 @@ none; an address that is not slug-shaped never reaches the controller.
 nested path, a record under a type's base and the bare base, the trailing slash, addresses that cannot be content (the
 router's 404 with no query and no session), `GET /logout`, `url()` for the deepest and longest stored shapes, the cost
 on a one-language site, the hidden record's 404 equal to a missing one, the image, the SEO title, the
-rendered body, no Livewire or script files; preview (draft, scheduled and trashed are 404 for a guest and a user without
+rendered body, no Livewire or script files, the public stylesheet instead of the admin's; preview (draft, scheduled and trashed are 404 for a guest and a user without
 `pages.edit`; the strip, `noindex`, `no-store` and the edit link for an editor; the scheduled date in the site's
 timezone; the Edit link on a published page); `hreflang` (public translations in active languages, `x-default`, none for
 one, no `x-default` without the default language) and the switcher; `/de/about`; languages off or not added; no leak of
 alternates into the next request; redirects in both languages, to a draft only for an editor, after a `move()`; every
 other route unchanged (by the router's match), reserved slugs, `url()` from the route without a query, the compiled route
-cache; the query budget and the cost of a miss and a redirect; the list's "View on site" and the form's "Preview".
+cache; the query budget and the cost of a miss and a redirect; `LookUpContent` ordered before `StartSession` on both
+routes, slug-shaped misses answered with no cookie, no `site_locale` and at most two queries, the session still started
+for a page, a redirect and a hidden record; a trailing newline never matched by `lookup()`; the list's "View on site"
+and the form's "Preview".
 `tests/Feature/Admin/Content/EntryIndexTest.php`: access (guest, 403, unknown type), the sidebar item and group, tabs
 and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
 the tree, `missing`, the list's language (session, fallback), the translations bar and its create links, the one-language
@@ -590,6 +628,13 @@ record right after the action's own look-up, once failing validation and once th
 and the timezone, shared fields, tampered values as a dataset (nothing stored), permissions, the policy,
 `EntryAuthors`, and usages and `forgetMedia()` for every kind (a test type with a file field, a gallery and a shared
 gallery).
+
+## Known limitations
+
+- A hidden record's 404 is decided after the session (preview needs the user), so it carries the session cookie while
+  a miss carries none: a visitor can tell that a draft exists at an address, though not what it holds.
+- `/<default code>/<anything slug-shaped>` is passed on to `SetContentLocale`, which starts the session and redirects
+  it to the address without the prefix, where a miss is the sessionless 404.
 
 ## Not included yet
 

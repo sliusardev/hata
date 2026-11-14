@@ -222,6 +222,19 @@ class Entry extends Model implements UsesMedia
     }
 
     /**
+     * The `<title>` of the public page: the SEO title alone when set, else the title, " - " and the site name. The
+     * form's search preview (resources/js/entry-form.js) follows the same rule.
+     */
+    public function documentTitle(): string
+    {
+        if (filled($this->seo_title)) {
+            return (string) $this->seo_title;
+        }
+
+        return $this->title.' - '.config('app.name');
+    }
+
+    /**
      * The public address in the record's language (the `content` route): the language prefix (none for the default
      * one), the base of the type, then the path. No query.
      */

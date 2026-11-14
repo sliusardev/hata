@@ -117,6 +117,27 @@ class ContentLocales
     }
 
     /**
+     * The language of a public address from its `{locale}` route parameter: the prefix, or the default language
+     * when the address has none. An address whose language is not active answers 404 (isActive()). Shared by
+     * SetContentLocale and LookUpContent, so both read an address the same way.
+     */
+    public function codeForPrefix(mixed $prefix): string
+    {
+        return is_string($prefix) ? $prefix : $this->defaultCode();
+    }
+
+    /**
+     * Whether a public address carries the default language's own prefix, which answers 301 to the address
+     * without it (SetContentLocale).
+     *
+     * @phpstan-assert-if-true string $prefix
+     */
+    public function isDefaultPrefix(mixed $prefix): bool
+    {
+        return is_string($prefix) && $prefix === $this->defaultCode();
+    }
+
+    /**
      * The site's default interface language: what guests and users without a language of their own see in
      * the admin and on the sign-in pages. Not `app.locale`, which holds the current request's language once
      * the middleware has run.

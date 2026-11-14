@@ -45,6 +45,8 @@ Two site settings, applied over config like the others (`docs/specs/site-setting
   breaks the site.
 - With nothing stored the site has one language, the default interface language, and no prefix anywhere.
 - `all()`, `active()`, `default()`, `defaultCode()`, `has()`, `isActive()`, `language($code)`.
+- `codeForPrefix($prefix)`: the language of a public address from its `{locale}` parameter (the default without one);
+  `isDefaultPrefix($prefix)`: the address carries the default language's own prefix (answered with a 301).
 - `interfaceDefault()`: the site's default interface language, from `content.interface_default`.
   `SiteSettings::apply()` writes that key (the stored `default_locale`, else `app.locale` as the config files
   give it, read when the singleton is built). **Never read `app.locale` for the site default**:
@@ -76,7 +78,9 @@ Both copies carry `App\Http\Middleware\SetContentLocale`. The pattern comes from
 settings, so the routes can be cached and never change when a language is switched. Catalogue codes are
 reserved slugs, so a first segment equal to a code is always a language.
 
-`SetContentLocale`, per request: decides the language (above), removes `{locale}` from the route's parameters
+`SetContentLocale`, per request: decides the language (above; through `ContentLocales::codeForPrefix()` and
+`isDefaultPrefix()`, which `LookUpContent` uses too, so the content route's sessionless lookup reads an address the
+same way), removes `{locale}` from the route's parameters
 (pages never receive it), sets `ContentLocales::current()` and `app()->setLocale()`, points the translator's
 fallback at the site's default interface language (a string the content language lacks shows in that
 language, not in `APP_FALLBACK_LOCALE`), and remembers the language in the session (`site_locale`) when it
@@ -93,7 +97,10 @@ Public pages today:
   (`partials/hreflang.blade.php`: one per active language plus `x-default`, nothing with a single language) and a
   minimal language switcher; its text is still Laravel's demo page (decision 10).
 - Content records (`content` / `localized.content`, `{path}` matching lowercase slugs joined by `/`, registered as fallbacks inside
-  `Route::localized()` so every explicit route wins; `docs/specs/content.md`, Public side). They hand their public
+  `Route::localized()` so every explicit route wins; `docs/specs/content.md`, Public side). `LookUpContent` runs on
+  these two routes before the session starts: a language that is off or not added answers its 404 there, without a
+  session, and an address with no record and no redirect too; the default language's prefix still goes to
+  `SetContentLocale` for its 301. They hand their public
   translations to `useAlternates()`, so `hreflang` lists only those, with `x-default` only when the default language has
   one, and the switcher (`partials/site/language-switcher.blade.php`) links a language without a translation to that
   language's home page.

@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 {{--
     The neutral layout of the public site until themes replace it. Plain HTML: no Livewire, no Flux scripts and no
-    admin JavaScript; only the site's CSS, the color scheme and a two-line appearance check for dark mode.
-    Expects $pageTitle; $noindex and $strip (a section) are optional.
+    admin JavaScript; only the site's own CSS (resources/css/site.css, not the admin's app.css), the color scheme and
+    a two-line appearance check for dark mode.
+    Expects $pageTitle, the whole document title (a page builds it, see Entry::documentTitle()); $noindex and
+    $strip (a section) are optional.
 --}}
 @php
     $contentLocales = app(App\Support\Localization\ContentLocales::class);
@@ -13,7 +15,7 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-        <title>{{ $pageTitle }} - {{ config('app.name', 'Laravel') }}</title>
+        <title>{{ $pageTitle }}</title>
 
         @if ($noindex ?? false)
             <meta name="robots" content="noindex">
@@ -23,7 +25,7 @@
 
         @fonts
 
-        @vite('resources/css/app.css')
+        @vite('resources/css/site.css')
         @include('partials.color-scheme')
 
         {{-- Dark mode as the admin sets it (Flux's stored choice, else the system's), without loading Flux. --}}
