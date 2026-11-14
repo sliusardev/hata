@@ -3,6 +3,7 @@
 use App\Models\Media;
 use App\Support\Content\BodyRenderer;
 use App\Support\Content\BodySanitizer;
+use App\Support\Content\EntryInput;
 use Illuminate\Support\Facades\DB;
 
 dataset('hostile bodies', [
@@ -125,6 +126,14 @@ it('does not cut a long body', function () {
     $html = str_repeat('<p>Абзац тексту.</p>', 5000);
 
     expect((new BodySanitizer)->clean($html))->toBe($html);
+});
+
+it('keeps the tail of a body under the form\'s limit that grows past the cut once its entities are written out', function () {
+    // Each `&` comes back from the parser as `&amp;`: five times the bytes, past BodySanitizer::MAX_LENGTH.
+    $html = '<p>'.str_repeat('&', EntryInput::BODY_MAX_BYTES - 20).'tail</p>';
+
+    expect(strlen($html))->toBeLessThan(EntryInput::BODY_MAX_BYTES)
+        ->and((new BodySanitizer)->clean($html))->toEndWith('&amp;tail</p>');
 });
 
 it('keeps a body that has only an image or a rule', function (string $html) {

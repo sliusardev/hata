@@ -182,7 +182,9 @@ class BodySanitizer
     {
         $config = (new HtmlSanitizerConfig)
             ->defaultAction(HtmlSanitizerAction::Block)
-            ->withMaxInputLength(self::MAX_LENGTH)
+            // No second cut: prepare() already bounds the input to MAX_LENGTH, and its serialization may grow past it
+            // (each `&` comes back as `&amp;`), which the package would cut silently.
+            ->withMaxInputLength(-1)
             ->allowLinkSchemes(['http', 'https', 'mailto', 'tel'])
             ->allowRelativeLinks()
             ->withAttributeSanitizer(new MediaIdAttributeSanitizer);
