@@ -3,6 +3,7 @@
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\StaticMediaFallbackController;
+use App\Support\Content\ContentRouter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -49,7 +50,9 @@ require __DIR__.'/settings.php';
 /*
 | Content records (pages, later posts) at their public addresses. A fallback in both copies, so every other route
 | (admin, Fortify, media, Livewire, the home page) wins; ContentRouter resolves the path from code-defined bases.
+| Only slug-shaped paths match, so anything else (`/favicon.ico`, `/.env`) stays the router's 404, with no session
+| and no query.
 */
 Route::localized(function () {
-    Route::get('{path}', ContentController::class)->where('path', '.*')->fallback()->name('content');
+    Route::get('{path}', ContentController::class)->where('path', ContentRouter::PATH_PATTERN)->fallback()->name('content');
 });

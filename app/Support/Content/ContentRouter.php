@@ -22,22 +22,32 @@ use Illuminate\Support\Facades\Gate;
  */
 class ContentRouter
 {
+    /**
+     * What a content address can look like: lowercase slugs joined by `/`. The route carries it, so any other
+     * address (`/favicon.ico`, `/.env`, `/About`) is the router's own 404, before any middleware or query.
+     */
+    public const string PATH_PATTERN = '[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*';
+
     public function __construct(
         private readonly ContentTypes $types,
         private readonly ContentLocales $locales,
     ) {}
 
     /**
-     * One query for a record that is found, then one for its public translations and one for its image when it has
-     * one; a miss costs one more query, for the redirects.
+     * One query for a record that is found, then one for its public translations (none on a one-language site) and
+     * one for its image when it has one; a miss costs one more query, for the redirects.
      */
     public function resolve(string $locale, string $path, ?User $viewer): ?ContentMatch
     {
+        // The route already holds to this; checked again for direct calls, and because MySQL compares paths
+        // without regard to case.
+        if (preg_match('#^'.self::PATH_PATTERN.'$#', $path) !== 1) {
+            return null;
+        }
+
         [$types, $recordPath] = $this->candidates($locale, $path);
 
-        // Slugs are lowercase, so a path with a capital letter is no record's. Decided here rather than by the
-        // database, whose comparison ignores case on MySQL.
-        if ($types === [] || $recordPath === '' || $recordPath !== mb_strtolower($recordPath)) {
+        if ($types === [] || $recordPath === '') {
             return null;
         }
 
@@ -53,11 +63,18 @@ class ContentRouter
             return null;
         }
 
-        $entry->load(['groupEntries' => fn (HasMany $query) => $query
-            ->select(['id', 'entry_group_id', 'type', 'locale', 'path'])
-            ->public()
-            ->whereIn('locale', array_map(fn (Language $language): string => $language->code, $this->locales->active())),
-        ]);
+        $activeLocales = array_map(fn (Language $language): string => $language->code, $this->locales->active());
+
+        if (count($activeLocales) === 1) {
+            // One language: no hreflang and no switcher, so no translations to look up.
+            $entry->setRelation('groupEntries', new Collection);
+        } else {
+            $entry->load(['groupEntries' => fn (HasMany $query) => $query
+                ->select(['id', 'entry_group_id', 'type', 'locale', 'path'])
+                ->public()
+                ->whereIn('locale', $activeLocales),
+            ]);
+        }
 
         if ($entry->image_id !== null) {
             $entry->load('image');

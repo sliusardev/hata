@@ -14,6 +14,7 @@ use Illuminate\Routing\CompiledRouteCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\Fixtures\ProductsType;
 
 beforeEach(function () {
@@ -113,10 +114,9 @@ describe('pages', function () {
         $this->get('/team')->assertNotFound();
     });
 
-    it('does not normalise the path beyond what the router does', function () {
+    it('leaves a trailing slash to the framework\'s trim, as for every route', function () {
         aboutPages();
 
-        $this->get('/About')->assertNotFound();
         $this->get('/about/')->assertOk();
     });
 
@@ -410,6 +410,43 @@ describe('routing', function () {
     });
 });
 
+describe('addresses that cannot be content', function () {
+    it('leaves them to the router\'s own 404, with no query and no session', function (string $uri) {
+        aboutPages();
+
+        expect(fn () => Route::getRoutes()->match(Request::create($uri)))->toThrow(NotFoundHttpException::class)
+            ->and(publicQueriesOf(fn () => $this->get($uri)->assertNotFound()))->toBe(0)
+            ->and(session()->has(ContentLocales::SESSION_KEY))->toBeFalse();
+    })->with([
+        '/favicon.ico',
+        '/wp-login.php',
+        '/.env',
+        '/about_us',
+        '/'.rawurlencode('про-нас'),
+        '/about//team',
+        '/About',
+        '/en/favicon.ico',
+    ]);
+
+    it('answers a GET to an address that only has a POST route from the content route, with 404', function () {
+        expect(routeNameFor('/logout'))->toBe('content');
+
+        $this->get('/logout')->assertNotFound();
+    });
+
+    it('builds the address of every path the application can store', function () {
+        app(ContentTypes::class)->register(new ProductsType);
+        $deep = 'a/b1/2024/x-y-z-9/'.str_repeat('long-slug-', 10).'end/q';
+        $long = implode('-', array_fill(0, 63, 'ab1')).'-x';
+        $page = Entry::factory()->page()->inLocale('en')->create(['slug' => 'q', 'path' => $deep]);
+        $product = Entry::factory()->create(['type' => 'products', 'locale' => 'uk', 'slug' => $long, 'path' => $long]);
+
+        expect(strlen($long))->toBeLessThanOrEqual(255)
+            ->and($page->url(false))->toBe('/en/'.$deep)
+            ->and($product->url(false))->toBe('/products/'.$long);
+    });
+});
+
 describe('cost', function () {
     it('makes at most five queries more than the home page for a page with translations and images', function () {
         $home = publicQueriesOf(fn () => $this->get('/')->assertOk());
@@ -423,6 +460,23 @@ describe('cost', function () {
         $page = publicQueriesOf(fn () => $this->get('/about')->assertOk()->assertSee('<link rel="alternate" hreflang="de"', escape: false));
 
         expect($page - $home)->toBeLessThanOrEqual(5);
+    });
+
+    it('makes one query for a plain page on a one-language site', function () {
+        publicLanguages(['uk' => true], 'uk');
+        aboutPages(['body' => '<p>Text</p>']);
+
+        expect(publicQueriesOf(fn () => $this->get('/about')->assertOk()))->toBe(1);
+    });
+
+    it('answers a hidden record with the same 404 as a missing path', function () {
+        Entry::factory()->page()->draft()->inLocale('uk')->create(['slug' => 'hidden', 'path' => 'hidden']);
+
+        $hidden = $this->get('/hidden')->assertNotFound();
+        $missing = $this->get('/missing')->assertNotFound();
+
+        expect($hidden->headers->get('Cache-Control'))->toBe($missing->headers->get('Cache-Control'))
+            ->and($hidden->getContent())->toBe($missing->getContent());
     });
 
     it('answers a miss and a redirect with at most two content queries', function () {

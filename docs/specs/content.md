@@ -412,11 +412,18 @@ error instead of creating a record outside the group. Save calls
 Plain controller and Blade, no Livewire (the user's standing rule: public pages never use Livewire).
 
 **Route.** `routes/web.php`, inside `Route::localized()`: `Route::get('{path}', ContentController::class)->where('path',
-'.*')->fallback()->name('content')`, so `content` and `localized.content` (`{locale}/{path}`). Both copies are fallbacks:
+ContentRouter::PATH_PATTERN)->fallback()->name('content')`, so `content` and `localized.content` (`{locale}/{path}`).
+`PATH_PATTERN` is lowercase slugs joined by `/` (`[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*`): any other
+address (`/favicon.ico`, `/wp-login.php`, `/.env`, `/about_us`, `/про-нас`, `/about//team`, `/About`, `/en/favicon.ico`)
+matches neither copy and stays the router's own 404, before any middleware: no session, no query (asserted, also in the
+cached table). Every path the application can store fits it, so `Entry::url()` never fails the route's parameter check.
+Both copies are fallbacks:
 every explicit route (admin, Fortify, settings, media, `up`, Livewire, the home page) is tried first, and the prefixed
 copy still precedes the plain one, so `/de/about` is the German page `about`, never a default-language page `de/about`
-(a first segment equal to a catalogue code is always a language). GET and HEAD only; a POST to an unknown address
-therefore answers 405 instead of 404, as with Laravel's own `Route::fallback()`. The routes serialize and the compiled
+(a first segment equal to a catalogue code is always a language). GET and HEAD only, which changes three answers for
+slug-shaped addresses: a POST (or PUT, DELETE) to an unknown one answers 405 instead of 404, as with Laravel's own
+`Route::fallback()`; a GET to an address that only has a POST route (`/logout`) answers 404 from the content route
+instead of 405 (asserted); an OPTIONS request to an unknown one answers 200 with `Allow: GET,HEAD`. The routes serialize and the compiled
 (cached) collection keeps both content routes last. `ReservedSlugs` skips them (they carry `SetContentLocale`, and their
 first segment is a parameter).
 
@@ -431,9 +438,11 @@ language (`ContentLocales::current()`, set by `SetContentLocale`, which also rem
    `ContentMatch::redirect($record->url())` when that record is public or previewable by the viewer, else null.
 4. Null.
 
-A path with a capital letter is no record's (slugs are lowercase) and is refused before any query, so SQLite and MySQL
-(whose comparison ignores case) agree. A trailing slash is removed by the router as before. No other normalising and no
-redirect for those.
+`resolve()` checks `PATH_PATTERN` again (for direct calls, and because MySQL compares paths without regard to case), so a
+path with a capital letter is never matched by the database. A trailing slash gets the framework's trim, as for every
+route of the application (`/admin/` behaves the same): `/about/` shows `/about`. On Apache the kit's `public/.htaccess`
+redirects it; on nginx both addresses answer until a redirect rule or the canonical tag (head tags, a later part) is
+added. No other normalising.
 
 `ContentMatch` (`entry`, `preview`, `redirectTo`): `ContentMatch::entry($entry, $preview)` or `::redirect($url)`.
 
@@ -474,18 +483,23 @@ in the tests):
 
 1. `select * from entries where locale = ? and path = ? and type in (?) and deleted_at is null`
 2. `select id, entry_group_id, type, locale, path from entries where entry_group_id in (?) and status = 'published' and
-   published_at <= ? and locale in (<active>) and deleted_at is null` (the public translations)
+   published_at <= ? and locale in (<active>) and deleted_at is null` (the public translations; skipped on a site with
+   one active language, which has neither `hreflang` nor a switcher: a plain page there is one query, asserted)
 3. `select * from media where id in (?)`, the record's image, only when it has one
 4. `select * from media where id in (…)`, the body's images, only when the body has any
 
-Plus the site logo (one query, only when a custom logo is chosen) and, for a signed-in viewer, what the session and
-permission checks cost. A miss is two queries (1 and the redirect lookup), a redirect the same two, a draft for a guest
-one; a bare base or a path with a capital letter none.
+Plus the site logo (one query, only when a custom logo is chosen) and, for a signed-in viewer, what the user and
+permission checks cost. The figures exclude the session's own queries, which depend on the session driver and are the
+same as for the home page. A miss is two queries (1 and the redirect lookup), a redirect the same two, a draft for a
+guest one (its 404 is the same response as a missing path's: status, `Cache-Control` and body, asserted); a bare base
+none; an address that is not slug-shaped never reaches the controller.
 
 ## Tests
 
 `tests/Feature/Content/PublicContentTest.php`: a page in the default language and its translation under the prefix, a
-nested path, a record under a type's base and the bare base, uppercase and trailing slash, the image, the SEO title, the
+nested path, a record under a type's base and the bare base, the trailing slash, addresses that cannot be content (the
+router's 404 with no query and no session), `GET /logout`, `url()` for the deepest and longest stored shapes, the cost
+on a one-language site, the hidden record's 404 equal to a missing one, the image, the SEO title, the
 rendered body, no Livewire or script files; preview (draft, scheduled and trashed are 404 for a guest and a user without
 `pages.edit`; the strip, `noindex`, `no-store` and the edit link for an editor; the scheduled date in the site's
 timezone; the Edit link on a published page); `hreflang` (public translations in active languages, `x-default`, none for

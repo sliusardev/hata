@@ -92,7 +92,7 @@ Public pages today:
 - The home page (`home` / `localized.home`). It prints `<html lang dir>`, the `hreflang` alternates
   (`partials/hreflang.blade.php`: one per active language plus `x-default`, nothing with a single language) and a
   minimal language switcher; its text is still Laravel's demo page (decision 10).
-- Content records (`content` / `localized.content`, `{path}` matching anything, registered as fallbacks inside
+- Content records (`content` / `localized.content`, `{path}` matching lowercase slugs joined by `/`, registered as fallbacks inside
   `Route::localized()` so every explicit route wins; `docs/specs/content.md`, Public side). They hand their public
   translations to `useAlternates()`, so `hreflang` lists only those, with `x-default` only when the default language has
   one, and the switcher (`partials/site/language-switcher.blade.php`) links a language without a translation to that
