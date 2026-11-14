@@ -1,7 +1,7 @@
 # Content
 
 Content types (pages now, posts later) and their extra fields. The registry and the record tables and models
-exist so far: there are no routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
+and the slug and path rules exist so far: there are no routes or admin screens yet. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
 
 ## Content types
 
@@ -80,6 +80,23 @@ parent. States: `page()`, `draft()`, `published()` (a day ago), `scheduled()` (a
 `childOf($parent)` (same type and language, path under the parent) and `translationOf($source, $locale)` (same
 group and type).
 
+## Slugs, paths and redirects
+
+`App\Support\Content\EntryPaths` (resolved from the container):
+
+| Method | Meaning |
+|---|---|
+| `slugFrom($title)` | `Str::slug`; may be empty |
+| `suggest($type, $locale, $parent, $title, $ignore = null)` | the generated slug with `-2`, `-3`... added while its path is taken. Taken means a record of the same type and language holds the path, trashed or not, or (at the top of the address) the slug is reserved. One query. A path held only by a redirect row is free |
+| `pathFor($type, $parent, $slug)` | the parent's path and the slug |
+| `move($entry, $newPath)` | for the caller's transaction: sets the record's path, rewrites the path of every descendant (same type and language, trashed included, matched by the old path followed by `/`) with one `UPDATE`, deletes the redirect rows whose path a record now holds, and stores every old path in `entry_redirects` with one upsert (an existing row for that path is pointed at the record). Five queries whatever the number of descendants. The SQL concat is the one driver-specific part (`||` on SQLite, `CONCAT` on MySQL) |
+
+`App\Rules\EntrySlug($type, $locale, $parent, $ignore)` checks, in this order: the format
+`^[a-z0-9]+(-[a-z0-9]+)*$`; not reserved (only for a record at the top of the address, that is without a parent
+and in a type with no base: `ReservedSlugs`, or the base of any registered type in that language); the full path
+at most 255 characters; not taken by another record of the type and language, trashed ones included, the record
+being edited excepted. Messages are `content.slug.*`. An empty value is left to `required`.
+
 ## Tests
 
 `tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, `pages`, the permissions after a
@@ -88,7 +105,9 @@ sync and for the editor, every field kind's round trip and rules, shared and loc
 tree, the null-on-delete keys, `url()`, `fieldValue()` and the search index. The
 test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has one field of every kind with
 `price` shared; tests register it themselves.
+`tests/Feature/Content/EntryPathsTest.php`: suggested slugs, the slug rule, `move()` (descendants, redirects, the same
+query count for 2 and 50 descendants, redirect rows that already exist).
 
 ## Not included yet
 
-Redirect writing, the public route, the admin screens, the editor and the field partials.
+The public route, the admin screens, the editor and the field partials.
