@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\Content\ContentTypes;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Tests\Fixtures\ProductsType;
 
 beforeEach(function () {
@@ -60,10 +61,35 @@ test('translations() lists the other languages of the group and skips the trashe
     $uk = Entry::factory()->page()->translationOf($en, 'uk')->create();
     Entry::factory()->page()->translationOf($en, 'de')->create()->delete();
 
-    expect($en->translations->pluck('id')->all())->toBe([$uk->id])
-        ->and($uk->translations->pluck('id')->all())->toBe([$en->id])
+    expect($en->translations()->pluck('id')->all())->toBe([$uk->id])
+        ->and($uk->translations()->pluck('id')->all())->toBe([$en->id])
         ->and($uk->entry_group_id)->toBe($en->entry_group_id)
         ->and($en->group->entries()->count())->toBe(2);
+});
+
+test('translations() on eager loaded records give the others of each group with no query per record', function () {
+    $a = Entry::factory()->page()->inLocale('en')->create();
+    $aUk = Entry::factory()->page()->translationOf($a, 'uk')->create();
+    $b = Entry::factory()->page()->inLocale('en')->create();
+    $bDe = Entry::factory()->page()->translationOf($b, 'de')->create();
+    Entry::factory()->page()->translationOf($b, 'fr')->create()->delete();
+
+    $entries = Entry::query()->whereKey([$a->id, $aUk->id, $b->id, $bDe->id])->with('groupEntries')->orderBy('id')->get();
+
+    DB::enableQueryLog();
+    $others = $entries->map(fn (Entry $entry): array => $entry->translations()->pluck('id')->all())->all();
+
+    expect(DB::getQueryLog())->toBe([])
+        ->and($others)->toBe([[$aUk->id], [$a->id], [$bDe->id], [$b->id]])
+        ->and($entries->first()->groupEntries->pluck('id')->all())->toBe([$a->id, $aUk->id]);
+});
+
+test('a published record without a date is a draft and not public', function () {
+    $entry = Entry::factory()->page()->create(['status' => EntryStatus::Published, 'published_at' => null]);
+
+    expect($entry->state())->toBe(EntryState::Draft)
+        ->and($entry->isPublic())->toBeFalse()
+        ->and(Entry::query()->public()->count())->toBe(0);
 });
 
 test('children, parent, path and depth follow the tree', function () {

@@ -62,11 +62,12 @@ for good removes its redirects.
 | Member | Meaning |
 |---|---|
 | `group()`, `parent()`, `children()`, `author()`, `image()` | relations |
-| `translations()` | the other records of the group; trashed ones are left out |
+| `groupEntries()` | relation: every record of the group, this one included, trashed left out; eager load it in lists |
+| `translations()` | method, not a relation: the other records of the group, taken from the loaded `groupEntries` when there is one (no query per record) |
 | `ofType($type)`, `inLocale($locale)` | scopes |
 | `public()` | scope: `published`, `published_at <= now()`, not trashed |
 | `type()` | the registered `ContentType` |
-| `state()` | `EntryState`: `Draft`, `Scheduled` (published with a future date) or `Published`; derived, never stored |
+| `state()` | `EntryState`: `Draft` (also a published record with no date), `Scheduled` (published with a future date) or `Published`; derived, never stored |
 | `isPublic()` | the same rule as `public()` for one record |
 | `depth()` | slashes in `path` (0 at the top) |
 | `url($absolute = true)` | the site address, the language prefix (none for the default content language, `/<code>` for the others), the type's base for that language, then `path`; built by hand until the public route exists |

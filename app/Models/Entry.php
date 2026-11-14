@@ -46,7 +46,7 @@ use Illuminate\Support\Carbon;
  * @property-read EntryGroup $group
  * @property-read Entry|null $parent
  * @property-read Collection<int, Entry> $children
- * @property-read Collection<int, Entry> $translations
+ * @property-read Collection<int, Entry> $groupEntries
  */
 #[Fillable([
     'entry_group_id', 'type', 'locale', 'parent_id', 'author_id', 'title', 'slug', 'path', 'body', 'excerpt',
@@ -115,13 +115,26 @@ class Entry extends Model
     }
 
     /**
-     * The other records of the group (trashed ones excluded).
+     * Every record of the group, this one included (trashed ones excluded). Safe to eager load.
      *
      * @return HasMany<Entry, $this>
      */
-    public function translations(): HasMany
+    public function groupEntries(): HasMany
     {
-        return $this->hasMany(self::class, 'entry_group_id', 'entry_group_id')->whereKeyNot($this->getKey());
+        return $this->hasMany(self::class, 'entry_group_id', 'entry_group_id');
+    }
+
+    /**
+     * The other records of the group. Uses the loaded `groupEntries` when there is one, so a list that
+     * eager loads it costs no query per record.
+     *
+     * @return Collection<int, Entry>
+     */
+    public function translations(): Collection
+    {
+        return $this->groupEntries
+            ->reject(fn (Entry $entry): bool => $entry->getKey() === $this->getKey())
+            ->values();
     }
 
     /**
@@ -157,13 +170,11 @@ class Entry extends Model
 
     public function state(): EntryState
     {
-        if ($this->status !== EntryStatus::Published) {
+        if ($this->status !== EntryStatus::Published || $this->published_at === null) {
             return EntryState::Draft;
         }
 
-        return $this->published_at !== null && $this->published_at->isFuture()
-            ? EntryState::Scheduled
-            : EntryState::Published;
+        return $this->published_at->isFuture() ? EntryState::Scheduled : EntryState::Published;
     }
 
     public function isPublic(): bool
