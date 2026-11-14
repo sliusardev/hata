@@ -5,6 +5,7 @@ use App\Actions\Content\UpdateEntry;
 use App\Enums\EntryState;
 use App\Enums\EntryStatus;
 use App\Enums\SystemRole;
+use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
 use App\Models\EntryGroup;
 use App\Models\EntryRedirect;
@@ -382,9 +383,13 @@ test('a tampered value is a field error and nothing is stored', function (string
             'title' => 'Крісло', 'slug' => 'krislo', 'parent_id' => $product->id, 'fields' => ['price' => '2'],
         ]),
         'an author who may not create the type' => $page(['author_id' => $stranger->id]),
-        'another author chosen by a creator without edit' => fn () => createEntryAs($creatorOnly, 'pages', 'uk', [
-            'title' => 'Нова', 'slug' => 'nova', 'author_id' => $this->editor->id,
+        'publishing by a creator without edit' => fn () => createEntryAs($creatorOnly, 'pages', 'uk', [
+            'title' => 'Нова', 'slug' => 'nova', 'status' => 'published',
         ]),
+        'scheduling by a creator without edit' => fn () => createEntryAs($creatorOnly, 'pages', 'uk', [
+            'title' => 'Нова', 'slug' => 'nova', 'status' => 'published', 'published_at' => now()->addWeek()->format('Y-m-d\TH:i'),
+        ]),
+        'an excerpt over 1000 characters' => $page(['excerpt' => str_repeat('я', 1001)]),
         'an image that is a document' => $page(['image_id' => $document->id]),
         'an image that does not exist' => $page(['image_id' => 999999]),
         'a gallery with a missing file' => $productWith(['photos' => [$image->id, 999999]]),
@@ -413,7 +418,9 @@ test('a tampered value is a field error and nothing is stored', function (string
     ['a trashed parent', 'parent_id'],
     ['a parent on a flat type', 'parent_id'],
     ['an author who may not create the type', 'author_id'],
-    ['another author chosen by a creator without edit', 'author_id'],
+    ['publishing by a creator without edit', 'status'],
+    ['scheduling by a creator without edit', 'status'],
+    ['an excerpt over 1000 characters', 'excerpt'],
     ['an image that is a document', 'image_id'],
     ['an image that does not exist', 'image_id'],
     ['a gallery with a missing file', 'fields.photos'],
@@ -432,6 +439,8 @@ test('each action needs the type\'s permission', function () {
         ->and(fn () => updateEntryAs($outsider, $page, ['title' => 'Інша', 'slug' => 'about']))->toThrow(AuthorizationException::class)
         ->and(fn () => updateEntryAs($creatorOnly, $page, ['title' => 'Інша', 'slug' => 'about']))->toThrow(AuthorizationException::class)
         ->and(fn () => createEntryAs($this->editor, 'products', 'uk', ['title' => 'Стіл', 'slug' => 'stil', 'fields' => ['price' => '1']]))->toThrow(AuthorizationException::class)
+        ->and(fn () => createEntryAs($creatorOnly, 'pages', 'uk', ['title' => 'Нова', 'slug' => 'nova', 'status' => 'published']))
+        ->toThrow(fn (ValidationException $e) => expect($e->errors())->toHaveKey('status'))
         ->and(Entry::query()->count())->toBe(1)
         ->and($page->fresh()->title)->toBe('Про нас');
 
@@ -510,4 +519,50 @@ test('media fields record their usages on the record, shared ones on the group, 
     MediaUsage::forgetAll([$document]);
 
     expect($event->fresh()->fields['file'])->toBeNull();
+});
+
+test('a creator without edit translates from copyFor() and becomes the author; another author they name is ignored', function () {
+    $creatorOnly = User::factory()->withPermissions(['pages.create'])->create();
+    $uk = createEntryAs($this->editor, 'pages', 'uk', ['title' => 'Про нас', 'slug' => 'pro-nas', 'status' => 'published']);
+
+    $copy = $uk->copyFor('en');
+
+    expect($copy['author_id'])->toBe($this->editor->id);
+
+    $en = createEntryAs($creatorOnly, 'pages', 'en', [...$copy, 'title' => 'About', 'slug' => 'about'], $uk);
+    $own = createEntryAs($creatorOnly, 'pages', 'uk', ['title' => 'Нова', 'slug' => 'nova', 'author_id' => $this->editor->id]);
+
+    expect($en->entry_group_id)->toBe($uk->entry_group_id)
+        ->and($en->author_id)->toBe($creatorOnly->id)
+        ->and($en->status)->toBe(EntryStatus::Draft)
+        ->and($own->author_id)->toBe($creatorOnly->id);
+});
+
+test('a slug or parent change that would push a subpage past 255 characters is refused, with nothing stored', function () {
+    $top = createEntryAs($this->editor, 'pages', 'uk', ['title' => 'А', 'slug' => 'a']);
+    $other = createEntryAs($this->editor, 'pages', 'uk', ['title' => 'Х', 'slug' => 'x']);
+    $child = Entry::factory()->childOf($top)->create(['slug' => str_repeat('c', 253)]);
+
+    expect(strlen($child->path))->toBe(255);
+
+    expect(fn () => updateEntryAs($this->editor, $top, ['title' => 'А', 'slug' => 'ab']))
+        ->toThrow(fn (ValidationException $e) => expect($e->errors())->toHaveKey('slug')->not->toHaveKey('parent_id'))
+        ->and(fn () => updateEntryAs($this->editor, $top->fresh(), ['title' => 'А', 'slug' => 'a', 'parent_id' => $other->id]))
+        ->toThrow(fn (ValidationException $e) => expect($e->errors())->toHaveKey('parent_id')->not->toHaveKey('slug'))
+        ->and($top->fresh()->path)->toBe('a')
+        ->and($child->fresh()->path)->toBe($child->path)
+        ->and(EntryRedirect::query()->count())->toBe(0);
+
+    updateEntryAs($this->editor, $top->fresh(), ['title' => 'А', 'slug' => 'b']);
+
+    expect($child->fresh()->path)->toBe('b/'.str_repeat('c', 253));
+});
+
+test('a record in the trash is not updated', function () {
+    $page = createEntryAs($this->editor, 'pages', 'uk', ['title' => 'Про нас', 'slug' => 'about']);
+    $page->delete();
+
+    expect(fn () => updateEntryAs($this->editor, $page, ['title' => 'Інша', 'slug' => 'about']))
+        ->toThrow(ProtectedActionException::class)
+        ->and(Entry::withTrashed()->find($page->id)->title)->toBe('Про нас');
 });

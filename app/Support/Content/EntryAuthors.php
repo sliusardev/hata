@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * The users who may be a record's author: those who may create the type (directly or through a role), and
  * super admins.
+ *
+ * The super-admin check by role name mirrors `Gate::before`, the one place the project checks a role name.
  */
 final class EntryAuthors
 {

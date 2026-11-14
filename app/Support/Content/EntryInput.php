@@ -11,6 +11,7 @@ use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -109,11 +110,23 @@ final class EntryInput
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', self::slugRule($type, $locale, $entry, $parent)],
             'parent_id' => $type->hierarchical()
-                ? ['nullable', 'integer', function (string $attribute, mixed $value, Closure $fail) use ($parent): void {
-                    if ($parent($value) === null) {
+                ? ['nullable', 'integer', self::dataRule(function (mixed $value, array $data, Closure $fail) use ($type, $entry, $parent): void {
+                    $newParent = $parent($value);
+
+                    if ($newParent === null) {
                         $fail('content.entry.parent_invalid')->translate();
+
+                        return;
                     }
-                }]
+
+                    // Only the parent changed: a slug change reports the same problem on the slug.
+                    $slug = $data['slug'] ?? null;
+
+                    if ($entry?->exists && is_string($slug) && $slug === $entry->getOriginal('slug')
+                        && self::descendantsTooLong($type, $entry, $newParent, $slug)) {
+                        $fail('content.entry.descendants_too_long')->translate(['max' => EntrySlug::MAX_PATH]);
+                    }
+                })]
                 : ['prohibited'],
             'author_id' => ['nullable', 'integer', function (string $attribute, mixed $value, Closure $fail) use ($type, $entry): void {
                 $id = (int) $value;
@@ -126,7 +139,7 @@ final class EntryInput
             'image_id' => ['nullable', new MediaSelection('image')],
             'status' => ['required', Rule::enum(EntryStatus::class)],
             'published_at' => ['nullable', 'date'],
-            'excerpt' => ['nullable', 'string', 'max:255'],
+            'excerpt' => ['nullable', 'string', 'max:1000'],
             'seo_title' => ['nullable', 'string', 'max:255'],
             'seo_description' => ['nullable', 'string', 'max:500'],
             'body' => ['nullable', 'string', function (string $attribute, mixed $value, Closure $fail): void {
@@ -178,14 +191,66 @@ final class EntryInput
     }
 
     /**
-     * `EntrySlug` under the parent the data names. While that parent is not a valid one, the slug is not checked:
-     * the parent has its own error, and the path it would give means nothing.
+     * `EntrySlug` under the parent the data names, then (for a saved record whose slug changes) the paths its
+     * descendants would get. While that parent is not a valid one, the slug is not checked: the parent has its own
+     * error, and the path it would give means nothing.
      *
      * @param  Closure(mixed): ?Entry  $parent
      */
     private static function slugRule(ContentType $type, string $locale, ?Entry $entry, Closure $parent): ValidationRule
     {
-        return new class($type, $locale, $entry, $parent) implements DataAwareRule, ValidationRule
+        return self::dataRule(function (mixed $value, array $data, Closure $fail) use ($type, $locale, $entry, $parent): void {
+            $parentId = $type->hierarchical() ? ($data['parent_id'] ?? null) : null;
+            $newParent = blank($parentId) ? null : $parent($parentId);
+
+            if (! blank($parentId) && $newParent === null) {
+                return;
+            }
+
+            $failed = false;
+            $track = function (string $message) use ($fail, &$failed): mixed {
+                $failed = true;
+
+                return $fail($message);
+            };
+
+            (new EntrySlug($type, $locale, $newParent, $entry))->validate('slug', $value, $track);
+
+            if (! $failed && $entry?->exists && is_string($value) && $value !== $entry->getOriginal('slug')
+                && self::descendantsTooLong($type, $entry, $newParent, $value)) {
+                $fail('content.slug.descendants_too_long')->translate(['max' => EntrySlug::MAX_PATH]);
+            }
+        });
+    }
+
+    /**
+     * Whether moving the record under `$parent` with `$slug` would give one of its descendants (trashed ones
+     * included) a path longer than EntrySlug::MAX_PATH. One query, for the longest descendant path.
+     */
+    private static function descendantsTooLong(ContentType $type, Entry $entry, ?Entry $parent, string $slug): bool
+    {
+        $oldPath = (string) $entry->getOriginal('path');
+        $newPath = app(EntryPaths::class)->pathFor($type, $parent, $slug);
+
+        if (! $type->hierarchical() || $newPath === $oldPath) {
+            return false;
+        }
+
+        $longest = (int) app(EntryPaths::class)->scope($type, $entry->locale)
+            ->where('path', 'like', $oldPath.'/%')
+            ->max(DB::raw('LENGTH(path)'));
+
+        return $longest > 0 && $longest - strlen($oldPath) + strlen($newPath) > EntrySlug::MAX_PATH;
+    }
+
+    /**
+     * A rule that also sees the rest of the data under validation.
+     *
+     * @param  Closure(mixed, array<array-key, mixed>, Closure): void  $check
+     */
+    private static function dataRule(Closure $check): ValidationRule
+    {
+        return new class($check) implements DataAwareRule, ValidationRule
         {
             /**
              * @var array<array-key, mixed>
@@ -193,14 +258,9 @@ final class EntryInput
             private array $data = [];
 
             /**
-             * @param  Closure(mixed): ?Entry  $parent
+             * @param  Closure(mixed, array<array-key, mixed>, Closure): void  $check
              */
-            public function __construct(
-                private readonly ContentType $type,
-                private readonly string $locale,
-                private readonly ?Entry $entry,
-                private readonly Closure $parent,
-            ) {}
+            public function __construct(private readonly Closure $check) {}
 
             /**
              * @param  array<array-key, mixed>  $data
@@ -214,14 +274,7 @@ final class EntryInput
 
             public function validate(string $attribute, mixed $value, Closure $fail): void
             {
-                $parentId = $this->type->hierarchical() ? ($this->data['parent_id'] ?? null) : null;
-                $parent = blank($parentId) ? null : ($this->parent)($parentId);
-
-                if (! blank($parentId) && $parent === null) {
-                    return;
-                }
-
-                (new EntrySlug($this->type, $this->locale, $parent, $this->entry))->validate($attribute, $value, $fail);
+                ($this->check)($value, $this->data, $fail);
             }
         };
     }

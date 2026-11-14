@@ -2,6 +2,7 @@
 
 namespace App\Actions\Content;
 
+use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
 use App\Models\User;
 use App\Support\Content\EntryInput;
@@ -21,10 +22,15 @@ class UpdateEntry
      * @param  array<string, mixed>  $data  The form data; validated here (EntryInput).
      *
      * @throws ValidationException
+     * @throws ProtectedActionException when the record is in the trash (it is restored first)
      */
     public function handle(User $actor, Entry $entry, array $data): Entry
     {
         Gate::forUser($actor)->authorize('update', $entry);
+
+        if ($entry->trashed()) {
+            throw ProtectedActionException::because('content.entry.trashed');
+        }
 
         $type = $entry->type();
         $input = EntryInput::validate($type, $entry->locale, $entry, $data);

@@ -133,13 +133,13 @@ It does not sanitize again: it trusts that the body was cleaned on save.
 | Key | Rule |
 |---|---|
 | `title` | required, at most 255 |
-| `slug` | required, `EntrySlug` under the parent the data names (not checked while that parent is invalid) |
-| `parent_id` | hierarchical type: nullable, a record of the same type and language, not trashed, neither the record itself nor one of its descendants (by path); flat type: prohibited. One message, `content.entry.parent_invalid` |
+| `slug` | required, `EntrySlug` under the parent the data names (not checked while that parent is invalid); for a saved record whose slug changes, no descendant (trashed ones included) may get a path over 255 characters (`content.slug.descendants_too_long`; one query for the longest descendant path) |
+| `parent_id` | hierarchical type: nullable, a record of the same type and language, not trashed, neither the record itself nor one of its descendants (by path), `content.entry.parent_invalid`; when only the parent changes, the descendants' paths must stay within 255 characters (`content.entry.descendants_too_long`); flat type: prohibited |
 | `author_id` | nullable, one of `EntryAuthors`, or the record's current author (who may have lost the permission since) |
 | `image_id` | nullable, `MediaSelection('image')` |
 | `status` | required, `draft` or `published` (the stored status; a future date with `published` schedules) |
 | `published_at` | nullable date, read in the site's display timezone (`admin.timezone`) and returned in UTC (decision 38) |
-| `excerpt`, `seo_title` / `seo_description` | at most 255 / at most 500; trimmed, empty becomes null |
+| `excerpt` / `seo_title` / `seo_description` | at most 1000 / 255 / 500; trimmed, empty becomes null |
 | `body` | nullable string of at most `EntryInput::BODY_MAX_BYTES` (1 000 000 bytes, under the sanitizer's cut), so a long body is a field error, never cut |
 | `fields.<name>` | each field's own `rules()` |
 
@@ -158,11 +158,14 @@ super admins; `options($type)` gives `id => name` by name.
 refuses a language that is not on the site (`ContentLocales::has()`, a `locale` field error); with `$source` joins
 its group, else makes a group. When the group already has a record in that language (trashed ones count, as in the
 unique index), that record is returned unchanged; also when another request created it meanwhile: a slug that then
-looks taken, or the unique index refusing the insert, ends in a look-up that returns the winner. The author defaults
-to the actor; choosing someone else needs the type's `edit`. A path held by a redirect row takes it over (the row
-goes).
+looks taken, or the unique index refusing the insert, ends in a look-up that returns the winner. Publishing or
+scheduling (`status` = `published`) needs the type's `edit`: without it, it is a `status` field error. The author
+defaults to the actor; only an actor with the type's `edit` chooses another one, and for anyone else the author input
+is ignored and the actor is the author (so a creator can save a translation made with `copyFor()`, which copies the
+source's author). A path held by a redirect row takes it over (the row goes).
 
-`App\Actions\Content\UpdateEntry::handle($actor, $entry, $data)`: authorizes `update`; the record's type and
+`App\Actions\Content\UpdateEntry::handle($actor, $entry, $data)`: authorizes `update`; refuses a record in the trash
+with `ProtectedActionException` (`content.entry.trashed`: it is restored first); the record's type and
 language never change, whatever the data says. A changed slug or parent goes through `EntryPaths::move()`. A path
 taken by another request between the check and the write is a `slug` field error.
 
@@ -198,7 +201,9 @@ test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has 
 query count for 2 and 50 descendants, redirect rows that already exist).
 `tests/Feature/Actions/Content/SaveEntryTest.php`: create (group, path, author, cleaned body, usages, a redirect row
 taken over), update (slug and parent moves, type and language kept), translate (group, `copyFor()`, parent mapping),
-the existing translation returned (also trashed, also after losing the race: a query listener inserts the competing
+a creator without `edit` (publishing refused, translating from `copyFor()` makes them the author), a descendant
+path pushed past 255 characters (slug and parent), a trashed record not updated, the existing translation returned
+(also trashed, also after losing the race: a query listener inserts the competing
 record right after the action's own look-up, once failing validation and once the unique index), publishing dates
 and the timezone, shared fields, tampered values as a dataset (nothing stored), permissions, the policy,
 `EntryAuthors`, and usages and `forgetMedia()` for every kind (a test type with a file field, a gallery and a shared

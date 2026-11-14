@@ -2,6 +2,7 @@
 
 namespace App\Actions\Content;
 
+use App\Enums\EntryStatus;
 use App\Models\Entry;
 use App\Models\EntryGroup;
 use App\Models\User;
@@ -21,7 +22,8 @@ class CreateEntry
     /**
      * Creates a record in a language, as a translation of `$source` (joining its group) or in a new group. When
      * the group already has a record in that language, that record is returned unchanged, also when another
-     * request created it a moment ago (the unique index decides the race).
+     * request created it a moment ago (the unique index decides the race). Publishing (or scheduling) needs the
+     * type's `edit`, and so does choosing the author: without it the actor is the author, whatever the data says.
      *
      * @param  array<string, mixed>  $data  The form data; validated here (EntryInput).
      *
@@ -43,12 +45,19 @@ class CreateEntry
             return $existing;
         }
 
+        $mayEdit = $actor->can($type->permission('edit'));
+
+        if (! $mayEdit) {
+            // Only those who may edit the type choose the author; anyone else writes as themselves.
+            $data['author_id'] = null;
+        }
+
         try {
             $input = EntryInput::validate($type, $locale, null, $data);
             $input['author_id'] ??= $actor->id;
 
-            if ($input['author_id'] !== $actor->id && ! $actor->can($type->permission('edit'))) {
-                throw ValidationException::withMessages(['author_id' => __('content.entry.author_invalid')]);
+            if ($input['status'] === EntryStatus::Published && ! $mayEdit) {
+                throw ValidationException::withMessages(['status' => __('content.entry.publish_forbidden')]);
             }
 
             return DB::transaction(function () use ($type, $locale, $source, $input): Entry {
