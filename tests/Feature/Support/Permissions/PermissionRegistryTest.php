@@ -12,6 +12,7 @@ test('it loads the permissions from the configuration', function () {
         'media' => ['media.view', 'media.upload', 'media.edit', 'media.delete'],
         'settings' => ['settings.edit'],
         'maintenance' => ['maintenance.run'],
+        'pages' => ['pages.view', 'pages.create', 'pages.edit', 'pages.delete'],
     ]);
 });
 

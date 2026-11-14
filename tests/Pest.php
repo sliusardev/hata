@@ -11,6 +11,7 @@ use Tests\Fixtures\RecordingDisk;
 use Tests\TestCase;
 
 require_once __DIR__.'/fixtures/RecordingDisk.php';
+require_once __DIR__.'/fixtures/ProductsType.php';
 
 /*
 |--------------------------------------------------------------------------

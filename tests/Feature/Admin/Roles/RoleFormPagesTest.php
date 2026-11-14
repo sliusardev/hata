@@ -106,7 +106,7 @@ describe('edit', function () {
             ->assertRedirect(route('admin.roles.index'));
 
         expect($editor->fresh()->permissions->pluck('name')->sort()->values()->all())
-            ->toBe(['admin.access', 'media.delete', 'media.edit', 'media.upload', 'media.view', 'users.create', 'users.delete', 'users.edit', 'users.view']);
+            ->toBe(['admin.access', 'media.delete', 'media.edit', 'media.upload', 'media.view', 'pages.create', 'pages.delete', 'pages.edit', 'pages.view', 'users.create', 'users.delete', 'users.edit', 'users.view']);
     });
 
     test('the super-admin role is shown as having every permission and cannot be saved', function () {

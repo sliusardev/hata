@@ -13,6 +13,10 @@ test('it creates every registered permission', function () {
         'media.edit',
         'media.upload',
         'media.view',
+        'pages.create',
+        'pages.delete',
+        'pages.edit',
+        'pages.view',
         'roles.create',
         'roles.delete',
         'roles.edit',
@@ -30,7 +34,7 @@ test('running it again does not duplicate permissions', function () {
 
     $this->artisan('permissions:sync')->assertSuccessful();
 
-    expect(Permission::count())->toBe(15);
+    expect(Permission::count())->toBe(19);
 });
 
 test('it creates permissions registered by modules', function () {

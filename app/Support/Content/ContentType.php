@@ -1,0 +1,86 @@
+<?php
+
+namespace App\Support\Content;
+
+use App\Support\Content\Fields\Field;
+
+/**
+ * One kind of content: its address segment, permission group, extra fields and tree shape.
+ */
+abstract class ContentType
+{
+    /**
+     * The stored `entries.type`, the admin address segment and the permission group.
+     */
+    abstract public function key(): string;
+
+    abstract public function icon(): string;
+
+    /**
+     * Whether records of this type form a tree (a parent and a path of slugs).
+     */
+    abstract public function hierarchical(): bool;
+
+    /**
+     * The first address segment of this type in a language (e.g. `blog`), or null when its records sit
+     * at the root of the address.
+     */
+    abstract public function base(string $locale): ?string;
+
+    /**
+     * @return list<Field>
+     */
+    public function fields(): array
+    {
+        return [];
+    }
+
+    public function label(): string
+    {
+        return __("content.types.{$this->key()}.label");
+    }
+
+    public function pluralLabel(): string
+    {
+        return __("content.types.{$this->key()}.plural");
+    }
+
+    public function perPage(): int
+    {
+        return 20;
+    }
+
+    public function permission(string $action): string
+    {
+        return "{$this->key()}.{$action}";
+    }
+
+    public function field(string $name): ?Field
+    {
+        foreach ($this->fields() as $field) {
+            if ($field->name === $name) {
+                return $field;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Fields whose value is the same in every language of a record group.
+     *
+     * @return list<Field>
+     */
+    public function sharedFields(): array
+    {
+        return array_values(array_filter($this->fields(), fn (Field $field): bool => $field->isShared));
+    }
+
+    /**
+     * @return list<Field>
+     */
+    public function localFields(): array
+    {
+        return array_values(array_filter($this->fields(), fn (Field $field): bool => ! $field->isShared));
+    }
+}

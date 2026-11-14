@@ -18,6 +18,10 @@ test('it creates the system roles with their default permissions', function () {
             'media.edit',
             'media.upload',
             'media.view',
+            'pages.create',
+            'pages.delete',
+            'pages.edit',
+            'pages.view',
             'roles.create',
             'roles.delete',
             'roles.edit',
@@ -28,7 +32,7 @@ test('it creates the system roles with their default permissions', function () {
             'users.edit',
             'users.view',
         ])
-        ->and($roles['editor']->permissions->pluck('name')->sort()->values()->all())->toBe(['admin.access', 'media.delete', 'media.edit', 'media.upload', 'media.view'])
+        ->and($roles['editor']->permissions->pluck('name')->sort()->values()->all())->toBe(['admin.access', 'media.delete', 'media.edit', 'media.upload', 'media.view', 'pages.create', 'pages.delete', 'pages.edit', 'pages.view'])
         ->and($roles['author']->permissions->pluck('name')->all())->toBe(['admin.access']);
 });
 
@@ -40,7 +44,7 @@ test('running it again keeps permissions that administrators assigned', function
 
     expect(Role::count())->toBe(4)
         ->and(Role::findByName('editor')->permissions->pluck('name')->sort()->values()->all())
-        ->toBe(['admin.access', 'media.delete', 'media.edit', 'media.upload', 'media.view', 'users.view']);
+        ->toBe(['admin.access', 'media.delete', 'media.edit', 'media.upload', 'media.view', 'pages.create', 'pages.delete', 'pages.edit', 'pages.view', 'users.view']);
 });
 
 test('the database seeder creates the initial super admin from the configuration', function () {

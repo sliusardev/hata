@@ -9,6 +9,7 @@ return [
         'media' => 'Media library',
         'settings' => 'Site settings',
         'maintenance' => 'Maintenance',
+        'pages' => 'Pages',
     ],
 
     'items' => [
@@ -38,6 +39,12 @@ return [
         ],
         'maintenance' => [
             'run' => 'Run migrations, seeders and cache commands',
+        ],
+        'pages' => [
+            'view' => 'View pages',
+            'create' => 'Create pages',
+            'edit' => 'Edit and publish pages',
+            'delete' => 'Move pages to the trash and delete them',
         ],
     ],
 
