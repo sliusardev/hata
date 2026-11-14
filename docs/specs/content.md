@@ -469,10 +469,23 @@ Livewire). `bootstrap/app.php` puts it in the middleware priority list right bef
 language from the address the way `SetContentLocale` does, through the same `ContentLocales` methods:
 `codeForPrefix($prefix)` (the `{locale}` parameter, else the default) and `isDefaultPrefix($prefix)`. The default
 language's own prefix is passed on untouched, so `SetContentLocale` redirects it (after the session, as before); a
-language that is off or not added answers 404 here, before the session. Then `ContentRouter::lookup()`; nothing found
-→ 404 with no session started, no cookie and no `site_locale` write (asserted for `/wp-admin`, `/xmlrpc`,
-`/en/no-such-page` and a missing child). A hit, of any status, goes on with the `ContentLookup` in the request
-attribute `ContentRouter::LOOKUP_ATTRIBUTE`, and the controller hands it to `resolve()`, so a hit is looked up once.
+language that is off or not added answers 404 here, before the session. Then `ContentRouter::lookup()`, and the rule
+that keeps hidden content indistinguishable from a miss, decided on the request, not on the record
+(`LookUpContent::mayBeSignedIn()`: the request carries the cookie named `config('session.cookie')`; its presence is
+enough, it is not decrypted):
+
+- **No session cookie** (it cannot come from a signed-in editor): a miss, a record that is not public (draft or
+  scheduled) and a redirect to such a record are all the same 404 here, before the session: no session started, no
+  cookie, no `site_locale` write, byte-identical responses apart from `Date` (asserted for a draft, a scheduled page, a
+  redirect to a draft and a missing path, and for `/wp-admin`, `/xmlrpc`, `/en/no-such-page` and a missing child). A
+  public record and a redirect to a public record go on.
+- **Session cookie present**: everything goes on, a miss included, with the lookup in the request attribute
+  `ContentRouter::LOOKUP_ATTRIBUTE` (null for a miss); the controller answers a miss with 404 without looking again,
+  and `resolve()` decides on a hidden record after the session, where an editor gets the preview. A miss and a hidden
+  record are then the same 404 after the session (asserted: status, headers apart from `Date` and the cookies' values,
+  cookie names, body). Such a miss costs a session read; probing bots send no cookies.
+
+Either way a hit is looked up once.
 
 **Lookup** (`ContentRouter::lookup($locale, $path): ?ContentLookup`, no viewer, no session):
 
@@ -504,8 +517,9 @@ added. No other normalising.
 **Visibility.** A public record (`isPublic()`) is shown to everyone. A draft or scheduled record resolves only for a
 signed-in user who may edit its type (`EntryPolicy::preview`), with `preview: true`; everyone else gets the same 404 as
 for a missing page (status, `Cache-Control` and body; no redirect lookup is made for it either). That decision needs the
-user, so it is made after the session: unlike a miss, the 404 of a hidden record carries the session cookie (a known
-limitation, below). A trashed record is 404 for everyone.
+user, so it is made after the session for a visitor with a session cookie, and before it, like a miss, for one
+without (`LookUpContent`, above); either way the hidden record's 404 cannot be told from a miss's. A trashed record is
+404 for everyone.
 
 **Controller** (`App\Http\Controllers\ContentController`): null → 404; a redirect → 301 with `Cache-Control: no-cache`
 (the old path may be taken by a new record later, so a browser must not keep it for good); else the view `site.entry`
@@ -557,9 +571,10 @@ outside those paths must be added to its `@source` list.
 
 Plus the site logo (one query, only when a custom logo is chosen) and, for a signed-in viewer, what the user and
 permission checks cost. The figures exclude the session's own queries, which depend on the session driver and are the
-same as for the home page. A miss is two queries (1 and the redirect lookup) and starts no session, a redirect the same
-two, a draft for a guest one (its 404 is the same response as a missing path's: status, `Cache-Control` and body,
-asserted); a bare base none; an address that is not slug-shaped never reaches the controller.
+same as for the home page. Content queries per branch (asserted): without a session cookie a miss is two (1 and the
+redirect lookup), a draft or scheduled page one, a redirect to a draft two, none of them starting a session; with a
+session cookie the same counts plus the session's and the user's own queries; a public redirect two; a bare base none;
+an address that is not slug-shaped never reaches the controller.
 
 ## Tests
 
@@ -574,8 +589,9 @@ one, no `x-default` without the default language) and the switcher; `/de/about`;
 alternates into the next request; redirects in both languages, to a draft only for an editor, after a `move()`; every
 other route unchanged (by the router's match), reserved slugs, `url()` from the route without a query, the compiled route
 cache; the query budget and the cost of a miss and a redirect; `LookUpContent` ordered before `StartSession` on both
-routes, slug-shaped misses answered with no cookie, no `site_locale` and at most two queries, the session still started
-for a page, a redirect and a hidden record; a trailing newline never matched by `lookup()`; the list's "View on site"
+routes, slug-shaped misses answered with no cookie, no `site_locale` and at most two queries, hidden content (draft,
+scheduled, a redirect to a draft) answered exactly like a miss with and without a session cookie, the session still
+started for a public page and a public redirect, an editor with a session still previewing; a trailing newline never matched by `lookup()`; the list's "View on site"
 and the form's "Preview".
 `tests/Feature/Admin/Content/EntryIndexTest.php`: access (guest, 403, unknown type), the sidebar item and group, tabs
 and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
@@ -632,10 +648,9 @@ gallery).
 
 ## Known limitations
 
-- A hidden record's 404 is decided after the session (preview needs the user), so it carries the session cookie while
-  a miss carries none: a visitor can tell that a draft exists at an address, though not what it holds.
 - `/<default code>/<anything slug-shaped>` is passed on to `SetContentLocale`, which starts the session and redirects
-  it to the address without the prefix, where a miss is the sessionless 404.
+  it to the address without the prefix, where the visitor now carries a session cookie, so a miss there is answered
+  after the session.
 
 ## Not included yet
 

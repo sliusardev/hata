@@ -54,6 +54,25 @@ function aboutPages(array $uk = [], array $en = []): array
     return [$about, $aboutUs];
 }
 
+/**
+ * Signs the user in the way a browser is: with the session cookie, which a signed-in visitor always sends
+ * (LookUpContent::mayBeSignedIn()); `actingAs()` alone sends no cookie.
+ */
+function browseAs(User $user): void
+{
+    test()->actingAs($user)->withCookie((string) config('session.cookie'), 'a-session');
+}
+
+/**
+ * A Ukrainian draft `draft`, a scheduled page `scheduled` and an old path `old-draft` that leads to the draft.
+ */
+function hiddenContent(): void
+{
+    $draft = Entry::factory()->page()->draft()->inLocale('uk')->create(['slug' => 'draft', 'path' => 'draft']);
+    Entry::factory()->page()->scheduled()->inLocale('uk')->create(['slug' => 'scheduled', 'path' => 'scheduled']);
+    EntryRedirect::query()->create(['type' => 'pages', 'locale' => 'uk', 'path' => 'old-draft', 'entry_id' => $draft->id]);
+}
+
 function pageEditor(): User
 {
     return User::factory()->withRole('editor')->create();
@@ -188,13 +207,13 @@ describe('preview', function () {
 
         $this->get('/secret')->assertNotFound();
 
-        $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view', 'pages.create'])->create());
+        browseAs(User::factory()->withPermissions(['admin.access', 'pages.view', 'pages.create'])->create());
         $this->get('/secret')->assertNotFound();
     })->with(['draft', 'scheduled', 'trashed']);
 
     it('opens a draft for an editor under a strip, with noindex and no caching', function () {
         $draft = Entry::factory()->page()->draft()->inLocale('uk')->create(['title' => 'Чернетка', 'slug' => 'draft', 'path' => 'draft']);
-        $this->actingAs(pageEditor());
+        browseAs(pageEditor());
 
         $response = $this->get('/draft')->assertOk()
             ->assertSeeText('Чернетка')
@@ -209,7 +228,7 @@ describe('preview', function () {
     it('names the date of a scheduled page in the site\'s timezone', function () {
         config(['admin.timezone' => 'Pacific/Auckland']);
         $scheduled = Entry::factory()->page()->scheduled()->inLocale('uk')->create(['slug' => 'soon', 'path' => 'soon']);
-        $this->actingAs(pageEditor());
+        browseAs(pageEditor());
 
         $this->get('/soon')->assertOk()
             ->assertSee('data-test="preview-strip"', escape: false)
@@ -219,7 +238,7 @@ describe('preview', function () {
     it('still answers 404 for a trashed page to an editor', function () {
         $entry = Entry::factory()->page()->published()->inLocale('uk')->create(['slug' => 'gone', 'path' => 'gone']);
         $entry->delete();
-        $this->actingAs(pageEditor());
+        browseAs(pageEditor());
 
         $this->get('/gone')->assertNotFound();
     });
@@ -233,7 +252,7 @@ describe('preview', function () {
             ->assertDontSee($edit, escape: false)
             ->assertDontSee('noindex', escape: false);
 
-        $this->actingAs(pageEditor());
+        browseAs(pageEditor());
 
         $this->get('/about')->assertOk()
             ->assertDontSee('data-test="preview-strip"', escape: false)
@@ -337,7 +356,7 @@ describe('redirects', function () {
 
         $this->get('/old')->assertNotFound();
 
-        $this->actingAs(pageEditor());
+        browseAs(pageEditor());
         $this->get('/old')->assertStatus(301)->assertRedirect(url('/new'));
     });
 
@@ -517,17 +536,73 @@ describe('cost', function () {
             ->toBeGreaterThan(array_search(StartSession::class, $middleware, true));
     })->with(['content', 'localized.content']);
 
-    it('starts the session for a page, a redirect and a hidden record, and keeps their answers', function () {
+    it('gives a cookieless guest the same 404 before the session for hidden content as for a miss', function () {
+        hiddenContent();
+
+        $responses = [];
+        $queries = [];
+
+        foreach (['/draft', '/scheduled', '/old-draft', '/missing'] as $uri) {
+            $queries[$uri] = publicQueriesOf(function () use ($uri, &$responses): void {
+                $responses[$uri] = $this->get($uri)->assertNotFound();
+            }, ['entries', 'entry_redirects', 'media']);
+        }
+
+        $shapes = array_map(fn ($response): array => [
+            $response->getStatusCode(),
+            collect($response->headers->all())->except('date')->all(),
+            $response->getContent(),
+        ], $responses);
+
+        expect(array_unique(array_map(serialize(...), $shapes)))->toHaveCount(1)
+            ->and(collect($responses)->every(fn ($response): bool => $response->headers->getCookies() === []))->toBeTrue()
+            ->and(session()->has(ContentLocales::SESSION_KEY))->toBeFalse()
+            ->and($queries)->toBe(['/draft' => 1, '/scheduled' => 1, '/old-draft' => 2, '/missing' => 2]);
+    });
+
+    it('answers hidden content and a miss alike after the session for a guest who has a session', function () {
+        hiddenContent();
+        $this->withCookie((string) config('session.cookie'), 'a-session');
+
+        $responses = [];
+        $queries = [];
+
+        foreach (['/draft', '/scheduled', '/old-draft', '/missing'] as $uri) {
+            $queries[$uri] = publicQueriesOf(function () use ($uri, &$responses): void {
+                $responses[$uri] = $this->get($uri)->assertNotFound();
+            }, ['entries', 'entry_redirects', 'media']);
+        }
+
+        // Cookie values are encrypted afresh on every response, so cookies compare by name.
+        $shapes = array_map(fn ($response): array => [
+            $response->getStatusCode(),
+            collect($response->headers->all())->except(['date', 'set-cookie'])->all(),
+            collect($response->headers->getCookies())->map(fn ($cookie): string => $cookie->getName())->sort()->values()->all(),
+            $response->getContent(),
+        ], $responses);
+
+        expect(array_unique(array_map(serialize(...), $shapes)))->toHaveCount(1)
+            ->and($shapes['/missing'][2])->toContain((string) config('session.cookie'))
+            ->and($queries)->toBe(['/draft' => 1, '/scheduled' => 1, '/old-draft' => 2, '/missing' => 2]);
+    });
+
+    it('starts the session for a public page and a redirect to one, also without a cookie', function () {
         [$about] = aboutPages();
         EntryRedirect::query()->create(['type' => 'pages', 'locale' => 'uk', 'path' => 'pro-nas', 'entry_id' => $about->id]);
-        Entry::factory()->page()->draft()->inLocale('uk')->create(['slug' => 'hidden', 'path' => 'hidden']);
 
         $sessionCookie = fn ($response): bool => collect($response->headers->getCookies())->contains(fn ($cookie): bool => $cookie->getName() === config('session.cookie'));
 
         expect($sessionCookie($this->get('/about')->assertOk()))->toBeTrue()
             ->and(session(ContentLocales::SESSION_KEY))->toBe('uk')
-            ->and($sessionCookie($this->get('/pro-nas')->assertRedirect('/about')))->toBeTrue()
-            ->and($sessionCookie($this->get('/hidden')->assertNotFound()))->toBeTrue();
+            ->and($sessionCookie($this->get('/pro-nas')->assertRedirect('/about')))->toBeTrue();
+    });
+
+    it('still shows an editor with a session the draft and the redirect to it', function () {
+        hiddenContent();
+        browseAs(pageEditor());
+
+        $this->get('/draft')->assertOk()->assertSee('data-test="preview-strip"', escape: false);
+        $this->get('/old-draft')->assertRedirect('/draft');
     });
 
     it('answers a miss and a redirect with at most two content queries', function () {
@@ -543,7 +618,7 @@ describe('admin links', function () {
     it('opens the page from the list\'s View on site and a draft from the form\'s Preview', function () {
         [$about] = aboutPages();
         $draft = Entry::factory()->page()->draft()->inLocale('uk')->create(['title' => 'Чернетка', 'slug' => 'draft', 'path' => 'draft']);
-        $this->actingAs($editor = pageEditor());
+        browseAs($editor = pageEditor());
 
         Livewire::withQueryParams(['locale' => 'uk'])->test('pages::admin.content.index', ['type' => 'pages'])
             ->assertSeeHtml('href="'.$about->url().'"');

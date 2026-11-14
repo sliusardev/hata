@@ -15,8 +15,13 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * The language is read from the address as SetContentLocale reads it (ContentLocales::codeForPrefix()): a language
  * that is off or not added keeps its 404, and the default language's own prefix is left to SetContentLocale, which
- * redirects it. A hit, of any status, goes on with the lookup in the request's attributes; whether the viewer may
- * see a hidden record is decided after the session, by the controller.
+ * redirects it.
+ *
+ * A record that is not public (or a redirect to one) must answer exactly like a miss, or the response would tell
+ * that a draft exists. So the decision follows the request, not the record (mayBeSignedIn()): a request without a
+ * session cookie cannot come from a signed-in editor, and its miss and its hidden record are the same 404 here,
+ * before the session; a request with the session cookie goes on in both cases, with the lookup (null for a miss) in
+ * the request's attributes, and the controller answers both after the session, where a preview can be allowed.
  */
 class LookUpContent
 {
@@ -44,10 +49,24 @@ class LookUpContent
 
         $lookup = is_string($path) ? $this->router->lookup($code, $path) : null;
 
-        abort_if($lookup === null, 404);
+        if (! self::mayBeSignedIn($request)) {
+            // Only public content can be shown to this request: anything else is the same 404 as a miss.
+            abort_if($lookup === null || ! $lookup->entry->isPublic(), 404);
+        }
 
+        // Set for a miss too (null), so the controller answers it without looking the address up again.
         $request->attributes->set(ContentRouter::LOOKUP_ATTRIBUTE, $lookup);
 
         return $next($request);
+    }
+
+    /**
+     * Whether the request could come from a signed-in user: it carries the session cookie
+     * (`config('session.cookie')`). Its presence is enough; it is not decrypted or read. Every signed-in visitor has
+     * it, and probing bots send no cookies.
+     */
+    public static function mayBeSignedIn(Request $request): bool
+    {
+        return $request->cookies->has((string) config('session.cookie'));
     }
 }

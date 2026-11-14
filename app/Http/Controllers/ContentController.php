@@ -27,6 +27,10 @@ class ContentController extends Controller
     {
         $lookup = $request->attributes->get(ContentRouter::LOOKUP_ATTRIBUTE);
 
+        // LookUpContent found nothing (a visitor with a session goes on to here, so their miss and their hidden record
+        // are answered alike, after the session).
+        abort_if($request->attributes->has(ContentRouter::LOOKUP_ATTRIBUTE) && $lookup === null, 404);
+
         $match = $this->router->resolve(
             $this->locales->current()->code,
             $path,
