@@ -98,7 +98,28 @@ and in a type with no base: `ReservedSlugs`, or the base of any registered type 
 at most 255 characters; not taken by another record of the type and language, trashed ones included, the record
 being edited excepted. Messages are `content.slug.*`. An empty value is left to `required`.
 
+## Body
+
+A record's body is HTML from the rich text editor. It is sanitized once on save and printed unescaped, so the
+sanitizer is the security boundary. Package: `symfony/html-sanitizer` (parsed with PHP's `Dom\HTMLDocument`).
+
+`App\Support\Content\BodySanitizer`:
+
+| Method | Meaning |
+|---|---|
+| `clean($html)` | allowlist: `p`, `h2`-`h4`, `strong`, `em`, `u`, `s`, `ul`, `ol`, `li`, `blockquote`, `br`, `hr`, `code`, `pre`, `a` (`href`, `target`, `rel`) and `img` (`data-media-id`, `alt`). Links: `http`, `https`, `mailto`, `tel` and relative addresses only; the sanitizer checks the scheme after decoding entities and ignoring case and whitespace. Any other attribute (`style`, `class`, `on*`, `src`) is dropped. `data-media-id` must be a positive whole number, else it is dropped, and an `img` left without one is removed. Unknown elements keep their text but lose their tags; `script`, `iframe`, `object`, `embed`, `svg`, `math`, `form`, `template`, `noscript`, `textarea`, `select`, `style`, `title` and the other head elements are removed with their contents. Empty result is null. The input limit is raised to 4 MB (the package's default of 20 000 bytes would cut a body silently) |
+| `mediaIds($html)` | ids of the image nodes, in order, each once |
+| `withoutMedia($html, $id)` | the body without that file's images; null when nothing is left. For the delete of a media file |
+
+Images are stored as `<img data-media-id="12" alt="...">`, never with an address.
+`App\Support\Content\BodyRenderer::render($html)` returns an `HtmlString`: each image gets `src` from
+`Media::url()` (already carrying `?v=`), `width` and `height` when the file has them, `loading="lazy"` and
+`decoding="async"`; its `alt` is the one stored in the body, else the file's alt in the request's language. An
+image whose file is gone or is not an image is dropped. One `whereIn` query for a body with images, none without.
+It does not sanitize again: it trusts that the body was cleaned on save.
+
 ## Tests
+
 
 `tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, `pages`, the permissions after a
 sync and for the editor, every field kind's round trip and rules, shared and local fields, media ids.
@@ -106,9 +127,10 @@ sync and for the editor, every field kind's round trip and rules, shared and loc
 tree, the null-on-delete keys, `url()`, `fieldValue()` and the search index. The
 test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has one field of every kind with
 `price` shared; tests register it themselves.
+`tests/Feature/Content/BodyTest.php`: hostile inputs as a dataset with the exact output, allowed markup kept, Cyrillic round trip, long body, `mediaIds()`, `withoutMedia()`, rendering (one query, versioned URL, dropped images, alt fallback, no query without images).
 `tests/Feature/Content/EntryPathsTest.php`: suggested slugs, the slug rule, `move()` (descendants, redirects, the same
 query count for 2 and 50 descendants, redirect rows that already exist).
 
 ## Not included yet
 
-The public route, the admin screens, the editor and the field partials.
+The public route, the admin screens, the editor and the field partials. `BodySanitizer` is not called by anything yet.

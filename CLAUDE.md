@@ -18,6 +18,7 @@ Admin panel starter kit (users, roles, permissions; later pages, posts, themes).
 | laravel/pint | 1.32 |
 | intervention/image | 4.4 (image driver for `Illuminate\Image`; imagick if loaded, else gd) |
 | league/flysystem-aws-s3-v3 | 3.35 (S3 adapter for the optional cloud media disk; any S3-compatible service) |
+| symfony/html-sanitizer | 8.1 (allowlist sanitizer for record bodies, `App\Support\Content\BodySanitizer`; PHP's `Dom\HTMLDocument` parser) |
 | Tailwind | 4, built by vite-plus (`npm run build`) |
 
 ## Starter kit structure
