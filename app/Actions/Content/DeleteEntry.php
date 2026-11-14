@@ -15,10 +15,11 @@ use Illuminate\Support\Facades\Gate;
 class DeleteEntry
 {
     /**
-     * Deletes a record in the trash for good, with the descendants trashed at the same instant (what RestoreEntry
-     * would bring back with it). A descendant trashed earlier on its own stays in the trash and is restored at the
-     * top level later. The redirects go with the records (foreign key), their media usages are removed, and a group
-     * left without records goes too, with its usages.
+     * Deletes a record in the trash for good, with every trashed record under its path (same type and language),
+     * whenever each was trashed: none may be left with a path under a prefix that is free again. Nothing live can be
+     * under a trashed record (trashing takes the live descendants along, and a trashed record is never a valid
+     * parent), and only trashed rows are touched. The redirects go with the records (foreign key), their media
+     * usages are removed, and a group left without records goes too, with its usages.
      *
      * @throws ProtectedActionException when the record is not in the trash
      */
@@ -30,34 +31,38 @@ class DeleteEntry
             throw ProtectedActionException::because('content.entry.not_trashed');
         }
 
-        DB::transaction(function () use ($entry): void {
-            $entries = Entry::onlyTrashed()
-                ->where('type', $entry->type)
-                ->where('locale', $entry->locale)
-                ->where(fn (Builder $query) => $query
-                    ->whereKey($entry->getKey())
-                    ->orWhere(fn (Builder $query) => $query->where('path', 'like', $entry->path.'/%')->where('deleted_at', $entry->deleted_at)))
-                ->get(['id', 'entry_group_id']);
-
-            $this->purge($entries);
-        });
+        DB::transaction(fn (): int => $this->purge($entry->newCollection([$entry])));
 
         $entry->exists = false;
     }
 
     /**
-     * Removes the records for good, without authorization (for this action and PruneEntryTrash, inside their
-     * transaction): their media usages, the rows (redirects follow by foreign key), then the groups left without any
-     * record, trashed ones counted, with their usages. Five queries whatever the number of records.
+     * Removes trashed records for good with every trashed record under their paths, without authorization (for
+     * this action and PruneEntryTrash, inside their transaction): their media usages, the rows (redirects follow by
+     * foreign key), then the groups left without any record, trashed ones counted, with their usages. Six queries
+     * whatever the number of records.
      *
-     * @param  Collection<int, Entry>  $entries  The records with at least `id` and `entry_group_id`.
-     * @return int How many records were removed.
+     * @param  Collection<int, Entry>  $records  Trashed records with at least `id`, `type`, `locale` and `path`.
+     * @return int How many records were removed, those under them included.
      */
-    public function purge(Collection $entries): int
+    public function purge(Collection $records): int
     {
-        if ($entries->isEmpty()) {
+        if ($records->isEmpty()) {
             return 0;
         }
+
+        $entries = Entry::onlyTrashed()
+            ->where(function (Builder $query) use ($records): void {
+                $query->whereKey($records->modelKeys());
+
+                foreach ($records as $record) {
+                    $query->orWhere(fn (Builder $query) => $query
+                        ->where('type', $record->type)
+                        ->where('locale', $record->locale)
+                        ->where('path', 'like', $record->path.'/%'));
+                }
+            })
+            ->get(['id', 'entry_group_id']);
 
         $ids = $entries->modelKeys();
         $groupIds = $entries->pluck('entry_group_id')->unique()->values()->all();

@@ -78,7 +78,7 @@ for good removes its redirects.
 | `isPublic()` | the same rule as `public()` for one record |
 | `depth()` | slashes in `path` (0 at the top) |
 | `descendants()` | query of the records under this one: same type and language, `path` starting with this path and `/` (live ones unless the caller adds `withTrashed()`/`onlyTrashed()`) |
-| `descendantsCount()` | how many descendants are in the record's own state (live ones for a live record, trashed ones for a trashed one), one query; for the confirmation text |
+| `descendantsCount()` | how many descendants are in the record's own state, one query; for the confirmation text. For a live record the live ones (what trashing takes along); for a trashed record every trashed record under its path, which is exactly what deleting it for good removes besides itself |
 | `url($absolute = true)` | the site address, the language prefix (none for the default content language, `/<code>` for the others), the type's base for that language, then `path`; built by hand until the public route exists |
 | `fieldValue($name)` | a shared field's value from the group's `shared`, any other from `fields` |
 
@@ -193,18 +193,22 @@ record is in the trash is gone from the record (image cleared, body without its 
 ## Trash
 
 Soft deletes are the trash. A trashed record keeps its path, which stays taken for slugs (`EntrySlug`, `suggest()`)
-while it is there; `public()` leaves it out.
+while it is there; `public()` leaves it out. No trashed record is ever left under a path whose record is gone: the
+path rules only see exact matches, so such an orphan would collide with a later page at that prefix. Nothing live can
+sit under a trashed record either (trashing takes the live descendants along, and a trashed record is never a valid
+parent).
 
 | Action | Permission | Meaning |
 |---|---|---|
 | `TrashEntry::handle($actor, $entry): int` | `delete` | trashes the record and its live descendants with one shared `deleted_at` (to the second), in one `UPDATE` whatever their number; returns how many (0 when the record already was in the trash) |
-| `RestoreEntry::handle($actor, $entry): Entry` | `restore` (`edit`) | restores the record and the descendants carrying exactly its `deleted_at` (trashed with it); a child trashed earlier on its own keeps its own time and stays. A record below the top level whose parent is in the trash or gone (deleting for good nulls `parent_id`) becomes top level: the slug gets a suffix when that path is taken or reserved (`suggest()`), and `move(..., keepOldPaths: false)` carries its descendants' paths along without redirects. A live record is returned unchanged |
-| `DeleteEntry::handle($actor, $entry): void` | `forceDelete` (`delete`) | only a trashed record (`ProtectedActionException`, `content.entry.not_trashed`); removes it and the descendants trashed with it (same `deleted_at`, the set a restore would bring back). A descendant trashed earlier on its own stays in the trash and is restored at the top level |
-| `PruneEntryTrash::handle(): int` | none (decision 16) | deletes for good what was trashed more than `content.trash_days` days ago, 200 ids per chunk, a transaction per chunk |
+| `RestoreEntry::handle($actor, $entry): Entry` | `restore` (`edit`) | restores the record and the descendants carrying exactly its `deleted_at` (trashed with it); a child trashed earlier on its own keeps its own time and stays. Two trash actions within the same second share a timestamp, so they restore together. A record below the top level whose parent is still in the trash (or gone) becomes top level: the slug gets a suffix when that path is taken or reserved (`suggest()`), and `move(..., keepOldPaths: false)` carries its descendants' paths along without redirects; the parent restored later comes back without it. When another request takes the suggested path before the write (the unique index refuses it), the writes roll back to their savepoint and a fresh suggestion is tried once; a second refusal is a `ProtectedActionException` (`content.entry.restore_conflict`) and nothing is restored. A live record is returned unchanged |
+| `DeleteEntry::handle($actor, $entry): void` | `forceDelete` (`delete`) | only a trashed record (`ProtectedActionException`, `content.entry.not_trashed`); removes it and every trashed record under its path (same type and language), whenever each was trashed. Only trashed rows are touched |
+| `PruneEntryTrash::handle(): int` | none (decision 16) | deletes for good what was trashed more than `content.trash_days` days ago, with every trashed record under it (even one trashed after the cut-off), 200 records per chunk, a transaction per chunk |
 
-`DeleteEntry::purge($entries)` (records loaded with `id` and `entry_group_id`) is the removal both share, without authorization: the records' media usages, the rows
-(their redirects follow by foreign key), then every group left with no record (trashed ones counted) with its
-usages. Five queries whatever the number of records. A group that still has a record in another language stays.
+`DeleteEntry::purge($records)` (trashed records loaded with `id`, `type`, `locale` and `path`) is the removal both
+share, without authorization: it loads the records with every trashed record under their paths, then removes their
+media usages, the rows (their redirects follow by foreign key), then every group left with no record (trashed ones
+counted) with its usages. Six queries whatever the number of records. A group that still has a record in another language stays.
 
 `content:prune-trash` prints "Removed N trashed record(s)." and runs `daily()` in `routes/console.php` next to
 `media:prune-deleted`. The admin list will prune too, so no cron is required.
@@ -225,10 +229,14 @@ test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has 
 query count for 2 and 50 descendants, redirect rows that already exist).
 `tests/Feature/Actions/Content/EntryTrashTest.php`: trashing a tree (one instant, out of `public()`, the path still
 taken, `descendantsCount()`), the same query count for 2 and 30 descendants, restoring exactly what was trashed
-together, restoring to the top level after the parent was deleted for good or while it is in the trash (suffix for a
-taken path and for a reserved name), deleting for good (redirects, usages, an emptied group, a group kept for another
-language), a live record refused, permissions, pruning at 31 and 29 days, the command and its schedule, and a file
-deleted while its record is in the trash. `tests/Feature/Models/MediaUsageTest.php` checks that `forgetAll()` reaches
+together, a child trashed before its parent restored to the top level while the parent is in the trash (suffix for a
+taken path and for a reserved name) and the parent restored later without it, the retry when the new path is taken
+meanwhile (and the refusal when it is taken twice), deleting for good (every trashed record under the page, the count
+equal to `descendantsCount()`, redirects, usages, an emptied group, a group kept for another language), no live record
+under a trashed one, the address free again after a delete for good (a new `about` with a child `team`), a live record
+refused, permissions, pruning (31 and 29 days, a child trashed 40 days ago with or without its parent, a record under
+a pruned one trashed after the cut-off), the command and its schedule, and a file deleted while its record is in the
+trash. `tests/Feature/Models/MediaUsageTest.php` checks that `forgetAll()` reaches
 a trashed record and a `Setting`; `tests/Feature/Localization/ContentLanguagesTest.php` the language removal rule.
 `tests/Feature/Actions/Content/SaveEntryTest.php`: create (group, path, author, cleaned body, usages, a redirect row
 taken over), update (slug and parent moves, type and language kept), translate (group, `copyFor()`, parent mapping),
