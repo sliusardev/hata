@@ -438,7 +438,7 @@ test('a record restored by another request between the purge\'s selection and it
     DB::listen(function (QueryExecuted $query) use (&$restored, $child): void {
         $sql = strtolower($query->sql);
 
-        if (! $restored && str_starts_with($sql, 'select') && str_contains($sql, '"entry_group_id"') && str_contains($sql, 'like')) {
+        if (! $restored && str_starts_with($sql, 'select') && str_contains($sql, 'entry_group_id') && str_contains($sql, ' like ')) {
             $restored = true;
             Entry::withTrashed()->whereKey($child->id)->update(['deleted_at' => null, 'parent_id' => null, 'path' => 'team']);
         }
