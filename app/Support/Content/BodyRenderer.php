@@ -12,8 +12,6 @@ use Illuminate\Support\HtmlString;
  */
 class BodyRenderer
 {
-    public function __construct(private BodySanitizer $sanitizer = new BodySanitizer) {}
-
     public function render(?string $html): HtmlString
     {
         if ($html === null || ! str_contains($html, '<img')) {
@@ -23,9 +21,11 @@ class BodyRenderer
         $document = BodySanitizer::load($html);
         $images = BodySanitizer::images($document);
 
-        $files = $images === []
-            ? collect()
-            : Media::query()->whereIn('id', $this->sanitizer->mediaIds($html))->get()->keyBy('id');
+        $ids = array_values(array_unique(array_filter(
+            array_map(fn ($image): int => (int) $image->getAttribute('data-media-id'), $images),
+        )));
+
+        $files = $ids === [] ? collect() : Media::query()->whereIn('id', $ids)->get()->keyBy('id');
 
         foreach ($images as $image) {
             $file = $files->get((int) $image->getAttribute('data-media-id'));

@@ -4,6 +4,7 @@ namespace App\Support\Content;
 
 use Dom\Element;
 use Dom\HTMLDocument;
+use Dom\Text;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerAction;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
@@ -16,7 +17,10 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
 class BodySanitizer
 {
     /** The longest body accepted, in bytes. The sanitizer's own default (20 000) would cut a long body silently. */
-    private const MAX_LENGTH = 4_000_000;
+    public const MAX_LENGTH = 4_000_000;
+
+    /** Marks the newline an HTML parser drops after <pre>, so it survives the sanitizer. */
+    private const PRE_NEWLINE_MARK = "\u{E000}";
 
     /**
      * Sanitizes editor HTML with an allowlist; null when nothing is left.
@@ -27,7 +31,7 @@ class BodySanitizer
             return null;
         }
 
-        $clean = $this->sanitizer()->sanitize($this->withoutHeadElements($html));
+        $clean = $this->sanitizer()->sanitize($this->prepare($html));
 
         $document = self::load($clean);
 
@@ -35,6 +39,28 @@ class BodySanitizer
             if (! $image->hasAttribute('data-media-id')) {
                 $image->remove();
             }
+        }
+
+        foreach ($document->body->querySelectorAll('pre') as $pre) {
+            $first = $pre->firstChild;
+
+            if ($first instanceof Text && str_starts_with($first->data, self::PRE_NEWLINE_MARK)) {
+                $first->data = substr($first->data, strlen(self::PRE_NEWLINE_MARK));
+            }
+        }
+
+        foreach ($document->body->querySelectorAll('a') as $link) {
+            if ($link->getAttribute('target') !== '_blank') {
+                $link->removeAttribute('target');
+                $link->removeAttribute('rel');
+            } else {
+                $link->setAttribute('rel', 'noopener noreferrer');
+            }
+        }
+
+        if ($document->body->querySelector('img, hr') === null
+            && preg_match('/[^\s\p{Z}]/u', $document->body->textContent) !== 1) {
+            return null;
         }
 
         return self::html($document);
@@ -93,10 +119,19 @@ class BodySanitizer
     }
 
     /**
-     * Serializes the fragment parsed by load(); null when it is empty.
+     * Serializes the fragment parsed by load(); null when it is empty. A <pre> whose text starts with a newline gets
+     * one more, because the parser drops the first newline after <pre> and a second pass must not lose a line.
      */
     public static function html(HTMLDocument $document): ?string
     {
+        foreach ($document->body->querySelectorAll('pre') as $pre) {
+            $first = $pre->firstChild;
+
+            if ($first instanceof Text && str_starts_with($first->data, "\n")) {
+                $first->data = "\n".$first->data;
+            }
+        }
+
         $html = '';
 
         foreach ($document->body->childNodes as $node) {
@@ -117,14 +152,14 @@ class BodySanitizer
     }
 
     /**
+     * Cuts the input to the limit, then removes the head elements and marks the newline after <pre>.
+     *
      * The sanitizer treats <style> and <title> (head elements) as unknown inside a body and, with unknown elements
-     * blocked to keep their text, would leave their contents as text. They are removed with their contents first.
+     * blocked to keep their text, would leave their contents as text, so they go with their contents first.
      */
-    private function withoutHeadElements(string $html): string
+    private function prepare(string $html): string
     {
-        if (preg_match('/<\s*(style|title|head|link|meta|base)\b/i', $html) !== 1) {
-            return $html;
-        }
+        $html = str_replace(self::PRE_NEWLINE_MARK, '', mb_strcut($html, 0, self::MAX_LENGTH, 'UTF-8'));
 
         $document = self::load($html);
 
@@ -132,7 +167,15 @@ class BodySanitizer
             $element->remove();
         }
 
-        return (string) self::html($document);
+        foreach ($document->body->querySelectorAll('pre') as $pre) {
+            $first = $pre->firstChild;
+
+            if ($first instanceof Text && str_starts_with($first->data, "\n")) {
+                $first->data = self::PRE_NEWLINE_MARK.$first->data;
+            }
+        }
+
+        return $document->body->innerHTML;
     }
 
     private function sanitizer(): HtmlSanitizer
@@ -149,10 +192,10 @@ class BodySanitizer
         }
 
         $config = $config
-            ->allowElement('a', ['href', 'target', 'rel'])
+            ->allowElement('a', ['href', 'target'])
             ->allowElement('img', ['data-media-id', 'alt']);
 
-        foreach (['script', 'iframe', 'object', 'embed', 'svg', 'math', 'form', 'template', 'noscript', 'textarea', 'select'] as $element) {
+        foreach (['script', 'xmp', 'noembed', 'noframes', 'plaintext', 'iframe', 'object', 'embed', 'svg', 'math', 'form', 'template', 'noscript', 'textarea', 'select'] as $element) {
             $config = $config->dropElement($element);
         }
 
