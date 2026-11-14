@@ -33,6 +33,7 @@ it('binds to the wire:model property without putting wire:model on the page', fu
     expect(richTextConfig((string) $view))->toBe([
         'model' => 'form.body',
         'target' => 'rich-text:form.body',
+        'id' => 'rich-text-form-body',
         'images' => ['12' => '/storage/media/a.webp'],
         'readonly' => false,
         'locale' => 'uk',

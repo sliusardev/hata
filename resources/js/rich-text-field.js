@@ -3,9 +3,9 @@
  * Tiptap editor. Tiptap itself (./rich-text.js) is imported on init, so it is a separate chunk.
  *
  * The editor writes its HTML into the bound Livewire property without a request ($wire.set(name, html, false)),
- * 300 ms after the last change, and again synchronously whenever the component starts any Livewire action (an
- * action interceptor runs before Livewire collects the property updates), so a save right after typing carries
- * the latest text. An empty document is handed over as ''. The editor never reads the property back after init:
+ * 300 ms after the last change, and again synchronously whenever the component starts any Livewire action while an
+ * edit is still unwritten (an action interceptor runs before Livewire collects the property updates), so a save
+ * right after typing carries the latest text and an untouched body is never sent back. An empty document is handed over as ''. The editor never reads the property back after init:
  * a server round trip does not reset it.
  *
  * The editor instance is kept in the closure, not in Alpine's reactive data: ProseMirror breaks behind a Proxy.
@@ -13,18 +13,21 @@
 
 const SYNC_DELAY = 300;
 
-export default function richText({ model, target, images = {}, readonly = false, locale = '', labelledBy = null }) {
+const MARKS = ['bold', 'italic', 'underline', 'strike', 'bulletList', 'orderedList', 'blockquote', 'link'];
+
+export default function richText({ model, target, id, images = {}, readonly = false, locale = '', labelledBy = null }) {
     let editor = null;
+    let module = null;
     let timer = null;
+    let pending = false;
     let stopIntercepting = null;
     let destroyed = false;
-    let isAllowedHref = () => false;
     let selectedImagePos = null;
 
     return {
         ready: false,
         failed: false,
-        active: {},
+        active: Object.fromEntries(MARKS.map((name) => [name, false])),
         block: 'paragraph',
         canUndo: false,
         canRedo: false,
@@ -36,8 +39,6 @@ export default function richText({ model, target, images = {}, readonly = false,
         imageAlt: '',
 
         async init() {
-            let module;
-
             try {
                 module = await import('./rich-text.js');
             } catch {
@@ -51,16 +52,16 @@ export default function richText({ model, target, images = {}, readonly = false,
             }
 
             const value = this.$wire.get(model);
-            isAllowedHref = module.isAllowedHref;
 
             editor = module.createEditor({
                 element: this.$refs.content,
                 content: typeof value === 'string' ? value : '',
                 images,
                 editable: !readonly,
+                id,
                 labelledBy,
                 onUpdate: () => this.queueSync(),
-                onStateChange: () => this.refresh(),
+                onStateChange: (transaction) => this.refresh(transaction),
                 onLinkShortcut: () => this.openLink(),
             });
 
@@ -69,7 +70,7 @@ export default function richText({ model, target, images = {}, readonly = false,
             }
 
             this.ready = true;
-            this.refresh();
+            this.refresh(null);
         },
 
         destroy() {
@@ -81,55 +82,70 @@ export default function richText({ model, target, images = {}, readonly = false,
         },
 
         queueSync() {
+            pending = true;
             clearTimeout(timer);
             timer = setTimeout(() => this.sync(), SYNC_DELAY);
         },
 
         /**
-         * Write the editor's HTML into the bound property now, without a request.
+         * Write the editor's HTML into the bound property now, without a request, if an edit is unwritten.
          */
         sync() {
             clearTimeout(timer);
             timer = null;
 
-            if (!editor || readonly) {
+            if (!editor || readonly || !pending) {
                 return;
             }
 
-            const html = editor.isEmpty ? '' : editor.getHTML();
-
-            if (this.$wire.get(model) !== html) {
-                this.$wire.set(model, html, false);
-            }
+            pending = false;
+            this.$wire.set(model, editor.isEmpty ? '' : editor.getHTML(), false);
         },
 
         /**
-         * Toolbar state from the editor: active marks and blocks, undo/redo, the selected image.
+         * Toolbar state from the editor: active marks and blocks, undo/redo, the selected image. A transaction that
+         * changed neither the document, the selection nor the stored marks changes nothing here; undo/redo only
+         * change with the document. Only values that differ are assigned, so Alpine re-renders only those.
          */
-        refresh() {
-            if (!editor) {
+        refresh(transaction) {
+            if (!editor || (transaction && !transaction.docChanged && !transaction.selectionSet && !transaction.storedMarksSet)) {
                 return;
             }
 
-            this.active = {
-                bold: editor.isActive('bold'),
-                italic: editor.isActive('italic'),
-                underline: editor.isActive('underline'),
-                strike: editor.isActive('strike'),
-                bulletList: editor.isActive('bulletList'),
-                orderedList: editor.isActive('orderedList'),
-                blockquote: editor.isActive('blockquote'),
-                link: editor.isActive('link'),
-            };
+            MARKS.forEach((name) => {
+                const isActive = editor.isActive(name);
+
+                if (this.active[name] !== isActive) {
+                    this.active[name] = isActive;
+                }
+            });
 
             const level = [2, 3, 4].find((candidate) => editor.isActive('heading', { level: candidate }));
-            this.block = level ? `h${level}` : 'paragraph';
-            this.canUndo = editor.can().undo();
-            this.canRedo = editor.can().redo();
+            const block = level ? `h${level}` : 'paragraph';
+
+            if (this.block !== block) {
+                this.block = block;
+            }
+
+            if (!transaction || transaction.docChanged) {
+                const canUndo = editor.can().undo();
+                const canRedo = editor.can().redo();
+
+                if (this.canUndo !== canUndo) {
+                    this.canUndo = canUndo;
+                }
+
+                if (this.canRedo !== canRedo) {
+                    this.canRedo = canRedo;
+                }
+            }
 
             const { selection } = editor.state;
             const image = selection.node?.type.name === 'mediaImage' ? selection.node : null;
-            this.imageSelected = image !== null;
+
+            if (this.imageSelected !== (image !== null)) {
+                this.imageSelected = image !== null;
+            }
 
             // The alt field is filled when another image is selected, not on its own edits (keeps the caret).
             if (image && selectedImagePos !== selection.from) {
@@ -194,7 +210,7 @@ export default function richText({ model, target, images = {}, readonly = false,
                 return;
             }
 
-            const href = normalizeHref(this.linkHref);
+            const href = module.normalizeHref(this.linkHref);
 
             if (href === '') {
                 this.removeLink();
@@ -202,7 +218,7 @@ export default function richText({ model, target, images = {}, readonly = false,
                 return;
             }
 
-            if (!isAllowedHref(href)) {
+            if (!module.isAllowedHref(href)) {
                 this.linkInvalid = true;
 
                 return;
@@ -212,12 +228,7 @@ export default function richText({ model, target, images = {}, readonly = false,
 
             if (editor.state.selection.empty && !editor.isActive('link')) {
                 // Nothing selected: the address becomes the link's text, and typing after it is plain text again.
-                editor
-                    .chain()
-                    .focus()
-                    .insertContent({ type: 'text', text: href, marks: [{ type: 'link', attrs: attributes }] })
-                    .unsetLink()
-                    .run();
+                module.insertLinkText(editor.chain().focus(), href, attributes).run();
             } else {
                 editor.chain().focus().extendMarkRange('link').setLink(attributes).run();
             }
@@ -242,12 +253,11 @@ export default function richText({ model, target, images = {}, readonly = false,
                 return;
             }
 
-            editor
-                .chain()
-                .focus()
-                .insertContent({
-                    type: 'mediaImage',
-                    attrs: { mediaId: String(detail.id), alt: detail.alt ?? '', src: detail.url },
+            module
+                .insertImage(editor.chain().focus(), editor.state, {
+                    mediaId: String(detail.id),
+                    alt: detail.alt ?? '',
+                    src: detail.url,
                 })
                 .run();
         },
@@ -262,19 +272,3 @@ export default function richText({ model, target, images = {}, readonly = false,
     };
 }
 
-/**
- * A typed address without a scheme: "example.com/page" gets https://, "name@example.com" gets mailto:.
- */
-function normalizeHref(value) {
-    const href = String(value ?? '').trim();
-
-    if (/^[^\s@/:]+@[^\s@/:]+\.[^\s@/:]+$/.test(href)) {
-        return `mailto:${href}`;
-    }
-
-    if (/^[^\s/:?#.]+(\.[^\s/:?#.]+)*\.[a-z]{2,}([/:?#]|$)/i.test(href)) {
-        return `https://${href}`;
-    }
-
-    return href;
-}

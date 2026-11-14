@@ -25,6 +25,7 @@
     $config = [
         'model' => $model,
         'target' => 'rich-text:'.$model,
+        'id' => $key,
         'images' => collect($images)->mapWithKeys(fn ($url, $id): array => [(string) $id => (string) $url])->all(),
         'readonly' => (bool) $readonly,
         'locale' => (string) $locale,
@@ -219,7 +220,7 @@
 
         <p x-show="failed" x-cloak class="min-h-64 px-4 py-3 text-sm text-red-600 dark:text-red-400" role="alert">{{ __('content.editor.failed') }}</p>
 
-        <div id="{{ $key }}" x-ref="content" x-show="ready" x-cloak></div>
+        <div x-ref="content" x-show="ready" x-cloak></div>
     </div>
 
     @if ($model !== '')

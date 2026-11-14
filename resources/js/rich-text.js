@@ -146,14 +146,15 @@ export function editorExtensions({ images = {}, onLinkShortcut = () => {} } = {}
  *   content: string,
  *   images: Record<string, string>,
  *   editable: boolean,
+ *   id: string,
  *   labelledBy: string|null,
  *   onUpdate: () => void,
- *   onStateChange: () => void,
+ *   onStateChange: (transaction: import('@tiptap/pm/state').Transaction|null) => void,
  *   onLinkShortcut: () => void,
  * }} options
  */
-export function createEditor({ element, content, images, editable, labelledBy, onUpdate, onStateChange, onLinkShortcut }) {
-    const attributes = { class: 'rich-text-content', 'aria-multiline': 'true', role: 'textbox' };
+export function createEditor({ element, content, images, editable, id, labelledBy, onUpdate, onStateChange, onLinkShortcut }) {
+    const attributes = { id, class: 'rich-text-content', 'aria-multiline': 'true', role: 'textbox' };
 
     if (labelledBy) {
         attributes['aria-labelledby'] = labelledBy;
@@ -173,8 +174,63 @@ export function createEditor({ element, content, images, editable, labelledBy, o
             transformPastedHTML: cleanPastedHtml,
         },
         onUpdate,
-        onTransaction: onStateChange,
-        onFocus: onStateChange,
-        onBlur: onStateChange,
+        onTransaction: ({ transaction }) => onStateChange(transaction),
+        onFocus: () => onStateChange(null),
+        onBlur: () => onStateChange(null),
     });
+}
+
+/**
+ * Insert a link with nothing selected: the address becomes the link's text. Only the stored mark is removed
+ * afterwards (unsetLink() would extend over the link just inserted and strip it), so the next character typed is
+ * plain text.
+ */
+export function insertLinkText(chain, href, attributes) {
+    return chain.insertContent({ type: 'text', text: href, marks: [{ type: 'link', attrs: attributes }] }).unsetMark('link');
+}
+
+/**
+ * Insert a library image at the selection; a selected image is kept and the new one goes after it.
+ */
+export function insertImage(chain, state, attributes) {
+    const node = { type: 'mediaImage', attrs: attributes };
+    const { selection } = state;
+
+    return selection.node?.type.name === 'mediaImage'
+        ? chain.insertContentAt(selection.to, node)
+        : chain.insertContent(node);
+}
+
+const FILE_EXTENSION = /^(html?|php|aspx?|jsp|cgi|pdf|jpe?g|png|gif|webp|svg|avif|txt|rtf|docx?|xlsx?|pptx?|odt|ods|csv|xml|json|js|css|md|zip|rar|mp3|mp4)$/i;
+
+/**
+ * A typed address made usable: an email gets mailto:, something that starts with www. or looks like a host
+ * ("example.com", "example.com/page") gets https://. Everything else is kept as typed: "/page", "#part", "?q=1",
+ * any scheme ("mailto:", "tel:", "https:"), and relative file links such as "page.html" or "docs/index.php".
+ */
+export function normalizeHref(value) {
+    const href = String(value ?? '').trim();
+
+    if (href === '' || /^[/#?.]/.test(href) || ANY_SCHEME.test(href)) {
+        return href;
+    }
+
+    if (/^[^\s@/:]+@[^\s@/:]+\.[^\s@/:]+$/u.test(href)) {
+        return `mailto:${href}`;
+    }
+
+    if (/^www\./i.test(href)) {
+        return `https://${href}`;
+    }
+
+    const host = href.split(/[/?#]/, 1)[0];
+    const labels = host.split('.');
+    const last = labels[labels.length - 1];
+    const looksLikeHost =
+        labels.length > 1 &&
+        labels.every((label) => /^[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?$/u.test(label)) &&
+        /^\p{L}{2,}$/u.test(last) &&
+        !FILE_EXTENSION.test(last);
+
+    return looksLikeHost ? `https://${href}` : href;
 }

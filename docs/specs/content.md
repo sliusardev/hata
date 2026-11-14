@@ -145,24 +145,28 @@ box shows a skeleton; if it fails, a message asks to reload.
   pasted content to that set (an `h1` or `h5` becomes a paragraph, an image without a valid `data-media-id` is
   dropped), and pasted links keep only `href` and `target="_blank"`, pasted numbered lists lose `start` and `type`.
   Links accept `http`, `https`, `mailto`, `tel` and relative addresses (the same rule as the server); the link form
-  adds `https://` to a typed domain and `mailto:` to an email. A numbered list always counts from 1 in the editor
+  adds `mailto:` to an email and `https://` to an address that starts with `www.` or looks like a host
+  (`example.com/page`, but not a file name such as `page.html`, `index.php` or `report.pdf`); anything starting with
+  `/`, `#`, `?`, `.` or a scheme is kept as typed. A numbered list always counts from 1 in the editor
   (CSS), as it will once the server has dropped `start`. Harmless leftovers the server drops anyway: an image's `src`,
   a code block's `language-*` class.
 - **Binding.** The component reads the property name from `wire:model` and does not put `wire:model` on the page.
   The editor reads the property once (`$wire.get()`) when it loads and then writes it without a request
   (`$wire.set(name, html, false)`), 300 ms after the last change and again synchronously whenever the Livewire
-  component starts any action (`$wire.$intercept`, which runs before Livewire collects the property updates), so a
-  save right after typing carries the latest HTML. An empty document is `''`. The editor's markup is in `wire:ignore`:
+  component starts any action while an edit is still unwritten (`$wire.$intercept`, which runs before Livewire
+  collects the property updates), so a save right after typing carries the latest HTML and an untouched body is never
+  sent back. An empty document is `''`. The editor's markup is in `wire:ignore`:
   a re-render never resets it or takes the focus, and a value the server writes into the property is not shown.
 - **Toolbar** (hidden when `readonly`): text style (paragraph, heading 2-4), bold, italic, underline, strike, bullet
   and numbered list, quote, link, image, undo, redo. Buttons have `aria-label`s and Flux tooltips, toggles carry
   `aria-pressed` and an active look; the toolbar wraps on a phone. Ctrl/Cmd+K opens the link form.
 - **Link form**: an inline strip (not a `<form>`, since the editor sits inside the page's form) with the address, "Open
   in a new tab", Apply, Remove link and Cancel; Enter applies, Escape closes. With nothing selected the address is
-  inserted as the link's text.
+  inserted as the link's text and the next typed character is plain text.
 - **Images**: the image button (only with `media.view`) dispatches the browser event `media-picker:open` with
   `{target: 'rich-text:<property>', locale}`; the page's one detached media picker answers with `media-picker:picked`
-  and only the editor with that target inserts the image at its selection (`src` from the event's `url`). For a body
+  and only the editor with that target inserts the image at its selection, or after the selected image (`src` from
+  the event's `url`). For a body
   opened again, `images` maps each media id to its current URL and fills the `src` when the content loads; an image
   with no URL shows as a neutral block. Selecting an image shows an "Image alt text" field that edits that image's
   `alt` in the body (not the library's alt). The page must mount `<livewire:media-picker detached accept="image" />`
