@@ -46,7 +46,7 @@ describe('access', function () {
         $path = logFile('laravel.log');
         $user = User::factory()->withPermissions(['admin.access', 'settings.edit'])->create();
 
-        $this->actingAs($user)->getJson(route('admin.maintenance.logs.chunk', 'laravel.log'))->assertForbidden();
+        $this->actingAs($user)->getJson(route('admin.maintenance.logs.chunk', md5('laravel.log')))->assertForbidden();
 
         expect(fn () => app(DeleteLogFile::class)->handle($user, 'laravel.log'))->toThrow(AuthorizationException::class)
             ->and(File::exists($path))->toBeTrue();
@@ -55,7 +55,7 @@ describe('access', function () {
     it('sends guests to the login page', function () {
         logFile('laravel.log');
 
-        $this->get(route('admin.maintenance.logs.chunk', 'laravel.log'))->assertRedirect(route('login'));
+        $this->get(route('admin.maintenance.logs.chunk', md5('laravel.log')))->assertRedirect(route('login'));
     });
 });
 
@@ -213,7 +213,7 @@ describe('chunk route', function () {
     it('returns a chunk of a listed file', function () {
         logFile('laravel.log', "[2026-11-14 15:28:02] production.ERROR: Boom\n");
 
-        $this->actingAs(logReader())->getJson(route('admin.maintenance.logs.chunk', 'laravel.log'))
+        $this->actingAs(logReader())->getJson(route('admin.maintenance.logs.chunk', md5('laravel.log')))
             ->assertOk()
             ->assertJson(['start' => 0, 'end' => 45, 'size' => 45, 'remaining' => null])
             ->assertJsonPath('html', fn (string $html): bool => str_contains($html, 'log-level-error'));
@@ -222,26 +222,34 @@ describe('chunk route', function () {
     it('reads the part before a given position and says how much is above', function () {
         logFile('laravel.log', str_repeat("0123456789abcde\n", (int) (LogReader::CHUNK / 16) + 10));
 
-        $response = $this->actingAs(logReader())->getJson(route('admin.maintenance.logs.chunk', 'laravel.log'))->assertOk();
+        $response = $this->actingAs(logReader())->getJson(route('admin.maintenance.logs.chunk', md5('laravel.log')))->assertOk();
 
         expect($response->json('start'))->toBe(160)->and($response->json('remaining'))->toBeString();
 
-        $this->getJson(route('admin.maintenance.logs.chunk', ['file' => 'laravel.log', 'before' => 160]))
+        $this->getJson(route('admin.maintenance.logs.chunk', ['key' => md5('laravel.log'), 'before' => 160]))
             ->assertOk()
             ->assertJson(['start' => 0, 'end' => 160, 'remaining' => null]);
     });
 
-    it('answers 404 for a file that is not listed', function (string $name) {
+    it('answers 404 for anything but the key of a listed file', function (string $key) {
         logFile('laravel.log');
         logFile('.hidden');
 
-        $this->actingAs(logReader())->getJson('/admin/maintenance/logs/'.$name)->assertNotFound();
-    })->with(['missing.log', '.hidden', '..%2F.env', '%2E%2E']);
+        $this->actingAs(logReader())->getJson('/admin/maintenance/logs/'.$key)->assertNotFound();
+    })->with(['laravel.log', md5('missing.log'), md5('.hidden'), '..%2F.env', '%2E%2E']);
+
+    it('opens a file whose name holds characters a URL treats specially', function (string $name) {
+        logFile($name, "inside\n");
+
+        $this->actingAs(logReader())->getJson(route('admin.maintenance.logs.chunk', md5($name)))
+            ->assertOk()
+            ->assertJsonPath('html', "inside\n");
+    })->with(['a#b.log', 'a?b.log', 'a%41.log', "it's \"quoted\".log"]);
 
     it('rejects a position that is not a number', function () {
         logFile('laravel.log');
 
-        $this->actingAs(logReader())->getJson(route('admin.maintenance.logs.chunk', ['file' => 'laravel.log', 'before' => 'abc']))
+        $this->actingAs(logReader())->getJson(route('admin.maintenance.logs.chunk', ['key' => md5('laravel.log'), 'before' => 'abc']))
             ->assertUnprocessable();
     });
 });
@@ -294,7 +302,7 @@ describe('page', function () {
         $page->call('openLog', app(LogFiles::class)->all()[0]['key'])
             ->assertSet('file', 'laravel.log')
             ->assertSeeHtml('data-test="maintenance-log-viewer"')
-            ->assertSeeHtml(e(route('admin.maintenance.logs.chunk', 'laravel.log')))
+            ->assertSeeHtml(route('admin.maintenance.logs.chunk', md5('laravel.log')))
             ->assertDontSee('secret line of the log')
             ->call('closeLog')
             ->assertSet('file', '')
@@ -355,6 +363,36 @@ describe('page', function () {
         File::delete($path);
 
         $page->call('deleteLog')->assertSet('showDeleteLogModal', false)->assertOk();
+    });
+
+    it('keeps the viewer open when the file could not be deleted', function () {
+        logFile('laravel.log');
+        $key = app(LogFiles::class)->find('laravel.log')['key'];
+        app()->bind(DeleteLogFile::class, fn () => new class(app(LogFiles::class)) extends DeleteLogFile
+        {
+            public function handle(User $actor, string $name): void
+            {
+                throw MaintenanceException::logFileNotDeleted();
+            }
+        });
+
+        Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+            ->call('confirmDeleteLog', $key)
+            ->call('deleteLog')
+            ->assertSet('file', 'laravel.log')
+            ->assertSeeHtml('data-test="maintenance-log-viewer"');
+    });
+
+    it('returns to the list for good when the open file disappeared', function () {
+        $path = logFile('laravel.log');
+        $key = app(LogFiles::class)->find('laravel.log')['key'];
+        $page = Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('pages::admin.maintenance.index');
+
+        File::delete($path);
+        $page->call('confirmDeleteLog', $key)->assertSet('file', '')->assertSet('showDeleteLogModal', false);
+
+        logFile('laravel.log');
+        $page->call('closeLog')->assertSet('file', '')->assertSeeHtml('data-test="maintenance-logs"');
     });
 
     it('does not read the folder on the other tabs', function () {

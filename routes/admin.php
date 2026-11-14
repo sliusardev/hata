@@ -42,5 +42,5 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
         Route::livewire('settings', 'pages::admin.settings.edit')->name('settings.edit');
         Route::livewire('maintenance', 'pages::admin.maintenance.index')->middleware('can:maintenance.run')->name('maintenance');
         Route::post('maintenance/run', MaintenanceRunController::class)->middleware('can:maintenance.run')->name('maintenance.run');
-        Route::get('maintenance/logs/{file}', MaintenanceLogChunkController::class)->middleware('can:maintenance.run')->name('maintenance.logs.chunk');
+        Route::get('maintenance/logs/{key}', MaintenanceLogChunkController::class)->where('key', '[a-f0-9]{32}')->middleware('can:maintenance.run')->name('maintenance.logs.chunk');
     });

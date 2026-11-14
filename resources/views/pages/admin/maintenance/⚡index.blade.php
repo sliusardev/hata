@@ -258,17 +258,27 @@ new #[Title('maintenance.title')] class extends Component {
             Flux::toast(variant: 'danger', text: $exception->getMessage());
         }
 
-        if ($this->file === $name) {
-            $this->file = '';
-        }
-
-        unset($this->openedLog, $this->logFiles);
+        $this->closeMissingLog();
     }
 
     private function logFileGone(): void
     {
-        unset($this->logFiles);
         Flux::toast(variant: 'danger', text: __('maintenance.logs.errors.missing'));
+
+        $this->closeMissingLog();
+    }
+
+    /**
+     * Back to the list when the open file is no longer in the folder (deleted here or elsewhere). A file that
+     * could not be deleted stays open.
+     */
+    private function closeMissingLog(): void
+    {
+        unset($this->openedLog, $this->logFiles);
+
+        if ($this->file !== '' && $this->openedLog === null) {
+            $this->file = '';
+        }
     }
 
     /**
@@ -616,7 +626,7 @@ new #[Title('maintenance.title')] class extends Component {
         <div
             wire:ignore
             wire:key="log-viewer-{{ $openedLog['key'] }}"
-            data-url="{{ route('admin.maintenance.logs.chunk', $openedLog['name']) }}"
+            data-url="{{ route('admin.maintenance.logs.chunk', $openedLog['key']) }}"
             class="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-900 dark:border-white/10 dark:bg-black/40"
             x-data="{
                 before: null,
@@ -684,7 +694,12 @@ new #[Title('maintenance.title')] class extends Component {
 
                 <p class="font-sans text-sm text-zinc-400" x-show="loading && before === null" role="status">{{ __('maintenance.logs.loading') }}</p>
                 <p class="font-sans text-sm text-zinc-400" x-show="empty" x-cloak>{{ __('maintenance.logs.empty_file') }}</p>
-                <p class="font-sans text-sm text-red-300" x-show="failed" x-cloak role="alert">{{ __('maintenance.logs.failed') }}</p>
+                <div class="flex flex-wrap items-center gap-3 font-sans text-sm text-red-300" x-show="failed" x-cloak role="alert">
+                    <span>{{ __('maintenance.logs.failed') }}</span>
+                    <button type="button" class="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-white/20" x-on:click="load()" data-test="maintenance-log-retry">
+                        {{ __('maintenance.logs.retry') }}
+                    </button>
+                </div>
 
                 <div x-ref="text" class="log-text"></div>
             </div>

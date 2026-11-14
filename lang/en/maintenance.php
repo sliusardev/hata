@@ -77,9 +77,10 @@ return [
         'loading' => 'Loading…',
         'empty_file' => 'The file is empty.',
         'failed' => 'The file could not be loaded. It may have been deleted or replaced.',
+        'retry' => 'Try again',
         'delete' => [
             'title' => 'Delete this log file?',
-            'confirm' => 'The file :name will be deleted for good. If the site is still writing to it, a new file appears with the next entry.',
+            'confirm' => 'The file :name will be deleted for good. If the site is still writing to it, a new file appears with the next entry; a queue worker that is running keeps writing to the deleted file until it is restarted.',
             'submit' => 'Delete file',
         ],
         'messages' => [

@@ -128,7 +128,8 @@ as they are, in a viewer with highlighting, every file of the folder, view and d
 - **Viewer** (`#[Url] file`, a listed name; anything else falls back to the list with a danger toast; leaving
   the tab closes it): a dark monospace panel that shows the file in file order, opened scrolled to the end,
   where the newest lines are. The content is **not** rendered by Livewire: the panel (`wire:ignore`) fetches
-  it from `GET admin/maintenance/logs/{file}?before={offset}` (`admin.maintenance.logs.chunk`,
+  it from `GET admin/maintenance/logs/{key}?before={offset}` (the file's key, not its name: a name may hold
+  `#`, `?` or `%`, and a web server may refuse a path ending in `.log`) (`admin.maintenance.logs.chunk`,
   `Admin\MaintenanceLogChunkController`, admin group plus `can:maintenance.run`, `no-store`), so a log never
   travels in the component's responses. "Load earlier lines" fetches the chunk above and keeps the scroll
   position.
@@ -144,8 +145,10 @@ as they are, in a viewer with highlighting, every file of the folder, view and d
 - **Deleting** (`App\Actions\Maintenance\DeleteLogFile::handle(User $actor, string $name)`): authorizes
   `maintenance.run`, resolves the name, deletes the file; an unlisted name or a failed delete throws
   `MaintenanceException`. Called from a Livewire action behind `<x-confirm-modal>` (deleting a file touches
-  nothing Livewire depends on). A channel that was writing to the file creates it again on its next write.
-  Deletions are not written to the journal, which records command runs.
+  nothing Livewire depends on). A channel that was writing to the file creates it again on its next write; a
+  long-running process (a queue worker) keeps its handle and writes to the deleted file until it restarts,
+  which the confirmation says. A file that could not be deleted stays open in the viewer; one that is gone
+  returns the page to the list. Deletions are not written to the journal, which records command runs.
 
 ## Config cache and stored settings
 
