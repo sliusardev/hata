@@ -106,7 +106,7 @@ abstract class EntryFormPage extends Component
 
     /**
      * The records the form may choose as a parent, in tree order, without the record itself and its descendants.
-     * One query; empty for a flat type.
+     * One query; empty for a flat type; for a trashed (read-only) record only its actual parent.
      *
      * @return list<array{id: int, title: string, path: string, depth: int}>
      */
@@ -118,6 +118,13 @@ abstract class EntryFormPage extends Component
         }
 
         $record = $this->record();
+
+        // A trashed record is read-only: it shows its actual parent, which may be in the trash too.
+        if ($record?->trashed()) {
+            $parent = $record->parent_id !== null ? Entry::withTrashed()->find($record->parent_id, ['id', 'title', 'path']) : null;
+
+            return $parent === null ? [] : [['id' => $parent->id, 'title' => $parent->title, 'path' => $parent->path, 'depth' => 0]];
+        }
 
         return array_values(Entry::query()
             ->ofType($this->type)
@@ -241,8 +248,23 @@ abstract class EntryFormPage extends Component
     }
 
     /**
+     * The whole prefix in front of the slug: addressPrefix and the chosen parent's path. The browser keeps it up to
+     * date as the parent changes; this is what the page shows before Alpine starts.
+     */
+    public function fullPrefix(): string
+    {
+        foreach ($this->parentOptions as $option) {
+            if ((string) $option['id'] === $this->form->parent_id) {
+                return $this->addressPrefix.$option['path'].'/';
+            }
+        }
+
+        return $this->addressPrefix;
+    }
+
+    /**
      * A free slug for the form's title under the form's parent, in the record's language. Called from the browser
-     * while the slug still follows the title; renders nothing.
+     * while the slug still follows the title; renders nothing and changes no property.
      */
     #[Renderless]
     public function suggestSlug(): string
@@ -253,10 +275,9 @@ abstract class EntryFormPage extends Component
             $parent = Entry::query()->ofType($this->type)->inLocale($this->locale)->find((int) $this->form->parent_id);
         }
 
-        $slug = app(EntryPaths::class)->suggest($this->contentType, $this->locale, $parent, $this->form->title, $this->record());
-        $this->form->slug = $slug;
-
-        return $slug;
+        // Only returned: the browser applies it while the slug still follows the title. Setting the property here
+        // would patch it into the page with the response and overwrite a slug typed meanwhile.
+        return app(EntryPaths::class)->suggest($this->contentType, $this->locale, $parent, $this->form->title, $this->record());
     }
 
     /**

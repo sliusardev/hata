@@ -110,6 +110,7 @@ return [
         'preview' => 'Preview',
         'created' => 'The record is created.',
         'exists' => 'This translation already exists, so it is opened instead.',
+        'source_gone' => 'The record this translation was made from is no longer available. Open the translation again from the list.',
         'saved' => 'Changes saved.',
         'unsaved' => 'Unsaved changes',
         'shortcut' => ':key+S to save',

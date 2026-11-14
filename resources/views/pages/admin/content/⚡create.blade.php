@@ -3,6 +3,7 @@
 use App\Actions\Content\CreateEntry;
 use App\Livewire\Admin\EntryFormPage;
 use App\Models\Entry;
+use App\Support\Content\EntryAuthors;
 use App\Support\Content\EntryPaths;
 use App\Support\Localization\ContentLocales;
 use App\Support\Toast;
@@ -61,6 +62,13 @@ new class extends EntryFormPage {
         $this->sourceId = $source->id;
         $this->form->fillFromData($source->copyFor($locale));
 
+        // The copied author may no longer be one (lost the permission, or deleted): the translation is the actor's.
+        $authorId = (int) $this->form->author_id;
+
+        if ($authorId === 0 || ! EntryAuthors::query($this->contentType)->whereKey($authorId)->exists()) {
+            $this->form->author_id = (string) Auth::id();
+        }
+
         $parent = $this->form->parent_id !== '' ? Entry::query()->find((int) $this->form->parent_id) : null;
         $this->form->slug = app(EntryPaths::class)->suggest($this->contentType, $locale, $parent, $this->form->title);
     }
@@ -102,6 +110,14 @@ new class extends EntryFormPage {
         $this->authorize('create', [Entry::class, $this->type]);
 
         $source = $this->sourceId !== null ? Entry::query()->ofType($this->type)->find($this->sourceId) : null;
+
+        // The source went to the trash or was deleted after the form opened: never save a standalone record instead.
+        if ($this->sourceId !== null && $source === null) {
+            $this->addError('form.source', __('content.form.source_gone'));
+            $this->dispatch('entry-form-invalid');
+
+            return;
+        }
 
         try {
             $entry = $createEntry->handle(Auth::user(), $this->contentType, $this->locale, $this->form->data($this->contentType), $source);

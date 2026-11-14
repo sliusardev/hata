@@ -112,6 +112,16 @@ test('suggestSlug returns a free slug, a suffixed one when it is taken, and foll
     expect($form->instance()->suggestSlug())->toBe('brand-new');
 });
 
+test('suggestSlug only returns the slug, so a slug typed meanwhile is kept', function () {
+    $this->actingAs(formEditor());
+
+    createForm()
+        ->set('form.title', 'Our team')
+        ->set('form.slug', 'typed-by-hand')
+        ->call('suggestSlug')
+        ->assertSet('form.slug', 'typed-by-hand');
+});
+
 test('editing changes the title, the parent and the slug', function () {
     $this->actingAs(formEditor());
     $company = Entry::factory()->create(['slug' => 'company', 'path' => 'company']);
@@ -189,7 +199,10 @@ test('a tampered parent is a field error, and so is a language removed before sa
         'content_default_locale' => 'en',
     ]);
 
-    $form->call('save')->assertHasErrors('form.locale');
+    $form->call('save')
+        ->assertHasErrors('form.locale')
+        ->assertSeeHtml('data-test="form-error-callout"')
+        ->assertSee(__('content.entry.locale_invalid'));
     expect(Entry::query()->where('locale', 'pl')->exists())->toBeFalse();
 });
 
@@ -413,12 +426,17 @@ test('the editor gets the body images and the page mounts one detached picker', 
     editForm($page)
         ->assertSeeLivewire('media-picker')
         ->assertSee(Str::afterLast($image->url(), '/'), false);
+
+    $html = $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))->getContent();
+    expect(substr_count($html, 'data-test="media-picker-detached"'))->toBe(1);
 });
 
 test('opening the form costs the same number of queries whatever the translations and pages', function () {
     $this->actingAs(formEditor());
 
+    // A fresh instance each time, as the route binds one per request.
     $measure = function (Entry $entry): int {
+        $entry = $entry->fresh();
         DB::flushQueryLog();
         DB::enableQueryLog();
         editForm($entry);
@@ -442,6 +460,38 @@ test('opening the form costs the same number of queries whatever the translation
     $many = $measure($large);
 
     expect($many)->toBe($few);
+
+    $translate = function (Entry $source): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        createForm(['from' => (string) $source->id, 'locale' => 'pl']);
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    $smallSource = Entry::factory()->create();
+    $translate($smallSource);
+    $fewTranslations = $translate($smallSource);
+
+    $largeSource = Entry::factory()->create();
+    foreach (['uk', 'de'] as $locale) {
+        Entry::factory()->translationOf($largeSource, $locale)->create();
+    }
+    Entry::factory()->count(10)->create();
+
+    expect($translate($largeSource))->toBe($fewTranslations);
+
+    $withImages = function (int $count) use ($measure): int {
+        $body = Media::factory()->image()->count($count)->create()
+            ->map(fn (Media $media): string => '<img data-media-id="'.$media->id.'" alt="">')->implode('');
+
+        return $measure(Entry::factory()->create(['body' => '<p>a</p>'.$body]));
+    };
+
+    $withImages(1);
+    expect($withImages(5))->toBe($withImages(1));
 });
 
 test('the media library links a record using a file to its edit page, also from the trash', function () {
@@ -459,4 +509,56 @@ test('the media library links a record using a file to its edit page, also from 
     expect($usage->fresh()->url($editor))->toBe($edit);
 
     $this->actingAs($editor)->get($edit)->assertOk()->assertSee(__('content.form.trashed.title'));
+});
+
+test('a translation whose copied author can no longer be one is the actor\'s', function () {
+    $this->actingAs($editor = formEditor());
+    $former = User::factory()->withPermissions(['admin.access'])->create();
+    $source = Entry::factory()->create(['author_id' => $former->id]);
+    $kept = Entry::factory()->create(['author_id' => ($other = formEditor())->id]);
+
+    createForm(['from' => (string) $source->id, 'locale' => 'uk'])->assertSet('form.author_id', (string) $editor->id);
+    createForm(['from' => (string) $kept->id, 'locale' => 'uk'])->assertSet('form.author_id', (string) $other->id);
+});
+
+test('moving a record that is already in the trash reports nothing', function () {
+    $this->actingAs(formEditor());
+    $page = Entry::factory()->create();
+
+    $form = editForm($page)->call('confirmTrash');
+    $page->delete();
+
+    $form->call('trash')->assertNoRedirect()->assertSet('showTrashModal', false);
+    expect(session(Toast::SESSION_KEY))->toBeNull();
+});
+
+test('a translation whose source went to the trash meanwhile is not saved on its own', function () {
+    $this->actingAs(formEditor());
+    $source = Entry::factory()->create();
+
+    $form = createForm(['from' => (string) $source->id, 'locale' => 'uk'])->set('form.slug', 'copy');
+    $source->delete();
+
+    $form->call('save')
+        ->assertHasErrors('form.source')
+        ->assertSee(__('content.form.source_gone'))
+        ->assertNoRedirect();
+
+    expect(Entry::query()->where('locale', 'uk')->exists())->toBeFalse();
+});
+
+test('the address prefix carries the parent path, and a trashed child shows its trashed parent', function () {
+    $this->actingAs(formEditor());
+    $about = Entry::factory()->create(['title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    $team = Entry::factory()->childOf($about)->create(['title' => 'Team', 'slug' => 'team', 'path' => 'about/team']);
+
+    editForm($team)->assertSeeHtml('about/</bdi>');
+
+    $about->delete();
+    $team->delete();
+
+    editForm($team->fresh())
+        ->assertSeeHtml('data-test="parent-option-'.$about->id.'"')
+        ->assertSet('form.parent_id', (string) $about->id)
+        ->assertSeeHtml('about/</bdi>');
 });

@@ -117,6 +117,12 @@ export default function entryForm({ readonly, slugFollows, prefix, parentPaths, 
             }
 
             event.preventDefault();
+
+            // Not while a dialog (a media picker, a confirmation) is open over the form.
+            if (document.querySelector('dialog[open]')) {
+                return;
+            }
+
             this.$refs.form.requestSubmit();
         },
 

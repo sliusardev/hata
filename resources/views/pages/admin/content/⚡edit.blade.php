@@ -27,6 +27,11 @@ new class extends EntryFormPage {
     #[Locked]
     public int $trashingChildren = 0;
 
+    /**
+     * The record the route bound, used for the first render so it is not loaded twice; later requests load it again.
+     */
+    protected ?Entry $boundEntry = null;
+
     public function mount(string $type, Entry $entry): void
     {
         abort_unless($entry->type === $type, 404);
@@ -36,6 +41,7 @@ new class extends EntryFormPage {
         $this->type = $type;
         $this->locale = $entry->locale;
         $this->entryId = $entry->id;
+        $this->boundEntry = $entry->loadMissing('group');
         $this->form->fillFromEntry($this->entry);
     }
 
@@ -53,7 +59,7 @@ new class extends EntryFormPage {
     #[Computed]
     public function entry(): Entry
     {
-        return Entry::withTrashed()->with('group')->ofType($this->type)->findOrFail($this->entryId);
+        return $this->boundEntry ?? Entry::withTrashed()->with('group')->ofType($this->type)->findOrFail($this->entryId);
     }
 
     public function record(): ?Entry
@@ -116,6 +122,15 @@ new class extends EntryFormPage {
 
     public function trash(TrashEntry $trashEntry): void
     {
+        $this->authorize('delete', $this->entry);
+
+        // Already in the trash (another tab, another user): nothing to report.
+        if ($this->entry->trashed()) {
+            $this->showTrashModal = false;
+
+            return;
+        }
+
         $count = $trashEntry->handle(Auth::user(), $this->entry);
 
         $this->finished = true;

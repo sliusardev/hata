@@ -44,14 +44,16 @@ the same in every language of a record group) and `required()`. `Select` adds `o
 | Method | Meaning |
 |---|---|
 | `rules()` | validation rules for the value (`required` or `nullable`, then the kind's own) |
-| `toStorage($formValue)` | text trimmed, empty becomes null; number numeric; date `Y-m-d`; toggle bool; media id int; gallery list of ints |
+| `toStorage($formValue)` | text trimmed, empty becomes null; number numeric; date `Y-m-d`; toggle bool; media id int; gallery list of ints; rich text cleaned by `BodySanitizer::clean()` (null for an empty document) |
 | `toForm($stored)` | the value as the form binds it (null becomes `''` for text, number, date and select) |
 | `view()` | Blade partial name under `partials.admin.content.fields`; the partials come with the editor |
-| `mediaIds($stored)` | media ids a value refers to; empty except for `MediaFile` and `Gallery` |
-| `holdsMedia()` | true for `MediaFile` and `Gallery`: their usages are recorded |
-| `withoutMedia($stored, $id)` | the value without a file being deleted: a file field emptied, the id taken out of a gallery |
+| `mediaIds($stored)` | media ids a value refers to; empty except for `MediaFile`, `Gallery` and `RichText` (its images, `BodySanitizer::mediaIds()`) |
+| `holdsMedia()` | true for `MediaFile`, `Gallery` and `RichText`: their usages are recorded |
+| `withoutMedia($stored, $id)` | the value without a file being deleted: a file field emptied, the id taken out of a gallery, the images removed from rich text (`BodySanitizer::withoutMedia()`) |
 
-A toggle has no required state: it is always true or false. A malformed date is stored as null (its rule reports
+A rich text field follows the body's rules: the same allowlist on save (so it may be printed unescaped), at most
+`EntryInput::BODY_MAX_BYTES` as sent (`content.entry.body_too_long`), and its images recorded as usages (only files
+that exist, as for the body). A toggle has no required state: it is always true or false. A malformed date is stored as null (its rule reports
 it). `MediaFile` takes a file of any kind unless narrowed with `accept('image')` or `accept('document')`; `Gallery`
 takes images only. Both validate with `App\Rules\MediaSelection`, so every id, each gallery item included, must be
 an existing file of the right kind.
@@ -230,7 +232,7 @@ in one transaction through `App\Actions\Content\EntryWriter`: the body through `
 `published_at` set to now when publishing without one; per-language field values (`toStorage()`) into
 `entries.fields`, shared ones into `entry_groups.shared` (merged, so a value written from one translation reads the
 same from every other); then the media usages: `image`, `body` (only ids of existing files) and `fields.<name>` on the
-record, `shared.<name>` on the group. A new record with no files makes no usage query.
+record, `shared.<name>` on the group (a rich text field's images only when the file exists). A new record with no files makes no usage query.
 
 `Entry::copyFor($locale)` is the form data of a new translation: title, body, excerpt, SEO, image, author and every
 field (shared ones carry the group's values), `parent_id` = the parent's translation in that language or null, an
@@ -347,11 +349,16 @@ missing, as for `CreateEntry`: its create link redirects to the trashed record.
   the list's remembered language, else the default. With `from` (a live record of the type, else 404): when the group
   already has that language, trashed or not, the page redirects to that record's edit page (a trashed one opens
   read-only with Restore); otherwise the form is filled from `copyFor()` and the slug suggested from the copied title
-  under the mapped parent. Nothing is stored before Save. Without `from` the author is the actor. Save calls
+  under the mapped parent. The copied author is kept only while they can still be one (`EntryAuthors`); otherwise the
+author is the actor, so the select shows a valid choice. Nothing is stored before Save. Without `from` the author is
+the actor. If the source went to the trash or was deleted after the form opened, Save refuses with a `form.source`
+error instead of creating a record outside the group. Save calls
   `CreateEntry` and redirects to the edit page with a toast ("The record is created.", or "already exists" when the
   action returned an existing translation).
 - **Saved record.** `entryId` is locked; the record is loaded with its group (shared field values). Save calls
-  `UpdateEntry` and redirects back with a toast. A record in the trash is read-only and refuses Save (403).
+  `UpdateEntry` and redirects back with a toast. A record in the trash is read-only and refuses Save (403); trashing
+  a record that is already in the trash does nothing (no toast, no redirect). The record the route bound serves the
+  first render, so it is loaded once.
 - **Header**: a back link to the list (in the record's language), the record's title (or `newLabel()`) with a
   Draft/Scheduled/"In the trash" badge, "View on site" (a public record) or "Preview" (a draft or scheduled one),
   both opening `Entry::url()` in a new tab and only for a saved record outside the trash, and Save. Page title:
@@ -366,11 +373,13 @@ missing, as for `CreateEntry`: its create link redirects to the trashed record.
   the timezone named under it; a hint when Published with a future date, and when Published without a date); a user
   without the type's `edit` sees the status fixed to Draft with a line that an editor publishes it. "Language and
   translations" (hidden on a site with one language): the record's language, `n of total`, a progress bar and the grid
-  (with trashed translations); a new record without a source says translations come after saving; a `locale` error
-  (the language removed before Save) shows here. "For all languages" with `sharedFields()` and the line that a change
+  (with trashed translations); a new record without a source says translations come after saving. A `locale` error
+  (the language removed before Save) and a `source` error show in a callout at the top of the form, visible on a
+  one-language site too. "For all languages" with `sharedFields()` and the line that a change
   applies to every translation (absent when the type has none). "Image" (the media picker in field mode,
   `accept="image"`). "Attributes": the parent (hierarchical types; a native select in tree order, indented by depth,
-  without the record and its descendants, plus "No parent"; one query) and the author (a select of
+  without the record and its descendants, plus "No parent"; one query; a trashed record shows only its actual parent,
+  trashed or not, so its read-only prefix is its stored path) and the author (a select of
   `EntryAuthors::options()` plus the current author; only the name for a user without `edit`). "Move to trash"
   (`delete`): `<x-confirm-modal>` naming the subpages going with it, then `TrashEntry`, a toast and the list.
 - **Field partials**: `partials/admin/content/fields/<Field::view()>.blade.php` (`text`, `textarea`, `rich-text`,
@@ -384,10 +393,12 @@ missing, as for `CreateEntry`: its create link redirects to the trashed record.
   `entry-form-invalid` scrolls the first one into view. The editor keeps its content.
 - **Browser side** (Alpine `entryForm`, `resources/js/entry-form.js`): while a new record's slug has not been typed by
   hand it follows the title: 400 ms after the title (or the parent) changes, `suggestSlug()` (`#[Renderless]`,
-  `EntryPaths::suggest()` for the form's title, parent and language, the record itself ignored) fills it; typing in the
+  `EntryPaths::suggest()` for the form's title, parent and language, the record itself ignored; it only returns the
+  slug and sets no property, so a response never overwrites a slug typed meanwhile) fills it through a guarded
+  `$wire.set`; typing in the
   slug stops that, emptying it resumes it; a saved record's slug never follows. The prefix follows the parent select at
-  once (the parents' paths are in the page). The SEO preview, the hints and the "Unsaved changes" mark update without a
-  request. Ctrl/Cmd+S saves; a sticky bar at the bottom repeats Save. Leave-page warning (the settings page's
+  once (the parents' paths are in the page); the server renders the full prefix, parent path included. The SEO preview, the hints and the "Unsaved changes" mark update without a
+  request. Ctrl/Cmd+S saves (not while a dialog, such as a media picker, is open); a sticky bar at the bottom repeats Save. Leave-page warning (the settings page's
   pattern): the form's values are compared with those it opened with, rich text excluded, plus the editors' change
   signal (`rich-text:changed`); it stays quiet once `finished` is set by a successful save or trash.
 - **Cost**: opening the edit form is a fixed number of queries whatever the number of translations or of pages

@@ -22,6 +22,7 @@
     $localFields = $contentType->localFields();
     $sharedFields = $contentType->sharedFields();
     $images = $this->editorImages;
+    $fullPrefix = $this->fullPrefix();
     $state = $entry?->state();
     $languageCodes = array_map(fn ($language) => $language->code, $languages);
     $present = collect($groupEntries)->whereIn('locale', $languageCodes);
@@ -82,6 +83,14 @@
             </div>
         </div>
 
+        @foreach (['form.locale', 'form.source'] as $formError)
+            @error($formError)
+                <flux:callout variant="danger" icon="exclamation-triangle" data-test="form-error-callout">
+                    <flux:callout.text>{{ $message }}</flux:callout.text>
+                </flux:callout>
+            @enderror
+        @endforeach
+
         @if ($trashed)
             <flux:callout variant="warning" icon="trash" data-test="trashed-callout">
                 <flux:callout.heading>{{ __('content.form.trashed.title') }}</flux:callout.heading>
@@ -119,7 +128,7 @@
                         <flux:label>{{ __('content.form.address') }}</flux:label>
                         <flux:input.group>
                             <flux:input.group.prefix class="min-w-0 max-w-[55%] sm:max-w-[65%]">
-                                <span class="block truncate [direction:rtl]" title="{{ $this->addressPrefix }}"><bdi dir="ltr" x-text="addressPrefix()">{{ $this->addressPrefix }}</bdi></span>
+                                <span class="block truncate [direction:rtl]" title="{{ $fullPrefix }}" x-bind:title="addressPrefix()"><bdi dir="ltr" x-text="addressPrefix()">{{ $fullPrefix }}</bdi></span>
                             </flux:input.group.prefix>
                             <flux:input wire:model="form.slug" x-on:input="onSlugInput($event)" :disabled="$readOnly" :aria-label="__('content.form.slug')" maxlength="255" autocomplete="off" spellcheck="false" data-test="entry-slug" />
                         </flux:input.group>
@@ -207,7 +216,6 @@
                             <span class="min-w-0 flex-1 truncate font-medium text-zinc-900 dark:text-white">{{ $language->native }}</span>
                             <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ __('content.form.language.this') }}</span>
                         </div>
-                        <flux:error name="form.locale" class="mb-3" />
 
                         @if ($entry !== null || $present->isNotEmpty())
                             <div class="mb-4 flex h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700" aria-hidden="true">
@@ -279,9 +287,9 @@
                         <div data-test="author-readonly">
                             <flux:label>{{ __('content.form.author') }}</flux:label>
                             <p class="mt-2 text-sm text-zinc-800 dark:text-zinc-200">{{ $this->authorName ?? '—' }}</p>
+                            <flux:error name="form.author_id" />
                         </div>
                     @endif
-                    <flux:error name="form.author_id" />
                 </div>
 
                 @if ($entry !== null && ! $readOnly && $abilities['delete'])

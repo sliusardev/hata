@@ -15,8 +15,10 @@ use App\Models\User;
 use App\Support\Content\ContentType;
 use App\Support\Content\ContentTypes;
 use App\Support\Content\EntryAuthors;
+use App\Support\Content\EntryInput;
 use App\Support\Content\Fields\Gallery;
 use App\Support\Content\Fields\MediaFile;
+use App\Support\Content\Fields\RichText;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Events\QueryExecuted;
@@ -78,7 +80,7 @@ function updateEntryAs(User $actor, Entry $entry, array $data): Entry
 }
 
 /**
- * A flat test type with a file field, a gallery and a shared gallery.
+ * A flat test type with a file field, a gallery, a shared gallery and rich text fields (one shared).
  */
 function registerEventsType(): ContentType
 {
@@ -111,7 +113,10 @@ function registerEventsType(): ContentType
 
         public function fields(): array
         {
-            return [MediaFile::make('file'), Gallery::make('photos'), Gallery::make('gallery')->shared()];
+            return [
+                MediaFile::make('file'), Gallery::make('photos'), Gallery::make('gallery')->shared(),
+                RichText::make('notes'), RichText::make('terms')->shared(),
+            ];
         }
     };
 
@@ -519,6 +524,43 @@ test('media fields record their usages on the record, shared ones on the group, 
     MediaUsage::forgetAll([$document]);
 
     expect($event->fresh()->fields['file'])->toBeNull();
+});
+
+test('rich text fields are cleaned like the body and their images are usages that a deleted file leaves', function () {
+    registerEventsType();
+    [$a, $b] = Media::factory()->image()->count(2)->create()->all();
+    $hostile = '<p onclick="x()">Hi<script>alert(1)</script></p><a href="javascript:alert(1)">l</a><img src="x" onerror="y()" data-media-id="';
+
+    $event = createEntryAs($this->superAdmin, 'events', 'uk', [
+        'title' => 'Подія',
+        'slug' => 'podiia',
+        'fields' => [
+            'notes' => $hostile.$a->id.'" alt="A"><img data-media-id="999999" alt="gone">',
+            'terms' => $hostile.$b->id.'" alt="B">',
+        ],
+    ]);
+    $group = $event->group;
+
+    expect($event->fields['notes'])->toBe('<p>Hi</p><a>l</a><img data-media-id="'.$a->id.'" alt="A"><img data-media-id="999999" alt="gone">')
+        ->and($group->shared['terms'])->toBe('<p>Hi</p><a>l</a><img data-media-id="'.$b->id.'" alt="B">')
+        ->and(usagesOf($event))->toBe(["fields.notes:{$a->id}"])
+        ->and(usagesOf($group))->toBe(["shared.terms:{$b->id}"]);
+
+    MediaUsage::forgetAll([$a, $b]);
+
+    expect($event->fresh()->fields['notes'])->toBe('<p>Hi</p><a>l</a><img data-media-id="999999" alt="gone">')
+        ->and($group->fresh()->shared['terms'])->toBe('<p>Hi</p><a>l</a>');
+
+    $empty = createEntryAs($this->superAdmin, 'events', 'en', ['title' => 'Empty', 'slug' => 'empty', 'fields' => ['notes' => '<p></p>']]);
+    expect($empty->fields['notes'])->toBeNull();
+});
+
+test('a rich text field longer than the body limit is a field error', function () {
+    registerEventsType();
+
+    expect(fn () => createEntryAs($this->superAdmin, 'events', 'uk', [
+        'title' => 'Подія', 'slug' => 'podiia', 'fields' => ['notes' => '<p>'.str_repeat('a', EntryInput::BODY_MAX_BYTES).'</p>'],
+    ]))->toThrow(ValidationException::class);
 });
 
 test('a creator without edit translates from copyFor() and becomes the author; another author they name is ignored', function () {

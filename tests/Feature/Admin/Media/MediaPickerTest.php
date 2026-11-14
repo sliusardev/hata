@@ -54,6 +54,14 @@ it('lists only files of the accepted kind and marks other extensions as unusable
         ->assertSee(__('media.picker.not_allowed'));
 });
 
+it('keeps Enter in the search box from submitting a form around the picker', function () {
+    $this->actingAs(pickerUser());
+
+    $html = testPicker()->call('openPicker')->html();
+
+    expect(preg_match('/<input[^>]*x-on:keydown\.enter\.prevent[^>]*placeholder="'.preg_quote(__('media.picker.search'), '/').'"|<input[^>]*placeholder="'.preg_quote(__('media.picker.search'), '/').'"[^>]*x-on:keydown\.enter\.prevent/', $html))->toBe(1);
+});
+
 it('narrows the library by search, month and folder and loads 30 files at a time', function () {
     $this->actingAs(pickerUser());
     $folder = MediaFolder::factory()->create(['name' => 'Brand']);

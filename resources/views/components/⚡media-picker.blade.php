@@ -791,8 +791,10 @@ new class extends Component {
                         </div>
                     @else
                         <div class="flex flex-wrap items-center gap-3 px-6 py-4">
+                            {{-- The picker can sit inside a page's form: Enter here must not submit it. --}}
                             <flux:input
                                 wire:model.live.debounce.300ms="search"
+                                x-on:keydown.enter.prevent
                                 icon="magnifying-glass"
                                 :placeholder="__('media.picker.search')"
                                 :aria-label="__('media.picker.search')"

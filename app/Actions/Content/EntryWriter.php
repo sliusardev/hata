@@ -11,6 +11,8 @@ use App\Support\Content\BodySanitizer;
 use App\Support\Content\ContentType;
 use App\Support\Content\EntryInput;
 use App\Support\Content\EntryPaths;
+use App\Support\Content\Fields\Field;
+use App\Support\Content\Fields\RichText;
 use App\Support\Media\MediaIds;
 
 /**
@@ -106,14 +108,27 @@ class EntryWriter
 
         foreach ($type->localFields() as $field) {
             if ($field->holdsMedia()) {
-                $sync($entry, "fields.{$field->name}", $field->mediaIds($entry->fields[$field->name] ?? null));
+                $sync($entry, "fields.{$field->name}", $this->fieldMediaIds($field, $entry->fields[$field->name] ?? null));
             }
         }
 
         foreach ($type->sharedFields() as $field) {
             if ($field->holdsMedia()) {
-                $sync($group, "shared.{$field->name}", $field->mediaIds($group->shared[$field->name] ?? null));
+                $sync($group, "shared.{$field->name}", $this->fieldMediaIds($field, $group->shared[$field->name] ?? null));
             }
         }
+    }
+
+    /**
+     * The files a field's stored value uses. A file field's ids were validated (MediaSelection); a rich text field's
+     * images, like the body's, may name a file deleted meanwhile, so only existing ones count.
+     *
+     * @return list<int>
+     */
+    private function fieldMediaIds(Field $field, mixed $stored): array
+    {
+        $ids = $field->mediaIds($stored);
+
+        return $field instanceof RichText ? MediaIds::existing($ids) : $ids;
     }
 }
