@@ -21,6 +21,7 @@
     $parentOptions = $this->parentOptions;
     $localFields = $contentType->localFields();
     $sharedFields = $contentType->sharedFields();
+    $sharedLocked = ! $readOnly && $this->sharedFieldsLocked();
     $images = $this->editorImages;
     $fullPrefix = $this->fullPrefix();
     $state = $entry?->state();
@@ -73,9 +74,14 @@
 
             <div class="flex flex-wrap items-center gap-2">
                 @if ($entry !== null && ! $trashed)
-                    <flux:button :href="$entry->url()" target="_blank" icon:trailing="arrow-top-right-on-square" data-test="view-entry">
-                        {{ $entry->isPublic() ? __('content.form.view') : __('content.form.preview') }}
-                    </flux:button>
+                    {{-- An off language answers 404 for everyone; a hidden record opens only for those who may preview it. --}}
+                    @if (! app(App\Support\Localization\ContentLocales::class)->isActive($entry->locale))
+                        <flux:text class="max-w-64 text-xs" data-test="language-off-note">{{ __('content.form.language_off') }}</flux:text>
+                    @elseif ($entry->isPublic() || $abilities['edit'])
+                        <flux:button :href="$entry->url()" target="_blank" icon:trailing="arrow-top-right-on-square" data-test="view-entry">
+                            {{ $entry->isPublic() ? __('content.form.view') : __('content.form.preview') }}
+                        </flux:button>
+                    @endif
                 @endif
                 @unless ($readOnly)
                     <flux:button type="submit" variant="primary" data-test="save-entry">{{ __('content.form.save') }}</flux:button>
@@ -242,11 +248,14 @@
                         <div class="border-b border-zinc-200 px-5 py-3 dark:border-zinc-700">
                             <flux:heading level="2">{{ __('content.form.shared.title') }}</flux:heading>
                             <flux:text class="mt-1 text-xs">{{ __('content.form.shared.description') }}</flux:text>
+                            @if ($sharedLocked)
+                                <flux:text class="mt-2 text-xs" data-test="shared-locked">{{ __('content.form.shared.locked') }}</flux:text>
+                            @endif
                         </div>
                         <div class="space-y-6 p-5">
                             @foreach ($sharedFields as $field)
                                 <div wire:key="field-{{ $field->name }}" data-test="field-{{ $field->name }}">
-                                    @include('partials.admin.content.fields.'.$field->view(), ['field' => $field, 'model' => 'form.fields.'.$field->name, 'readOnly' => $readOnly, 'images' => $images, 'locale' => $locale])
+                                    @include('partials.admin.content.fields.'.$field->view(), ['field' => $field, 'model' => 'form.fields.'.$field->name, 'readOnly' => $readOnly || $sharedLocked, 'images' => $images, 'locale' => $locale])
                                 </div>
                             @endforeach
                         </div>

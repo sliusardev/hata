@@ -56,19 +56,22 @@ final class EntryInput
      * the enum, the date in UTC (it arrives in the site's display timezone, decision 38), empty texts as null and
      * every field of the type keyed by name (its form value; the writer converts it for storage).
      *
+     * Without `$withSharedFields` the type's shared fields are neither validated nor returned: the caller ignores
+     * them (a translation created by an actor who may not edit the type leaves the group's values alone).
+     *
      * @param  array<string, mixed>  $data
      * @return EntryData
      *
      * @throws ValidationException
      */
-    public static function validate(ContentType $type, string $locale, ?Entry $entry, array $data): array
+    public static function validate(ContentType $type, string $locale, ?Entry $entry, array $data, bool $withSharedFields = true): array
     {
         $parent = self::parentResolver($type, $locale, $entry);
-        $validated = Validator::make($data, self::buildRules($type, $locale, $entry, $parent))->validate();
+        $validated = Validator::make($data, self::buildRules($type, $locale, $entry, $parent, $withSharedFields))->validate();
 
         $fields = [];
 
-        foreach ($type->fields() as $field) {
+        foreach ($withSharedFields ? $type->fields() : $type->localFields() as $field) {
             $fields[$field->name] = $validated['fields'][$field->name] ?? null;
         }
 
@@ -104,7 +107,7 @@ final class EntryInput
      * @param  Closure(mixed): ?Entry  $parent
      * @return array<string, list<mixed>>
      */
-    private static function buildRules(ContentType $type, string $locale, ?Entry $entry, Closure $parent): array
+    private static function buildRules(ContentType $type, string $locale, ?Entry $entry, Closure $parent, bool $withSharedFields = true): array
     {
         $rules = [
             'title' => ['required', 'string', 'max:255'],
@@ -150,7 +153,7 @@ final class EntryInput
             'fields' => ['nullable', 'array'],
         ];
 
-        foreach ($type->fields() as $field) {
+        foreach ($withSharedFields ? $type->fields() : $type->localFields() as $field) {
             $rules["fields.{$field->name}"] = $field->rules();
         }
 

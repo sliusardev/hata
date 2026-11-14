@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -44,7 +45,7 @@ test('guests are redirected to the login page', function () {
     $this->get(route('admin.content.index', 'pages'))->assertRedirect(route('login'));
 });
 
-test('it returns 403 without pages.view', function () {
+test('it returns 403 without any of pages.view, pages.edit and pages.create', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
 
     $this->get(route('admin.content.index', 'pages'))->assertForbidden();
@@ -73,6 +74,27 @@ test('the sidebar shows the pages item only with pages.view', function () {
     $this->get(route('admin.dashboard'))
         ->assertDontSee(route('admin.content.index', 'pages'))
         ->assertDontSee(__('navigation.content'));
+});
+
+test('edit or create without view opens the list, the sidebar item and a record', function (string $permission) {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', $permission])->create());
+    $page = Entry::factory()->create(['title' => 'About the company']);
+
+    $this->get(route('admin.dashboard'))->assertSee(route('admin.content.index', 'pages'));
+    $this->get(route('admin.content.index', 'pages'))->assertOk()->assertSee('About the company');
+    $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))->assertOk();
+})->with(['pages.edit', 'pages.create']);
+
+test('a translation form opens only from a source the actor may view', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.create'])->create());
+    $page = Entry::factory()->create();
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'from' => $page->id, 'locale' => 'uk']))->assertOk();
+
+    // A record the actor may not view (a rule a later part may add): the translation form refuses it.
+    Gate::before(fn (User $user, string $ability, array $arguments): ?bool => $ability === 'view' && ($arguments[0] ?? null) instanceof Entry ? false : null);
+
+    $this->get(route('admin.content.create', ['type' => 'pages', 'from' => $page->id, 'locale' => 'uk']))->assertForbidden();
 });
 
 test('the content group shows with media.view alone, without the pages item', function () {
@@ -342,6 +364,17 @@ test('empty states: first record, nothing matches, empty trash', function () {
         ->assertSee('Something');
 
     entryList(['tab' => 'trash'])->assertSee(__('content.list.empty_trash.title'));
+});
+
+test('the search term is cut at 200 characters, from the URL and from the input', function () {
+    $this->actingAs(contentViewer());
+    $long = str_repeat('я', 250);
+
+    entryList(['q' => $long])
+        ->assertSet('search', str_repeat('я', 200))
+        ->assertSeeHtml('maxlength="200"')
+        ->set('search', $long.'x')
+        ->assertSet('search', str_repeat('я', 200));
 });
 
 test('state, query string and page are read from the URL', function () {

@@ -15,6 +15,7 @@ return [
         'format' => 'The address part may contain only lowercase Latin letters, digits and single hyphens.',
         'reserved' => 'This address part is reserved. Choose another one.',
         'taken' => 'Another record already uses this address.',
+        'taken_trashed' => 'A record in the trash uses this address. Restore it or delete it for good first.',
         'too_long' => 'The full address would be longer than :max characters.',
         'descendants_too_long' => 'The address of a subpage would be longer than :max characters.',
     ],
@@ -108,6 +109,7 @@ return [
         'save' => 'Save',
         'view' => 'View on site',
         'preview' => 'Preview',
+        'language_off' => 'This language is switched off, so the page is not on the site yet.',
         'created' => 'The record is created.',
         'exists' => 'This translation already exists, so it is opened instead.',
         'source_gone' => 'The record this translation was made from is no longer available. Open the translation again from the list.',
@@ -153,6 +155,7 @@ return [
         'shared' => [
             'title' => 'For all languages',
             'description' => 'A change here applies to every translation.',
+            'locked' => 'These values are shared with the other languages. Changing them needs the right to edit, so the translation keeps them as they are.',
         ],
         'image' => [
             'title' => 'Image',

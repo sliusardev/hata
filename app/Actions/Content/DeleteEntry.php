@@ -42,6 +42,10 @@ class DeleteEntry
      * foreign key), then the groups left without any record, trashed ones counted, with their usages. Six queries
      * whatever the number of records.
      *
+     * The selection locks its rows (`lockForUpdate()`), and the usage and row deletes are limited to rows still in
+     * the trash, so a record another request restored before the lock was taken (or, on SQLite, which has no row
+     * locks, before this transaction's first write) is left alive with its usages and redirects.
+     *
      * @param  Collection<int, Entry>  $records  Trashed records with at least `id`, `type`, `locale` and `path`.
      * @return int How many records were removed, those under them included.
      */
@@ -62,14 +66,18 @@ class DeleteEntry
                         ->where('path', 'like', $record->path.'/%'));
                 }
             })
+            ->lockForUpdate()
             ->get(['id', 'entry_group_id']);
 
         $ids = $entries->modelKeys();
         $groupIds = $entries->pluck('entry_group_id')->unique()->values()->all();
 
-        MediaUsage::query()->where('usable_type', (new Entry)->getMorphClass())->whereIn('usable_id', $ids)->delete();
+        MediaUsage::query()
+            ->where('usable_type', (new Entry)->getMorphClass())
+            ->whereIn('usable_id', Entry::onlyTrashed()->whereKey($ids)->select('id'))
+            ->delete();
 
-        $removed = (int) Entry::withTrashed()->whereKey($ids)->forceDelete();
+        $removed = (int) Entry::onlyTrashed()->whereKey($ids)->forceDelete();
 
         $emptied = EntryGroup::query()
             ->whereKey($groupIds)

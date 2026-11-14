@@ -28,6 +28,8 @@ class EntryWriter
      * Writes validated input to the record (never its type or language): the body sanitized, the date set to now
      * when publishing without one, per-language field values into `fields` and shared ones into the group, then
      * the path (a changed path of a saved record moves its descendants and keeps redirects) and the media usages.
+     * A shared field missing from the input (EntryInput without shared fields) keeps the group's value, and when
+     * none is given the group and its usages are not touched.
      *
      * @param  EntryData  $input
      */
@@ -68,34 +70,40 @@ class EntryWriter
             $entry->save();
         }
 
-        $this->saveShared($group, $type, $input['fields']);
-        $this->syncUsages($entry, $group, $type);
+        $sharedWritten = $this->saveShared($group, $type, $input['fields']);
+        $this->syncUsages($entry, $group, $type, $sharedWritten);
     }
 
     /**
+     * Writes the shared fields the input carries into the group. Returns whether any was written.
+     *
      * @param  array<string, mixed>  $fields
      */
-    private function saveShared(EntryGroup $group, ContentType $type, array $fields): void
+    private function saveShared(EntryGroup $group, ContentType $type, array $fields): bool
     {
         $shared = [];
 
         foreach ($type->sharedFields() as $field) {
-            $shared[$field->name] = $field->toStorage($fields[$field->name] ?? null);
+            if (array_key_exists($field->name, $fields)) {
+                $shared[$field->name] = $field->toStorage($fields[$field->name]);
+            }
         }
 
         if ($shared === []) {
-            return;
+            return false;
         }
 
         $group->shared = array_replace($group->shared ?? [], $shared);
         $group->save();
+
+        return true;
     }
 
     /**
      * Records which files the record uses (`image`, `body`, `fields.<name>`) and which its group uses through
-     * shared fields (`shared.<name>`). A new record with no files costs no query.
+     * shared fields (`shared.<name>`, only when they were written). A new record with no files costs no query.
      */
-    private function syncUsages(Entry $entry, EntryGroup $group, ContentType $type): void
+    private function syncUsages(Entry $entry, EntryGroup $group, ContentType $type, bool $sharedWritten): void
     {
         $sync = function (Entry|EntryGroup $usable, string $field, array $ids): void {
             if ($ids !== [] || ! $usable->wasRecentlyCreated) {
@@ -112,7 +120,7 @@ class EntryWriter
             }
         }
 
-        foreach ($type->sharedFields() as $field) {
+        foreach ($sharedWritten ? $type->sharedFields() : [] as $field) {
             if ($field->holdsMedia()) {
                 $sync($group, "shared.{$field->name}", $this->fieldMediaIds($field, $group->shared[$field->name] ?? null));
             }

@@ -424,3 +424,32 @@ test('a file deleted while its page is in the trash is gone from the page once i
         ->and($restored->body)->not->toContain('data-media-id="'.$image->id.'"')
         ->and($restored->body)->toContain('<p>Text</p>', 'data-media-id="'.$kept->id.'"');
 });
+
+test('a record restored by another request between the purge\'s selection and its delete survives with its usages', function () {
+    [$root, $child] = trashTree();
+    $media = Media::factory()->image()->create();
+    MediaUsage::sync($child, 'image', [$media->id]);
+    EntryRedirect::create(['type' => 'pages', 'locale' => 'en', 'path' => 'old-team', 'entry_id' => $child->id]);
+
+    app(TrashEntry::class)->handle($this->editor, $root);
+
+    $restored = false;
+
+    DB::listen(function (QueryExecuted $query) use (&$restored, $child): void {
+        $sql = strtolower($query->sql);
+
+        if (! $restored && str_starts_with($sql, 'select') && str_contains($sql, '"entry_group_id"') && str_contains($sql, 'like')) {
+            $restored = true;
+            Entry::withTrashed()->whereKey($child->id)->update(['deleted_at' => null, 'parent_id' => null, 'path' => 'team']);
+        }
+    });
+
+    app(DeleteEntry::class)->handle($this->editor, trashedEntry($root->id));
+
+    expect($restored)->toBeTrue()
+        ->and(trashedEntry($root->id))->toBeNull()
+        ->and($child->fresh())->not->toBeNull()
+        ->and(MediaUsage::query()->where('usable_id', $child->id)->where('field', 'image')->exists())->toBeTrue()
+        ->and(EntryRedirect::query()->where('entry_id', $child->id)->exists())->toBeTrue()
+        ->and(EntryGroup::query()->whereKey($child->entry_group_id)->exists())->toBeTrue();
+});

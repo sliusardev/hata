@@ -15,7 +15,10 @@ use Illuminate\Contracts\Validation\ValidationRule;
  */
 class EntrySlug implements ValidationRule
 {
-    public const FORMAT = '/^[a-z0-9]+(-[a-z0-9]+)*$/';
+    /**
+     * `\z`, not `$`, which would accept a trailing newline.
+     */
+    public const FORMAT = '/\A[a-z0-9]+(-[a-z0-9]+)*\z/';
 
     public const MAX_PATH = 255;
 
@@ -52,8 +55,11 @@ class EntrySlug implements ValidationRule
             return;
         }
 
-        if ($paths->scope($this->type, $this->locale, $this->ignore)->where('path', $path)->exists()) {
-            $fail('content.slug.taken')->translate();
+        // One query; a holder in the trash is named, so the user knows to restore it or delete it for good.
+        $holder = $paths->scope($this->type, $this->locale, $this->ignore)->where('path', $path)->first(['id', 'deleted_at']);
+
+        if ($holder !== null) {
+            $fail($holder->trashed() ? 'content.slug.taken_trashed' : 'content.slug.taken')->translate();
         }
     }
 }

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\Content\ContentTypes;
 use App\Support\Settings\SiteSettings;
 use App\Support\Toast;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
@@ -326,6 +327,33 @@ test('a trashed record opens read-only with the removal date and can be restored
     editForm($page)->call('restore')->assertForbidden();
 });
 
+test('a restore refused by a conflict leaves the form showing the record in the trash', function () {
+    $this->actingAs(formEditor());
+    $parent = Entry::factory()->create(['slug' => 'about', 'path' => 'about', 'deleted_at' => now()->subDay()]);
+    $child = Entry::factory()->childOf($parent)->create(['slug' => 'team', 'path' => 'about/team', 'deleted_at' => now()->subDays(2)]);
+
+    // Another request takes each suggested top-level path before the restore writes it.
+    $busy = false;
+    DB::listen(function (QueryExecuted $query) use (&$busy): void {
+        if ($busy || ! in_array('team-%', $query->bindings, true)) {
+            return;
+        }
+
+        $busy = true;
+        $taken = Entry::query()->where('path', 'like', 'team%')->count();
+        Entry::factory()->create(['slug' => $taken === 0 ? 'team' : 'team-'.($taken + 1), 'path' => $taken === 0 ? 'team' : 'team-'.($taken + 1)]);
+        $busy = false;
+    });
+
+    editForm($child)
+        ->call('restore')
+        ->assertNoRedirect()
+        ->assertSeeHtml('data-test="trashed-callout"')
+        ->assertSeeHtml('data-readonly="true"');
+
+    expect(Entry::withTrashed()->find($child->id)->trashed())->toBeTrue();
+});
+
 test('a record of another type is 404', function () {
     app(ContentTypes::class)->register(new ProductsType);
     seedRolesAndPermissions();
@@ -343,6 +371,29 @@ test('the header links to the site: View on site for a public record, Preview fo
     editForm($public)->assertSee(__('content.form.view'))->assertSeeHtml('href="'.$public->url().'"');
     editForm($draft)->assertSee(__('content.form.preview'))->assertDontSee(__('content.form.view'));
     createForm()->assertDontSeeHtml('data-test="view-entry"');
+});
+
+test('Preview shows only to those who may preview, and a record in a switched-off language has a note instead of a link', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
+    $public = Entry::factory()->published()->create();
+    $draft = Entry::factory()->create();
+    $off = Entry::factory()->published()->inLocale('de')->create();
+
+    editForm($public)->assertSeeHtml('data-test="view-entry"');
+    editForm($draft)->assertDontSeeHtml('data-test="view-entry"')->assertDontSee(__('content.form.preview'));
+
+    $this->actingAs(formEditor());
+
+    editForm($off)
+        ->assertDontSeeHtml('data-test="view-entry"')
+        ->assertSeeHtml('data-test="language-off-note"')
+        ->assertSee(__('content.form.language_off'));
+
+    $this->get(route('admin.content.index', ['type' => 'pages', 'locale' => 'de']))
+        ->assertDontSeeHtml('data-test="view-entry-'.$off->id.'"')
+        ->assertSeeHtml('data-test="language-off-note-'.$off->id.'"');
+    $this->get(route('admin.content.index', ['type' => 'pages', 'locale' => 'en']))
+        ->assertSeeHtml('data-test="view-entry-'.$public->id.'"');
 });
 
 test('a type with fields renders one control per field and stores local and shared values in their place', function () {
@@ -381,6 +432,33 @@ test('a type with fields renders one control per field and stores local and shar
         ->set('form.fields.price', 'cheap')
         ->call('save')
         ->assertHasErrors('form.fields.price');
+});
+
+test('a creator without edit sees the shared values locked in a translation, and saving it keeps them', function () {
+    app(ContentTypes::class)->register(new ProductsType);
+    seedRolesAndPermissions();
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'products.view', 'products.create'])->create());
+    $source = Entry::factory()->inLocale('uk')->create(['type' => 'products', 'slug' => 'stil', 'path' => 'stil']);
+    $source->group->update(['type' => 'products', 'shared' => ['price' => 10]]);
+
+    $own = createForm(['locale' => 'en'], 'products')->assertDontSeeHtml('data-test="shared-locked"');
+
+    $priceDisabled = fn (Testable $form): bool => (bool) preg_match('/<input\b[^>]*\sdisabled(?=[\s>="])/', Str::of($form->html())->after('data-test="field-price"')->before('</ui-field>')->toString());
+
+    expect($priceDisabled($own))->toBeFalse();
+
+    $form = createForm(['locale' => 'en', 'from' => (string) $source->id], 'products')
+        ->assertSeeHtml('data-test="shared-locked"')
+        ->assertSee(__('content.form.shared.locked'));
+
+    expect($priceDisabled($form))->toBeTrue();
+
+    $form->set('form.title', 'Table')->set('form.slug', 'table')->set('form.fields.price', '99')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Entry::query()->where('locale', 'en')->where('type', 'products')->exists())->toBeTrue()
+        ->and($source->group->fresh()->shared)->toBe(['price' => 10]);
 });
 
 test('the pages type has no field cards', function () {

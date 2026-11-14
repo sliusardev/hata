@@ -41,6 +41,44 @@ test('an unknown key gives null or throws', function () {
         ->and(fn () => $this->types->get('nope'))->toThrow(InvalidArgumentException::class);
 });
 
+test('a key cannot be registered twice', function () {
+    expect(fn () => $this->types->register(new ProductsType))
+        ->toThrow(InvalidArgumentException::class, 'already registered');
+});
+
+test('a base must be one slug in every language of the catalogue', function (?string $base, bool $valid) {
+    $type = new class($base) extends ProductsType
+    {
+        public function __construct(private readonly ?string $ukBase) {}
+
+        public function key(): string
+        {
+            return 'catalogue';
+        }
+
+        public function base(string $locale): ?string
+        {
+            return $locale === 'uk' ? $this->ukBase : 'catalogue';
+        }
+    };
+
+    $register = fn () => (new ContentTypes)->register($type);
+
+    if ($valid) {
+        expect($register()->find('catalogue'))->toBe($type);
+    } else {
+        expect($register)->toThrow(InvalidArgumentException::class, 'in [uk] is not a slug');
+    }
+})->with([
+    'a slug' => ['katalog', true],
+    'the root' => [null, true],
+    'two segments' => ['katalog/novyi', false],
+    'a leading slash' => ['/katalog', false],
+    'a capital letter' => ['Katalog', false],
+    'a trailing newline' => ["katalog\n", false],
+    'empty' => ['', false],
+]);
+
 test('the four permissions of pages exist after a sync and the editor has them', function () {
     seedRolesAndPermissions();
 

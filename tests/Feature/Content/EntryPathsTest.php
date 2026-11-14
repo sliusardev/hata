@@ -100,7 +100,7 @@ test('the path is the parent path and the slug', function () {
 
 test('the slug rule refuses a bad format', function (string $slug) {
     expect(slugErrors($slug))->not->toBe([]);
-})->with(['About', 'a--b', '-a', 'a-', 'a b', 'a/b']);
+})->with(['About', 'a--b', '-a', 'a-', 'a b', 'a/b', 'a trailing newline' => "about\n"]);
 
 test('the slug rule refuses reserved names at the top level', function (string $slug) {
     expect(slugErrors($slug))->not->toBe([]);
@@ -116,13 +116,13 @@ test('the slug rule accepts a reserved name below a parent', function () {
 test('the slug rule refuses a taken sibling, trashed or not, and lets the record keep its own', function () {
     $page = Entry::factory()->page()->create(['slug' => 'about', 'path' => 'about']);
 
-    expect(slugErrors('about'))->not->toBe([])
+    expect(slugErrors('about'))->toBe([__('content.slug.taken')])
         ->and(slugErrors('about', null, $page))->toBe([])
         ->and(slugErrors('about', null, null, 'uk'))->toBe([]);
 
     $page->delete();
 
-    expect(slugErrors('about'))->not->toBe([]);
+    expect(slugErrors('about'))->toBe([__('content.slug.taken_trashed')]);
 });
 
 test('the slug rule refuses a path over 255 characters', function () {

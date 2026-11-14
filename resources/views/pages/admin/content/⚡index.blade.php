@@ -30,6 +30,11 @@ new class extends Component {
      */
     public const string LOCALE_SESSION_KEY = 'content.list_locale';
 
+    /**
+     * The longest search term used; a longer one (a pasted text, a crafted query string) is cut.
+     */
+    public const int SEARCH_MAX = 200;
+
     #[Locked]
     public string $type = '';
 
@@ -76,6 +81,7 @@ new class extends Component {
 
         $this->type = $type;
         $this->tab = in_array($this->tab, EntryListQuery::TABS, true) ? $this->tab : 'all';
+        $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
         $this->locale = $this->validLocale($this->locale !== '' ? $this->locale : (string) session(self::LOCALE_SESSION_KEY));
         $this->missing = $this->validMissing($this->missing);
         session()->put(self::LOCALE_SESSION_KEY, $this->locale);
@@ -105,6 +111,7 @@ new class extends Component {
 
     public function updatedSearch(): void
     {
+        $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
         $this->resetPage();
     }
 
@@ -441,6 +448,7 @@ new class extends Component {
             icon="magnifying-glass"
             :placeholder="__('content.list.search')"
             :aria-label="__('content.list.search')"
+            :maxlength="$this::SEARCH_MAX"
             clearable
             class="sm:max-w-xs"
         />
@@ -601,7 +609,11 @@ new class extends Component {
                                             <flux:menu.item icon="pencil-square" :href="$editUrl" wire:navigate data-test="edit-entry-menu-{{ $entry->id }}">{{ __('common.actions.edit') }}</flux:menu.item>
                                         @endif
                                         @if ($entry->isPublic())
-                                            <flux:menu.item icon="arrow-top-right-on-square" :href="$entry->url()" target="_blank">{{ __('content.list.actions.view') }}</flux:menu.item>
+                                            @if (in_array($entry->locale, $activeCodes, true))
+                                                <flux:menu.item icon="arrow-top-right-on-square" :href="$entry->url()" target="_blank" data-test="view-entry-{{ $entry->id }}">{{ __('content.list.actions.view') }}</flux:menu.item>
+                                            @else
+                                                <p class="max-w-60 px-2 py-1.5 text-xs text-zinc-500 dark:text-zinc-400" data-test="language-off-note-{{ $entry->id }}">{{ __('content.form.language_off') }}</p>
+                                            @endif
                                         @endif
                                         @if ($abilities['create'] && $this->multilingual && ($missingLanguages = $this->missingLanguages($entry)) !== [])
                                             <flux:menu.submenu icon="language" :heading="__('content.list.actions.translate')">

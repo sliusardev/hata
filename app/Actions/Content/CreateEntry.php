@@ -24,6 +24,9 @@ class CreateEntry
      * the group already has a record in that language, that record is returned unchanged, also when another
      * request created it a moment ago (the unique index decides the race). Publishing (or scheduling) needs the
      * type's `edit`, and so does choosing the author: without it the actor is the author, whatever the data says.
+     * A translation (with `$source`) by an actor without `edit` leaves the group's shared values alone: they are
+     * those of published records in other languages, so the shared fields of the data are ignored. A new record
+     * (no source) has a group of its own, and its creator sets them.
      *
      * @param  array<string, mixed>  $data  The form data; validated here (EntryInput).
      *
@@ -53,7 +56,7 @@ class CreateEntry
         }
 
         try {
-            $input = EntryInput::validate($type, $locale, null, $data);
+            $input = EntryInput::validate($type, $locale, null, $data, withSharedFields: $source === null || $mayEdit);
             $input['author_id'] ??= $actor->id;
 
             if ($input['status'] === EntryStatus::Published && ! $mayEdit) {

@@ -15,7 +15,7 @@ Components: `resources/views/pages/admin/roles/`. The create and edit pages exte
 ## Permissions
 
 - **Registry:** `config/permissions.php` → `groups` (`resource => [actions]`, name `resource.action`). Modules extend it with `app(PermissionRegistry::class)->register('pages', [...])`.
-- **Permissions:** `admin.access`, `users.view|create|edit|delete`, `roles.view|create|edit|delete`, `settings.edit` (see [site settings](site-settings.md)), `media.view|upload|edit|delete` (see [media](media.md)).
+- **Permissions:** `admin.access`, `users.view|create|edit|delete`, `roles.view|create|edit|delete`, `settings.edit` (see [site settings](site-settings.md)), `media.view|upload|edit|delete` (see [media](media.md)), and per content type `<type>.view|create|edit|delete`, today `pages.view|create|edit|delete` (registered by `ContentTypes::register()`, not in the config file; see [content](content.md)).
 - **Sync:** `php artisan permissions:sync` creates missing permissions and lists stale ones; `--prune` deletes them. It also clears the Spatie cache.
 - **Labels:** `lang/*/permissions.php` → `groups.<resource>`, `items.<resource>.<action>`. A test checks that every permission has a label in every language.
 - **Checks in code** always use permissions (`can('users.edit')`), never role names.
@@ -26,7 +26,7 @@ Components: `resources/views/pages/admin/roles/`. The create and edit pages exte
 |---|---|---|
 | `super-admin` | all, through `Gate::before` | can't be changed or deleted |
 | `admin` | all registered (`*`), except the reserved ones | |
-| `editor` | `admin.access` | |
+| `editor` | `admin.access`, the four `media.*` and the four `pages.*` permissions | |
 | `author` | `admin.access` | |
 
 **Reserved permissions** (`config/permissions.php` → `reserved`, currently `maintenance.run`): `*` in a role's defaults does not grant them (`RoleSeeder` subtracts the list when it expands `*`). They are listed in the registry, the matrix and `permissions:sync` like any permission, so a super admin can give one to a role on purpose; rule 5 keeps everyone else from granting what they don't have.

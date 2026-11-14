@@ -64,6 +64,15 @@ abstract class EntryFormPage extends Component
      */
     abstract public function readOnly(): bool;
 
+    /**
+     * Whether the "For all languages" controls are disabled in a form that is otherwise editable: a translation made
+     * by an actor without the type's `edit`, whose save leaves the group's shared values alone (CreateEntry).
+     */
+    public function sharedFieldsLocked(): bool
+    {
+        return false;
+    }
+
     #[Computed]
     public function contentType(): ContentType
     {

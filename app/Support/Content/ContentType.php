@@ -2,8 +2,10 @@
 
 namespace App\Support\Content;
 
+use App\Rules\EntrySlug;
 use App\Support\Content\Fields\Field;
 use Illuminate\Support\Facades\Lang;
+use InvalidArgumentException;
 
 /**
  * One kind of content: its address segment, permission group, extra fields and tree shape.
@@ -27,6 +29,21 @@ abstract class ContentType
      * at the root of the address.
      */
     abstract public function base(string $locale): ?string;
+
+    /**
+     * Refuses a base that is not one segment in the slug format (EntrySlug::FORMAT), such as `blog/news`, `/blog` or
+     * `Blog`: the content route would never match the addresses Entry::url() builds with it. Null (the root) passes.
+     *
+     * @throws InvalidArgumentException
+     */
+    public function assertValidBase(string $locale): void
+    {
+        $base = $this->base($locale);
+
+        if ($base !== null && preg_match(EntrySlug::FORMAT, $base) !== 1) {
+            throw new InvalidArgumentException("The base [{$base}] of content type [{$this->key()}] in [{$locale}] is not a slug.");
+        }
+    }
 
     /**
      * @return list<Field>

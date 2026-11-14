@@ -149,6 +149,10 @@ new class extends EntryFormPage {
         try {
             $restored = $restoreEntry->handle(Auth::user(), $this->entry);
         } catch (ProtectedActionException $exception) {
+            // The action cleared `deleted_at` on the loaded record before it gave up: render the stored one.
+            $this->boundEntry = null;
+            unset($this->entry);
+
             Flux::toast(variant: 'danger', text: $exception->getMessage());
 
             return;

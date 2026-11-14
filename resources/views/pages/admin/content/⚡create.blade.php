@@ -48,6 +48,7 @@ new class extends EntryFormPage {
 
         abort_unless(is_string($from) && ctype_digit($from), 404);
         $source = Entry::query()->ofType($type)->findOrFail((int) $from);
+        $this->authorize('view', $source);
 
         // The group already has this language (in the trash too): open that record instead of a form that could
         // never be saved.
@@ -86,6 +87,11 @@ new class extends EntryFormPage {
     public function readOnly(): bool
     {
         return false;
+    }
+
+    public function sharedFieldsLocked(): bool
+    {
+        return $this->sourceId !== null && ! $this->abilities['edit'];
     }
 
     /**

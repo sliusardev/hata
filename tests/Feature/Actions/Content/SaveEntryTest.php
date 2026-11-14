@@ -302,6 +302,29 @@ test('a create that loses the race for a translation returns the record that won
     'another slug (fails on the unique index)' => 'about-them',
 ]);
 
+test('a translation by an actor without edit leaves the shared values alone; a new record by them sets its own', function () {
+    registerEventsType();
+    $creator = User::factory()->withPermissions(['products.view', 'products.create', 'events.view', 'events.create'])->create();
+    [$a, $b] = Media::factory()->image()->count(2)->create();
+
+    $uk = createEntryAs($this->superAdmin, 'products', 'uk', ['title' => 'Стіл', 'slug' => 'stil', 'fields' => ['price' => '10']]);
+    $en = createEntryAs($creator, 'products', 'en', ['title' => 'Table', 'slug' => 'table', 'fields' => ['price' => 'not a number', 'subtitle' => 'Oak']], $uk);
+
+    expect($en->exists)->toBeTrue()
+        ->and($en->fresh()->fieldValue('subtitle'))->toBe('Oak')
+        ->and($uk->group->fresh()->shared)->toBe(['price' => 10]);
+
+    $event = createEntryAs($this->superAdmin, 'events', 'uk', ['title' => 'Подія', 'slug' => 'podiia', 'fields' => ['gallery' => [$a->id]]]);
+    createEntryAs($creator, 'events', 'en', ['title' => 'Event', 'slug' => 'event', 'fields' => ['gallery' => [$b->id]]], $event);
+
+    expect($event->group->fresh()->shared['gallery'])->toBe([$a->id])
+        ->and(usagesOf($event->group))->toBe(["shared.gallery:{$a->id}"]);
+
+    $own = createEntryAs($creator, 'products', 'uk', ['title' => 'Шафа', 'slug' => 'shafa', 'fields' => ['price' => '20']]);
+
+    expect($own->group->fresh()->shared)->toBe(['price' => 20]);
+});
+
 test('publishing without a date publishes now; a future date schedules; the date is read in the site timezone', function () {
     $this->travelTo(now()->setDate(2026, 7, 1)->setTime(12, 0));
     config(['admin.timezone' => 'Europe/Kyiv']);
@@ -468,6 +491,15 @@ test('the policy checks the type\'s own permissions', function () {
         ->and($user->can('forceDelete', $page))->toBeFalse()
         ->and($user->can('view', $product))->toBeFalse();
 });
+
+test('edit or create without view still opens the list and a record', function (string $permission) {
+    $user = User::factory()->withPermissions([$permission])->create();
+    $page = Entry::factory()->page()->create();
+
+    expect($user->can('viewAny', [Entry::class, 'pages']))->toBeTrue()
+        ->and($user->can('view', $page))->toBeTrue()
+        ->and($user->can('viewAny', [Entry::class, 'products']))->toBeFalse();
+})->with(['pages.edit', 'pages.create']);
 
 test('authors are the users who may create the type, super admins included', function () {
     $direct = User::factory()->withPermissions(['pages.create'])->create(['name' => 'Direct']);

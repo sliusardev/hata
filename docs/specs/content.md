@@ -13,19 +13,28 @@ slug and path rules, the body sanitizer, the save actions, the trash, the admin 
 | `label()`, `pluralLabel()` | translated names, from `content.types.<key>.label` / `.plural` by default |
 | `icon()` | icon name for navigation |
 | `hierarchical()` | records form a tree with a parent and a path |
-| `base($locale)` | first address segment of the type in a language, or null for the root |
+| `base($locale)` | first address segment of the type in a language, or null for the root; must be one slug in the slug format (`assertValidBase()`) |
 | `fields()` | the extra fields (none by default); `field($name)`, `sharedFields()`, `localFields()` |
 | `description()` | the line under the admin list's heading, from `content.types.<key>.description` |
 | `createLabel()` | the list's "Create" button ("Create page"), from `content.types.<key>.create` |
 | `newLabel()` | the heading of a new record's form ("New page"), from `content.types.<key>.new`, else `createLabel()` |
 | `perPage()` | admin list page size, 20 by default |
 | `permission($action)` | `"{key}.{action}"` |
+| `assertValidBase($locale)` | throws `InvalidArgumentException` when `base($locale)` is neither null nor one segment matching `EntrySlug::FORMAT` (`blog/news`, `/blog`, `Blog` and `''` are refused): `Entry::url()` would build an address the content route never matches |
 
 `App\Support\Content\ContentTypes` (singleton) holds the registered types: `register()`, `all()`, `find()`,
 `get()` (throws on an unknown key) and `pattern()`, an alternation of the keys for route constraints (it
-matches nothing while no type is registered). Keys follow the permission segment format. `register()` also
+matches nothing while no type is registered). Keys follow the permission segment format. `register()` refuses a key
+that is already registered and checks the type's base in every language of the catalogue (`assertValidBase()`, about
+130 `base()` calls once per request, when the registry is built), both with `InvalidArgumentException`. It also
 registers the type's `view`, `create`, `edit` and `delete` (`ContentTypes::ACTIONS`) with `PermissionRegistry`, so
 a type registered at any time (a module's, or a test's) is seen by `permissions:sync` and the role matrix.
+
+A module registers its type from its provider's `register()` (for example
+`$this->app->afterResolving(ContentTypes::class, fn (ContentTypes $types) => $types->register(new PostsType))`), not
+from `boot()`: the admin routes' `{type}` pattern (`pattern()`) is built when the routes load, which can happen before
+another provider boots, and a type registered after that has no admin pages (and the route cache keeps the pattern it
+was built with).
 
 `App\Providers\ContentServiceProvider` binds the singleton and registers `PagesType` (key `pages`,
 hierarchical, no base, no fields). Its `boot()` builds the registry, so the kit's types have registered their
@@ -110,7 +119,9 @@ group and type).
 `^[a-z0-9]+(-[a-z0-9]+)*$`; not reserved (only for a record at the top of the address, that is without a parent
 and in a type with no base: `ReservedSlugs`, or the base of any registered type in that language); the full path
 at most 255 characters; not taken by another record of the type and language, trashed ones included, the record
-being edited excepted. Messages are `content.slug.*`. An empty value is left to `required`.
+being edited excepted (one query; when the holder is in the trash the message says so, `content.slug.taken_trashed`:
+restore it or delete it for good). Messages are `content.slug.*`. An empty value is left to `required`. The format is
+anchored with `\A` and `\z` (`EntrySlug::FORMAT`), so `"about\n"` is refused.
 
 ## Body
 
@@ -208,7 +219,8 @@ the type by name as its form value.
 `App\Support\Content\EntryAuthors::query($type)`: the users who hold `<type>.create` directly or through a role, and
 super admins; `options($type)` gives `id => name` by name.
 
-`App\Policies\EntryPolicy` checks the type's own permission: `viewAny($user, $type)` and `view` → `view`,
+`App\Policies\EntryPolicy` checks the type's own permission: `viewAny($user, $type)` and `view` → any of `view`,
+`edit` and `create` (as decision 31 does for roles, so `edit` or `create` without `view` is not a dead end),
 `create($user, $type)` → `create`, `update`, `restore` and `preview` → `edit`, `delete` and `forceDelete` →
 `delete`. Use `can('create', [Entry::class, 'pages'])` for the two that take a type key.
 
@@ -220,7 +232,11 @@ looks taken, or the unique index refusing the insert, ends in a look-up that ret
 scheduling (`status` = `published`) needs the type's `edit`: without it, it is a `status` field error. The author
 defaults to the actor; only an actor with the type's `edit` chooses another one, and for anyone else the author input
 is ignored and the actor is the author (so a creator can save a translation made with `copyFor()`, which copies the
-source's author). A path held by a redirect row takes it over (the row goes).
+source's author). A translation (`$source` given) by an actor without the type's `edit` leaves the group's shared values
+alone: the shared fields of the data are neither validated nor written (`EntryInput::validate(..., withSharedFields:
+false)`), and the group and its `shared.<name>` usages are not touched, because those values belong to the records
+in the other languages, published ones included. A new record (no source) has a group of its own, and a creator sets
+its shared values. A path held by a redirect row takes it over (the row goes).
 
 `App\Actions\Content\UpdateEntry::handle($actor, $entry, $data)`: authorizes `update`; refuses a record in the trash
 with `ProtectedActionException` (`content.entry.trashed`: it is restored first); the record's type and
@@ -231,7 +247,8 @@ Both validate the data themselves (`EntryInput`), so a tampered value is a field
 in one transaction through `App\Actions\Content\EntryWriter`: the body through `BodySanitizer::clean()`;
 `published_at` set to now when publishing without one; per-language field values (`toStorage()`) into
 `entries.fields`, shared ones into `entry_groups.shared` (merged, so a value written from one translation reads the
-same from every other); then the media usages: `image`, `body` (only ids of existing files) and `fields.<name>` on the
+same from every other; only the shared fields the validated input carries, none for a creator's translation); then
+the media usages: `image`, `body` (only ids of existing files) and `fields.<name>` on the
 record, `shared.<name>` on the group (a rich text field's images only when the file exists). A new record with no files makes no usage query.
 
 `Entry::copyFor($locale)` is the form data of a new translation: title, body, excerpt, SEO, image, author and every
@@ -262,9 +279,13 @@ parent).
 | `PruneEntryTrash::handle(): int` | none (decision 16) | deletes for good what was trashed more than `content.trash_days` days ago, with every trashed record under it (even one trashed after the cut-off), 200 records per chunk, a transaction per chunk |
 
 `DeleteEntry::purge($records)` (trashed records loaded with `id`, `type`, `locale` and `path`) is the removal both
-share, without authorization: it loads the records with every trashed record under their paths, then removes their
-media usages, the rows (their redirects follow by foreign key), then every group left with no record (trashed ones
-counted) with its usages. Six queries whatever the number of records. A group that still has a record in another language stays.
+share, without authorization: it loads the records with every trashed record under their paths with
+`lockForUpdate()`, then removes the media usages of those still in the trash (a subquery), the rows still in the
+trash (`onlyTrashed()`; their redirects follow by foreign key), then every group left with no record (trashed ones
+counted) with its usages. A record another request restored meanwhile is therefore left alive with its usages and
+redirects (on MySQL the lock makes such a restore wait; SQLite has no row locks, and the trash filter covers a restore
+until the transaction's first write, after which SQLite lets no other writer in). Six queries whatever the number of
+records. A group that still has a record in another language stays.
 
 `content:prune-trash` prints "Removed N trashed record(s)." and runs `daily()` in `routes/console.php` next to
 `media:prune-deleted`. The admin list prunes too, so no cron is required.
@@ -279,11 +300,11 @@ Routes in `routes/admin.php` (prefix `admin`, `auth`, `verified`, `can:admin.acc
 
 | Route | Name | Page |
 |---|---|---|
-| `admin/content/{type}` | `admin.content.index` | `pages::admin.content.index`, the list; authorizes `viewAny` |
-| `admin/content/{type}/create` | `admin.content.create` | `pages::admin.content.create`, the form for a new record; authorizes `create`. Takes `locale` and `from` |
+| `admin/content/{type}` | `admin.content.index` | `pages::admin.content.index`, the list; authorizes `viewAny` (`view`, `edit` or `create`) |
+| `admin/content/{type}/create` | `admin.content.create` | `pages::admin.content.create`, the form for a new record; authorizes `create`, and `view` of the `from` record. Takes `locale` and `from` |
 | `admin/content/{type}/{entry}/edit` | `admin.content.edit` | `pages::admin.content.edit`, the form of a saved record: a record of another type is 404, authorizes `view`; trashed records resolve (`withTrashed()`) and open read-only |
 
-**Sidebar.** The "Content" group lists every registered type the actor may view (`viewAny`, its plural label and icon),
+**Sidebar.** The "Content" group lists every registered type the actor may view (`viewAny`: `view`, `edit` or `create`; its plural label and icon),
 then Media; the group shows when any of them or `media.view` holds.
 
 **List** (`pages::admin.content.index`, a plain full-page component, no islands):
@@ -293,7 +314,8 @@ then Media; the group shows when any of them or `media.view` holds.
 - Tabs All, Published, Drafts, Scheduled, Trash with counts. Published is `public()`; Drafts is `draft` or a published
   record without a date; Scheduled is published with a future date. The counts are of the type and language, whatever
   the search and the filter.
-- Filters: search (`search_index`, title and slug, case-insensitive with Cyrillic); the list's language (every
+- Filters: search (`search_index`, title and slug, case-insensitive with Cyrillic; the term is cut at 200 characters,
+  `SEARCH_MAX`, in `mount()` and `updatedSearch()`, and the input has `maxlength="200"`); the list's language (every
   language added to the site, a switched-off one marked "off"); "Missing: <language>" (records whose group has no live
   record in that language, trashed translations count as missing). Both language selects and the Translations column
   are absent on a site with one language.
@@ -311,7 +333,8 @@ then Media; the group shows when any of them or `media.view` holds.
   phone the translations, author and date columns are hidden.
 - Translations bar: green = published, amber = draft or scheduled, `n/total` where total is every language added to
   the site (switched-off ones included). Hovering (or focusing) it opens `partials/admin/content/translations-grid`.
-- Menu: Edit (`edit`), View on site (public records), Add translation (`create`; a submenu of the languages the group
+- Menu: Edit (`edit`), View on site (public records; in a switched-off language a muted note instead,
+  `content.form.language_off`, since that address answers 404), Add translation (`create`; a submenu of the languages the group
   lacks, each to `admin.content.create` with `from` and `locale`), Move to trash (`delete`).
 - Trash tab: a flat list by `deleted_at`, newest first, with "Removed on <date>" (`deleted_at` + `trash_days`). Menu:
   Restore (`edit`, `RestoreEntry`) and Delete for good (`delete`, `DeleteEntry`).
@@ -360,8 +383,11 @@ error instead of creating a record outside the group. Save calls
   a record that is already in the trash does nothing (no toast, no redirect). The record the route bound serves the
   first render, so it is loaded once.
 - **Header**: a back link to the list (in the record's language), the record's title (or `newLabel()`) with a
-  Draft/Scheduled/"In the trash" badge, "View on site" (a public record) or "Preview" (a draft or scheduled one),
-  both opening `Entry::url()` in a new tab and only for a saved record outside the trash, and Save. Page title:
+  Draft/Scheduled/"In the trash" badge, "View on site" (a public record) or "Preview" (a draft or scheduled one, only
+  for a viewer with the type's `edit`, who may preview it; a view-only user gets no link), both opening `Entry::url()`
+  in a new tab and only for a saved record outside the trash; a record in a switched-off language shows the muted note
+  "This language is switched off, so the page is not on the site yet" (`content.form.language_off`) instead, since its
+  address answers 404 for everyone (previewing an off language is not included). Then Save. Page title:
   `content.form.page_title` (":type: :title") through `->title()`.
 - **Left column**: a card with the title, the address (the prefix as text: the site address without the scheme, the
   language prefix when not the default, the type's base, the parent's path; the slug is the input), the body
@@ -376,7 +402,9 @@ error instead of creating a record outside the group. Save calls
   (with trashed translations); a new record without a source says translations come after saving. A `locale` error
   (the language removed before Save) and a `source` error show in a callout at the top of the form, visible on a
   one-language site too. "For all languages" with `sharedFields()` and the line that a change
-  applies to every translation (absent when the type has none). "Image" (the media picker in field mode,
+  applies to every translation (absent when the type has none); in a translation made by a user without the type's
+  `edit` (`sharedFieldsLocked()`) these controls are disabled with a line that changing them needs the right to edit
+  (`content.form.shared.locked`), as `CreateEntry` ignores them. "Image" (the media picker in field mode,
   `accept="image"`). "Attributes": the parent (hierarchical types; a native select in tree order, indented by depth,
   without the record and its descendants, plus "No parent"; one query; a trashed record shows only its actual parent,
   trashed or not, so its read-only prefix is its stored path) and the author (a select of
@@ -388,7 +416,10 @@ error instead of creating a record outside the group. Save calls
   `gallery` use the picker in field mode (a read-only form lists the files instead, from one query).
 - **Read-only** (`view` only, or a trashed record): every control disabled, no Save, no trash, no picker. A trashed
   record shows "This record is in the trash" with the date it will be removed and Restore (`edit`; `RestoreEntry`,
-  then the edit page with a toast); other read-only forms say they can be viewed only.
+  then the edit page with a toast; a restore refused by a conflict is a danger toast, and the record is loaded again,
+  because the action had already cleared `deleted_at` on the loaded one, so the form still shows it in the trash);
+  other read-only forms say they can be viewed only. A user with `create` but neither `view` nor `edit` opens saved
+  records read-only too.
 - **Validation**: the actions validate (`EntryInput`); their errors are put on `form.<key>` and the browser event
   `entry-form-invalid` scrolls the first one into view. The editor keeps its content.
 - **Browser side** (Alpine `entryForm`, `resources/js/entry-form.js`): while a new record's slug has not been typed by
@@ -511,28 +542,31 @@ cache; the query budget and the cost of a miss and a redirect; the list's "View 
 and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
 the tree, `missing`, the list's language (session, fallback), the translations bar and its create links, the one-language
 site, the Create button, trash/restore/delete for good with their permissions and confirmation texts, the row menu, empty
-states, the query string, the same query count for 5 and 20 rows, the hourly prune, the indent only on the full tree, and
-that the create and edit pages authorize.
+states, the query string, the search term cut at 200 characters, the same query count for 5 and 20 rows, the hourly
+prune, the indent only on the full tree, that the create and edit pages authorize, `edit` or `create` without `view`
+opening the list, the sidebar item and a record, and the translation form refusing a source the actor may not view.
 `tests/Feature/Admin/Content/EntryFormTest.php`: creating through the form (stored, redirect, toast), the language from the
 query (404 for one not on the site), the page title, `suggestSlug()` (free, suffixed, under a parent), editing title,
 parent and slug, errors on their fields with the body kept, the parent options (no own subtree, no other language),
 a tampered parent and a language removed before saving, a translation from `copyFor()` saved into the group, the
 redirect to an existing or trashed translation, view-only (read-only, `save` and `confirmTrash` refused), a creator
 without `edit` (status locked, author as text, publishing refused), trash with its confirmation, a trashed record
-(read-only, removal date, Restore with and without `edit`), another type's record 404, View on site / Preview, a type
+(read-only, removal date, Restore with and without `edit`, a restore refused by a conflict still shown in the trash),
+another type's record 404, View on site / Preview (no Preview for a view-only user, the note for a switched-off
+language in the form and the list), the shared values locked in a creator's translation and kept on save, a type
 with fields (`ProductsType`: one control per field, local and shared values stored in place, a field error), no field
 cards for `pages`, the language card states and links (trashed included) and its absence on a one-language site, the
 editor's images and the detached picker, the same query count for few and many translations and pages, and the media
 library's usage link to the edit page (also for a trashed record).
-`tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, `pages`, the permissions after a
+`tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, a duplicate key and invalid bases refused, `pages`, the permissions after a
 sync and for the editor, every field kind's round trip and rules, shared and local fields, media ids.
 `tests/Feature/Models/EntryTest.php`: public/scheduled/trashed visibility, the unique indexes, translations, the
 tree, the null-on-delete keys, `url()`, `fieldValue()` and the search index. The
 test-only `Tests\Fixtures\ProductsType` (`tests/fixtures/ProductsType.php`) has one field of every kind with
 `price` shared; tests register it themselves.
 `tests/Feature/Admin/Content/RichTextComponentTest.php`: the editor component's binding config (no `wire:model` on the page), the image button only with `media.view`, read-only without a toolbar. The editor itself runs only in a browser and has no automated test; `isContentEdit()` and `normalizeHref()` were checked once with a Node script against the installed Tiptap (the extension manager's plugins on a headless editor), not kept in the suite. The form's browser side (slug following, SEO preview, leave-page warning, Ctrl/Cmd+S, scrolling to an error) has no automated test either.
-`tests/Feature/Content/BodyTest.php`: hostile inputs as a dataset with the exact output, allowed markup kept, Cyrillic round trip, long body, `mediaIds()`, `withoutMedia()`, rendering (one query, versioned URL, dropped images, alt fallback, no query without images).
-`tests/Feature/Content/EntryPathsTest.php`: suggested slugs, the slug rule, `move()` (descendants, redirects, the same
+`tests/Feature/Content/BodyTest.php`: hostile inputs as a dataset with the exact output, allowed markup kept, Cyrillic round trip, long body, a body of `&` under the form's limit kept whole, `mediaIds()`, `withoutMedia()`, rendering (one query, versioned URL, dropped images, alt fallback, no query without images).
+`tests/Feature/Content/EntryPathsTest.php`: suggested slugs, the slug rule (a trailing newline, the message for a holder in the trash), `move()` (descendants, redirects, the same
 query count for 2 and 50 descendants, redirect rows that already exist).
 `tests/Feature/Actions/Content/EntryTrashTest.php`: trashing a tree (one instant, out of `public()`, the path still
 taken, `descendantsCount()`), the same query count for 2 and 30 descendants, restoring exactly what was trashed
@@ -542,12 +576,14 @@ meanwhile (and the refusal when it is taken twice), deleting for good (every tra
 equal to `descendantsCount()`, redirects, usages, an emptied group, a group kept for another language), no live record
 under a trashed one, the address free again after a delete for good (a new `about` with a child `team`), a live record
 refused, permissions, pruning (31 and 29 days, a child trashed 40 days ago with or without its parent, a record under
-a pruned one trashed after the cut-off), the command and its schedule, and a file deleted while its record is in the
-trash. `tests/Feature/Models/MediaUsageTest.php` checks that `forgetAll()` reaches
+a pruned one trashed after the cut-off), the command and its schedule, a file deleted while its record is in the
+trash, and a record restored between the purge's selection and its delete surviving with its usages and redirects. `tests/Feature/Models/MediaUsageTest.php` checks that `forgetAll()` reaches
 a trashed record and a `Setting`; `tests/Feature/Localization/ContentLanguagesTest.php` the language removal rule.
 `tests/Feature/Actions/Content/SaveEntryTest.php`: create (group, path, author, cleaned body, usages, a redirect row
 taken over), update (slug and parent moves, type and language kept), translate (group, `copyFor()`, parent mapping),
-a creator without `edit` (publishing refused, translating from `copyFor()` makes them the author), a descendant
+a creator without `edit` (publishing refused, translating from `copyFor()` makes them the author, a translation leaving
+the shared values and their usages alone while their own new record sets them), `edit` or `create` alone passing
+`viewAny`/`view`, a descendant
 path pushed past 255 characters (slug and parent), a trashed record not updated, the existing translation returned
 (also trashed, also after losing the race: a query listener inserts the competing
 record right after the action's own look-up, once failing validation and once the unique index), publishing dates

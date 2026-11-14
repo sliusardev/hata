@@ -6,19 +6,20 @@ use App\Models\Entry;
 use App\Models\User;
 
 /**
- * Each check is the type's own permission, `"{type}.{action}"`. Publishing, restoring and previewing need
- * `edit`; trashing and deleting for good need `delete`.
+ * Each check is the type's own permission, `"{type}.{action}"`. Opening the list and a record also passes with
+ * `edit` or `create` (as decision 31 does for roles), so neither is a dead end without `view`. Publishing,
+ * restoring and previewing need `edit`; trashing and deleting for good need `delete`.
  */
 class EntryPolicy
 {
     public function viewAny(User $actor, string $type): bool
     {
-        return $actor->can("{$type}.view");
+        return $actor->canAny(["{$type}.view", "{$type}.edit", "{$type}.create"]);
     }
 
     public function view(User $actor, Entry $entry): bool
     {
-        return $actor->can("{$entry->type}.view");
+        return $this->viewAny($actor, $entry->type);
     }
 
     public function create(User $actor, string $type): bool
