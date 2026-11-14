@@ -3,7 +3,12 @@
 use App\Actions\Media\CreateStorageLink;
 use App\Actions\Media\MoveMediaToDisk;
 use App\Actions\Media\OptimizeImage;
+use App\Actions\Settings\AddContentLocale;
+use App\Actions\Settings\RemoveContentLocale;
 use App\Actions\Settings\RemoveLogo;
+use App\Actions\Settings\SetContentLocaleActive;
+use App\Actions\Settings\SetDefaultContentLocale;
+use App\Exceptions\ContentLocaleException;
 use App\Actions\Settings\UpdateSiteSettings;
 use App\Actions\Settings\SetLogo;
 use App\Actions\Settings\TestStorageConnection;
@@ -13,6 +18,9 @@ use App\Exceptions\StorageLinkException;
 use App\Exceptions\StorageSettingsException;
 use App\Livewire\Forms\SiteSettingsForm;
 use App\Support\ColorScheme\ColorScheme;
+use App\Support\Localization\ContentLocales;
+use App\Support\Localization\Language;
+use App\Support\Localization\LanguageCatalog;
 use App\Models\Media;
 use App\Models\Role;
 use App\Support\Media\DirectServing;
@@ -86,6 +94,146 @@ new #[Title('site_settings.title')] class extends Component {
      * @var array{ok: bool, message: string}|null
      */
     public ?array $storageTest = null;
+
+    /**
+     * What the open confirmation of the Languages tab is about: "off", "default" or "remove", and the language.
+     */
+    #[Locked]
+    public string $languageAction = '';
+
+    #[Locked]
+    public string $languageCode = '';
+
+    public bool $showLanguageModal = false;
+
+    /**
+     * "Use it for the admin and sign-in pages too" in the make-default confirmation.
+     */
+    public bool $languageAlsoInterface = true;
+
+    /**
+     * The site's content languages, the default first.
+     *
+     * @return list<array{language: Language, active: bool, default: bool}>
+     */
+    #[Computed]
+    public function siteLanguages(): array
+    {
+        $locales = app(ContentLocales::class);
+
+        return array_map(fn (array $entry): array => [
+            'language' => $locales->language($entry['code']),
+            'active' => $entry['active'],
+            'default' => $entry['code'] === $locales->defaultCode(),
+        ], $locales->entries());
+    }
+
+    /**
+     * The catalogue languages that are not on the site yet, by their English name.
+     *
+     * @return list<Language>
+     */
+    #[Computed]
+    public function catalogLanguages(): array
+    {
+        $locales = app(ContentLocales::class);
+
+        return array_values(array_filter(app(LanguageCatalog::class)->all(), fn (Language $language): bool => ! $locales->has($language->code)));
+    }
+
+    public function addLanguage(AddContentLocale $addContentLocale, string $code): void
+    {
+        $this->changeLanguages(
+            fn () => $addContentLocale->handle(Auth::user(), $code),
+            'site_settings.languages.messages.added',
+            $code,
+        );
+    }
+
+    /**
+     * Turn a language on at once; turning it off asks first, because its pages stop answering.
+     */
+    public function toggleLanguage(SetContentLocaleActive $setContentLocaleActive, string $code): void
+    {
+        if (app(ContentLocales::class)->isActive($code)) {
+            $this->confirmLanguage('off', $code);
+
+            return;
+        }
+
+        $this->changeLanguages(
+            fn () => $setContentLocaleActive->handle(Auth::user(), $code, true),
+            'site_settings.languages.messages.turned_on',
+            $code,
+        );
+    }
+
+    public function confirmLanguage(string $action, string $code): void
+    {
+        $this->authorize('settings.edit');
+
+        if (! in_array($action, ['off', 'default', 'remove'], true) || ! app(ContentLocales::class)->has($code)) {
+            return;
+        }
+
+        $this->languageAction = $action;
+        $this->languageCode = $code;
+        $this->languageAlsoInterface = true;
+        $this->showLanguageModal = true;
+    }
+
+    public function runLanguageAction(
+        SetContentLocaleActive $setContentLocaleActive,
+        SetDefaultContentLocale $setDefaultContentLocale,
+        RemoveContentLocale $removeContentLocale,
+    ): void {
+        $action = $this->languageAction;
+        $code = $this->languageCode;
+        $this->showLanguageModal = false;
+        $this->languageAction = '';
+        $this->languageCode = '';
+
+        if ($code === '') {
+            return;
+        }
+
+        $actor = Auth::user();
+
+        match ($action) {
+            'off' => $this->changeLanguages(fn () => $setContentLocaleActive->handle($actor, $code, false), 'site_settings.languages.messages.turned_off', $code),
+            'default' => $this->changeLanguages(fn () => $setDefaultContentLocale->handle($actor, $code, $this->languageAlsoInterface), 'site_settings.languages.messages.default_changed', $code),
+            'remove' => $this->changeLanguages(fn () => $removeContentLocale->handle($actor, $code), 'site_settings.languages.messages.removed', $code),
+            default => null,
+        };
+    }
+
+    /**
+     * Run a change to the site's languages and reload the tab, so the whole page (and its language, when the
+     * interface default changed) is rendered from the new settings. A refusal is a danger toast.
+     */
+    private function changeLanguages(\Closure $change, string $message, string $code): void
+    {
+        $this->authorize('settings.edit');
+
+        $name = app(ContentLocales::class)->language($code)->name;
+
+        try {
+            $change();
+        } catch (ContentLocaleException $exception) {
+            unset($this->siteLanguages, $this->catalogLanguages);
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
+
+            return;
+        }
+
+        Toast::success(__($message, ['language' => $name]));
+
+        // The tab reloads from the stored settings; an unsaved choice in its field is dropped here, so the
+        // leave-page warning does not fire on the redirect.
+        $this->form->fill(Arr::only($this->savedValues, SiteSettingsForm::SECTIONS['languages']));
+
+        $this->redirectRoute('admin.settings.edit', ['tab' => 'languages']);
+    }
 
     public function mount(SiteSettings $settings): void
     {
@@ -649,7 +797,7 @@ new #[Title('site_settings.title')] class extends Component {
     </div>
 
     <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 dark:border-zinc-700" data-test="site-settings-tabs">
-        @foreach (['general' => 'cog-6-tooth', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch', 'media' => 'adjustments-horizontal'] as $section => $icon)
+        @foreach (['general' => 'cog-6-tooth', 'languages' => 'language', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch', 'media' => 'adjustments-horizontal'] as $section => $icon)
             <flux:navbar.item
                 :icon="$icon"
                 :current="$tab === $section"
@@ -667,18 +815,14 @@ new #[Title('site_settings.title')] class extends Component {
             <flux:input wire:model="form.site_name" :label="__('site_settings.general.site_name')" :description="__('site_settings.general.site_name_description')" required />
 
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:select wire:model="form.default_locale" :label="__('site_settings.general.default_locale')" :description="__('site_settings.general.default_locale_description')">
-                    @foreach (config('app.available_locales') as $code => $languageName)
-                        <flux:select.option :value="$code" wire:key="locale-{{ $code }}">{{ $languageName }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-
                 <flux:select wire:model="form.timezone" :label="__('site_settings.general.timezone')" :description="__('site_settings.general.timezone_description')">
                     @foreach ($this->timezones as $timezone)
                         <flux:select.option :value="$timezone" wire:key="tz-{{ $timezone }}">{{ str_replace('_', ' ', $timezone) }}</flux:select.option>
                     @endforeach
                 </flux:select>
             </div>
+        @elseif ($tab === 'languages')
+            @include('partials.admin.settings.languages')
         @elseif ($tab === 'access')
             <flux:switch wire:model="form.registration_enabled" :label="__('site_settings.access.registration')" :description="__('site_settings.access.registration_description')" align="left" />
 
@@ -1029,6 +1173,10 @@ new #[Title('site_settings.title')] class extends Component {
             </div>
         @endif
     </form>
+
+    @if ($tab === 'languages')
+        @include('partials.admin.settings.languages-modals')
+    @endif
 
     <x-confirm-modal
         wire:model.self="showUnsavedModal"

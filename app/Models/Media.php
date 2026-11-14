@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Actions\Media\OptimizeImage;
 use App\Enums\MediaKind;
 use App\Models\Concerns\HasSearchIndex;
+use App\Support\Localization\ContentLocales;
 use App\Support\Media\DirectServing;
 use App\Support\Media\MediaDisks;
 use Database\Factories\MediaFactory;
@@ -291,7 +292,7 @@ class Media extends Model
     public static function primaryAltLocale(): string
     {
         $locales = (array) config('app.available_locales');
-        $default = (string) config('app.locale');
+        $default = app(ContentLocales::class)->interfaceDefault();
 
         return array_key_exists($default, $locales) ? $default : (string) array_key_first($locales);
     }

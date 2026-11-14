@@ -18,7 +18,7 @@ new #[Title('users.create.title')] class extends Component {
     {
         $this->authorize('create', User::class);
 
-        $this->form->locale = config('app.locale');
+        $this->form->locale = app(App\Support\Localization\ContentLocales::class)->interfaceDefault();
     }
 
     /**

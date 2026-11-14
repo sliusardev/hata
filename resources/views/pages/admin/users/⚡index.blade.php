@@ -239,7 +239,7 @@ new #[Title('users.index.title')] class extends Component {
                                 @endforelse
                             </div>
                         </flux:table.cell>
-                        <flux:table.cell class="max-lg:hidden">{{ config('app.available_locales')[$user->locale ?? config('app.locale')] ?? '—' }}</flux:table.cell>
+                        <flux:table.cell class="max-lg:hidden">{{ config('app.available_locales')[$user->locale ?? app(App\Support\Localization\ContentLocales::class)->interfaceDefault()] ?? '—' }}</flux:table.cell>
                         <flux:table.cell class="max-lg:hidden">{{ $user->created_at?->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
                         <flux:table.cell align="end">
                             <x-admin.row-actions data-test="user-actions-{{ $user->id }}">

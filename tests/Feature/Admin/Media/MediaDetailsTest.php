@@ -84,7 +84,7 @@ it('saves alt text per language and the title', function () {
 
 it('shows the primary alt text and folds the other languages into translations', function () {
     config([
-        'app.locale' => 'uk',
+        'content.interface_default' => 'uk',
         'app.available_locales' => ['en' => 'English', 'uk' => 'Українська', 'pl' => 'Polski', 'de' => 'Deutsch'],
     ]);
     $this->actingAs(mediaEditor());
@@ -113,7 +113,7 @@ it('opens the full file in a new tab from the preview and the open button', func
 });
 
 it('shows no translations block with a single language', function () {
-    config(['app.locale' => 'en', 'app.available_locales' => ['en' => 'English']]);
+    config(['content.interface_default' => 'en', 'app.available_locales' => ['en' => 'English']]);
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create(['alt' => ['en' => 'Bowl']]);
 

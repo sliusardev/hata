@@ -21,7 +21,8 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 | Setting | Config | Section |
 |---|---|---|
 | `site_name` | `app.name` | General |
-| `default_locale` | `app.locale` (read by `SetLocale`) | General |
+| `default_locale` | `app.locale`, and `content.interface_default` (what `SetLocale` reads: `app.locale` holds the request's own language once the middleware ran) | Languages |
+| `content_locales`, `content_default_locale` | `content.locales`, `content.default_locale` (see [languages](languages.md)) | Languages |
 | `timezone` | `admin.timezone` | General |
 | `registration_enabled` | `admin.registration_enabled` | Access |
 | `default_role` | `admin.default_role` | Access |
@@ -37,14 +38,14 @@ Component: `resources/views/pages/admin/settings/⚡edit.blade.php`, form object
 
 ## Tabs
 
-The page has six tabs, "General", "Access", "Email", "Logo", "Colors" and "Media" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|access|mail|logo|colors|media`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
+The page has seven tabs, "General", "Languages", "Access", "Email", "Logo", "Colors" and "Media" (`flux:navbar` items, since Flux free has no tabs component). The open tab is in the query string (`?tab=general|languages|access|mail|logo|colors|media`; anything else falls back to `general`). Each tab has its own "Save" button, which validates and stores only that tab's fields (`SiteSettingsForm::SECTIONS`), and redirects back to the same tab.
 
 Switching tabs while the open one has unsaved changes (compared with the values loaded on mount; a typed SMTP password always counts) opens a confirmation (`<x-confirm-modal>`): "Cancel" stays on the tab, "Switch without saving" restores that tab's fields and opens the other one. Leaving the page with unsaved changes is guarded in the browser (Alpine compares `$wire.form` with `savedValues`, so it also sees edits not yet sent to the server): a `wire:navigate` link (the sidebar) is cancelled through the `livewire:navigate` event and a confirmation "Leave without saving" opens; closing or reloading the tab and plain links get the browser's own `beforeunload` dialog. The browser's Back button is not guarded (`livewire:navigate` with `history: true` arrives after the URL has already changed). A successful save marks the form clean before its redirect.
 
 ## Form
 
 - **Site name:** required, ≤255.
-- **Default language:** one of `app.available_locales`. For guests and users without a language.
+- **Languages tab:** the site's content languages (added from the catalogue, switched on and off, the default; each change is stored at once, see [languages](languages.md)) and, saved with the Save button, **Default interface language**: one of `app.available_locales`, for guests and users without a language. The field shows the site's value, not the administrator's own language.
 - **Timezone:** any PHP timezone. Dates are stored in UTC (`app.timezone` doesn't change); admin views convert with `->tz(config('admin.timezone'))`.
 - **Public registration:** switch. Fortify always registers the registration routes; `App\Http\Middleware\EnsureRegistrationIsEnabled` (in `fortify.middleware`) answers 404 while it's off, and the "Sign up" links check the setting.
 - **Role of new users:** "No role" or any role except super-admin. Roles the actor can't assign (rule 5, `RolePolicy::assign`) are disabled. A warning is shown when the role has `admin.access`. `CreateNewUser` gives the role and never gives super-admin.

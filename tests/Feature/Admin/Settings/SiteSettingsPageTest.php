@@ -65,7 +65,8 @@ test('each tab saves only its own settings and redirects back to it with a messa
     expect(Setting::query()->pluck('value', 'key')->sortKeys()->all())->toBe($expected)
         ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('site_settings.messages.saved'));
 })->with([
-    'general' => ['general', ['default_locale' => 'uk', 'site_name' => 'Hata', 'timezone' => 'Europe/Kyiv']],
+    'general' => ['general', ['site_name' => 'Hata', 'timezone' => 'Europe/Kyiv']],
+    'languages' => ['languages', ['default_locale' => 'uk']],
     'access' => ['access', ['default_role' => 'author', 'registration_enabled' => true]],
     'mail' => ['mail', ['mail_from_address' => 'site@example.com', 'mail_from_name' => 'Hata site']],
 ]);
@@ -162,7 +163,10 @@ test('it validates the general settings', function () {
             'form.timezone' => 'Mars/Olympus',
         ]))
         ->call('save')
-        ->assertHasErrors(['form.site_name', 'form.default_locale', 'form.timezone']);
+        ->assertHasErrors(['form.site_name', 'form.timezone'])
+        ->set('tab', 'languages')
+        ->call('save')
+        ->assertHasErrors(['form.default_locale']);
 
     expect(Setting::count())->toBe(0);
 });

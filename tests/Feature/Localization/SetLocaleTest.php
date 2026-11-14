@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Support\Settings\SiteSettings;
 use Illuminate\Support\Carbon;
 
 test('authenticated users get the interface in their own language', function () {
@@ -34,7 +35,7 @@ test('an unsupported saved language falls back to the default application locale
 });
 
 test('guests get the default application locale', function () {
-    config(['app.locale' => 'uk']);
+    app(SiteSettings::class)->put(['default_locale' => 'uk']);
 
     $response = $this->get(route('login'));
 

@@ -4,6 +4,7 @@ namespace App\Livewire\Forms;
 
 use App\Enums\SystemRole;
 use App\Support\ColorScheme\ColorScheme;
+use App\Support\Localization\ContentLocales;
 use App\Support\Media\ServerCapabilities;
 use App\Support\Settings\SiteSettings;
 use Closure;
@@ -121,7 +122,7 @@ class SiteSettingsForm extends Form
     public function fillFromSettings(SiteSettings $settings): void
     {
         $this->site_name = (string) config('app.name');
-        $this->default_locale = (string) config('app.locale');
+        $this->default_locale = app(ContentLocales::class)->interfaceDefault();
         $this->timezone = (string) config('admin.timezone');
         $this->registration_enabled = (bool) config('admin.registration_enabled');
         $this->default_role = (string) config('admin.default_role');
@@ -171,7 +172,9 @@ class SiteSettingsForm extends Form
      * @var array<string, list<string>>
      */
     public const array SECTIONS = [
-        'general' => ['site_name', 'default_locale', 'timezone'],
+        'general' => ['site_name', 'timezone'],
+        // The list of content languages changes at once through its own actions; Save stores the interface default.
+        'languages' => ['default_locale'],
         'access' => ['registration_enabled', 'default_role'],
         'mail' => ['mail_mailer', 'mail_host', 'mail_port', 'mail_scheme', 'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name'],
         // Logos are uploaded and removed right away, without the Save button.

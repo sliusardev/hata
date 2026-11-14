@@ -52,7 +52,7 @@ it('indexes name, title and every alt for search', function () {
 });
 
 it('falls back to the primary language for an empty alt translation', function () {
-    config(['app.locale' => 'uk', 'app.available_locales' => ['en' => 'English', 'uk' => 'Українська', 'pl' => 'Polski']]);
+    config(['content.interface_default' => 'uk', 'app.available_locales' => ['en' => 'English', 'uk' => 'Українська', 'pl' => 'Polski']]);
     $media = Media::factory()->make(['alt' => ['uk' => 'Каша', 'en' => '']]);
 
     expect(Media::primaryAltLocale())->toBe('uk')
@@ -61,13 +61,13 @@ it('falls back to the primary language for an empty alt translation', function (
         ->and($media->altFor('en', fallback: false))->toBe('')
         ->and($media->altFor('uk'))->toBe('Каша');
 
-    config(['app.locale' => 'fr']);
+    config(['content.interface_default' => 'fr']);
 
     expect(Media::primaryAltLocale())->toBe('en');
 });
 
 it('treats a whitespace-only alt as empty for the fallback', function () {
-    config(['app.locale' => 'uk', 'app.available_locales' => ['en' => 'English', 'uk' => 'Українська']]);
+    config(['content.interface_default' => 'uk', 'app.available_locales' => ['en' => 'English', 'uk' => 'Українська']]);
     $media = Media::factory()->make(['alt' => ['uk' => 'Каша', 'en' => "  \t"]]);
 
     expect($media->altFor('en'))->toBe('Каша')

@@ -5,7 +5,12 @@ use App\Http\Controllers\StaticMediaFallbackController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+/*
+| Public pages, in every content language: the default one at these addresses, the others under /<code>/.
+*/
+Route::localized(function () {
+    Route::view('/', 'welcome')->name('home');
+});
 
 /*
 | Fortify's "home" path. Sends users with admin access to the admin panel and

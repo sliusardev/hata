@@ -2,12 +2,16 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\SetContentLocale;
 use App\Models\User;
+use App\Support\Localization\ContentLocales;
+use App\Support\Localization\LanguageCatalog;
 use App\Support\Media\DirectServing;
 use App\Support\Permissions\PermissionRegistry;
 use App\Support\Settings\SiteSettings;
 use App\Support\Translation\VendorTranslations;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Queue\Events\JobProcessing;
@@ -18,8 +22,10 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +41,30 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(SiteSettings::class);
         $this->app->singleton(DirectServing::class);
+        $this->app->singleton(ContentLocales::class);
+
+        $this->registerLocalizedRoutes();
+    }
+
+    /**
+     * `Route::localized(fn () => ...)` registers public routes twice: as they are (the default content
+     * language) and under `/{locale}` with the names prefixed `localized.`. The prefix matches any code of
+     * the language catalogue, which is code, so the routes never depend on the site settings and can be
+     * cached; SetContentLocale decides per request whether that language is on.
+     */
+    private function registerLocalizedRoutes(): void
+    {
+        Route::macro('localized', function (Closure $routes): void {
+            // The prefixed copy first: a wildcard route of the default language ("{slug}/{child}") would
+            // otherwise take "/de/about" for itself.
+            Route::middleware(SetContentLocale::class)
+                ->prefix('{locale}')
+                ->name(ContentLocales::ROUTE_PREFIX)
+                ->where(['locale' => app(LanguageCatalog::class)->pattern()])
+                ->group($routes);
+
+            Route::middleware(SetContentLocale::class)->group($routes);
+        });
     }
 
     /**
@@ -77,6 +107,9 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureTranslations();
         $this->configureAuthorization();
+
+        // A Livewire component on a public page keeps the page's content language on its update requests.
+        Livewire::addPersistentMiddleware(SetContentLocale::class);
     }
 
     /**

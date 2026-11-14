@@ -5,6 +5,7 @@ namespace App\Livewire\Forms;
 use App\Concerns\ProfileValidationRules;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Localization\ContentLocales;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Form;
@@ -34,7 +35,7 @@ class UserForm extends Form
     {
         $this->name = $user->name;
         $this->email = $user->email;
-        $this->locale = $user->locale ?? config('app.locale');
+        $this->locale = $user->locale ?? app(ContentLocales::class)->interfaceDefault();
         $this->roles = $user->roles->pluck('id')->map(fn (mixed $id): string => (string) $id)->values()->all();
         $this->email_verified = $user->email_verified_at !== null;
     }

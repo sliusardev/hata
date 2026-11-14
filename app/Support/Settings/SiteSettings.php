@@ -67,6 +67,8 @@ class SiteSettings
         'media_s3_path_style' => 'filesystems.disks.s3.use_path_style_endpoint',
         'media_s3_public_url' => 'filesystems.disks.s3.url',
         'media_s3_prefix' => 'filesystems.disks.s3.root',
+        'content_locales' => 'content.locales',
+        'content_default_locale' => 'content.default_locale',
     ];
 
     /**
@@ -132,6 +134,17 @@ class SiteSettings
      * @var array<string, mixed>|null
      */
     private ?array $memo = null;
+
+    /**
+     * `app.locale` as the config files give it, read before any request could change it:
+     * Application::setLocale() writes the current request's language into that key.
+     */
+    private readonly string $configuredLocale;
+
+    public function __construct()
+    {
+        $this->configuredLocale = (string) config('app.locale');
+    }
 
     /**
      * Stored values, encrypted ones still encrypted. Empty while the settings table does not exist yet.
@@ -248,6 +261,10 @@ class SiteSettings
 
             config([$path => $this->cast($key, $value)]);
         }
+
+        // The site's default interface language, where no request's own language can overwrite it.
+        $defaultLocale = $this->stored()['default_locale'] ?? null;
+        config(['content.interface_default' => is_string($defaultLocale) && $defaultLocale !== '' ? $defaultLocale : $this->configuredLocale]);
 
         // The s3 disk is resolved once and keeps its config, so a changed setting needs a fresh one. Only then: the CLI
         // and queue workers apply the settings before every batch and keep the resolved client otherwise.
