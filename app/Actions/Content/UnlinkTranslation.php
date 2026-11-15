@@ -38,7 +38,10 @@ class UnlinkTranslation
                 throw ProtectedActionException::because('content.link.alone');
             }
 
-            $group = EntryGroup::query()->create(['type' => $entry->type, 'shared' => $entry->group->shared]);
+            // Read under a lock, not from the group the caller loaded: another translation may have just saved.
+            $shared = EntryGroup::query()->whereKey($entry->entry_group_id)->lockForUpdate()->value('shared');
+
+            $group = EntryGroup::query()->create(['type' => $entry->type, 'shared' => $shared]);
 
             Entry::withTrashed()->whereKey($entry->id)->toBase()->update(['entry_group_id' => $group->id]);
 

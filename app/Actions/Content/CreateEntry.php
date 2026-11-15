@@ -8,6 +8,7 @@ use App\Models\EntryGroup;
 use App\Models\User;
 use App\Support\Content\ContentType;
 use App\Support\Content\EntryInput;
+use App\Support\Content\EntryPaths;
 use App\Support\Localization\ContentLocales;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,11 @@ use InvalidArgumentException;
 
 class CreateEntry
 {
-    public function __construct(private readonly EntryWriter $writer, private readonly ContentLocales $locales) {}
+    public function __construct(
+        private readonly EntryWriter $writer,
+        private readonly ContentLocales $locales,
+        private readonly EntryPaths $paths,
+    ) {}
 
     /**
      * Creates a record in a language, as a translation of `$source` (joining its group) or in a new group. When
@@ -64,6 +69,8 @@ class CreateEntry
             }
 
             return DB::transaction(function () use ($type, $locale, $source, $input): Entry {
+                $this->paths->lockForSave(null, $input['parent'], $locale);
+
                 $group = $source !== null
                     ? $source->group
                     : EntryGroup::query()->create(['type' => $type->key(), 'shared' => null]);

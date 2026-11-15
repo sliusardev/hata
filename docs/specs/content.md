@@ -157,6 +157,7 @@ group and type).
 | `pathFor($type, $parent, $slug)` | the parent's path and the slug |
 | `move($entry, $newPath, $keepOldPaths = true)` | for the caller's transaction: sets the record's path, rewrites the path of every descendant (same type and language, trashed included, matched by the old path followed by `/`) with one `UPDATE`, deletes the redirect rows whose path a record now holds, and stores every old path in `entry_redirects` with one upsert (an existing row for that path is pointed at the record). Five queries whatever the number of descendants. With `$keepOldPaths = false` no redirect is stored (a record restored from the trash). The SQL concat is the one driver-specific part (`||` on SQLite, `CONCAT` on MySQL) |
 | `relocate($entry, $locale, $path)` | for the caller's transaction, when a record without descendants takes another language: stores the old (type, language, path) in `entry_redirects` pointing at the record (upsert), deletes a redirect row holding the new language and path, and sets the record's `locale` and `path` without saving. `move()` is not used for it: it matches descendants by the path prefix, which in the new language would be unrelated records |
+| `lockForSave($entry, $parent, $locale)` | for the caller's transaction, before it writes: locks the record's row and the parent's in id order (two saves never wait on each other) and checks what validation saw still holds: the record is live with the language and path the caller loaded (else a `slug` error, `content.entry.changed_meanwhile`), the parent is a live record of the language at the same path and not the record or anything under it (else `parent_id`, `content.entry.parent_invalid`). `CreateEntry` and `UpdateEntry` call it, so a page cannot land under a parent that has just left the language, and two pages cannot be moved under each other |
 | `isReserved($type, $locale, $parent, $slug)` | the one answer to "reserved at the top of the address": no parent, a type with no base, and the slug is in `ReservedSlugs` or is the base of any registered type in that language. Used by both `suggest()` and `EntrySlug` |
 
 `App\Rules\EntrySlug($type, $locale, $parent, $ignore)` checks, in this order: the format
@@ -293,20 +294,25 @@ request between the check and the write is a `slug` field error.
 (decision 63). It is a `locale` field error when the language is not on the site (`content.entry.locale_invalid`), the
 record's group already has a record in it, trashed ones included (`locale_taken`), or the record has anything under
 it, trashed ones included (`locale_has_children`: those pages would stay in the old language). The data is validated
-in the new language (the parent must be a record of that language, the slug free there), and
+in the new language (the parent must be a record of that language, the slug free there), the language checks run
+again inside the transaction under the row lock (a page created under the record or a translation added meanwhile; a
+unique index refusal on the language is a `locale` error too), and
 `EntryPaths::relocate()` keeps the old address as a redirect: `ContentRouter` redirects to `Entry::url()`, so the old
 address leads to the new language's one.
 
 `App\Actions\Content\LinkTranslations::handle($actor, $entry, $other)`: makes the existing record `$other` the
 translation of `$entry` in its language. Authorizes `update` on both; refuses (`ProtectedActionException`) records of
 different types, of one group already or in the trash (`content.link.invalid`), and a language the entry's group
-already has, trashed ones included (`content.link.overlap`; checked again under a lock on both groups' rows). Only
+already has, trashed ones included (`content.link.overlap`). Both groups' rows are locked in id order and the
+decision is made from what the lock shows, not from the loaded records; a unique index refusal is the same overlap
+error, and the emptied group is deleted only when it really has no record left. Only
 `$other` moves: it leaves its own group, whose other records stay linked to each other, and takes the shared values
 of the group it joins; a group left empty is deleted with its usages. Written past the model, so `updated_at` stays:
 linking is not an edit.
 
 `App\Actions\Content\UnlinkTranslation::handle($actor, $entry)`: takes the record out of its group into a new one
-with a copy of the shared values and their usages (`EntryWriter::syncSharedUsages()`); the others stay together.
+with a copy of the shared values (read under a lock inside the transaction) and their usages
+(`EntryWriter::syncSharedUsages()`); the others stay together.
 Authorizes `update`; refuses a record in the trash (`content.entry.trashed`) and one with no other record in its
 group, trashed ones counted (`content.link.alone`).
 

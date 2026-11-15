@@ -8,6 +8,7 @@ use App\Support\Localization\ReservedSlugs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Slugs and paths of records: generating a free slug, building a path and moving a record (with its
@@ -188,5 +189,51 @@ class EntryPaths
         $rest = 'SUBSTR(path, '.(strlen($oldPath) + 1).')';
 
         return DB::connection()->getDriverName() === 'sqlite' ? "? || {$rest}" : "CONCAT(?, {$rest})";
+    }
+
+    /**
+     * For the caller's transaction, before it writes a record: locks the record's row and its parent's (in id order,
+     * so two saves never wait on each other's lock) and checks what validation saw is still true. The record must
+     * still be live with the language and path the caller loaded; the parent must still be a live record of the
+     * language at the path the record's new path was built from, and not the record or anything under it. Two
+     * requests can otherwise put a page under a parent that has just left the language, or two pages under each
+     * other.
+     *
+     * @throws ValidationException when the parent is no longer valid (`parent_id`) or the record changed (`slug`)
+     */
+    public function lockForSave(?Entry $entry, ?Entry $parent, string $locale): void
+    {
+        $ids = array_values(array_filter([$entry?->id, $parent?->id]));
+
+        if ($ids === []) {
+            return;
+        }
+
+        $rows = Entry::query()->whereKey($ids)->orderBy('id')->lockForUpdate()->get(['id', 'locale', 'path'])->keyBy('id');
+        $ownPath = null;
+
+        if ($entry?->exists) {
+            $own = $rows->get($entry->id);
+
+            if ($own === null || $own->locale !== $entry->getOriginal('locale') || $own->path !== $entry->getOriginal('path')) {
+                throw ValidationException::withMessages(['slug' => __('content.entry.changed_meanwhile')]);
+            }
+
+            // In another language the record's old path means nothing (it has no descendants there).
+            $ownPath = $own->locale === $locale ? $own->path : null;
+        }
+
+        if ($parent === null) {
+            return;
+        }
+
+        $fresh = $rows->get($parent->id);
+
+        if ($fresh === null
+            || $fresh->locale !== $locale
+            || $fresh->path !== $parent->path
+            || ($ownPath !== null && ($fresh->path === $ownPath || str_starts_with($fresh->path, $ownPath.'/')))) {
+            throw ValidationException::withMessages(['parent_id' => __('content.entry.parent_invalid')]);
+        }
     }
 }

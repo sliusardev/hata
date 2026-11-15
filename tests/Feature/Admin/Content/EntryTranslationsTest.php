@@ -8,6 +8,7 @@ use App\Models\Entry;
 use App\Models\EntryGroup;
 use App\Models\EntryRedirect;
 use App\Models\User;
+use App\Support\Content\EntryPaths;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
@@ -348,3 +349,59 @@ test('a page can be dated before 1970 and after 2038', function (string $date) {
 
     expect($page->fresh()->published_at->format('Y-m-d'))->toBe($date);
 })->with(['1965-05-01', '2040-02-03']);
+
+test('a save is refused when its parent left the language or moved under the record meanwhile', function () {
+    $paths = app(EntryPaths::class);
+    $page = Entry::factory()->create(['slug' => 'team', 'path' => 'team']);
+    $parent = Entry::factory()->create(['slug' => 'company', 'path' => 'company']);
+    $refused = fn (Closure $save, string $field) => expect($save)
+        ->toThrow(fn (ValidationException $exception) => expect($exception->errors())->toHaveKey($field));
+
+    $paths->lockForSave($page, $parent, 'en');
+
+    // The parent took another language after it was validated.
+    Entry::query()->whereKey($parent->id)->update(['locale' => 'uk']);
+    $refused(fn () => $paths->lockForSave($page, $parent, 'en'), 'parent_id');
+    $refused(fn () => $paths->lockForSave(null, $parent, 'en'), 'parent_id');
+
+    // The parent was moved under the record itself.
+    Entry::query()->whereKey($parent->id)->update(['locale' => 'en', 'path' => 'team/company']);
+    $parent->path = 'team/company';
+    $refused(fn () => $paths->lockForSave($page, $parent, 'en'), 'parent_id');
+
+    // The parent went to the trash.
+    Entry::query()->whereKey($parent->id)->update(['path' => 'company', 'deleted_at' => now()]);
+    $parent->path = 'company';
+    $refused(fn () => $paths->lockForSave($page, $parent, 'en'), 'parent_id');
+
+    // The record itself was moved by another request.
+    Entry::query()->whereKey($page->id)->update(['path' => 'our-team']);
+    $refused(fn () => $paths->lockForSave($page, null, 'en'), 'slug');
+});
+
+test('linking decides from the stored records, not from the loaded ones', function () {
+    $actor = translator();
+    $page = Entry::factory()->create();
+    $ukrainian = Entry::factory()->inLocale('uk')->create();
+
+    // Meanwhile the chosen record took the page's own language.
+    Entry::query()->whereKey($ukrainian->id)->update(['locale' => 'en']);
+
+    expect(fn () => app(LinkTranslations::class)->handle($actor, $page, $ukrainian))
+        ->toThrow(ProtectedActionException::class, __('content.link.overlap'))
+        ->and($ukrainian->fresh()->entry_group_id)->not->toBe($page->entry_group_id);
+});
+
+test('unlinking copies the shared values as they are stored now', function () {
+    $actor = translator();
+    $page = Entry::factory()->create();
+    $ukrainian = Entry::factory()->translationOf($page, 'uk')->create();
+    $ukrainian->load('group');
+
+    // Another translation saved a shared value after this one was loaded.
+    $page->group->update(['shared' => ['price' => 25]]);
+
+    app(UnlinkTranslation::class)->handle($actor, $ukrainian);
+
+    expect($ukrainian->fresh()->group->shared)->toBe(['price' => 25]);
+});

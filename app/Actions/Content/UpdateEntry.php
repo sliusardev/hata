@@ -55,7 +55,11 @@ class UpdateEntry
 
         try {
             return DB::transaction(function () use ($entry, $type, $input, $locale, $moves): Entry {
+                $this->paths->lockForSave($entry, $input['parent'], $locale);
+
                 if ($moves) {
+                    // Again under the lock: a page created under the record or a translation added meanwhile.
+                    $this->assertMayBecome($entry, $locale);
                     $this->paths->relocate($entry, $locale, $this->paths->pathFor($type, $input['parent'], $input['slug']));
                 }
 
@@ -64,7 +68,11 @@ class UpdateEntry
                 return $entry;
             });
         } catch (UniqueConstraintViolationException) {
-            // Another request took the path between the check and the write.
+            // Another request took the language or the path between the check and the write.
+            if ($moves && in_array($locale, EntryGroup::takenLocales($entry->entry_group_id), true)) {
+                throw ValidationException::withMessages(['locale' => __('content.entry.locale_taken')]);
+            }
+
             throw ValidationException::withMessages(['slug' => __('content.slug.taken')]);
         }
     }

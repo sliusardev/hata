@@ -7,6 +7,8 @@ use App\Models\Entry;
 use App\Models\EntryGroup;
 use App\Models\MediaUsage;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -29,26 +31,52 @@ class LinkTranslations
             throw ProtectedActionException::because('content.link.invalid');
         }
 
-        DB::transaction(function () use ($entry, $other): void {
-            $locales = fn (int $group) => Entry::withTrashed()->where('entry_group_id', $group)->lockForUpdate()->pluck('locale');
+        try {
+            DB::transaction(fn () => $this->link($entry, $other));
+        } catch (UniqueConstraintViolationException) {
+            throw ProtectedActionException::because('content.link.overlap');
+        }
+    }
 
-            $mine = $locales($entry->entry_group_id);
-            $theirs = $locales($other->entry_group_id);
+    /**
+     * Locks the records of both groups in id order (so two links never wait on each other) and decides from what
+     * the lock shows, not from the records the caller loaded.
+     */
+    private function link(Entry $entry, Entry $other): void
+    {
+        $rows = Entry::withTrashed()
+            ->whereIn('entry_group_id', [$entry->entry_group_id, $other->entry_group_id])
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get(['id', 'entry_group_id', 'locale', 'deleted_at']);
 
-            // Either was linked or unlinked meanwhile, or the language is taken.
-            if (! $mine->contains($entry->locale) || ! $theirs->contains($other->locale) || $mine->contains($other->locale)) {
-                throw ProtectedActionException::because('content.link.overlap');
-            }
+        $mine = $rows->firstWhere('id', $entry->id);
+        $theirs = $rows->firstWhere('id', $other->id);
 
-            $left = $other->entry_group_id;
+        // Either was linked, unlinked, moved to another language or trashed meanwhile.
+        if ($mine === null || $theirs === null || $mine->trashed() || $theirs->trashed()
+            || $mine->entry_group_id !== $entry->entry_group_id || $theirs->entry_group_id !== $other->entry_group_id) {
+            throw ProtectedActionException::because('content.link.invalid');
+        }
 
-            // Not through the model: linking is not an edit, so `updated_at` stays.
-            Entry::withTrashed()->whereKey($other->id)->toBase()->update(['entry_group_id' => $entry->entry_group_id]);
+        if ($rows->where('entry_group_id', $mine->entry_group_id)->contains('locale', $theirs->locale)) {
+            throw ProtectedActionException::because('content.link.overlap');
+        }
 
-            if ($theirs->count() === 1) {
-                MediaUsage::query()->where('usable_type', (new EntryGroup)->getMorphClass())->where('usable_id', $left)->delete();
-                EntryGroup::query()->whereKey($left)->delete();
-            }
-        });
+        $left = $theirs->entry_group_id;
+
+        // Not through the model: linking is not an edit, so `updated_at` stays.
+        Entry::withTrashed()->whereKey($theirs->id)->toBase()->update(['entry_group_id' => $mine->entry_group_id]);
+
+        // Only a group that is really empty goes (the foreign key would take a record added meanwhile with it).
+        $emptied = EntryGroup::query()
+            ->whereKey($left)
+            ->whereDoesntHave('entries', fn (Builder $query) => $query->withTrashed())
+            ->exists();
+
+        if ($emptied) {
+            MediaUsage::query()->where('usable_type', (new EntryGroup)->getMorphClass())->where('usable_id', $left)->delete();
+            EntryGroup::query()->whereKey($left)->delete();
+        }
     }
 }

@@ -21,6 +21,7 @@ return [
     ],
     'entry' => [
         'locale_invalid' => 'This language is not on the site.',
+        'changed_meanwhile' => 'The record has just been changed elsewhere. Reload the page and try again.',
         'locale_taken' => 'The record already has a translation in this language. Unlink it from its translations first.',
         'locale_has_children' => 'A record with records under it (in the trash too) cannot change its language.',
         'parent_invalid' => 'Choose a parent of the same type and language that is not this record or one of its subpages.',
