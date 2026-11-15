@@ -418,14 +418,18 @@ new class extends Component {
         @endif
     </div>
 
-    <nav class="-mb-px flex gap-6 overflow-x-auto border-b border-zinc-200 text-sm dark:border-zinc-700" aria-label="{{ $contentType->pluralLabel() }}">
+    {{-- The border is on a wrapper: a negative margin on the nav itself would replace the section's `space-y` gap
+         (Tailwind 4 sets it as the bottom margin), and one on the buttons overflows the scrolling nav by a pixel,
+         which shows a vertical scrollbar. --}}
+    <div class="border-b border-zinc-200 dark:border-zinc-700">
+    <nav class="-mb-px flex gap-6 overflow-x-auto text-sm" aria-label="{{ $contentType->pluralLabel() }}">
         @foreach (App\Support\Content\EntryListQuery::TABS as $tabKey)
             <button
                 type="button"
                 wire:key="tab-{{ $tabKey }}"
                 wire:click="$set('tab', '{{ $tabKey }}')"
                 @class([
-                    '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 pb-3 whitespace-nowrap transition-colors',
+                    'flex shrink-0 items-center gap-1.5 border-b-2 pb-3 whitespace-nowrap transition-colors',
                     'ms-auto' => $tabKey === 'trash',
                     'border-zinc-800 font-medium text-zinc-900 dark:border-white dark:text-white' => $tab === $tabKey,
                     'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white' => $tab !== $tabKey,
@@ -441,6 +445,7 @@ new class extends Component {
             </button>
         @endforeach
     </nav>
+    </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <flux:input
