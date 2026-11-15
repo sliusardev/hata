@@ -408,7 +408,17 @@ missing, as for `CreateEntry`: its create link redirects to the trashed record.
 `App\Livewire\Forms\EntryForm`; plain full-page components, no islands, `wire:model` without `.live` everywhere):
 
 - **New record.** `locale` from the query must be a language of the site (`ContentLocales::has()`), else 404; without it
-  the list's remembered language, else the default. With `from` (a live record of the type, else 404): when the group
+  the list's remembered language, else the default (the list's Create buttons send no `locale`; the "Add
+  translation" links send `from` and `locale`). On a multilingual site the language card holds a select "Language of
+  the record" instead of the fixed language row: every language of the site (a switched-off one marked), or for a
+  translation those its group lacks. Choosing one calls `changeLocale()` and changes the record in place, with no
+  reload and no redirect: the typed values stay, the parent becomes the one that language has (none, or for a
+  translation the source's parent in that language, `copyFor()`), the slug is made free in the language
+  (`EntryPaths::suggest()` on the slug, else the title), and the action returns the new address prefix and parents'
+  paths, which the form's script keeps; the editors take the language from the `entry-locale:changed` event, and the
+  address bar drops its `locale` (a translation keeps it next to `from`, updated). It authorizes `create` and ignores
+  a language that is not offered (returns null; the select goes back). A saved record's language never changes
+  (decision 58), so the edit page keeps the fixed row. With `from` (a live record of the type, else 404): when the group
   already has that language, trashed or not, the page redirects to that record's edit page (a trashed one opens
   read-only with Restore); otherwise the form is filled from `copyFor()` and the slug suggested from the copied title
   under the mapped parent. The copied author is kept only while they can still be one (`EntryAuthors`); otherwise the

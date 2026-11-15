@@ -56,7 +56,7 @@
     <div
         wire:ignore
         x-data="richText(@js($config))"
-        @unless ($readonly) x-on:media-picker:picked.window="onPicked($event.detail)" @endunless
+        @unless ($readonly) x-on:media-picker:picked.window="onPicked($event.detail)" x-on:entry-locale:changed.window="setLocale($event.detail.locale)" @endunless
         @class([
             'overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xs dark:border-white/10 dark:bg-white/5',
             'border-b-zinc-300/80 has-[.ProseMirror-focused]:ring-2 has-[.ProseMirror-focused]:ring-accent has-[.ProseMirror-focused]:ring-offset-2 has-[.ProseMirror-focused]:ring-offset-accent-foreground' => ! $readonly,

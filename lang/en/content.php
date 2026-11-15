@@ -149,6 +149,8 @@ return [
         ],
         'language' => [
             'title' => 'Language and translations',
+            'choose' => 'Language of the record',
+            'choose_hint' => 'The language of a record cannot be changed after it is saved.',
             'this' => 'language of this record',
             'after_save' => 'Translations into other languages can be added once the record is saved.',
         ],

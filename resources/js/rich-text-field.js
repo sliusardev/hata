@@ -251,6 +251,13 @@ export default function richText({ model, target, id, images = {}, readonly = fa
         },
 
         /**
+         * The record's language changed while the form is open (a new record's can).
+         */
+        setLocale(code) {
+            locale = code;
+        },
+
+        /**
          * Ask the page's detached media picker for an image; only this editor reacts to the answer.
          */
         openImagePicker() {

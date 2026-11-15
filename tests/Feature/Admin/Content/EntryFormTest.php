@@ -74,10 +74,13 @@ test('a page is created through the form', function () {
 test('the new form opens in the requested language and refuses a language that is not on the site', function () {
     $this->actingAs(formEditor());
 
-    $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'uk']))
+    $html = $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'uk']))
         ->assertOk()
-        ->assertSee(__('content.form.language.this'))
-        ->assertSee('Українська');
+        ->assertSee(__('content.form.language.choose'))
+        ->getContent();
+
+    expect($html)->toMatch('/<option(?=[^>]*value="uk")[^>]*\sselected/')
+        ->and($html)->not->toMatch('/<option(?=[^>]*value="en")[^>]*\sselected/');
 
     $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'xx']))->assertNotFound();
     $this->get(route('admin.content.create', ['type' => 'pages']))->assertOk();
@@ -639,4 +642,93 @@ test('the address prefix carries the parent path, and a trashed child shows its 
         ->assertSeeHtml('data-test="parent-option-'.$about->id.'"')
         ->assertSet('form.parent_id', (string) $about->id)
         ->assertSeeHtml('about/</bdi>');
+});
+
+test('a new record offers the languages of the site, and a saved one does not', function () {
+    $this->actingAs(formEditor());
+
+    createForm(['locale' => 'uk'])
+        ->assertSeeHtml('data-test="entry-locale"')
+        ->assertSeeInOrder(['English (EN)', 'Українська (UK)', 'Polski (PL)', 'Deutsch (DE) · off']);
+
+    editForm(Entry::factory()->create())->assertDontSeeHtml('data-test="entry-locale"');
+});
+
+test('choosing another language changes the new record in place and keeps what was typed', function () {
+    $this->actingAs(formEditor());
+    $parent = Entry::factory()->create(['slug' => 'company', 'path' => 'company']);
+    Entry::factory()->inLocale('uk')->create(['slug' => 'our-team', 'path' => 'our-team']);
+    $ukParent = Entry::factory()->inLocale('uk')->create(['title' => 'Компанія', 'slug' => 'kompaniia', 'path' => 'kompaniia']);
+
+    $form = createForm()
+        ->set('form.title', 'Our team')
+        ->set('form.slug', 'our-team')
+        ->set('form.body', '<p>We are five.</p>')
+        ->set('form.parent_id', (string) $parent->id)
+        ->call('changeLocale', 'uk')
+        ->assertNoRedirect()
+        ->assertSet('locale', 'uk')
+        ->assertSet('form.title', 'Our team')
+        ->assertSet('form.body', '<p>We are five.</p>')
+        ->assertSet('form.parent_id', '')
+        ->assertSet('form.slug', 'our-team-2')
+        ->assertSee('Компанія')
+        ->assertReturned(fn (array $state): bool => $state['locale'] === 'uk'
+            && str_ends_with($state['prefix'], '/uk/')
+            && $state['parentPaths'][(string) $ukParent->id] === 'kompaniia'
+            && ! isset($state['parentPaths'][(string) $parent->id]));
+
+    $form->call('save')->assertHasNoErrors();
+
+    expect(Entry::query()->where('slug', 'our-team-2')->sole()->locale)->toBe('uk');
+});
+
+test('a language that is not offered is ignored', function (string $locale) {
+    $this->actingAs(formEditor());
+
+    createForm()
+        ->set('form.title', 'Team')
+        ->call('changeLocale', $locale)
+        ->assertReturned(null)
+        ->assertSet('locale', 'en');
+})->with(['not on the site' => ['fr'], 'the form\'s own' => ['en']]);
+
+test('a translation offers only the languages its group lacks and takes the parent that language has', function () {
+    $this->actingAs(formEditor());
+    $company = Entry::factory()->create(['slug' => 'company', 'path' => 'company']);
+    $firma = Entry::factory()->translationOf($company, 'de')->create(['slug' => 'firma', 'path' => 'firma']);
+    $about = Entry::factory()->childOf($company)->create(['title' => 'About', 'slug' => 'about', 'path' => 'company/about']);
+    Entry::factory()->translationOf($about, 'pl')->create();
+
+    $form = createForm(['locale' => 'uk', 'from' => (string) $about->id])
+        ->assertSee('Українська (UK)')
+        ->assertSee('Deutsch (DE)')
+        ->assertDontSee('English (EN)')
+        ->assertDontSee('Polski (PL)')
+        ->assertSet('form.parent_id', '');
+
+    $form->call('changeLocale', 'pl')->assertReturned(null)->assertSet('locale', 'uk');
+
+    $form->set('form.title', 'Über uns')
+        ->call('changeLocale', 'de')
+        ->assertSet('locale', 'de')
+        ->assertSet('sourceId', $about->id)
+        ->assertSet('form.title', 'Über uns')
+        ->assertSet('form.parent_id', (string) $firma->id)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Entry::query()->where('title', 'Über uns')->sole())
+        ->locale->toBe('de')
+        ->entry_group_id->toBe($about->entry_group_id)
+        ->path->toBe('firma/about');
+});
+
+test('changing the language needs the right to create', function () {
+    $this->actingAs(formEditor());
+    $form = createForm();
+
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
+
+    $form->call('changeLocale', 'uk')->assertForbidden();
 });

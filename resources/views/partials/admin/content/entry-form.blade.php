@@ -217,11 +217,26 @@
                             @endif
                         </div>
 
-                        <div class="mb-4 flex items-center gap-2 rounded-lg bg-zinc-50 px-3 py-2 text-sm dark:bg-white/5">
-                            <span class="rounded bg-zinc-900 px-1.5 py-0.5 text-[11px] font-semibold text-white uppercase dark:bg-white dark:text-zinc-900">{{ $language->code }}</span>
-                            <span class="min-w-0 flex-1 truncate font-medium text-zinc-900 dark:text-white">{{ $language->native }}</span>
-                            <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ __('content.form.language.this') }}</span>
-                        </div>
+                        @if ($entry === null && count($localeChoices ?? []) > 1)
+                            {{-- A new record: the language is still a choice. Not `wire:model` (the language is locked);
+                                 the form's script asks the server and keeps the prefix and the editors in step. --}}
+                            <div class="mb-4">
+                                <flux:select :label="__('content.form.language.choose')" x-on:change="changeLocale($event.target)" data-test="entry-locale">
+                                    @foreach ($localeChoices as $choice)
+                                        <flux:select.option :value="$choice->code" :selected="$choice->code === $locale">
+                                            {{ $choice->native }} ({{ strtoupper($choice->code) }}){{ app(App\Support\Localization\ContentLocales::class)->isActive($choice->code) ? '' : ' · '.__('content.list.off') }}
+                                        </flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                                <flux:text class="mt-2 text-xs">{{ __('content.form.language.choose_hint') }}</flux:text>
+                            </div>
+                        @else
+                            <div class="mb-4 flex items-center gap-2 rounded-lg bg-zinc-50 px-3 py-2 text-sm dark:bg-white/5">
+                                <span class="rounded bg-zinc-900 px-1.5 py-0.5 text-[11px] font-semibold text-white uppercase dark:bg-white dark:text-zinc-900">{{ $language->code }}</span>
+                                <span class="min-w-0 flex-1 truncate font-medium text-zinc-900 dark:text-white">{{ $language->native }}</span>
+                                <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ __('content.form.language.this') }}</span>
+                            </div>
+                        @endif
 
                         @if ($entry !== null || $present->isNotEmpty())
                             <div class="mb-4 flex h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700" aria-hidden="true">

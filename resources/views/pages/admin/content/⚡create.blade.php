@@ -15,11 +15,13 @@ use Livewire\Attributes\Locked;
 
 /**
  * A new record in the language of the query (`locale`), optionally a translation of another record (`from`), which
- * fills the form with its copy. Nothing is stored before Save.
+ * fills the form with its copy. Nothing is stored before Save. The language can still be changed in place
+ * (`changeLocale()`), with no reload and nothing typed lost.
  */
 new class extends EntryFormPage {
     #[Locked]
     public ?int $sourceId = null;
+
 
     public function mount(string $type, ContentLocales $locales): void
     {
@@ -72,6 +74,61 @@ new class extends EntryFormPage {
 
         $parent = $this->form->parent_id !== '' ? Entry::query()->find((int) $this->form->parent_id) : null;
         $this->form->slug = app(EntryPaths::class)->suggest($this->contentType, $locale, $parent, $this->form->title);
+    }
+
+    /**
+     * Makes the new record one of another language, in place: the typed values stay, the parent becomes the one
+     * the language has (none, or for a translation the source's parent in that language), and the slug is made
+     * free in the language. Returns what the browser keeps for itself (the address prefix and the parents' paths),
+     * or null for a language that is not offered.
+     *
+     * @return array{locale: string, prefix: string, parentPaths: array<string, string>}|null
+     */
+    public function changeLocale(string $locale): ?array
+    {
+        $this->authorize('create', [Entry::class, $this->type]);
+
+        if ($locale === $this->locale || ! in_array($locale, array_map(fn ($language) => $language->code, $this->localeChoices), true)) {
+            return null;
+        }
+
+        $this->locale = $locale;
+        unset($this->language, $this->parentOptions, $this->addressPrefix, $this->localeChoices);
+
+        $source = $this->sourceId !== null ? Entry::query()->ofType($this->type)->find($this->sourceId) : null;
+        $parentId = $source?->copyFor($locale)['parent_id'] ?? null;
+        $parent = $parentId !== null ? Entry::query()->find((int) $parentId) : null;
+
+        $this->form->parent_id = $parent !== null ? (string) $parent->id : '';
+
+        $name = trim($this->form->slug) !== '' ? $this->form->slug : $this->form->title;
+
+        if (trim($name) !== '') {
+            $this->form->slug = app(EntryPaths::class)->suggest($this->contentType, $locale, $parent, $name);
+        }
+
+        return [
+            'locale' => $locale,
+            'prefix' => $this->addressPrefix,
+            'parentPaths' => collect($this->parentOptions)->mapWithKeys(fn (array $option): array => [(string) $option['id'] => $option['path']])->all(),
+        ];
+    }
+
+    /**
+     * The languages the record can still be created in: every language of the site, or for a translation those
+     * its group does not have yet (the form's own included).
+     *
+     * @return list<App\Support\Localization\Language>
+     */
+    #[Computed]
+    public function localeChoices(): array
+    {
+        $taken = $this->groupEntries->pluck('locale')->all();
+
+        return array_values(array_filter(
+            $this->languages,
+            fn ($language): bool => $language->code === $this->locale || ! in_array($language->code, $taken, true),
+        ));
     }
 
     public function render(): mixed
@@ -146,4 +203,5 @@ new class extends EntryFormPage {
     'groupEntries' => $this->groupEntries,
     'trashedEntries' => collect(),
     'fromId' => $sourceId,
+    'localeChoices' => $this->localeChoices,
 ])

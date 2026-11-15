@@ -259,12 +259,16 @@ test('two language site shows the language controls', function () {
     entryList()->assertSeeHtml('data-test="list-locale"')->assertSeeHtml('data-test="list-missing"');
 });
 
-test('the create button needs pages.create and carries the list language', function () {
+test('the create button needs pages.create, and the new form opens in the language of the list', function () {
+    $create = 'href="'.route('admin.content.create', ['type' => 'pages']).'"';
+
     $this->actingAs(contentViewer());
-    entryList()->assertDontSee(route('admin.content.create', ['type' => 'pages', 'locale' => 'en']), false);
+    entryList()->assertDontSeeHtml($create);
 
     $this->actingAs(contentViewer(['pages.create']));
-    entryList()->set('locale', 'uk')->assertSee(route('admin.content.create', ['type' => 'pages', 'locale' => 'uk']), false);
+    entryList()->set('locale', 'uk')->assertSeeHtml($create);
+
+    Livewire::test('pages::admin.content.create', ['type' => 'pages'])->assertSet('locale', 'uk');
 });
 
 test('trashing from the row needs pages.delete and takes the subpages along', function () {

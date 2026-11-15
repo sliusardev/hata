@@ -9,6 +9,10 @@
  * Dirty tracking compares the form's values with those it opened with, except the rich text ones: the editor's
  * HTML differs from the stored one (image src), so those count as changed only once an editor reports an edit
  * (the `rich-text:changed` event).
+ *
+ * A new record's language is changed in place (`changeLocale()`): one request, after which the prefix, the parents'
+ * paths and the editors follow the new language, and the address bar drops its `locale` (a translation keeps it,
+ * next to `from`).
  */
 export default function entryForm({ readonly, slugFollows, prefix, parentPaths, siteName, nowLocal, editorModels, leaveModal }) {
     let initial = null;
@@ -16,6 +20,8 @@ export default function entryForm({ readonly, slugFollows, prefix, parentPaths, 
 
     return {
         slugFollows: slugFollows && !readonly,
+        prefix,
+        parentPaths,
         editorChanged: false,
         pendingUrl: null,
         leaving: false,
@@ -45,9 +51,34 @@ export default function entryForm({ readonly, slugFollows, prefix, parentPaths, 
         },
 
         addressPrefix() {
-            const path = parentPaths[String(this.$wire.form.parent_id ?? '')];
+            const path = this.parentPaths[String(this.$wire.form.parent_id ?? '')];
 
-            return prefix + (path ? `${path}/` : '');
+            return this.prefix + (path ? `${path}/` : '');
+        },
+
+        async changeLocale(select) {
+            const result = await this.$wire.changeLocale(select.value);
+
+            // Not offered (or the same): show the language the form really has.
+            if (!result) {
+                select.value = this.$wire.locale;
+
+                return;
+            }
+
+            this.prefix = result.prefix;
+            this.parentPaths = result.parentPaths;
+            window.dispatchEvent(new CustomEvent('entry-locale:changed', { detail: { locale: result.locale } }));
+
+            const url = new URL(window.location.href);
+
+            if (url.searchParams.has('from')) {
+                url.searchParams.set('locale', result.locale);
+            } else {
+                url.searchParams.delete('locale');
+            }
+
+            window.history.replaceState(window.history.state, '', url);
         },
 
         async followTitle() {

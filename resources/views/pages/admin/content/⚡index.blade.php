@@ -412,7 +412,7 @@ new class extends Component {
         </div>
 
         @if ($abilities['create'])
-            <flux:button variant="primary" icon="plus" :href="route('admin.content.create', ['type' => $type, 'locale' => $locale])" wire:navigate data-test="create-entry">
+            <flux:button variant="primary" icon="plus" :href="route('admin.content.create', ['type' => $type])" wire:navigate data-test="create-entry">
                 {{ $contentType->createLabel() }}
             </flux:button>
         @endif
@@ -495,7 +495,7 @@ new class extends Component {
         @elseif ($tab === 'all' && $counts['all'] === 0)
             <x-admin.empty-state :icon="$contentType->icon()" :heading="__('content.list.empty.title')" :description="__('content.list.empty.description')">
                 @if ($abilities['create'])
-                    <flux:button variant="primary" size="sm" icon="plus" class="mt-4" :href="route('admin.content.create', ['type' => $type, 'locale' => $locale])" wire:navigate>
+                    <flux:button variant="primary" size="sm" icon="plus" class="mt-4" :href="route('admin.content.create', ['type' => $type])" wire:navigate>
                         {{ $contentType->createLabel() }}
                     </flux:button>
                 @endif
