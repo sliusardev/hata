@@ -152,6 +152,34 @@ class EntryPaths
     }
 
     /**
+     * Makes a record without descendants one of another language, at a path there: its old address stays as a
+     * redirect, and a redirect that held the new address goes. Only sets the record's language and path; the
+     * caller saves it, inside its transaction.
+     */
+    public function relocate(Entry $entry, string $locale, string $path): void
+    {
+        $now = now();
+
+        EntryRedirect::upsert(
+            [[
+                'type' => $entry->type,
+                'locale' => $entry->locale,
+                'path' => $entry->path,
+                'entry_id' => $entry->id,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]],
+            ['type', 'locale', 'path'],
+            ['entry_id', 'updated_at'],
+        );
+
+        EntryRedirect::query()->where('type', $entry->type)->where('locale', $locale)->where('path', $path)->delete();
+
+        $entry->locale = $locale;
+        $entry->path = $path;
+    }
+
+    /**
      * The SQL value of a descendant's new path: the new prefix (the first binding), then what follows the old
      * one. The only driver-specific part of `move()`.
      */

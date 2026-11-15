@@ -115,7 +115,7 @@ test('tabs filter the records and count them', function () {
     Entry::factory()->create(['title' => 'Binned one'])->delete();
     Entry::factory()->inLocale('uk')->published()->create(['title' => 'Other language']);
 
-    $list = entryList();
+    $list = entryList(['locale' => 'en']);
 
     expect($list->instance()->counts)->toBe(['all' => 5, 'published' => 2, 'drafts' => 2, 'scheduled' => 1, 'trash' => 1]);
 
@@ -201,25 +201,48 @@ test('missing=uk lists only records without a uk translation', function () {
         ->assertDontSee('Has Ukrainian');
 });
 
-test('the list shows one language: the default, then the chosen one, remembered in the session', function () {
+test('the list shows every language by default, marked by its code, then the chosen one, remembered in the session', function () {
     $this->actingAs(contentViewer());
-    Entry::factory()->create(['title' => 'English page']);
-    Entry::factory()->inLocale('uk')->create(['title' => 'Українська сторінка']);
+    $english = Entry::factory()->create(['title' => 'English page']);
+    $ukrainian = Entry::factory()->inLocale('uk')->create(['title' => 'Українська сторінка']);
+    Entry::factory()->inLocale('fr')->create(['title' => 'Page hors du site']);
 
-    entryList()->assertSet('locale', 'en')->assertSee('English page')->assertDontSee('Українська сторінка');
+    $list = entryList()
+        ->assertSet('locale', '')
+        ->assertSee(['English page', 'Українська сторінка'])
+        ->assertDontSee('Page hors du site')
+        ->assertSeeHtml('data-test="entry-language-'.$english->id.'"')
+        ->assertSeeHtml('data-test="entry-language-'.$ukrainian->id.'"');
 
-    entryList()->set('locale', 'uk')->assertSee('Українська сторінка')->assertDontSee('English page');
+    expect($list->instance()->counts['all'])->toBe(2);
+
+    entryList()->set('locale', 'uk')
+        ->assertSee('Українська сторінка')
+        ->assertDontSee('English page')
+        ->assertDontSeeHtml('data-test="entry-language-'.$ukrainian->id.'"');
     expect(session('content.list_locale'))->toBe('uk');
 
-    entryList()->assertSet('locale', 'uk')->assertSee('Українська сторінка');
+    entryList()->assertSet('locale', 'uk')->assertSee('Українська сторінка')
+        ->set('locale', '')->assertSee('English page');
+
+    entryList()->assertSet('locale', '');
 });
 
-test('a locale that is not on the site falls back to the default', function () {
+test('with every language listed the trees follow the site\'s order of languages', function () {
+    $this->actingAs(contentViewer());
+    Entry::factory()->inLocale('uk')->create(['title' => 'Абетка', 'slug' => 'a', 'path' => 'a']);
+    Entry::factory()->create(['title' => 'Zebra', 'slug' => 'z', 'path' => 'z']);
+    Entry::factory()->create(['title' => 'Middle', 'slug' => 'm', 'path' => 'm']);
+
+    entryList()->assertSeeInOrder(['Middle', 'Zebra', 'Абетка']);
+});
+
+test('a locale that is not on the site shows every language', function () {
     $this->actingAs(contentViewer());
     Entry::factory()->create(['title' => 'English page']);
 
-    entryList(['locale' => 'de'])->assertSet('locale', 'en')->assertSee('English page');
-    entryList()->set('locale', 'xx')->assertSet('locale', 'en');
+    entryList(['locale' => 'de'])->assertSet('locale', '')->assertSee('English page');
+    entryList()->set('locale', 'xx')->assertSet('locale', '');
 });
 
 test('the translations bar counts every language of the site, the switched-off ones too', function () {
@@ -463,3 +486,113 @@ test('the create and edit pages exist and authorize', function () {
     $this->actingAs(contentViewer(['pages.create']));
     $this->get(route('admin.content.create', 'pages'))->assertOk();
 });
+
+test('picked rows go to the trash together, with their subpages, after a confirmation', function () {
+    $parent = Entry::factory()->create(['title' => 'Parent', 'slug' => 'parent', 'path' => 'parent']);
+    $child = Entry::factory()->childOf($parent)->create(['slug' => 'child', 'path' => 'parent/child']);
+    $other = Entry::factory()->inLocale('uk')->create(['title' => 'Інша']);
+    $kept = Entry::factory()->create(['title' => 'Kept']);
+
+    $this->actingAs(contentViewer(['pages.edit']));
+    entryList()
+        ->assertDontSeeHtml('data-test="select-all"')
+        ->set('selected', [(string) $parent->id])
+        ->call('confirmBulk', 'trash')
+        ->assertForbidden();
+
+    $this->actingAs(contentViewer(['pages.delete']));
+    entryList()
+        ->assertSeeHtml('data-test="select-entry-'.$parent->id.'"')
+        ->set('selected', [(string) $parent->id, (string) $child->id, (string) $other->id])
+        ->call('confirmBulk', 'trash')
+        ->assertSet('showBulkModal', true)
+        ->assertSee(trans_choice('content.list.bulk.trash_confirm', 3, ['days' => 30]))
+        ->call('runBulk')
+        ->assertSet('showBulkModal', false)
+        ->assertSet('selected', []);
+
+    expect(Entry::onlyTrashed()->pluck('id')->sort()->values()->all())->toBe([$parent->id, $child->id, $other->id])
+        ->and(Entry::find($kept->id))->not->toBeNull();
+});
+
+test('a bulk action with nothing picked opens no dialog', function () {
+    $this->actingAs(contentViewer(['pages.delete']));
+
+    entryList()->call('confirmBulk', 'trash')->assertSet('showBulkModal', false);
+    entryList()->call('confirmBulk', 'publish')->assertNotFound();
+});
+
+test('picked rows are restored from the trash with pages.edit, a parent before its page', function () {
+    $actor = User::factory()->withRole('editor')->create();
+    $parent = Entry::factory()->create(['slug' => 'parent', 'path' => 'parent']);
+    $child = Entry::factory()->childOf($parent)->create(['slug' => 'child', 'path' => 'parent/child']);
+    $left = Entry::factory()->create(['title' => 'Left in the trash']);
+    app(TrashEntry::class)->handle($actor, $child);
+    $this->travel(5)->seconds();
+    app(TrashEntry::class)->handle($actor, $parent);
+    app(TrashEntry::class)->handle($actor, $left);
+
+    $this->actingAs(contentViewer(['pages.delete']));
+    entryList(['tab' => 'trash'])->set('selected', [(string) $child->id])->call('restoreSelected')->assertForbidden();
+
+    $this->actingAs(contentViewer(['pages.edit']));
+    entryList(['tab' => 'trash'])
+        ->set('selected', [(string) $child->id, (string) $parent->id])
+        ->call('restoreSelected')
+        ->assertSet('selected', []);
+
+    expect(Entry::find($parent->id))->not->toBeNull()
+        ->and(Entry::find($child->id)->path)->toBe('parent/child')
+        ->and(Entry::find($left->id))->toBeNull();
+});
+
+test('picked rows of the trash are deleted for good after a confirmation, live ones are left alone', function () {
+    $actor = User::factory()->withRole('editor')->create();
+    $binned = Entry::factory()->create();
+    $kept = Entry::factory()->create();
+    $live = Entry::factory()->create();
+    app(TrashEntry::class)->handle($actor, $binned);
+    app(TrashEntry::class)->handle($actor, $kept);
+
+    $this->actingAs(contentViewer(['pages.delete']));
+    entryList(['tab' => 'trash'])
+        ->set('selected', [(string) $binned->id, (string) $live->id])
+        ->call('confirmBulk', 'delete')
+        ->assertSee(trans_choice('content.list.bulk.delete_confirm', 2))
+        ->call('runBulk');
+
+    expect(Entry::withTrashed()->pluck('id')->sort()->values()->all())->toBe([$kept->id, $live->id]);
+});
+
+test('emptying the trash deletes what the language filter shows and needs pages.delete', function () {
+    $actor = User::factory()->withRole('editor')->create();
+    $english = Entry::factory()->create();
+    $ukrainian = Entry::factory()->inLocale('uk')->create();
+    $live = Entry::factory()->create();
+    app(TrashEntry::class)->handle($actor, $english);
+    app(TrashEntry::class)->handle($actor, $ukrainian);
+
+    $this->actingAs(contentViewer(['pages.edit']));
+    entryList(['tab' => 'trash'])->assertDontSeeHtml('data-test="empty-trash"')->call('confirmBulk', 'empty')->assertForbidden();
+
+    $this->actingAs(contentViewer(['pages.delete']));
+    entryList(['tab' => 'trash', 'locale' => 'uk'])
+        ->assertSeeHtml('data-test="empty-trash"')
+        ->call('confirmBulk', 'empty')
+        ->assertSee(trans_choice('content.list.bulk.empty_confirm', 1))
+        ->call('runBulk')
+        ->assertDontSeeHtml('data-test="empty-trash"');
+
+    expect(Entry::withTrashed()->pluck('id')->sort()->values()->all())->toBe([$english->id, $live->id]);
+
+    entryList(['tab' => 'trash', 'locale' => ''])->set('locale', '')->call('confirmBulk', 'empty')->call('runBulk');
+
+    expect(Entry::withTrashed()->pluck('id')->all())->toBe([$live->id]);
+});
+
+test('changing the tab, the search or the language drops the picked rows', function (string $property, string $value) {
+    $this->actingAs(contentViewer(['pages.delete']));
+    $entry = Entry::factory()->create();
+
+    entryList()->set('selected', [(string) $entry->id])->set($property, $value)->assertSet('selected', []);
+})->with([['tab', 'drafts'], ['search', 'x'], ['locale', 'uk']]);

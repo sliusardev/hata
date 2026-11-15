@@ -180,7 +180,8 @@ final class EntryInput
 
             if (! array_key_exists($id, $found)) {
                 $parent = Entry::query()->where('type', $type->key())->where('locale', $locale)->find($id);
-                $ownPath = $entry?->exists ? (string) $entry->getOriginal('path') : null;
+                // A record changing its language has no descendants there, and its old path means nothing in it.
+                $ownPath = $entry?->exists && $entry->getOriginal('locale') === $locale ? (string) $entry->getOriginal('path') : null;
 
                 if ($parent !== null && $ownPath !== null && ($parent->is($entry) || str_starts_with($parent->path, $ownPath.'/'))) {
                     $parent = null;

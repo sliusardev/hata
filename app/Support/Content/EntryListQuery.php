@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * The records of one type and language as the admin list shows them: a tab, a search, a "missing translation in"
+ * The records of one type as the admin list shows them, in one language or in all the site's: a tab, a search, a "missing translation in"
  * filter and a sort. The query count does not depend on the number of rows: the image, the author and the group's
  * records are eager loaded with only the columns a row shows.
  */
@@ -41,15 +41,32 @@ final class EntryListQuery
      */
     private string $direction;
 
-    private function __construct(private readonly ContentType $type, private readonly string $locale)
+    /**
+     * @param  list<string>  $locales
+     */
+    private function __construct(private readonly ContentType $type, private readonly string $locale, private readonly array $locales)
     {
         $this->sort = $type->hierarchical() ? 'tree' : 'date';
         $this->direction = $type->hierarchical() ? 'asc' : 'desc';
     }
 
-    public static function for(ContentType $type, string $locale): self
+    /**
+     * An empty language means every language in `$locales` (the site's, in their order).
+     *
+     * @param  list<string>  $locales
+     */
+    public static function for(ContentType $type, string $locale, array $locales = []): self
     {
-        return new self($type, $locale);
+        return new self($type, $locale, $locales);
+    }
+
+    /**
+     * @param  Builder<Entry>  $query
+     * @return Builder<Entry>
+     */
+    private function inLanguages(Builder $query): Builder
+    {
+        return $this->locale !== '' ? $query->where('locale', $this->locale) : $query->whereIn('locale', $this->locales);
     }
 
     /**
@@ -110,13 +127,14 @@ final class EntryListQuery
         $query = Entry::query()
             ->select(self::COLUMNS)
             ->ofType($this->type->key())
-            ->inLocale($this->locale)
             ->with([
                 'image' => fn (BelongsTo $image) => $image->select(['id', 'key', 'name', 'disk', 'thumb_path', 'kind', 'mime', 'version']),
                 'author' => fn (BelongsTo $author) => $author->select(['id', 'name']),
                 'groupEntries' => fn (HasMany $entries) => $entries->select(['id', 'entry_group_id', 'locale', 'title', 'status', 'published_at']),
             ])
             ->search($this->search);
+
+        $this->inLanguages($query);
 
         $now = now();
 
@@ -149,7 +167,7 @@ final class EntryListQuery
     }
 
     /**
-     * How many records of the type and language each tab holds, whatever the search and filter: one query.
+     * How many records of the type in the list's languages each tab holds, whatever the search and filter: one query.
      *
      * @return array{all: int, published: int, drafts: int, scheduled: int, trash: int}
      */
@@ -158,9 +176,7 @@ final class EntryListQuery
         $now = (new Entry)->fromDateTime(now());
         $published = EntryStatus::Published->value;
 
-        $row = Entry::withTrashed()
-            ->ofType($this->type->key())
-            ->inLocale($this->locale)
+        $row = $this->inLanguages(Entry::withTrashed()->ofType($this->type->key()))
             ->toBase()
             ->selectRaw('sum(case when deleted_at is null then 1 else 0 end) as all_count')
             ->selectRaw('sum(case when deleted_at is null and status = ? and published_at <= ? then 1 else 0 end) as published_count', [$published, $now])
@@ -195,7 +211,26 @@ final class EntryListQuery
                 ->orderBy('id', $this->direction),
             // A slug never holds a space, and a space sorts before `-` and every letter and digit, so this keeps
             // `about/team` right after `about` and before `about-us` (plain path order would not).
-            default => $query->orderByRaw("replace(path, '/', ' ') asc")->orderBy('id'),
+            default => $this->byLanguage($query)->orderByRaw("replace(path, '/', ' ') asc")->orderBy('id'),
         };
+    }
+
+    /**
+     * With every language listed, the tree of each language in the site's order of languages.
+     *
+     * @param  Builder<Entry>  $query
+     * @return Builder<Entry>
+     */
+    private function byLanguage(Builder $query): Builder
+    {
+        if ($this->locale !== '' || count($this->locales) < 2) {
+            return $query;
+        }
+
+        foreach ($this->locales as $code) {
+            $query->orderByRaw('case when locale = ? then 0 else 1 end', [$code]);
+        }
+
+        return $query;
     }
 }

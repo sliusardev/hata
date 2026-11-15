@@ -35,6 +35,7 @@ use Livewire\Component;
  * @property-read array<int, string> $editorImages
  * @property-read array<int, Media> $readOnlyMedia
  * @property-read string $addressPrefix
+ * @property-read list<Language> $localeChoices
  */
 abstract class EntryFormPage extends Component
 {
@@ -42,7 +43,8 @@ abstract class EntryFormPage extends Component
     public string $type = '';
 
     /**
-     * The record's language: a new record's comes from the query, a saved one's never changes.
+     * The form's language: a new record's comes from the query, a saved one's is the record's. Changed in place by
+     * changeLocale(); a saved record takes the new one when it is saved.
      */
     #[Locked]
     public string $locale = '';
@@ -71,6 +73,62 @@ abstract class EntryFormPage extends Component
     public function sharedFieldsLocked(): bool
     {
         return false;
+    }
+
+    /**
+     * The languages the form's language select offers (a computed property of the page); fewer than two and the
+     * language is shown as fixed.
+     *
+     * @return list<Language>
+     */
+    abstract public function localeChoices(): array;
+
+    /**
+     * Checks that the actor may change the form's language; aborts otherwise.
+     */
+    abstract protected function authorizeLocaleChange(): void;
+
+    /**
+     * The record whose parent decides the parent in another language (its translation there, or none): the source
+     * of a new translation, the record of a saved one, null for a plain new record.
+     */
+    abstract protected function localeSource(): ?Entry;
+
+    /**
+     * Makes the form one of another language, in place: the typed values stay, the parent becomes the one the
+     * language has (none, or the translation of the source's parent), and the slug is made free in the language.
+     * Nothing is stored. Returns what the browser keeps for itself (the address prefix and the parents' paths), or
+     * null for a language that is not offered.
+     *
+     * @return array{locale: string, prefix: string, parentPaths: array<int, string>}|null
+     */
+    public function changeLocale(string $locale): ?array
+    {
+        $this->authorizeLocaleChange();
+
+        if ($locale === $this->locale || ! in_array($locale, array_map(fn (Language $language): string => $language->code, $this->localeChoices), true)) {
+            return null;
+        }
+
+        $this->locale = $locale;
+        unset($this->language, $this->parentOptions, $this->addressPrefix, $this->localeChoices);
+
+        $parentId = $this->localeSource()?->copyFor($locale)['parent_id'] ?? null;
+        $parent = $parentId !== null ? Entry::query()->find((int) $parentId) : null;
+
+        $this->form->parent_id = $parent !== null ? (string) $parent->id : '';
+
+        $name = trim($this->form->slug) !== '' ? $this->form->slug : $this->form->title;
+
+        if (trim($name) !== '') {
+            $this->form->slug = app(EntryPaths::class)->suggest($this->contentType, $locale, $parent, $name, $this->record());
+        }
+
+        return [
+            'locale' => $locale,
+            'prefix' => $this->addressPrefix,
+            'parentPaths' => collect($this->parentOptions)->mapWithKeys(fn (array $option): array => [(string) $option['id'] => $option['path']])->all(),
+        ];
     }
 
     #[Computed]
@@ -138,7 +196,8 @@ abstract class EntryFormPage extends Component
         return array_values(Entry::query()
             ->ofType($this->type)
             ->inLocale($this->locale)
-            ->when($record !== null, fn ($query) => $query
+            // The record's own path means something only in its own language (a form changing it has no descendants).
+            ->when($record !== null && $record->locale === $this->locale, fn ($query) => $query
                 ->whereKeyNot($record->id)
                 ->where('path', 'not like', $record->path.'/%'))
             ->orderByRaw("replace(path, '/', ' ') asc")

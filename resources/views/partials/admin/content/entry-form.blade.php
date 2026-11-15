@@ -5,7 +5,9 @@
     - $entry           the saved record, or null on the create page;
     - $groupEntries    the live records of the group (with id, locale, title, status, published_at), for the
                        language card; on the create page the source's group, or empty;
-    - $trashedEntries  the group's trashed records keyed by language (the record itself left out).
+    - $trashedEntries  the group's trashed records keyed by language (the record itself left out);
+    - $localeChoices   the languages the language select offers (EntryFormPage::localeChoices()); with fewer than
+                       two the language is shown as fixed.
 
     Everything the browser does without a request (the slug following the title, the address prefix, the search
     preview, the leave-page warning, Ctrl/Cmd+S) is the Alpine component `entryForm` (resources/js/entry-form.js).
@@ -38,6 +40,7 @@
         'nowLocal' => now()->tz($timezone)->format('Y-m-d\TH:i'),
         'editorModels' => collect($contentType->fields())->filter(fn ($field) => $field instanceof App\Support\Content\Fields\RichText)->map(fn ($field) => $field->name)->values()->all(),
         'leaveModal' => 'leave-entry-form',
+        'savedLocale' => $entry?->locale,
     ];
 @endphp
 
@@ -56,7 +59,7 @@
         {{-- Header --}}
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div class="min-w-0">
-                <a href="{{ route('admin.content.index', ['type' => $type, 'locale' => $locale]) }}" wire:navigate class="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white" data-test="back-to-list">
+                <a href="{{ route('admin.content.index', ['type' => $type]) }}" wire:navigate class="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white" data-test="back-to-list">
                     <flux:icon.arrow-left variant="micro" class="rtl:-scale-x-100" />
                     {{ $contentType->pluralLabel() }}
                 </a>
@@ -217,9 +220,10 @@
                             @endif
                         </div>
 
-                        @if ($entry === null && count($localeChoices ?? []) > 1)
-                            {{-- A new record: the language is still a choice. Not `wire:model` (the language is locked);
-                                 the form's script asks the server and keeps the prefix and the editors in step. --}}
+                        @if (! $readOnly && count($localeChoices ?? []) > 1)
+                            {{-- The language is a choice (a saved record takes it on Save). Not `wire:model` (the
+                                 language is locked); the form's script asks the server and keeps the prefix and the
+                                 editors in step. --}}
                             <div class="mb-4">
                                 <flux:select :label="__('content.form.language.choose')" x-on:change="changeLocale($event.target)" data-test="entry-locale">
                                     @foreach ($localeChoices as $choice)
@@ -228,7 +232,9 @@
                                         </flux:select.option>
                                     @endforeach
                                 </flux:select>
-                                <flux:text class="mt-2 text-xs">{{ __('content.form.language.choose_hint') }}</flux:text>
+                                @if ($entry !== null)
+                                    <flux:text class="mt-2 text-xs" x-cloak x-show="$wire.locale !== @js($entry->locale)" data-test="entry-locale-hint">{{ __('content.form.language.choose_hint') }}</flux:text>
+                                @endif
                             </div>
                         @else
                             <div class="mb-4 flex items-center gap-2 rounded-lg bg-zinc-50 px-3 py-2 text-sm dark:bg-white/5">
@@ -236,22 +242,33 @@
                                 <span class="min-w-0 flex-1 truncate font-medium text-zinc-900 dark:text-white">{{ $language->native }}</span>
                                 <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ __('content.form.language.this') }}</span>
                             </div>
+                            @if ($entry !== null && ! $readOnly && $this->hasDescendants)
+                                <flux:text class="-mt-2 mb-4 text-xs" data-test="entry-locale-locked">{{ __('content.form.language.locked_children') }}</flux:text>
+                            @endif
                         @endif
 
                         @if ($entry !== null || $present->isNotEmpty())
-                            <div class="mb-4 flex h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700" aria-hidden="true">
-                                <span class="bg-green-500" style="width: {{ round($publishedCount / $total * 100, 1) }}%"></span>
-                                <span class="bg-amber-400" style="width: {{ round(($present->count() - $publishedCount) / $total * 100, 1) }}%"></span>
-                            </div>
+                            <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                                <flux:heading class="mb-3 text-xs font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">{{ __('content.translations.title') }}</flux:heading>
 
-                            @include('partials.admin.content.translations-grid', [
-                                'entry' => $entry ?? new App\Models\Entry(['type' => $type, 'locale' => $locale]),
-                                'languages' => $languages,
-                                'groupEntries' => $groupEntries,
-                                'trashedEntries' => $trashedEntries,
-                                'canCreate' => $abilities['create'] && ! $trashed,
-                                'fromId' => $fromId,
-                            ])
+                                @include('partials.admin.content.translations-list', [
+                                    'entry' => $entry,
+                                    'type' => $type,
+                                    'locale' => $entry?->locale ?? $locale,
+                                    'languages' => $languages,
+                                    'groupEntries' => $groupEntries,
+                                    'trashedEntries' => $trashedEntries,
+                                    'canCreate' => $abilities['create'] && ! $trashed,
+                                    'canLink' => $entry !== null && ! $readOnly,
+                                    'fromId' => $fromId,
+                                ])
+
+                                @if ($entry !== null && ! $readOnly && collect($groupEntries)->count() + collect($trashedEntries)->count() > 2)
+                                    <div class="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-700">
+                                        <flux:button size="xs" variant="subtle" icon="link-slash" x-on:click="$wire.confirmUnlink({{ $entry->id }})" data-test="unlink-translation">{{ __('content.link.unlink_self') }}</flux:button>
+                                    </div>
+                                @endif
+                            </div>
                         @else
                             <flux:text class="text-sm">{{ __('content.form.language.after_save') }}</flux:text>
                         @endif
@@ -348,6 +365,61 @@
             @else
                 {{ trans_choice('content.list.trash.confirm', (int) config('content.trash_days'), ['title' => $entry->title]) }}
             @endif
+        </x-confirm-modal>
+    @endif
+
+    @if ($entry !== null && ! $readOnly && $multilingual)
+        @php
+            $linkLanguage = collect($languages)->firstWhere('code', $this->linkLocale);
+            $unlinkTarget = $this->unlinkId > 0 ? $this->unlinkTarget($this->unlinkId) : null;
+        @endphp
+
+        <flux:modal wire:model.self="showLinkModal" class="w-full max-w-lg" data-test="link-modal">
+            <div class="space-y-5">
+                <div class="space-y-2">
+                    <flux:heading size="lg">{{ __('content.link.title', ['language' => $linkLanguage?->native ?? '']) }}</flux:heading>
+                    <flux:text>{{ __('content.link.description') }}</flux:text>
+                </div>
+
+                <flux:input wire:model.live.debounce.300ms="linkSearch" icon="magnifying-glass" :placeholder="__('content.link.search')" clearable data-test="link-search" />
+
+                <div class="max-h-80 space-y-1 overflow-y-auto" wire:loading.class="opacity-60" wire:target="linkSearch">
+                    @forelse ($this->linkCandidates as $candidate)
+                        @php $candidateState = $candidate->state(); @endphp
+                        <button type="button" wire:click="link({{ $candidate->id }})" wire:key="link-candidate-{{ $candidate->id }}" class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start hover:bg-zinc-100 dark:hover:bg-white/10" data-test="link-candidate-{{ $candidate->id }}">
+                            <span @class(['size-2 shrink-0 rounded-full', 'bg-green-500' => $candidateState === App\Enums\EntryState::Published, 'bg-amber-400' => $candidateState !== App\Enums\EntryState::Published]) title="{{ __('content.list.state.'.strtolower($candidateState->name)) }}"></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-sm font-medium text-zinc-900 dark:text-white">{{ $candidate->title }}</span>
+                                <span class="block truncate text-xs text-zinc-500 dark:text-zinc-400">/{{ $candidate->path }}</span>
+                            </span>
+                            @if ($candidate->groupEntries->count() > 1)
+                                <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400" title="{{ __('content.link.leaves') }}">{{ __('content.link.linked_to', ['languages' => mb_strtoupper($candidate->translations()->pluck('locale')->implode(', '))]) }}</span>
+                            @endif
+                        </button>
+                    @empty
+                        <flux:text class="px-3 py-6 text-center text-sm">{{ $this->linkSearch === '' ? __('content.link.empty') : __('content.link.not_found') }}</flux:text>
+                    @endforelse
+                </div>
+
+                @if ($sharedFields !== [])
+                    <flux:text class="text-xs">{{ __('content.link.shared_note') }}</flux:text>
+                @endif
+
+                <div class="flex justify-end">
+                    <flux:modal.close>
+                        <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
+                    </flux:modal.close>
+                </div>
+            </div>
+        </flux:modal>
+
+        <x-confirm-modal
+            wire:model.self="showUnlinkModal"
+            :heading="__('content.link.unlink_title')"
+            :confirm-label="__('content.link.unlink')"
+            confirm-action="unlink"
+        >
+            {{ __('content.link.unlink_confirm', ['title' => $unlinkTarget?->title ?? '']) }}
         </x-confirm-modal>
     @endif
 

@@ -6,6 +6,8 @@ use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
 use App\Models\User;
 use App\Support\Content\EntryInput;
+use App\Support\Content\EntryPaths;
+use App\Support\Localization\ContentLocales;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -13,18 +15,26 @@ use Illuminate\Validation\ValidationException;
 
 class UpdateEntry
 {
-    public function __construct(private readonly EntryWriter $writer) {}
+    public function __construct(
+        private readonly EntryWriter $writer,
+        private readonly EntryPaths $paths,
+        private readonly ContentLocales $locales,
+    ) {}
 
     /**
-     * Saves the form into the record. Its type and language never change; a changed slug or parent moves it and
-     * its descendants (EntryPaths::move()) and keeps the old paths as redirects.
+     * Saves the form into the record. Its type never changes; a changed slug or parent moves it and its
+     * descendants (EntryPaths::move()) and keeps the old paths as redirects.
+     *
+     * With `$locale` the record also becomes one of that language (EntryPaths::relocate(), the old address kept as
+     * a redirect): only a language of the site that its group does not have yet (in the trash either), and only a
+     * record with nothing under it, as its descendants would stay in the old language.
      *
      * @param  array<string, mixed>  $data  The form data; validated here (EntryInput).
      *
      * @throws ValidationException
      * @throws ProtectedActionException when the record is in the trash (it is restored first)
      */
-    public function handle(User $actor, Entry $entry, array $data): Entry
+    public function handle(User $actor, Entry $entry, array $data, ?string $locale = null): Entry
     {
         Gate::forUser($actor)->authorize('update', $entry);
 
@@ -33,10 +43,21 @@ class UpdateEntry
         }
 
         $type = $entry->type();
-        $input = EntryInput::validate($type, $entry->locale, $entry, $data);
+        $locale ??= $entry->locale;
+        $moves = $locale !== $entry->locale;
+
+        if ($moves) {
+            $this->assertMayBecome($entry, $locale);
+        }
+
+        $input = EntryInput::validate($type, $locale, $entry, $data);
 
         try {
-            return DB::transaction(function () use ($entry, $type, $input): Entry {
+            return DB::transaction(function () use ($entry, $type, $input, $locale, $moves): Entry {
+                if ($moves) {
+                    $this->paths->relocate($entry, $locale, $this->paths->pathFor($type, $input['parent'], $input['slug']));
+                }
+
                 $this->writer->save($entry, $type, $entry->group, $input);
 
                 return $entry;
@@ -44,6 +65,23 @@ class UpdateEntry
         } catch (UniqueConstraintViolationException) {
             // Another request took the path between the check and the write.
             throw ValidationException::withMessages(['slug' => __('content.slug.taken')]);
+        }
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function assertMayBecome(Entry $entry, string $locale): void
+    {
+        $problem = match (true) {
+            ! $this->locales->has($locale) => 'content.entry.locale_invalid',
+            Entry::withTrashed()->where('entry_group_id', $entry->entry_group_id)->where('locale', $locale)->exists() => 'content.entry.locale_taken',
+            $entry->descendants()->withTrashed()->exists() => 'content.entry.locale_has_children',
+            default => null,
+        };
+
+        if ($problem !== null) {
+            throw ValidationException::withMessages(['locale' => __($problem)]);
         }
     }
 }

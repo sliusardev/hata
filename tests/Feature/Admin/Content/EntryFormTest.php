@@ -67,7 +67,8 @@ test('a page is created through the form', function () {
         ->and($entry->excerpt)->toBe('Who we are')
         ->and($entry->body)->toBe('<p>Hello</p>')
         ->and($entry->author_id)->toBe($editor->id)
-        ->and($entry->status)->toBe(EntryStatus::Draft)
+        ->and($entry->status)->toBe(EntryStatus::Published)
+        ->and($entry->isPublic())->toBeTrue()
         ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('content.form.created'));
 });
 
@@ -224,7 +225,7 @@ test('a translation is filled from its source and saved into the same group', fu
         ->assertSet('form.excerpt', 'Since 1990')
         ->assertSet('form.parent_id', (string) $parentUk->id)
         ->assertSet('form.slug', 'our-history')
-        ->assertSet('form.status', 'draft')
+        ->assertSet('form.status', 'published')
         ->set('form.title', 'Наша історія')
         ->call('save')
         ->assertHasNoErrors();
@@ -297,7 +298,7 @@ test('moving to the trash asks first, names the subpages and returns to the list
         ->assertSet('showTrashModal', true)
         ->assertSee(trans_choice('content.list.trash.confirm_children', 2, ['title' => 'About']))
         ->call('trash')
-        ->assertRedirect(route('admin.content.index', ['type' => 'pages', 'locale' => 'en']));
+        ->assertRedirect(route('admin.content.index', ['type' => 'pages']));
 
     expect(Entry::onlyTrashed()->count())->toBe(3)
         ->and(session(Toast::SESSION_KEY)['text'])->toBe(trans_choice('content.list.trash.done_with_children', 3));
@@ -470,23 +471,40 @@ test('the pages type has no field cards', function () {
     createForm()->assertDontSee(__('content.form.shared.title'))->assertDontSee(__('content.form.fields_card'));
 });
 
-test('the language card shows published, draft, missing and trashed translations with their links', function () {
+test('the language card lists a row per other language: the translation, the trashed one, or the ways to get one', function () {
     $this->actingAs(formEditor());
     $page = Entry::factory()->published()->create(['title' => 'Home']);
-    $uk = Entry::factory()->translationOf($page, 'uk')->create();
+    $uk = Entry::factory()->translationOf($page, 'uk')->create(['title' => 'Головна']);
     $pl = Entry::factory()->translationOf($page, 'pl')->create(['deleted_at' => now()]);
 
     editForm($page)
-        ->assertSeeHtml('data-test="grid-cell-en" data-state="this"')
-        ->assertSeeHtml('data-test="grid-cell-uk" data-state="draft"')
-        ->assertSeeHtml('data-test="grid-cell-pl" data-state="trashed"')
-        ->assertSeeHtml('data-test="grid-cell-de" data-state="missing"')
+        ->assertDontSeeHtml('data-test="translation-row-en"')
+        ->assertSeeHtml('data-test="translation-row-uk" data-state="Draft"')
+        ->assertSeeHtml('data-test="translation-row-pl" data-state="trashed"')
+        ->assertSeeHtml('data-test="translation-row-de" data-state="missing"')
+        ->assertSee('Головна')
         ->assertSee(route('admin.content.edit', ['type' => 'pages', 'entry' => $uk->id]), false)
         ->assertSee(route('admin.content.edit', ['type' => 'pages', 'entry' => $pl->id]), false)
         ->assertSee(route('admin.content.create', ['type' => 'pages', 'from' => $page->id, 'locale' => 'de']))
-        ->assertSee(__('content.grid.trashed', ['language' => 'Polski']));
+        ->assertSeeHtml('data-test="translation-unlink-uk"')
+        ->assertDontSeeHtml('data-test="translation-unlink-pl"')
+        ->assertSeeHtml('data-test="translation-choose-de"')
+        ->assertDontSeeHtml('data-test="translation-choose-pl"');
 
-    editForm($uk)->assertSeeHtml('data-test="grid-cell-en" data-state="published"');
+    editForm($uk)->assertSeeHtml('data-test="translation-row-en" data-state="Published"');
+});
+
+test('with view only the language card offers no choosing, creating or unlinking', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
+    $page = Entry::factory()->create();
+    Entry::factory()->translationOf($page, 'uk')->create();
+
+    editForm($page)
+        ->assertSeeHtml('data-test="translation-row-uk"')
+        ->assertDontSeeHtml('data-test="translation-unlink-uk"')
+        ->assertDontSeeHtml('data-test="translation-choose-pl"')
+        ->assertDontSeeHtml('data-test="translation-create-pl"')
+        ->assertDontSeeHtml('data-test="entry-locale"');
 });
 
 test('the language card is hidden on a site with one language', function () {
@@ -644,14 +662,27 @@ test('the address prefix carries the parent path, and a trashed child shows its 
         ->assertSeeHtml('about/</bdi>');
 });
 
-test('a new record offers the languages of the site, and a saved one does not', function () {
+test('a new record offers the languages of the site, and a saved one those its group lacks', function () {
     $this->actingAs(formEditor());
 
     createForm(['locale' => 'uk'])
         ->assertSeeHtml('data-test="entry-locale"')
         ->assertSeeInOrder(['English (EN)', 'Українська (UK)', 'Polski (PL)', 'Deutsch (DE) · off']);
 
-    editForm(Entry::factory()->create())->assertDontSeeHtml('data-test="entry-locale"');
+    $page = Entry::factory()->create();
+    Entry::factory()->translationOf($page, 'uk')->create();
+    Entry::factory()->translationOf($page, 'pl')->create(['deleted_at' => now()]);
+
+    editForm($page)
+        ->assertSeeHtml('data-test="entry-locale"')
+        ->assertSee(['English (EN)', 'Deutsch (DE)'])
+        ->assertDontSee(['Українська (UK)', 'Polski (PL)']);
+});
+
+test('a new record starts as published for those who may publish', function () {
+    $this->actingAs(formEditor());
+
+    createForm()->assertSet('form.status', 'published');
 });
 
 test('choosing another language changes the new record in place and keeps what was typed', function () {

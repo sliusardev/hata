@@ -1,0 +1,52 @@
+<?php
+
+namespace App\Actions\Content;
+
+use App\Exceptions\ProtectedActionException;
+use App\Models\Entry;
+use App\Models\EntryGroup;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+
+class UnlinkTranslation
+{
+    public function __construct(private readonly EntryWriter $writer) {}
+
+    /**
+     * Takes a record out of its translations: it gets a group of its own with a copy of the shared fields' values
+     * (and their file usages), and the others stay together.
+     *
+     * @throws ProtectedActionException when the record is in the trash or has no translations
+     */
+    public function handle(User $actor, Entry $entry): void
+    {
+        Gate::forUser($actor)->authorize('update', $entry);
+
+        if ($entry->trashed()) {
+            throw ProtectedActionException::because('content.entry.trashed');
+        }
+
+        DB::transaction(function () use ($entry): void {
+            $others = Entry::withTrashed()
+                ->where('entry_group_id', $entry->entry_group_id)
+                ->whereKeyNot($entry->id)
+                ->lockForUpdate()
+                ->exists();
+
+            if (! $others) {
+                throw ProtectedActionException::because('content.link.alone');
+            }
+
+            $group = EntryGroup::query()->create(['type' => $entry->type, 'shared' => $entry->group->shared]);
+
+            Entry::withTrashed()->whereKey($entry->id)->toBase()->update(['entry_group_id' => $group->id]);
+
+            $entry->entry_group_id = $group->id;
+            $entry->syncOriginalAttribute('entry_group_id');
+            $entry->setRelation('group', $group);
+
+            $this->writer->syncSharedUsages($group, $entry->type());
+        });
+    }
+}

@@ -691,16 +691,18 @@ new class extends Component {
     @else
         <ul class="space-y-2">
             @foreach ($chosen as $item)
-                <li wire:key="picker-chosen-{{ $item->id }}" class="flex items-center gap-3 rounded-lg border border-zinc-200 p-2 dark:border-white/10" data-test="media-picker-chosen">
+                <li wire:key="picker-chosen-{{ $item->id }}" class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-zinc-200 p-2 dark:border-white/10" data-test="media-picker-chosen">
                     <div class="size-14 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-white/5">
                         @include('partials.admin.media.thumb', ['item' => $item, 'compact' => true])
                     </div>
-                    <div class="min-w-0 flex-1">
-                        <div class="truncate text-sm font-medium text-zinc-800 dark:text-white">{{ $item->name }}</div>
-                        <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                    {{-- The basis keeps the name readable: in a narrow column the buttons wrap under it instead of squeezing it. --}}
+                    <div class="min-w-0 flex-1 basis-32">
+                        <div class="truncate text-sm font-medium text-zinc-800 dark:text-white" title="{{ $item->name }}">{{ $item->name }}</div>
+                        <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">
                             {{ implode(' · ', array_filter([$item->humanSize(), $item->width && $item->height ? $item->width.' × '.$item->height : null])) }}
                         </div>
                     </div>
+                    <div class="flex shrink-0 items-center gap-1">
                     @if (! $multiple && $canView)
                         <flux:button size="sm" wire:click="openPicker" data-test="media-picker-open">{{ __('media.picker.change') }}</flux:button>
                     @endif
@@ -712,6 +714,7 @@ new class extends Component {
                         :aria-label="__('media.picker.remove_file', ['name' => $item->name])"
                         data-test="media-picker-remove"
                     >{{ $multiple ? '' : __('media.picker.remove') }}</flux:button>
+                    </div>
                 </li>
             @endforeach
         </ul>

@@ -150,6 +150,7 @@ group and type).
 | `suggest($type, $locale, $parent, $title, $ignore = null)` | the generated slug with `-2`, `-3`... added while its path is taken. Taken means a record of the same type and language holds the path, trashed or not, or the slug is reserved at the top of the address (`isReserved()`). One query. A path held only by a redirect row is free |
 | `pathFor($type, $parent, $slug)` | the parent's path and the slug |
 | `move($entry, $newPath, $keepOldPaths = true)` | for the caller's transaction: sets the record's path, rewrites the path of every descendant (same type and language, trashed included, matched by the old path followed by `/`) with one `UPDATE`, deletes the redirect rows whose path a record now holds, and stores every old path in `entry_redirects` with one upsert (an existing row for that path is pointed at the record). Five queries whatever the number of descendants. With `$keepOldPaths = false` no redirect is stored (a record restored from the trash). The SQL concat is the one driver-specific part (`||` on SQLite, `CONCAT` on MySQL) |
+| `relocate($entry, $locale, $path)` | for the caller's transaction, when a record without descendants takes another language: stores the old (type, language, path) in `entry_redirects` pointing at the record (upsert), deletes a redirect row holding the new language and path, and sets the record's `locale` and `path` without saving. `move()` is not used for it: it matches descendants by the path prefix, which in the new language would be unrelated records |
 | `isReserved($type, $locale, $parent, $slug)` | the one answer to "reserved at the top of the address": no parent, a type with no base, and the slug is in `ReservedSlugs` or is the base of any registered type in that language. Used by both `suggest()` and `EntrySlug` |
 
 `App\Rules\EntrySlug($type, $locale, $parent, $ignore)` checks, in this order: the format
@@ -277,10 +278,31 @@ false)`), and the group and its `shared.<name>` usages are not touched, because 
 in the other languages, published ones included. A new record (no source) has a group of its own, and a creator sets
 its shared values. A path held by a redirect row takes it over (the row goes).
 
-`App\Actions\Content\UpdateEntry::handle($actor, $entry, $data)`: authorizes `update`; refuses a record in the trash
-with `ProtectedActionException` (`content.entry.trashed`: it is restored first); the record's type and
-language never change, whatever the data says. A changed slug or parent goes through `EntryPaths::move()`. A path
-taken by another request between the check and the write is a `slug` field error.
+`App\Actions\Content\UpdateEntry::handle($actor, $entry, $data, $locale = null)`: authorizes `update`; refuses a record
+in the trash with `ProtectedActionException` (`content.entry.trashed`: it is restored first); the record's type never
+changes, whatever the data says. A changed slug or parent goes through `EntryPaths::move()`. A path taken by another
+request between the check and the write is a `slug` field error.
+
+**Changing the language.** `$locale` other than the record's own moves the record to that language in the same save
+(decision 63). It is a `locale` field error when the language is not on the site (`content.entry.locale_invalid`), the
+record's group already has a record in it, trashed ones included (`locale_taken`), or the record has anything under
+it, trashed ones included (`locale_has_children`: those pages would stay in the old language). The data is validated
+in the new language (the parent must be a record of that language, the slug free there), and
+`EntryPaths::relocate()` keeps the old address as a redirect: `ContentRouter` redirects to `Entry::url()`, so the old
+address leads to the new language's one.
+
+`App\Actions\Content\LinkTranslations::handle($actor, $entry, $other)`: makes the existing record `$other` the
+translation of `$entry` in its language. Authorizes `update` on both; refuses (`ProtectedActionException`) records of
+different types, of one group already or in the trash (`content.link.invalid`), and a language the entry's group
+already has, trashed ones included (`content.link.overlap`; checked again under a lock on both groups' rows). Only
+`$other` moves: it leaves its own group, whose other records stay linked to each other, and takes the shared values
+of the group it joins; a group left empty is deleted with its usages. Written past the model, so `updated_at` stays:
+linking is not an edit.
+
+`App\Actions\Content\UnlinkTranslation::handle($actor, $entry)`: takes the record out of its group into a new one
+with a copy of the shared values and their usages (`EntryWriter::syncSharedUsages()`); the others stay together.
+Authorizes `update`; refuses a record in the trash (`content.entry.trashed`) and one with no other record in its
+group, trashed ones counted (`content.link.alone`).
 
 Both validate the data themselves (`EntryInput`), so a tampered value is a field error with nothing stored, and write
 in one transaction through `App\Actions\Content\EntryWriter`: the body through `BodySanitizer::clean()`;
@@ -315,6 +337,7 @@ parent).
 | `TrashEntry::handle($actor, $entry): int` | `delete` | trashes the record and its live descendants with one shared `deleted_at` (to the second), in one `UPDATE` whatever their number; returns how many (0 when the record already was in the trash) |
 | `RestoreEntry::handle($actor, $entry): Entry` | `restore` (`edit`) | restores the record and the descendants carrying exactly its `deleted_at` (trashed with it); a child trashed earlier on its own keeps its own time and stays. Two trash actions within the same second share a timestamp, so they restore together. A record below the top level whose parent is still in the trash (or gone) becomes top level: the slug gets a suffix when that path is taken or reserved (`suggest()`), and `move(..., keepOldPaths: false)` carries its descendants' paths along without redirects; the parent restored later comes back without it. When another request takes the suggested path before the write (the unique index refuses it), the writes roll back to their savepoint and a fresh suggestion is tried once; a second refusal is a `ProtectedActionException` (`content.entry.restore_conflict`) and nothing is restored. A live record is returned unchanged |
 | `DeleteEntry::handle($actor, $entry): void` | `forceDelete` (`delete`) | only a trashed record (`ProtectedActionException`, `content.entry.not_trashed`); removes it and every trashed record under its path (same type and language), whenever each was trashed. Only trashed rows are touched |
+| `EmptyEntryTrash::handle($actor, $type, $locales): int` | the type's `delete` | deletes for good every trashed record of the type in those languages, 200 per chunk, a transaction per chunk (`purge()`); the list's "Empty the trash" |
 | `PruneEntryTrash::handle(): int` | none (decision 16) | deletes for good what was trashed more than `content.trash_days` days ago, with every trashed record under it (even one trashed after the cut-off), 200 records per chunk, a transaction per chunk |
 
 `DeleteEntry::purge($records)` (trashed records loaded with `id`, `type`, `locale` and `path`) is the removal both
@@ -348,26 +371,29 @@ then Media; the group shows when any of them or `media.view` holds.
 
 **List** (`pages::admin.content.index`, a plain full-page component, no islands):
 
-- Header: the type's plural label and description; "Create page" (`create`) links to `admin.content.create` with the
-  list's language.
+- Header: the type's plural label and description; "Create page" (`create`) links to `admin.content.create` (no
+  `locale`: the new form takes the list's remembered language, else the default).
 - Tabs All, Published, Drafts, Scheduled, Trash with counts. Published is `public()`; Drafts is `draft` or a published
-  record without a date; Scheduled is published with a future date. The counts are of the type and language, whatever
-  the search and the filter.
+  record without a date; Scheduled is published with a future date. The counts are of the type in the list's languages
+  (the chosen one, or all of the site's), whatever the search and the filter.
 - Filters: search (`search_index`, title and slug, case-insensitive with Cyrillic; the term is cut at 200 characters,
-  `SEARCH_MAX`, in `mount()` and `updatedSearch()`, and the input has `maxlength="200"`); the list's language (every
-  language added to the site, a switched-off one marked "off"); "Missing: <language>" (records whose group has no live
+  `SEARCH_MAX`, in `mount()` and `updatedSearch()`, and the input has `maxlength="200"`); the list's language ("All languages", the
+  default, then every language added to the site, a switched-off one marked "off"); "Missing: <language>" (records whose group has no live
   record in that language, trashed translations count as missing). Both language selects and the Translations column
   are absent on a site with one language.
 - State in the query string: `tab` (default `all`), `q`, `locale`, `missing`, `sort`, `dir`, `page`, so a filtered list
-  can be bookmarked and Back works. The language is remembered in the session (`content.list_locale`) and defaults to
-  the default content language; a value that is not a language of the site falls back to the default. An unknown tab is
-  `all`.
+  can be bookmarked and Back works. The list shows every language of the site by default (`locale` empty; the user's
+  request, decision 64); a chosen language is remembered in the session (`content.list_locale`, empty again after
+  choosing "All languages"), and a value that is not a language of the site shows them all. Records in a language that
+  is not on the site are never listed. An unknown tab is `all`.
 - Sort: title and date (`coalesce(published_at, created_at)`), toggled by the column headers. A hierarchical type
   defaults to tree order and a third click on a header (or the "Tree order" button) goes back to it. Tree order sorts
-  by `path` with `/` read as a space, so `about/team` comes right after `about` and before `about-us`; rows are
+  by `path` with `/` read as a space, so `about/team` comes right after `about` and before `about-us`; with every
+  language listed, each language's tree follows the other in the site's order of languages; rows are
   indented by `depth()` only on the All tab with no search and no "Missing" filter (a status tab or a filter can
   hide a row's parent, and a child would be indented under nothing).
-- Row: thumbnail (`thumbUrl()` of the image, else a neutral block; fixed 40 px), the title linking to the edit page,
+- Row: thumbnail (`thumbUrl()` of the image, else a neutral block; fixed 40 px), the language code before the title
+  while every language is listed (`data-test="entry-language-<id>"`), the title linking to the edit page,
   the address (`url(false)`), a Draft or Scheduled badge, the translations bar, author, date, and the "⋮" menu. On a
   phone the translations, author and date columns are hidden.
 - Translations bar: green = published, amber = draft or scheduled, `n/total` where total is every language added to
@@ -377,6 +403,16 @@ then Media; the group shows when any of them or `media.view` holds.
   lacks, each to `admin.content.create` with `from` and `locale`), Move to trash (`delete`).
 - Trash tab: a flat list by `deleted_at`, newest first, with "Removed on <date>" (`deleted_at` + `trash_days`). Menu:
   Restore (`edit`, `RestoreEntry`) and Delete for good (`delete`, `DeleteEntry`).
+- Bulk selection: a checkbox per row and one in the header for the whole page, shown to those who have a bulk action
+  (`delete`; in the trash `edit` or `delete`). The picks are the `selected` property, bound from Alpine
+  (`x-model="$wire.selected"`), so picking makes no request; a bar above the table shows the count and the actions:
+  "Move to trash" (`confirmBulk('trash')`, then `runBulk`: `TrashEntry` per record, parents first, so a page under a
+  picked one counts once), in the trash "Restore" (`restoreSelected`, `edit`, no confirmation, parents first; a row
+  its parent brought back is skipped) and "Delete for good" (`confirmBulk('delete')`, one `DeleteEntry::purge()` of
+  the picked trashed records). Only ids that are records of the type in the right state are acted on. The picks are
+  dropped when the tab, the search, a filter, the sort or the page changes, and after an action.
+- "Empty the trash" (the Trash tab, `delete`, shown while the trash holds anything): after a confirmation naming the
+  count, `EmptyEntryTrash` for the languages the list shows.
 - Confirmations (`<x-confirm-modal>`): moving to the trash names the number of subpages going with it
   (`descendantsCount()`); deleting for good is always confirmed and names the number of trashed records under it.
   Results are toasts; a `ProtectedActionException` (a restore conflict) is a danger toast.
@@ -385,14 +421,15 @@ then Media; the group shows when any of them or `media.view` holds.
 - Opening the list prunes the trash (`PruneEntryTrash`) after the response at most once an hour per type (cache key
   `content.prune_trash.<type>`), so no cron is required.
 
-`App\Support\Content\EntryListQuery::for($type, $locale)` builds the list: `tab()`, `search()`, `missingIn()` (a `not
+`App\Support\Content\EntryListQuery::for($type, $locale, $locales)` (an empty `$locale` means every language in
+`$locales`, the site's) builds the list: `tab()`, `search()`, `missingIn()` (a `not
 exists` on the group), `sort('title'|'date'|'tree', 'asc'|'desc')`, `isTree()`, `query()`, `paginate($perPage)` and
 `counts()` (one aggregate query). It selects only the columns a row shows and eager loads `image`, `author` (`id`,
 `name`) and `groupEntries` (`id`, `entry_group_id`, `locale`, `title`, `status`, `published_at`), so the page's query
 count does not depend on the number of rows (asserted with 5 and 20 rows). Permissions are checked once per render,
 not per row.
 
-**Translations grid** (`partials/admin/content/translations-grid.blade.php`, reused by the form): receives `$entry`,
+**Translations grid** (`partials/admin/content/translations-grid.blade.php`, the list's hover): receives `$entry`,
 `$languages` (`ContentLocales::all()`), `$groupEntries` (the loaded relation) and optionally `$canCreate`,
 `$trashedEntries` (the group's trashed records keyed by language; only the form passes them) and `$fromId` (what the
 create links copy; `$entry->id` by default). Four codes per row: the record's own language filled dark, an existing
@@ -402,6 +439,14 @@ linking to the create page with `from` and `locale` (a plain mark without `creat
 with an "off" mark. Each cell carries `data-state` (`this`, `published`, `draft`, `trashed`, `missing`). A legend with
 the counts follows (the trash only when there is any). It makes no query. In the list a trashed translation counts as
 missing, as for `CreateEntry`: its create link redirects to the trashed record.
+
+**Translations list** (`partials/admin/content/translations-list.blade.php`, the form's language card; the user asked
+for the language box of WordPress and Joomla): a row per other language of the site, `data-test="translation-row-<code>"`
+with `data-state` (`Published`, `Draft`, `Scheduled`, `trashed`, `missing`). A language with a record shows its title
+linking to its edit page, its state, an edit button and, for an editable saved record, "Unlink"
+(`confirmUnlink(<id>)`). A trashed one is struck through and only links to its read-only page. A language without one
+offers "Choose" (`chooseTranslation('<code>')`, an editable saved record) and "Create" (`create`; the create page with
+`from` and `locale`). A switched-off language is marked. It makes no query.
 
 **Form** (`pages::admin.content.create` and `pages::admin.content.edit`, both on `App\Livewire\Admin\EntryFormPage`
 (decision 32), the markup in `partials/admin/content/entry-form.blade.php`, the values in
@@ -417,8 +462,9 @@ missing, as for `CreateEntry`: its create link redirects to the trashed record.
   (`EntryPaths::suggest()` on the slug, else the title), and the action returns the new address prefix and parents'
   paths, which the form's script keeps; the editors take the language from the `entry-locale:changed` event, and the
   address bar drops its `locale` (a translation keeps it next to `from`, updated). It authorizes `create` and ignores
-  a language that is not offered (returns null; the select goes back). A saved record's language never changes
-  (decision 58), so the edit page keeps the fixed row. With `from` (a live record of the type, else 404): when the group
+  a language that is not offered (returns null; the select goes back). The status of a new record is Published for an actor with the type's `edit`
+  (the user's request, decision 64: it goes live on Save, with the saving time as its date) and Draft, the only one
+  they can save, for a creator without it; a translation too. With `from` (a live record of the type, else 404): when the group
   already has that language, trashed or not, the page redirects to that record's edit page (a trashed one opens
   read-only with Restore); otherwise the form is filled from `copyFor()` and the slug suggested from the copied title
   under the mapped parent. The copied author is kept only while they can still be one (`EntryAuthors`); otherwise the
@@ -428,10 +474,21 @@ error instead of creating a record outside the group. Save calls
   `CreateEntry` and redirects to the edit page with a toast ("The record is created.", or "already exists" when the
   action returned an existing translation).
 - **Saved record.** `entryId` is locked; the record is loaded with its group (shared field values). Save calls
-  `UpdateEntry` and redirects back with a toast. A record in the trash is read-only and refuses Save (403); trashing
+  `UpdateEntry` with the form's language and redirects back with a toast. The language select is the new record's one,
+  offering the record's language and those its group lacks (trashed ones counted): `changeLocale()` (here it
+  authorizes `update` and refuses a trashed record) changes the form in place and stores nothing; the language is
+  applied on Save, a hint under the select says so, and the form counts as changed. A record with anything under it
+  gets the fixed language row with the reason instead (one `exists` query, only on a hierarchical type of a
+  multilingual site). Choosing and unlinking translations are immediate actions of their own, apart from Save and
+  without a reload: `chooseTranslation($locale)` (404 for a language the group has or the site lacks) opens a dialog
+  with a search over the live records of the type in that language outside the group (one query while it is open, at
+  most 20; a record that is someone's translation says for which languages, as it will leave them), `link($id)` runs
+  `LinkTranslations`; `confirmUnlink($id)` (the record itself or a live record of its group, else 404) asks, and
+  `unlink()` runs `UnlinkTranslation`. All of them need `update` on a record outside the trash; a refusal is a danger
+  toast. A record in the trash is read-only and refuses Save (403); trashing
   a record that is already in the trash does nothing (no toast, no redirect). The record the route bound serves the
   first render, so it is loaded once.
-- **Header**: a back link to the list (in the record's language), the record's title (or `newLabel()`) with a
+- **Header**: a back link to the list (with no `locale`, so the list keeps its own choice), the record's title (or `newLabel()`) with a
   Draft/Scheduled/"In the trash" badge, "View on site" (a public record) or "Preview" (a draft or scheduled one, only
   for a viewer with the type's `edit`, who may preview it; a view-only user gets no link), both opening `Entry::url()`
   in a new tab and only for a saved record outside the trash; a record in a switched-off language shows the muted note
@@ -447,8 +504,9 @@ error instead of creating a record outside the group. Save calls
 - **Right column**: "Publication" (status Draft/Published, date and time as `datetime-local` in `admin.timezone` with
   the timezone named under it; a hint when Published with a future date, and when Published without a date); a user
   without the type's `edit` sees the status fixed to Draft with a line that an editor publishes it. "Language and
-  translations" (hidden on a site with one language): the record's language, `n of total`, a progress bar and the grid
-  (with trashed translations); a new record without a source says translations come after saving. A `locale` error
+  translations" (hidden on a site with one language): the record's language (the select, or the fixed row), `n of
+  total` and the translations list (with trashed translations; for a saved record with two or more other records also
+  "Unlink this record from its translations"); a new record without a source says translations come after saving. A `locale` error
   (the language removed before Save) and a `source` error show in a callout at the top of the form, visible on a
   one-language site too. "For all languages" with `sharedFields()` and the line that a change
   applies to every translation (absent when the type has none); in a translation made by a user without the type's
@@ -573,7 +631,10 @@ with the record, the body through `BodyRenderer::render()`, `preview` and `editU
 viewer with the type's `edit`). A preview answers `Cache-Control: no-store`.
 
 **Alternates.** The controller passes `ContentLocales::useAlternates()` the addresses of the group's records that are
-public and in an active language (the record itself included when public), in the site's order of languages. The
+public and in an active language (the record itself included when public), in the site's order of languages. For a
+viewer who may edit the type the drafts and scheduled translations are included too (the same one query without the
+`public()` filter), so the switcher leads an editor to a translation before it is published, where it opens as a
+preview; that viewer's `hreflang` lists them as well, which no crawler sees. The
 `hreflang` partial prints them plus `x-default` (the default language's address, left out when the default language has
 no public translation), and nothing when there is only one. The switcher lists every active language.
 
@@ -631,7 +692,8 @@ on a one-language site, the hidden record's 404 equal to a missing one, the imag
 rendered body, no Livewire or script files, the public stylesheet instead of the admin's; preview (draft, scheduled and trashed are 404 for a guest and a user without
 `pages.edit`; the strip, `noindex`, `no-store` and the edit link for an editor; the scheduled date in the site's
 timezone; the Edit link on a published page); `hreflang` (public translations in active languages, `x-default`, none for
-one, no `x-default` without the default language) and the switcher; `/de/about`; languages off or not added; no leak of
+one, no `x-default` without the default language) and the switcher (an unpublished translation linked only for an
+editor); `/de/about`; languages off or not added; no leak of
 alternates into the next request; redirects in both languages, to a draft only for an editor, after a `move()`; every
 other route unchanged (by the router's match), reserved slugs, `url()` from the route without a query, the compiled route
 cache; the query budget and the cost of a miss and a redirect; `LookUpContent` ordered before `StartSession` on both
@@ -641,7 +703,9 @@ started for a public page and a public redirect, an editor with a session still 
 and the form's "Preview".
 `tests/Feature/Admin/Content/EntryIndexTest.php`: access (guest, 403, unknown type), the sidebar item and group, tabs
 and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
-the tree, `missing`, the list's language (session, fallback), the translations bar and its create links, the one-language
+the tree, `missing`, the list's language (every language by default with the code per row and the trees in the
+site's order, the chosen one in the session, fallback), bulk trash, restore and delete for good with their
+permissions and confirmations, emptying the trash for the listed languages, the picks dropped by a filter, the translations bar and its create links, the one-language
 site, the Create button, trash/restore/delete for good with their permissions and confirmation texts, the row menu, empty
 states, the query string, the search term cut at 200 characters, the same query count for 5 and 20 rows, the hourly
 prune, the indent only on the full tree, that the create and edit pages authorize, `edit` or `create` without `view`
@@ -656,9 +720,16 @@ without `edit` (status locked, author as text, publishing refused), trash with i
 another type's record 404, View on site / Preview (no Preview for a view-only user, the note for a switched-off
 language in the form and the list), the shared values locked in a creator's translation and kept on save, a type
 with fields (`ProductsType`: one control per field, local and shared values stored in place, a field error), no field
-cards for `pages`, the language card states and links (trashed included) and its absence on a one-language site, the
+cards for `pages`, the language card's rows and actions (trashed included; none of the actions with `view` only) and
+its absence on a one-language site, the Published default of a new record, the
 editor's images and the detached picker, the same query count for few and many translations and pages, and the media
 library's usage link to the edit page (also for a trashed record).
+`tests/Feature/Admin/Content/EntryTranslationsTest.php`: a saved record's language changed on Save (nothing stored
+before, the old address redirecting to the new one), the parent's translation and a free slug in the new language, the
+refusals (a language the group has, in the trash too, one not on the site, a page with pages under it, no `edit`, a
+trashed record); choosing an existing record (candidates, search, the emptied group gone, `updated_at` kept), a chosen
+record leaving its former translations, the refused links, the permissions and 404s; unlinking a translation and the
+record itself (the copy of the shared values, the others staying together) and its refusals.
 `tests/Feature/Console/MakeContentTypeTest.php`: the generator on copies of the project's own config and language
 files (the class, the config entry, the lines in both languages), the options, every refusal changing nothing, and a
 file of another shape left alone.

@@ -77,7 +77,8 @@ class ContentRouter
     /**
      * What the viewer gets at the address: the record (a preview when it is not public and the viewer may edit its
      * type), the address a redirect leads to (only to a record the viewer may see), or null. Takes the lookup
-     * LookUpContent already made, else makes it. Then one query for the record's public translations (none on a
+     * LookUpContent already made, else makes it. Then one query for the record's translations (the public ones, or
+     * all of them for a viewer who may edit the type; none on a
      * one-language site) and one for its image when it has one.
      */
     public function resolve(string $locale, string $path, ?User $viewer, ?ContentLookup $lookup = null): ?ContentMatch
@@ -105,9 +106,13 @@ class ContentRouter
             // One language: no hreflang and no switcher, so no translations to look up.
             $entry->setRelation('groupEntries', new Collection);
         } else {
+            // A viewer who may edit the type gets the drafts and scheduled translations too (they open as previews),
+            // so the switcher leads an editor from one language of a page to the other before it is published.
+            $withHidden = $this->mayPreview($entry, $viewer);
+
             $entry->load(['groupEntries' => fn (HasMany $query) => $query
                 ->select(['id', 'entry_group_id', 'type', 'locale', 'path'])
-                ->public()
+                ->when(! $withHidden, fn ($query) => $query->public())
                 ->whereIn('locale', $activeLocales),
             ]);
         }

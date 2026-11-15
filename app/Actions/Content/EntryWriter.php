@@ -120,9 +120,26 @@ class EntryWriter
             }
         }
 
-        foreach ($sharedWritten ? $type->sharedFields() : [] as $field) {
-            if ($field->holdsMedia()) {
-                $sync($group, "shared.{$field->name}", $this->fieldMediaIds($field, $group->shared[$field->name] ?? null));
+        if ($sharedWritten) {
+            $this->syncSharedUsages($group, $type);
+        }
+    }
+
+    /**
+     * Records which files the group uses through the type's shared fields (`shared.<name>`). A new group with no
+     * files costs no query.
+     */
+    public function syncSharedUsages(EntryGroup $group, ContentType $type): void
+    {
+        foreach ($type->sharedFields() as $field) {
+            if (! $field->holdsMedia()) {
+                continue;
+            }
+
+            $ids = $this->fieldMediaIds($field, $group->shared[$field->name] ?? null);
+
+            if ($ids !== [] || ! $group->wasRecentlyCreated) {
+                MediaUsage::sync($group, "shared.{$field->name}", $ids);
             }
         }
     }

@@ -44,6 +44,7 @@ new class extends EntryFormPage {
 
         if ($from === null) {
             $this->form->fillEmpty($this->contentType, Auth::id());
+            $this->publishByDefault();
 
             return;
         }
@@ -64,6 +65,7 @@ new class extends EntryFormPage {
 
         $this->sourceId = $source->id;
         $this->form->fillFromData($source->copyFor($locale));
+        $this->publishByDefault();
 
         // The copied author may no longer be one (lost the permission, or deleted): the translation is the actor's.
         $authorId = (int) $this->form->author_id;
@@ -76,42 +78,14 @@ new class extends EntryFormPage {
         $this->form->slug = app(EntryPaths::class)->suggest($this->contentType, $locale, $parent, $this->form->title);
     }
 
-    /**
-     * Makes the new record one of another language, in place: the typed values stay, the parent becomes the one
-     * the language has (none, or for a translation the source's parent in that language), and the slug is made
-     * free in the language. Returns what the browser keeps for itself (the address prefix and the parents' paths),
-     * or null for a language that is not offered.
-     *
-     * @return array{locale: string, prefix: string, parentPaths: array<string, string>}|null
-     */
-    public function changeLocale(string $locale): ?array
+    protected function authorizeLocaleChange(): void
     {
         $this->authorize('create', [Entry::class, $this->type]);
+    }
 
-        if ($locale === $this->locale || ! in_array($locale, array_map(fn ($language) => $language->code, $this->localeChoices), true)) {
-            return null;
-        }
-
-        $this->locale = $locale;
-        unset($this->language, $this->parentOptions, $this->addressPrefix, $this->localeChoices);
-
-        $source = $this->sourceId !== null ? Entry::query()->ofType($this->type)->find($this->sourceId) : null;
-        $parentId = $source?->copyFor($locale)['parent_id'] ?? null;
-        $parent = $parentId !== null ? Entry::query()->find((int) $parentId) : null;
-
-        $this->form->parent_id = $parent !== null ? (string) $parent->id : '';
-
-        $name = trim($this->form->slug) !== '' ? $this->form->slug : $this->form->title;
-
-        if (trim($name) !== '') {
-            $this->form->slug = app(EntryPaths::class)->suggest($this->contentType, $locale, $parent, $name);
-        }
-
-        return [
-            'locale' => $locale,
-            'prefix' => $this->addressPrefix,
-            'parentPaths' => collect($this->parentOptions)->mapWithKeys(fn (array $option): array => [(string) $option['id'] => $option['path']])->all(),
-        ];
+    protected function localeSource(): ?Entry
+    {
+        return $this->sourceId !== null ? Entry::query()->ofType($this->type)->find($this->sourceId) : null;
     }
 
     /**
@@ -129,6 +103,17 @@ new class extends EntryFormPage {
             $this->languages,
             fn ($language): bool => $language->code === $this->locale || ! in_array($language->code, $taken, true),
         ));
+    }
+
+    /**
+     * A new record starts as published (it goes live on Save, with the saving time as its date) for those who may
+     * publish; with `create` alone it stays a draft, the only status they can save.
+     */
+    private function publishByDefault(): void
+    {
+        if ($this->abilities['edit']) {
+            $this->form->status = App\Enums\EntryStatus::Published->value;
+        }
     }
 
     public function render(): mixed

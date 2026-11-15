@@ -10,11 +10,11 @@
  * HTML differs from the stored one (image src), so those count as changed only once an editor reports an edit
  * (the `rich-text:changed` event).
  *
- * A new record's language is changed in place (`changeLocale()`): one request, after which the prefix, the parents'
+ * The form's language is changed in place (`changeLocale()`; a saved record takes it on Save): one request, after which the prefix, the parents'
  * paths and the editors follow the new language, and the address bar drops its `locale` (a translation keeps it,
  * next to `from`).
  */
-export default function entryForm({ readonly, slugFollows, prefix, parentPaths, siteName, nowLocal, editorModels, leaveModal }) {
+export default function entryForm({ readonly, slugFollows, prefix, parentPaths, siteName, nowLocal, editorModels, leaveModal, savedLocale }) {
     let initial = null;
     let ticket = 0;
 
@@ -47,7 +47,8 @@ export default function entryForm({ readonly, slugFollows, prefix, parentPaths, 
                 return false;
             }
 
-            return this.editorChanged || this.snapshot() !== initial;
+            // A saved record whose language was changed in the form has that to save.
+            return this.editorChanged || this.snapshot() !== initial || (!!savedLocale && this.$wire.locale !== savedLocale);
         },
 
         addressPrefix() {

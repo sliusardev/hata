@@ -305,6 +305,19 @@ describe('languages', function () {
             ->assertDontSee('href="'.url('/pl').'"', escape: false);
     });
 
+    it('leads an editor to a translation that is not published yet, and a visitor to that language\'s home page', function () {
+        aboutPages(en: ['status' => 'draft', 'published_at' => null]);
+
+        $this->get('/about')->assertOk()
+            ->assertSee('href="'.url('/en').'"', escape: false)
+            ->assertDontSee('href="'.url('/en/about-us').'"', escape: false);
+
+        browseAs(pageEditor());
+
+        $this->get('/about')->assertOk()->assertSee('href="'.url('/en/about-us').'"', escape: false);
+        $this->get('/en/about-us')->assertOk()->assertSee('data-test="preview-strip"', escape: false);
+    });
+
     it('has no switcher on a site with one language', function () {
         publicLanguages(['uk' => true], 'uk');
         aboutPages();

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Content\DeleteEntry;
+use App\Actions\Content\EmptyEntryTrash;
 use App\Actions\Content\PruneEntryTrash;
 use App\Actions\Content\RestoreEntry;
 use App\Actions\Content\TrashEntry;
@@ -16,6 +17,7 @@ use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -26,7 +28,7 @@ new class extends Component {
     use WithPagination;
 
     /**
-     * The session key that remembers the language the list was last shown in.
+     * The session key that remembers the language the list was last narrowed to (empty: every language).
      */
     public const string LOCALE_SESSION_KEY = 'content.list_locale';
 
@@ -44,6 +46,9 @@ new class extends Component {
     #[Url(as: 'q', except: '')]
     public string $search = '';
 
+    /**
+     * Empty means every language of the site, which is the default.
+     */
     #[Url(except: '')]
     public string $locale = '';
 
@@ -75,6 +80,25 @@ new class extends Component {
 
     public bool $showDeleteModal = false;
 
+    /**
+     * The ids of the rows picked with the checkboxes (strings, as the checkboxes send them). Cleared whenever the
+     * rows change; the bulk actions use only those that are records of this type.
+     *
+     * @var list<string>
+     */
+    public array $selected = [];
+
+    /**
+     * What the bulk dialog asks about: `trash` or `delete` for the picked rows, `empty` for the whole trash.
+     */
+    #[Locked]
+    public string $bulkAction = '';
+
+    #[Locked]
+    public int $bulkCount = 0;
+
+    public bool $showBulkModal = false;
+
     public function mount(string $type): void
     {
         $this->authorize('viewAny', [Entry::class, $type]);
@@ -105,18 +129,21 @@ new class extends Component {
 
     public function updatedTab(): void
     {
+        $this->selected = [];
         $this->tab = in_array($this->tab, EntryListQuery::TABS, true) ? $this->tab : 'all';
         $this->resetPage();
     }
 
     public function updatedSearch(): void
     {
+        $this->selected = [];
         $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
         $this->resetPage();
     }
 
     public function updatedLocale(): void
     {
+        $this->selected = [];
         $this->locale = $this->validLocale($this->locale);
         $this->missing = $this->validMissing($this->missing);
         session()->put(self::LOCALE_SESSION_KEY, $this->locale);
@@ -125,6 +152,7 @@ new class extends Component {
 
     public function updatedMissing(): void
     {
+        $this->selected = [];
         $this->missing = $this->validMissing($this->missing);
         $this->resetPage();
     }
@@ -151,7 +179,13 @@ new class extends Component {
             [$this->sort, $this->dir] = [$column, $first];
         }
 
+        $this->selected = [];
         $this->resetPage();
+    }
+
+    public function updatedPaginators(): void
+    {
+        $this->selected = [];
     }
 
     public function resetSort(): void
@@ -176,7 +210,7 @@ new class extends Component {
     #[Computed]
     public function listQuery(): EntryListQuery
     {
-        return EntryListQuery::for($this->contentType, $this->locale)
+        return EntryListQuery::for($this->contentType, $this->locale, $this->listedLocales())
             ->tab($this->tab)
             ->search($this->search)
             ->missingIn($this->missing)
@@ -337,6 +371,126 @@ new class extends Component {
         $this->forgetList();
     }
 
+    /**
+     * Opens the dialog for a bulk action that needs a confirmation.
+     */
+    public function confirmBulk(string $action): void
+    {
+        abort_unless(in_array($action, ['trash', 'delete', 'empty'], true), 404);
+        abort_unless($this->abilities['delete'], 403);
+
+        $this->bulkCount = $action === 'empty' ? $this->counts['trash'] : count($this->selectedIds());
+
+        if ($this->bulkCount === 0) {
+            return;
+        }
+
+        $this->bulkAction = $action;
+        $this->showBulkModal = true;
+    }
+
+    public function runBulk(TrashEntry $trashEntry, DeleteEntry $deleteEntry, EmptyEntryTrash $emptyTrash): void
+    {
+        abort_unless($this->abilities['delete'], 403);
+
+        $count = match ($this->bulkAction) {
+            'trash' => $this->trashSelected($trashEntry),
+            'delete' => $this->deleteSelected($deleteEntry),
+            'empty' => $emptyTrash->handle(Auth::user(), $this->contentType, $this->listedLocales()),
+            default => 0,
+        };
+
+        Flux::toast(variant: 'success', text: $this->bulkAction === 'trash'
+            ? trans_choice('content.list.trash.done_with_children', $count)
+            : trans_choice('content.list.bulk.deleted', $count));
+
+        $this->showBulkModal = false;
+        $this->bulkAction = '';
+        $this->selected = [];
+        $this->forgetList();
+    }
+
+    /**
+     * Restores the picked rows, parents first, so a page comes back under its parent. A row a parent already
+     * brought back is skipped.
+     */
+    public function restoreSelected(RestoreEntry $restoreEntry): void
+    {
+        abort_unless($this->abilities['edit'], 403);
+
+        $restored = 0;
+        $failed = null;
+
+        foreach (Entry::onlyTrashed()->ofType($this->type)->whereKey($this->selectedIds())->orderBy('path')->pluck('id') as $id) {
+            $entry = Entry::onlyTrashed()->ofType($this->type)->find($id);
+
+            if ($entry === null) {
+                continue;
+            }
+
+            try {
+                $restoreEntry->handle(Auth::user(), $entry);
+                $restored++;
+            } catch (ProtectedActionException $exception) {
+                $failed = $exception->getMessage();
+            }
+        }
+
+        if ($failed !== null) {
+            Flux::toast(variant: 'danger', text: $failed);
+        }
+
+        if ($restored > 0) {
+            Flux::toast(variant: 'success', text: trans_choice('content.list.bulk.restored', $restored));
+        }
+
+        $this->selected = [];
+        $this->forgetList();
+    }
+
+    /**
+     * @return int How many records went to the trash, those under the picked ones included.
+     */
+    private function trashSelected(TrashEntry $trashEntry): int
+    {
+        $count = 0;
+
+        // Parents first: a row under a picked one is already in the trash by its turn and counts once.
+        foreach (Entry::query()->ofType($this->type)->whereKey($this->selectedIds())->orderBy('path')->get() as $entry) {
+            $count += $trashEntry->handle(Auth::user(), $entry);
+        }
+
+        return $count;
+    }
+
+    /**
+     * @return int How many records were deleted for good, those under the picked ones included.
+     */
+    private function deleteSelected(DeleteEntry $deleteEntry): int
+    {
+        $entries = Entry::onlyTrashed()->ofType($this->type)->whereKey($this->selectedIds())->get(['id', 'type', 'locale', 'path']);
+
+        return DB::transaction(fn (): int => $deleteEntry->purge($entries));
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function selectedIds(): array
+    {
+        return array_values(array_unique(array_filter(array_map(intval(...), $this->selected), fn (int $id): bool => $id > 0)));
+    }
+
+    /**
+     * The languages the list shows: the chosen one, or every language of the site.
+     *
+     * @return list<string>
+     */
+    private function listedLocales(): array
+    {
+        return $this->locale !== '' ? [$this->locale] : array_map(fn (Language $language): string => $language->code, $this->languages);
+    }
+
     #[Computed]
     public function trashingEntry(): ?Entry
     {
@@ -377,7 +531,7 @@ new class extends Component {
     {
         $locales = app(ContentLocales::class);
 
-        return $code !== '' && $locales->has($code) ? $code : $locales->defaultCode();
+        return $code !== '' && $locales->has($code) ? $code : '';
     }
 
     private function validMissing(string $code): string
@@ -402,9 +556,18 @@ new class extends Component {
     $activeCodes = array_map(fn ($language) => $language->code, app(App\Support\Localization\ContentLocales::class)->active());
     $timezone = config('admin.timezone');
     $trashDays = (int) config('content.trash_days');
+    $selectable = $inTrash ? ($abilities['edit'] || $abilities['delete']) : $abilities['delete'];
+    $checkbox = 'size-4 cursor-pointer rounded accent-zinc-800 dark:accent-white';
 @endphp
 
-<section class="w-full space-y-6">
+<section
+    class="w-full space-y-6"
+    x-data="{
+        pageIds() { return [...$el.querySelectorAll('[data-row-check]')].map((box) => box.value) },
+        allPicked() { const ids = this.pageIds(); return ids.length > 0 && ids.every((id) => $wire.selected.includes(id)) },
+        pickAll(on) { $wire.selected = on ? this.pageIds() : [] },
+    }"
+>
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ $contentType->pluralLabel() }}</flux:heading>
@@ -460,6 +623,7 @@ new class extends Component {
 
         @if ($this->multilingual)
             <flux:select wire:model.live="locale" :aria-label="__('content.list.locale')" class="sm:max-w-52" data-test="list-locale">
+                <flux:select.option value="">{{ __('content.list.locale_all') }}</flux:select.option>
                 @foreach ($this->languages as $language)
                     <flux:select.option :value="$language->code" wire:key="locale-{{ $language->code }}">
                         {{ __('content.list.locale_option', ['name' => $language->native]) }}{{ in_array($language->code, $activeCodes, true) ? '' : ' ('.__('content.list.off').')' }}
@@ -476,6 +640,12 @@ new class extends Component {
                     </flux:select.option>
                 @endforeach
             </flux:select>
+        @endif
+
+        @if ($inTrash && $abilities['delete'] && $counts['trash'] > 0)
+            <flux:button variant="danger" size="sm" icon="trash" x-on:click="$wire.confirmBulk('empty')" class="sm:ms-auto" data-test="empty-trash">
+                {{ __('content.list.bulk.empty_trash') }}
+            </flux:button>
         @endif
 
         @if ($contentType->hierarchical() && $sort !== '' && ! $inTrash)
@@ -504,9 +674,34 @@ new class extends Component {
             <x-admin.empty-state icon="funnel" :heading="__('content.list.empty_tab.title')" :description="__('content.list.empty_tab.description')" />
         @endif
     @else
+        @if ($selectable)
+            <div x-cloak x-show="$wire.selected.length > 0" class="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900" data-test="bulk-bar">
+                <span class="text-sm font-medium text-zinc-900 dark:text-white">{{ __('content.list.bulk.selected') }} <span class="tabular-nums" x-text="$wire.selected.length"></span></span>
+
+                <div class="flex flex-wrap items-center gap-2 sm:ms-auto">
+                    @if ($inTrash)
+                        @if ($abilities['edit'])
+                            <flux:button size="sm" icon="arrow-uturn-left" x-on:click="$wire.restoreSelected()" data-test="bulk-restore">{{ __('content.list.actions.restore') }}</flux:button>
+                        @endif
+                        @if ($abilities['delete'])
+                            <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('delete')" data-test="bulk-delete">{{ __('content.list.actions.delete') }}</flux:button>
+                        @endif
+                    @else
+                        <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('trash')" data-test="bulk-trash">{{ __('content.list.actions.trash') }}</flux:button>
+                    @endif
+                    <flux:button size="sm" variant="ghost" x-on:click="$wire.selected = []">{{ __('content.list.bulk.clear') }}</flux:button>
+                </div>
+            </div>
+        @endif
+
         <div class="rounded-xl border border-zinc-200 bg-white px-4 shadow-xs dark:border-zinc-700 dark:bg-zinc-900/40">
             <flux:table :paginate="$this->entries" pagination:class="pb-3">
                 <flux:table.columns>
+                    @if ($selectable)
+                        <flux:table.column class="w-8">
+                            <input type="checkbox" class="{{ $checkbox }}" x-bind:checked="allPicked()" x-on:change="pickAll($event.target.checked)" aria-label="{{ __('content.list.bulk.select_all') }}" data-test="select-all" />
+                        </flux:table.column>
+                    @endif
                     @if ($inTrash)
                         <flux:table.column>{{ __('content.list.columns.title') }}</flux:table.column>
                     @else
@@ -533,6 +728,11 @@ new class extends Component {
                             $thumb = $entry->image?->thumbUrl();
                         @endphp
                         <flux:table.row :key="$entry->id">
+                            @if ($selectable)
+                                <flux:table.cell class="w-8">
+                                    <input type="checkbox" class="{{ $checkbox }}" value="{{ $entry->id }}" x-model="$wire.selected" data-row-check aria-label="{{ __('content.list.bulk.select', ['title' => $entry->title]) }}" data-test="select-entry-{{ $entry->id }}" />
+                                </flux:table.cell>
+                            @endif
                             <flux:table.cell>
                                 <div data-depth="{{ $depth }}" data-test="entry-row-{{ $entry->id }}" class="flex min-w-0 items-center gap-3" @if ($depth > 0) style="padding-inline-start: {{ min($depth, 6) * 1.5 - 1.5 }}rem" @endif>
                                     @if ($depth > 0)
@@ -547,6 +747,9 @@ new class extends Component {
                                     @endif
                                     <div class="min-w-0 max-w-[14rem] sm:max-w-sm xl:max-w-md">
                                         <div class="flex min-w-0 items-center gap-2">
+                                            @if ($this->multilingual && $locale === '')
+                                                <span @class(['shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700 uppercase dark:bg-white/10 dark:text-zinc-200', 'opacity-60' => ! in_array($entry->locale, $activeCodes, true)]) data-test="entry-language-{{ $entry->id }}">{{ $entry->locale }}</span>
+                                            @endif
                                             <a href="{{ $editUrl }}" wire:navigate class="truncate font-medium text-zinc-900 hover:underline dark:text-white" data-test="edit-entry-link-{{ $entry->id }}">{{ $entry->title }}</a>
                                             @if (! $inTrash && $state === App\Enums\EntryState::Draft)
                                                 <flux:badge size="sm" color="zinc" class="shrink-0">{{ __('content.list.state.draft') }}</flux:badge>
@@ -669,6 +872,22 @@ new class extends Component {
             {{ trans_choice('content.list.delete.confirm_children', $deletingChildren, ['title' => $this->deletingEntry?->title]) }}
         @else
             {{ __('content.list.delete.confirm', ['title' => $this->deletingEntry?->title]) }}
+        @endif
+    </x-confirm-modal>
+
+    <x-confirm-modal
+        wire:model.self="showBulkModal"
+        :heading="$bulkAction === 'trash' ? __('content.list.trash.title') : ($bulkAction === 'empty' ? __('content.list.bulk.empty_title') : __('content.list.delete.title'))"
+        :confirm-label="$bulkAction === 'trash' ? __('content.list.trash.submit') : ($bulkAction === 'empty' ? __('content.list.bulk.empty_trash') : __('content.list.delete.submit'))"
+        confirm-action="runBulk"
+        data-test="bulk-modal"
+    >
+        @if ($bulkAction === 'trash')
+            {{ trans_choice('content.list.bulk.trash_confirm', $bulkCount, ['days' => $trashDays]) }}
+        @elseif ($bulkAction === 'empty')
+            {{ trans_choice('content.list.bulk.empty_confirm', $bulkCount) }}
+        @else
+            {{ trans_choice('content.list.bulk.delete_confirm', $bulkCount) }}
         @endif
     </x-confirm-modal>
 </section>
