@@ -32,17 +32,35 @@
                 <div class="w-32 text-sm text-zinc-500 tabular-nums max-sm:hidden dark:text-zinc-400">{{ trans_choice('site_settings.content.records', $row['count']) }}</div>
 
                 <div class="shrink-0">
-                    @if ($type->required())
-                        <flux:switch checked disabled :aria-label="__('site_settings.content.switch', ['type' => $type->pluralLabel()])" />
-                    @else
-                        {{-- Not `wire:model`: the switch shows the stored state and asks the server to change it. --}}
-                        <flux:switch
-                            :checked="$row['active']"
-                            x-on:click.prevent="$wire.toggleContentType(@js($type->key()))"
-                            :aria-label="__('site_settings.content.switch', ['type' => $type->pluralLabel()])"
+                    {{-- A plain button, not flux:switch: it shows the stored state and asks the server to change it
+                         (`type="button"`, so it never submits the settings form it sits in). --}}
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
+                        aria-label="{{ __('site_settings.content.switch', ['type' => $type->pluralLabel()]) }}"
+                        @if ($type->required())
+                            disabled
+                            title="{{ __('site_settings.content.badges.required') }}"
+                        @else
+                            wire:click="toggleContentType('{{ $type->key() }}')"
+                            wire:loading.attr="disabled"
+                            wire:target="toggleContentType, turnOffContentType"
                             data-test="content-type-switch-{{ $type->key() }}"
-                        />
-                    @endif
+                        @endif
+                        @class([
+                            'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+                            'cursor-pointer' => ! $type->required(),
+                            'bg-[var(--color-accent)]' => $row['active'],
+                            'bg-zinc-300 dark:bg-zinc-600' => ! $row['active'],
+                        ])
+                    >
+                        <span @class([
+                            'inline-block size-5 rounded-full bg-white shadow transition-transform',
+                            'translate-x-[1.375rem] rtl:-translate-x-[1.375rem]' => $row['active'],
+                            'translate-x-0.5 rtl:-translate-x-0.5' => ! $row['active'],
+                        ])></span>
+                    </button>
                 </div>
             </li>
         @endforeach
