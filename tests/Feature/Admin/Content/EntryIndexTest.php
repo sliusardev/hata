@@ -519,7 +519,8 @@ test('picked rows go to the trash together, with their subpages, after a confirm
 
     $this->actingAs(contentViewer(['pages.edit']));
     entryList()
-        ->assertDontSeeHtml('data-test="select-all"')
+        ->assertSeeHtml('data-test="select-all"')
+        ->assertDontSeeHtml('data-test="bulk-trash"')
         ->set('selected', [(string) $parent->id])
         ->call('confirmBulk', 'trash')
         ->assertForbidden();
@@ -648,4 +649,64 @@ test('the bulk dialog counts the picked rows that exist, not the picks', functio
 
     entryList()->set('selected', ['999'])->call('confirmBulk', 'trash')->assertSet('showBulkModal', false);
     entryList()->call('runBulk')->assertSet('showBulkModal', false);
+});
+
+test('a row is published and taken off the site from its menu with pages.edit', function () {
+    $this->travelTo('2026-03-04 10:00:00');
+    $draft = Entry::factory()->draft()->create(['title' => 'A draft']);
+    $scheduled = Entry::factory()->scheduled()->create();
+    $live = Entry::factory()->published()->create(['published_at' => '2026-01-01 08:00:00']);
+
+    $this->actingAs(contentViewer());
+    entryList()
+        ->assertDontSeeHtml('data-test="publish-entry-'.$draft->id.'"')
+        ->call('setStatus', $draft->id, 'published')
+        ->assertForbidden();
+
+    $this->actingAs(contentViewer(['pages.edit']));
+    entryList()
+        ->assertSeeHtml('data-test="publish-entry-'.$draft->id.'"')
+        ->assertDontSeeHtml('data-test="unpublish-entry-'.$draft->id.'"')
+        ->assertSeeHtml('data-test="unpublish-entry-'.$live->id.'"')
+        ->assertDontSeeHtml('data-test="publish-entry-'.$live->id.'"')
+        ->call('setStatus', $draft->id, 'published')
+        ->call('setStatus', $scheduled->id, 'published')
+        ->call('setStatus', $live->id, 'draft')
+        ->assertSeeHtml('data-test="unpublish-entry-'.$draft->id.'"');
+
+    expect($draft->fresh())->isPublic()->toBeTrue()->title->toBe('A draft')
+        ->and($draft->fresh()->published_at->toDateTimeString())->toBe('2026-03-04 10:00:00')
+        ->and($scheduled->fresh()->isPublic())->toBeTrue()
+        ->and($live->fresh())->status->toBe(EntryStatus::Draft)
+        ->and($live->fresh()->published_at->toDateTimeString())->toBe('2026-01-01 08:00:00');
+
+    entryList()->call('setStatus', $draft->id, 'archived')->assertNotFound();
+});
+
+test('picked rows are published and taken off the site together, never those in the trash', function () {
+    $first = Entry::factory()->draft()->create();
+    $second = Entry::factory()->draft()->create();
+    $binned = Entry::factory()->draft()->create(['deleted_at' => now()]);
+
+    $this->actingAs(contentViewer(['pages.delete']));
+    entryList()
+        ->assertDontSeeHtml('data-test="bulk-publish"')
+        ->set('selected', [(string) $first->id])
+        ->call('setStatusSelected', 'published')
+        ->assertForbidden();
+
+    $this->actingAs(contentViewer(['pages.edit']));
+    entryList()
+        ->assertSeeHtml('data-test="bulk-publish"')
+        ->set('selected', [(string) $first->id, (string) $second->id, (string) $binned->id])
+        ->call('setStatusSelected', 'published')
+        ->assertSet('selected', []);
+
+    expect($first->fresh()->isPublic())->toBeTrue()
+        ->and($second->fresh()->isPublic())->toBeTrue()
+        ->and(Entry::withTrashed()->find($binned->id)->status)->toBe(EntryStatus::Draft);
+
+    entryList()->set('selected', [(string) $first->id])->call('setStatusSelected', 'draft');
+
+    expect($first->fresh()->status)->toBe(EntryStatus::Draft);
 });

@@ -40,6 +40,8 @@
         'leaveModal' => 'leave-entry-form',
         'savedLocale' => $entry?->locale,
         'savedState' => $entry === null ? null : strtolower($state->name),
+        'localeRefused' => __('content.form.language.refused'),
+        'canSaveAndLeave' => $entry !== null,
         'saveLabels' => [
             'save' => __('content.form.save'),
             'publish' => __('content.form.save_publish'),
@@ -56,7 +58,7 @@
     x-data="entryForm(@js($config))"
     x-on:keydown.window="onKeydown($event)"
     x-on:rich-text:changed="editorChanged = true"
-    x-on:entry-form-invalid.window="scrollToError()"
+    x-on:entry-form-invalid.window="leaveAfterSave = false; scrollToError()"
     x-on:entry-saved.window="onSaved($event.detail)"
     x-on:livewire:navigate.document="onNavigate($event)"
     x-on:beforeunload.window="onUnload($event)"
@@ -257,14 +259,17 @@
                                  editors in step. --}}
                             <div class="mb-4">
                                 <flux:select :label="__('content.form.language.choose')" x-on:change="changeLocale($event.target)" data-test="entry-locale">
-                                    @foreach ($localeChoices as $choice)
-                                        <flux:select.option :value="$choice->code" :selected="$choice->code === $locale">
-                                            {{ $choice->native }} ({{ strtoupper($choice->code) }}){{ app(App\Support\Localization\ContentLocales::class)->isActive($choice->code) ? '' : ' · '.__('content.list.off') }}
+                                    @php $offered = array_map(fn ($choice) => $choice->code, $localeChoices); @endphp
+                                    {{-- A language the group already has stays in the list, disabled, with the reason. --}}
+                                    @foreach ($languages as $choice)
+                                        @php $taken = ! in_array($choice->code, $offered, true); @endphp
+                                        <flux:select.option :value="$choice->code" :selected="$choice->code === $locale" :disabled="$taken" wire:key="locale-choice-{{ $choice->code }}" data-test="locale-choice-{{ $choice->code }}" data-taken="{{ $taken ? 'true' : 'false' }}">
+                                            {{ $choice->native }} ({{ strtoupper($choice->code) }}){{ in_array($choice->code, $activeCodes, true) ? '' : ' · '.__('content.list.off') }}{{ $taken ? ' · '.__('content.form.language.taken') : '' }}
                                         </flux:select.option>
                                     @endforeach
                                 </flux:select>
                                 @if ($entry !== null)
-                                    <flux:text class="mt-2 text-xs" x-cloak x-show="$wire.locale !== @js($entry->locale)" data-test="entry-locale-hint">{{ __('content.form.language.choose_hint') }}</flux:text>
+                                    <flux:text class="mt-2 text-xs" data-test="entry-locale-hint">{{ __('content.form.language.choose_hint') }}</flux:text>
                                 @endif
                             </div>
                         @else
@@ -425,11 +430,14 @@
                     <flux:heading size="lg">{{ __('content.form.leave.title') }}</flux:heading>
                     <flux:text>{{ __('content.form.leave.body') }}</flux:text>
                 </div>
-                <div class="flex justify-end gap-3">
+                <div class="flex flex-wrap justify-end gap-3">
                     <flux:modal.close>
                         <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
                     </flux:modal.close>
                     <flux:button variant="danger" x-on:click="leave()">{{ __('content.form.leave.submit') }}</flux:button>
+                    @if ($entry !== null)
+                        <flux:button variant="primary" x-on:click="saveAndLeave()" data-test="save-and-leave">{{ __('content.form.leave.save') }}</flux:button>
+                    @endif
                 </div>
             </div>
         </flux:modal>

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Content;
 
+use App\Enums\EntryStatus;
 use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
 use App\Models\User;
@@ -19,7 +20,25 @@ class BulkEntries
         private readonly TrashEntry $trashEntry,
         private readonly RestoreEntry $restoreEntry,
         private readonly DeleteEntry $deleteEntry,
+        private readonly SetEntryStatus $setStatus,
     ) {}
+
+    /**
+     * Publishes the live records or takes them off the site (SetEntryStatus authorizes each: the type's `edit`).
+     *
+     * @param  list<int>  $ids
+     * @return int How many records were set.
+     */
+    public function setStatus(User $actor, ContentType $type, array $ids, EntryStatus $status): int
+    {
+        $entries = Entry::query()->ofType($type->key())->whereKey($ids)->get(['id', 'type', 'status', 'published_at', 'deleted_at']);
+
+        foreach ($entries as $entry) {
+            $this->setStatus->handle($actor, $entry, $status);
+        }
+
+        return $entries->count();
+    }
 
     /**
      * Moves the live records to the trash, parents first: a page under a picked one is already there by its turn

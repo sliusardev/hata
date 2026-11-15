@@ -414,7 +414,10 @@ then Media; the group shows when any of them or `media.view` holds.
   with a Draft or Scheduled badge, the address (`url(false)`), the language codes of the group (the translation
   chips, below; in the Trash tab the record's own code instead, `data-test="entry-language-<id>"`), author, date, and
   the "⋮" menu. On a phone the author and date columns are hidden; the codes stay, under the address.
-- Menu: Edit (`edit`), View on site (public records; in a switched-off language a muted note instead,
+- Menu: Edit (`edit`), Publish (a draft or scheduled record) and Unpublish (a published or scheduled one), both
+  `edit`, at once with a toast and no confirmation since each undoes the other (`setStatus()`,
+  `App\Actions\Content\SetEntryStatus`: publishing a record with no date or a date ahead dates it now, unpublishing
+  keeps the date; nothing else changes), View on site (public records; in a switched-off language a muted note instead,
   `content.form.language_off`, since that address answers 404), Move to trash (`delete`). Translations are added from the
   row's language codes.
 - Trash tab: a flat list by `deleted_at`, newest first, with "Removed on <date>" (`deleted_at` + `trash_days`). Menu:
@@ -422,8 +425,9 @@ then Media; the group shows when any of them or `media.view` holds.
 - The bulk actions are `App\Actions\Content\BulkEntries` (`trash`, `restore`, `delete`, each taking the actor, the
   type and ids and leaving out ids that are not records of the type in the needed state); the page only reports.
 - Bulk selection: a checkbox per row and one in the header for the whole page, shown to those who have a bulk action
-  (`delete`; in the trash `edit` or `delete`). The picks are the `selected` property, bound from Alpine
-  (`x-model="$wire.selected"`), so picking makes no request; a bar above the table shows the count and the actions:
+  (`edit` or `delete`). The picks are the `selected` property, bound from Alpine
+  (`x-model="$wire.selected"`), so picking makes no request; a bar under the table, stuck to the bottom of the window (showing it never
+  moves the rows), shows the count and the actions: "Publish" and "Unpublish" (`setStatusSelected()`, `edit`),
   "Move to trash" (`confirmBulk('trash')`, then `runBulk`: `TrashEntry` per record, parents first, so a page under a
   picked one counts once), in the trash "Restore" (`restoreSelected`, `edit`, no confirmation, parents first; a row
   its parent brought back is skipped, and a record that cannot be restored is a danger toast without stopping the
@@ -503,7 +507,9 @@ error instead of creating a record outside the group. Save calls
   language when the form opened (`openedLocale`), so a form left open never undoes a language change made elsewhere. The language select is the new record's one,
   offering the record's language and those its group lacks (trashed ones counted): `changeLocale()` (here it
   authorizes `update` and refuses a trashed record) changes the form in place and stores nothing; the language is
-  applied on Save, a hint under the select says so, and the form counts as changed. A record with anything under it
+  applied on Save, a hint under the select says so, and the form counts as changed. A language the group already
+  has stays in the select, disabled, marked "already translated"; a change the server refuses (the language was
+  taken meanwhile) puts the select back with a danger toast. A record with anything under it
   gets the fixed language row with the reason instead (one `exists` query, only on a hierarchical type of a
   multilingual site). Choosing and unlinking translations are immediate actions of their own, apart from Save and
   without a reload: the translation picker (`<livewire:translation-picker>`,
@@ -553,6 +559,9 @@ error instead of creating a record outside the group. Save calls
   trashed or not, so its read-only prefix is its stored path) and the author (a select of
   `EntryAuthors::options()` plus the current author; only the name for a user without `edit`). "Move to trash"
   (`delete`): `<x-confirm-modal>` naming the subpages going with it, then `TrashEntry`, a toast and the list.
+- **Leaving with unsaved changes** (a link, Back, closing the tab): a dialog offers to stay, to leave without saving
+  and, for a saved record, "Save and go": the form is saved and the page the editor was leaving for opens once the
+  save has succeeded; a refused save keeps the editor on the form at the first error.
 - **Field partials**: `partials/admin/content/fields/<Field::view()>.blade.php` (`text`, `textarea`, `rich-text`,
   `number`, `date`, `toggle`, `select`, `media-file`, `gallery`) get `$field`, `$model` (`form.fields.<name>`),
   `$readOnly`, `$images` and `$locale`; the label is `labelText()`, errors sit under each field. `media-file` and
@@ -674,6 +683,11 @@ preview; that viewer's `hreflang` lists them as well, which no crawler sees. The
 `hreflang` partial prints them plus `x-default` (the default language's address, left out when the default language has
 no public translation), and nothing when there is only one. The switcher lists every active language.
 
+**Hidden addresses.** A type's base takes that first segment for itself, so a page stored at it (or under it) before
+the base existed cannot be reached. The form refuses such new slugs (`isReserved()`); `php artisan content:check`
+lists the stored ones (in every language, trashed ones included) and fails when there are any, and
+`make:content-type` says to run it.
+
 **Templates** (a folder of their own so a theme can replace them):
 
 - `layouts/site.blade.php`: `<html lang dir>` from the content language, `<title>` from `$pageTitle`, which the page
@@ -768,6 +782,8 @@ refusals (a language the group has, in the trash too, one not on the site, a pag
 trashed record); choosing an existing record (candidates, search, the emptied group gone, `updated_at` kept), a chosen
 record leaving its former translations, the refused links, the permissions and 404s; unlinking a translation and the
 record itself (the copy of the shared values, the others staying together) and its refusals.
+`tests/Feature/Console/CheckContentAddressesTest.php`: `content:check` passing, and listing the pages at and under
+another type's base.
 `tests/Feature/Console/MakeContentTypeTest.php`: the generator on copies of the project's own config and language
 files (the class, the config entry, the lines in both languages), the options, every refusal changing nothing, and a
 file of another shape left alone.

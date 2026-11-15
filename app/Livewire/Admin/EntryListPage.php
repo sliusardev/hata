@@ -7,7 +7,9 @@ use App\Actions\Content\DeleteEntry;
 use App\Actions\Content\EmptyEntryTrash;
 use App\Actions\Content\PruneEntryTrash;
 use App\Actions\Content\RestoreEntry;
+use App\Actions\Content\SetEntryStatus;
 use App\Actions\Content\TrashEntry;
+use App\Enums\EntryStatus;
 use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
 use App\Models\User;
@@ -404,6 +406,36 @@ abstract class EntryListPage extends Component
 
         $this->showBulkModal = false;
         $this->bulkAction = '';
+        $this->selected = [];
+        $this->forgetList();
+    }
+
+    /**
+     * Publishes a row's record or takes it off the site, at once: it is undone the same way.
+     */
+    public function setStatus(int $entryId, string $status, SetEntryStatus $setStatus): void
+    {
+        $entry = $this->liveEntry($entryId);
+        $status = EntryStatus::tryFrom($status) ?? abort(404);
+
+        $setStatus->handle($this->actor(), $entry, $status);
+
+        Flux::toast(variant: 'success', text: __($status === EntryStatus::Published ? 'content.list.status.published' : 'content.list.status.unpublished', ['title' => $entry->title]));
+
+        $this->forgetList();
+    }
+
+    public function setStatusSelected(string $status, BulkEntries $bulk): void
+    {
+        abort_unless($this->abilities['edit'], 403);
+
+        $status = EntryStatus::tryFrom($status) ?? abort(404);
+        $count = $bulk->setStatus($this->actor(), $this->contentType, $this->selectedIds(), $status);
+
+        if ($count > 0) {
+            Flux::toast(variant: 'success', text: trans_choice($status === EntryStatus::Published ? 'content.list.bulk.published' : 'content.list.bulk.unpublished', $count));
+        }
+
         $this->selected = [];
         $this->forgetList();
     }

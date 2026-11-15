@@ -60,6 +60,7 @@ class MakeContentType extends Command
             'Translate the new lines in lang/*/content.php and lang/*/permissions.php (they are in English).',
             "Run `php artisan permissions:sync`, then give the {$type->key}.* permissions to roles (config/permissions.php → roles, or the Roles page).",
             'If the config or the routes are cached, rebuild them (`php artisan optimize`).',
+            'If the type has a base path, run `php artisan content:check`: a page already at that address would be hidden by it.',
         ]);
 
         return self::SUCCESS;

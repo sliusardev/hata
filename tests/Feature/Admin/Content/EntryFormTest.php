@@ -676,8 +676,9 @@ test('a new record offers the languages of the site, and a saved one those its g
 
     editForm($page)
         ->assertSeeHtml('data-test="entry-locale"')
-        ->assertSee(['English (EN)', 'Deutsch (DE)'])
-        ->assertDontSee(['Українська (UK)', 'Polski (PL)']);
+        ->assertSeeHtml(['data-test="locale-choice-en" data-taken="false"', 'data-test="locale-choice-de" data-taken="false"'])
+        ->assertSeeHtml(['data-test="locale-choice-uk" data-taken="true"', 'data-test="locale-choice-pl" data-taken="true"'])
+        ->assertSee(__('content.form.language.taken'));
 });
 
 test('a new record starts as published for those who may publish', function () {
@@ -734,10 +735,8 @@ test('a translation offers only the languages its group lacks and takes the pare
     Entry::factory()->translationOf($about, 'pl')->create();
 
     $form = createForm(['locale' => 'uk', 'from' => (string) $about->id])
-        ->assertSee('Українська (UK)')
-        ->assertSee('Deutsch (DE)')
-        ->assertDontSee('English (EN)')
-        ->assertDontSee('Polski (PL)')
+        ->assertSeeHtml(['data-test="locale-choice-uk" data-taken="false"', 'data-test="locale-choice-de" data-taken="false"'])
+        ->assertSeeHtml(['data-test="locale-choice-en" data-taken="true"', 'data-test="locale-choice-pl" data-taken="true"'])
         ->assertSet('form.parent_id', '');
 
     $form->call('changeLocale', 'pl')->assertReturned(null)->assertSet('locale', 'uk');

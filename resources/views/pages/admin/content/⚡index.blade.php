@@ -20,7 +20,7 @@ new class extends EntryListPage {
     $activeCodes = app(App\Support\Localization\ContentLocales::class)->activeCodes();
     $timezone = config('admin.timezone');
     $trashDays = (int) config('content.trash_days');
-    $selectable = $inTrash ? ($abilities['edit'] || $abilities['delete']) : $abilities['delete'];
+    $selectable = $abilities['edit'] || $abilities['delete'];
     $checkbox = 'size-4 cursor-pointer rounded accent-zinc-800 dark:accent-white';
 @endphp
 
@@ -138,26 +138,6 @@ new class extends EntryListPage {
             <x-admin.empty-state icon="funnel" :heading="__('content.list.empty_tab.title')" :description="__('content.list.empty_tab.description')" />
         @endif
     @else
-        @if ($selectable)
-            <div x-cloak x-show="$wire.selected.length > 0" class="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900" data-test="bulk-bar">
-                <span class="text-sm font-medium text-zinc-900 dark:text-white">{{ __('content.list.bulk.selected') }} <span class="tabular-nums" x-text="$wire.selected.length"></span></span>
-
-                <div class="flex flex-wrap items-center gap-2 sm:ms-auto">
-                    @if ($inTrash)
-                        @if ($abilities['edit'])
-                            <flux:button size="sm" icon="arrow-uturn-left" x-on:click="$wire.restoreSelected()" data-test="bulk-restore">{{ __('content.list.actions.restore') }}</flux:button>
-                        @endif
-                        @if ($abilities['delete'])
-                            <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('delete')" data-test="bulk-delete">{{ __('content.list.actions.delete') }}</flux:button>
-                        @endif
-                    @else
-                        <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('trash')" data-test="bulk-trash">{{ __('content.list.actions.trash') }}</flux:button>
-                    @endif
-                    <flux:button size="sm" variant="ghost" x-on:click="$wire.selected = []">{{ __('content.list.bulk.clear') }}</flux:button>
-                </div>
-            </div>
-        @endif
-
         <div class="rounded-xl border border-zinc-200 bg-white px-4 shadow-xs dark:border-zinc-700 dark:bg-zinc-900/40">
             <flux:table :paginate="$this->entries" pagination:class="pb-3">
                 <flux:table.columns>
@@ -262,6 +242,14 @@ new class extends EntryListPage {
                                         @if ($abilities['edit'])
                                             <flux:menu.item icon="pencil-square" :href="$editUrl" wire:navigate data-test="edit-entry-menu-{{ $entry->id }}">{{ __('common.actions.edit') }}</flux:menu.item>
                                         @endif
+                                        @if ($abilities['edit'])
+                                            @if ($state !== App\Enums\EntryState::Published)
+                                                <flux:menu.item icon="eye" wire:click="setStatus({{ $entry->id }}, 'published')" data-test="publish-entry-{{ $entry->id }}">{{ __('content.list.actions.publish') }}</flux:menu.item>
+                                            @endif
+                                            @if ($state !== App\Enums\EntryState::Draft)
+                                                <flux:menu.item icon="eye-slash" wire:click="setStatus({{ $entry->id }}, 'draft')" data-test="unpublish-entry-{{ $entry->id }}">{{ __('content.list.actions.unpublish') }}</flux:menu.item>
+                                            @endif
+                                        @endif
                                         @if ($entry->isPublic())
                                             @if (in_array($entry->locale, $activeCodes, true))
                                                 <flux:menu.item icon="arrow-top-right-on-square" :href="$entry->url()" target="_blank" data-test="view-entry-{{ $entry->id }}">{{ __('content.list.actions.view') }}</flux:menu.item>
@@ -281,6 +269,33 @@ new class extends EntryListPage {
                 </flux:table.rows>
             </flux:table>
         </div>
+
+        {{-- Under the table and stuck to the bottom of the window, so showing it never moves the rows. --}}
+        @if ($selectable)
+            <div x-cloak x-show="$wire.selected.length > 0" class="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" data-test="bulk-bar">
+                <span class="text-sm font-medium text-zinc-900 dark:text-white">{{ __('content.list.bulk.selected') }} <span class="tabular-nums" x-text="$wire.selected.length"></span></span>
+
+                <div class="flex flex-wrap items-center gap-2 sm:ms-auto">
+                    @if ($inTrash)
+                        @if ($abilities['edit'])
+                            <flux:button size="sm" icon="arrow-uturn-left" x-on:click="$wire.restoreSelected()" data-test="bulk-restore">{{ __('content.list.actions.restore') }}</flux:button>
+                        @endif
+                        @if ($abilities['delete'])
+                            <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('delete')" data-test="bulk-delete">{{ __('content.list.actions.delete') }}</flux:button>
+                        @endif
+                    @else
+                        @if ($abilities['edit'])
+                            <flux:button size="sm" icon="eye" x-on:click="$wire.setStatusSelected('published')" data-test="bulk-publish">{{ __('content.list.actions.publish') }}</flux:button>
+                            <flux:button size="sm" icon="eye-slash" x-on:click="$wire.setStatusSelected('draft')" data-test="bulk-unpublish">{{ __('content.list.actions.unpublish') }}</flux:button>
+                        @endif
+                        @if ($abilities['delete'])
+                            <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('trash')" data-test="bulk-trash">{{ __('content.list.actions.trash') }}</flux:button>
+                        @endif
+                    @endif
+                    <flux:button size="sm" variant="ghost" x-on:click="$wire.selected = []">{{ __('content.list.bulk.clear') }}</flux:button>
+                </div>
+            </div>
+        @endif
     @endif
 
     <x-confirm-modal

@@ -17,7 +17,7 @@
  * paths and the editors follow the new language, and the address bar drops its `locale` (a translation keeps it,
  * next to `from`).
  */
-export default function entryForm({ readonly, slugFollows, prefix, siteName, nowLocal, editorModels, leaveModal, savedLocale, savedState, saveLabels }) {
+export default function entryForm({ readonly, slugFollows, prefix, siteName, nowLocal, editorModels, leaveModal, savedLocale, savedState, saveLabels, localeRefused }) {
     let initial = null;
     let ticket = 0;
 
@@ -29,6 +29,7 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
         savedLocale,
         savedState,
         pendingUrl: null,
+        leaveAfterSave: false,
         leaving: false,
 
         init() {
@@ -74,6 +75,11 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
             // Not offered (or the same): show the language the form really has.
             if (!result) {
                 select.value = this.$wire.locale;
+
+                // Refused by the server (the language was taken meanwhile): say so instead of snapping back silently.
+                document.dispatchEvent(new CustomEvent('toast-show', {
+                    detail: { duration: 5000, slots: { text: localeRefused }, dataset: { variant: 'danger' } },
+                }));
 
                 return;
             }
@@ -175,7 +181,22 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
             document.title = title;
             this.$nextTick(() => {
                 initial = this.snapshot();
+
+                if (this.leaveAfterSave && this.pendingUrl) {
+                    this.leaving = true;
+                    window.Livewire.navigate(this.pendingUrl);
+                }
             });
+        },
+
+        /**
+         * From the leave dialog: save, and go on to the page the editor was leaving for once it is stored (a
+         * refused save keeps the editor here, at the first error).
+         */
+        saveAndLeave() {
+            this.leaveAfterSave = true;
+            this.$flux.modal(leaveModal).close();
+            this.$refs.form.requestSubmit();
         },
 
         shortcutHint(text) {
