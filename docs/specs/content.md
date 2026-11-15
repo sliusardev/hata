@@ -25,8 +25,11 @@ slug and path rules, the body sanitizer, the save actions, the trash, the admin 
 `App\Support\Content\ContentTypes` (singleton) holds the registered types: `register()`, `all()`, `find()`,
 `get()` (throws on an unknown key) and `pattern()`, an alternation of the keys for route constraints (it
 matches nothing while no type is registered). Keys follow the permission segment format. `register()` refuses a key
-that is already registered and checks the type's base in every language of the catalogue (`assertValidBase()`, about
-130 `base()` calls once per request, when the registry is built), both with `InvalidArgumentException`. It also
+that is already registered (`InvalidArgumentException`). The bases are not checked there: `assertValidBases()` checks
+every registered type's base in every language of the catalogue (about 130 `base()` calls per type), which would be
+paid on every request, since the registry is built on each one; a wrong base is a developer's mistake that
+`make:content-type` (its own checks), `content:check` and a test over the site's `config/content.php` catch.
+`register()` also
 registers the type's `view`, `create`, `edit` and `delete` (`ContentTypes::ACTIONS`) with `PermissionRegistry`, so
 a type registered at any time (a module's, or a test's) is seen by `permissions:sync` and the role matrix.
 
@@ -462,7 +465,8 @@ then Media; the group shows when any of them or `media.view` holds.
 
 `App\Support\Content\EntryListQuery::for($type, $locale, $locales)` (an empty `$locale` means every language in
 `$locales`, the site's) builds the list: `tab()`, `search()`, `sort('title'|'date'|'tree', 'asc'|'desc')`, `isTree()`, `query()`, `paginate($perPage)` and
-`counts()` (one aggregate query). It selects only the columns a row shows and eager loads `image`, `author` (`id`,
+`counts()` (one query of five scalar subqueries, each the tab's own query through `Entry::inState()`, so a state is
+defined once for the rows and for their count). It selects only the columns a row shows and eager loads `image`, `author` (`id`,
 `name`) and `groupEntries` (`id`, `entry_group_id`, `locale`, `title`, `status`, `published_at`), so the page's query
 count does not depend on the number of rows (asserted with 5 and 20 rows). Permissions are checked once per render,
 not per row.

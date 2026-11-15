@@ -46,10 +46,6 @@ class ContentTypes
             throw new InvalidArgumentException("The content type [{$type->key()}] is already registered.");
         }
 
-        foreach (app(LanguageCatalog::class)->codes() as $locale) {
-            $type->assertValidBase($locale);
-        }
-
         $this->types[$type->key()] = $type;
         $this->permissions->register($type->key(), self::ACTIONS);
 
@@ -94,6 +90,24 @@ class ContentTypes
     public function active(): array
     {
         return array_filter($this->types, fn (ContentType $type): bool => $this->isActive($type->key()));
+    }
+
+    /**
+     * Checks that every registered type's base is one slug in every language of the catalogue. Not part of
+     * `register()`: it is about 130 calls per type, and the registry is built on every request, while a wrong base is
+     * a developer's mistake that `make:content-type`, `content:check` and the test suite catch.
+     *
+     * @throws InvalidArgumentException
+     */
+    public function assertValidBases(): void
+    {
+        $locales = app(LanguageCatalog::class)->codes();
+
+        foreach ($this->types as $type) {
+            foreach ($locales as $locale) {
+                $type->assertValidBase($locale);
+            }
+        }
     }
 
     public function find(string $key): ?ContentType

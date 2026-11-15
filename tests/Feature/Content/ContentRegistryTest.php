@@ -76,12 +76,14 @@ test('a base must be one slug in every language of the catalogue', function (?st
         }
     };
 
-    $register = fn () => (new ContentTypes)->register($type);
+    $types = (new ContentTypes)->register($type);
 
     if ($valid) {
-        expect($register()->find('catalogue'))->toBe($type);
+        $types->assertValidBases();
+
+        expect($types->find('catalogue'))->toBe($type);
     } else {
-        expect($register)->toThrow(InvalidArgumentException::class, 'in [uk] is not a slug');
+        expect(fn () => $types->assertValidBases())->toThrow(InvalidArgumentException::class, 'in [uk] is not a slug');
     }
 })->with([
     'a slug' => ['katalog', true],
@@ -180,4 +182,17 @@ test('every field names a view', function () {
     foreach ($this->products->fields() as $field) {
         expect($field->view())->toBeString()->not->toBeEmpty();
     }
+});
+
+test('every content type of the site has a valid base in every language', function () {
+    $types = new ContentTypes;
+
+    // The file, not the config: tests run with the pages type alone.
+    foreach ((require config_path('content.php'))['types'] as $class) {
+        $types->register(app($class));
+    }
+
+    $types->assertValidBases();
+
+    expect($types->all())->not->toBeEmpty();
 });

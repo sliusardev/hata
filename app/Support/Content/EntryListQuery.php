@@ -3,12 +3,13 @@
 namespace App\Support\Content;
 
 use App\Enums\EntryState;
-use App\Enums\EntryStatus;
 use App\Models\Entry;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The records of one type as the admin list shows them, in one language or in all the site's: a tab, a search and a sort. The query count does not depend on the number of rows: the image, the author and the group's
@@ -144,22 +145,24 @@ final class EntryListQuery
     }
 
     /**
-     * How many records of the type in the list's languages each tab holds, whatever the search: one query.
+     * How many records of the type in the list's languages each tab holds, whatever the search: one query
+     * of five scalar subqueries.
      *
      * @return array{all: int, published: int, drafts: int, scheduled: int, trash: int}
      */
     public function counts(): array
     {
-        $now = (new Entry)->fromDateTime(now());
-        $published = EntryStatus::Published->value;
+        // Each tab's own query as a scalar subquery, so a state is defined once (Entry::scopeInState()) for the rows
+        // and for their count, and each count reads the (type, locale, deleted_at, status, published_at) index.
+        $base = fn (): Builder => $this->inLanguages(Entry::query()->ofType($this->type->key()));
+        $count = fn (Builder $query): QueryBuilder => $query->toBase()->selectRaw('count(*)');
 
-        $row = $this->inLanguages(Entry::withTrashed()->ofType($this->type->key()))
-            ->toBase()
-            ->selectRaw('sum(case when deleted_at is null then 1 else 0 end) as all_count')
-            ->selectRaw('sum(case when deleted_at is null and status = ? and published_at <= ? then 1 else 0 end) as published_count', [$published, $now])
-            ->selectRaw('sum(case when deleted_at is null and (status <> ? or published_at is null) then 1 else 0 end) as drafts_count', [$published])
-            ->selectRaw('sum(case when deleted_at is null and status = ? and published_at > ? then 1 else 0 end) as scheduled_count', [$published, $now])
-            ->selectRaw('sum(case when deleted_at is not null then 1 else 0 end) as trash_count')
+        $row = DB::query()
+            ->selectSub($count($base()), 'all_count')
+            ->selectSub($count($base()->inState(EntryState::Published)), 'published_count')
+            ->selectSub($count($base()->inState(EntryState::Draft)), 'drafts_count')
+            ->selectSub($count($base()->inState(EntryState::Scheduled)), 'scheduled_count')
+            ->selectSub($count($base()->onlyTrashed()), 'trash_count')
             ->first();
 
         return [

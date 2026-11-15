@@ -33,3 +33,20 @@ test('it lists the pages at and under the base path of another type, in every la
         ->expectsOutputToContain('/products (in the trash)')
         ->assertFailed();
 });
+
+test('it fails for a type whose base is not one slug', function () {
+    app(ContentTypes::class)->register(new class extends ProductsType
+    {
+        public function key(): string
+        {
+            return 'broken';
+        }
+
+        public function base(string $locale): ?string
+        {
+            return 'shop/items';
+        }
+    });
+
+    $this->artisan('content:check')->expectsOutputToContain('is not a slug')->assertFailed();
+});

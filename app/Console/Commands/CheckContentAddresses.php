@@ -8,6 +8,7 @@ use App\Support\Localization\ContentLocales;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use InvalidArgumentException;
 
 /**
  * A type's base path (`blog` for posts) takes that first segment of the address for itself, so a record of a type
@@ -15,11 +16,19 @@ use Illuminate\Console\Command;
  * that owns the base. New slugs are refused by the form; this finds the records stored before the base existed.
  */
 #[Signature('content:check')]
-#[Description('List the content records whose address is hidden by the base path of another content type')]
+#[Description('Check the base paths of the content types and list the records hidden by another type\'s base path')]
 class CheckContentAddresses extends Command
 {
     public function handle(ContentTypes $types, ContentLocales $locales): int
     {
+        try {
+            $types->assertValidBases();
+        } catch (InvalidArgumentException $exception) {
+            $this->components->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
+
         $rootTypes = [];
         $bases = [];
 
