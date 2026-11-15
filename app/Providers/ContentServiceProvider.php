@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\Content\ContentType;
 use App\Support\Content\ContentTypes;
 use App\Support\Content\Types\PagesType;
 use App\Support\Permissions\PermissionRegistry;
@@ -9,12 +10,24 @@ use Illuminate\Support\ServiceProvider;
 
 class ContentServiceProvider extends ServiceProvider
 {
+    /**
+     * Binds the registry with the types listed in `config/content.php` → `types`, in that order. A config cache
+     * built before the list existed has no such key; the site then keeps its pages instead of losing every type.
+     */
     public function register(): void
     {
-        $this->app->singleton(
-            ContentTypes::class,
-            fn (): ContentTypes => (new ContentTypes($this->app->make(PermissionRegistry::class)))->register(new PagesType),
-        );
+        $this->app->singleton(ContentTypes::class, function (): ContentTypes {
+            $types = new ContentTypes($this->app->make(PermissionRegistry::class));
+
+            /** @var list<class-string<ContentType>> $classes */
+            $classes = config('content.types') ?? [PagesType::class];
+
+            foreach ($classes as $class) {
+                $types->register($this->app->make($class));
+            }
+
+            return $types;
+        });
     }
 
     /**

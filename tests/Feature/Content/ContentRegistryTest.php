@@ -27,6 +27,20 @@ test('pages is registered as a hierarchical type with no base and no fields', fu
         ->and($pages->pluralLabel())->toBe('Pages');
 });
 
+test('the types listed in the config are registered in that order', function () {
+    config(['content.types' => [ProductsType::class, PagesType::class]]);
+    app()->forgetInstance(ContentTypes::class);
+
+    expect(array_keys(app(ContentTypes::class)->all()))->toBe(['products', 'pages']);
+});
+
+test('a config cache built before the list of types existed keeps the pages', function () {
+    config(['content.types' => null]);
+    app()->forgetInstance(ContentTypes::class);
+
+    expect(array_keys(app(ContentTypes::class)->all()))->toBe(['pages']);
+});
+
 test('the route pattern matches registered keys only', function () {
     $pattern = '#^(?:'.(new ContentTypes)->register(new PagesType)->pattern().')$#';
 

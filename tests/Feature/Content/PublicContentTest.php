@@ -181,6 +181,8 @@ describe('pages', function () {
 
     it('is a plain page without Livewire, Flux or the admin\'s scripts', function () {
         aboutPages(['body' => '<p>Text</p>']);
+        // A running `npm run dev` leaves `public/hot`, and Vite then adds its client script to every page.
+        Vite::useHotFile(storage_path('framework/testing/vite.hot'));
         // Livewire injects its scripts into a response only after a component rendered in the same request; one test
         // process serves every request, so a component an earlier test rendered is forgotten by hand.
         app('livewire')->flushState();

@@ -1,6 +1,24 @@
 <?php
 
+use App\Support\Content\Types\PagesType;
+
 return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Content types
+    |--------------------------------------------------------------------------
+    |
+    | The content types of the site, one ContentType class each, registered in
+    | this order by ContentServiceProvider. `php artisan make:content-type`
+    | writes a new class and adds it here. A module may register its own type
+    | from its service provider instead (see docs/specs/content.md).
+    |
+    */
+
+    'types' => [
+        PagesType::class,
+    ],
 
     /*
     |--------------------------------------------------------------------------

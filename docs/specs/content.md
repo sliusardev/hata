@@ -36,11 +36,47 @@ from `boot()`: the admin routes' `{type}` pattern (`pattern()`) is built when th
 another provider boots, and a type registered after that has no admin pages (and the route cache keeps the pattern it
 was built with).
 
-`App\Providers\ContentServiceProvider` binds the singleton and registers `PagesType` (key `pages`,
-hierarchical, no base, no fields). Its `boot()` builds the registry, so the kit's types have registered their
-permissions before anything reads them. Publishing and restoring
-need `edit`; trashing and deleting for good need `delete`. The `editor` role gets the four `pages.*`
+`App\Providers\ContentServiceProvider` binds the singleton and registers the classes listed in `config/content.php`
+→ `types`, in that order (each made by the container): `PagesType` (key `pages`, hierarchical, no base, no fields) in
+the kit. The list holds class names only, so the config cache keeps it and a request pays nothing for it; a type's
+definition stays a class, because fields are objects and `base()` may need logic. Its `boot()` builds the registry,
+so the kit's types have registered their permissions before anything reads them. A config cache built before the
+list existed has no `types` key; the provider then registers `PagesType` alone instead of nothing. Publishing and
+restoring need `edit`; trashing and deleting for good need `delete`. The `editor` role gets the four `pages.*`
 permissions by default; `admin` gets them through `*`.
+
+### Adding a type
+
+`php artisan make:content-type Posts` (`App\Console\Commands\MakeContentType` over
+`App\Support\Content\ContentTypeGenerator`) writes `app/Support/Content/Types/PostsType.php`, adds the class to
+`config/content.php` → `types` (with its `use` line), and adds the type's lines to every language's `content.php`
+(`types.<key>`: `label`, `plural`, `description`, `new`, `create`) and `permissions.php` (`groups.<key>`,
+`items.<key>.*`). The lines are English in every language, built from the name, to be translated by the developer.
+
+| Input | Meaning |
+|---|---|
+| `name` | plural name (`Posts`, `CaseStudies`; a trailing `Type` is dropped); the class is `<Name>Type` |
+| `--key=` | the type's key; the name in kebab case by default (`case-studies`) |
+| `--base=` | first segment of the public address in every language; the key by default |
+| `--tree` | hierarchical, like pages; flat by default |
+| `--icon=` | the menu icon, `document-text` by default |
+
+The key and the labels come from the words of the name, split where a capital follows a lowercase letter or a
+digit, so an acronym stays one word (`FAQs` → `faqs`); the default base is the key with hyphens for underscores.
+
+It refuses, changing nothing: a cached config (the registered types may not be the file's; `config:clear` first), a
+name that is no class name, a key outside the key format, already registered or already a permission group (`users`
+would share the Users page's permissions), an existing class file, a base that is not one slug, is reserved
+(`ReservedSlugs`), is the base of a registered type in some language or is the address of an existing top-level
+record of a base-less type (trashed included; the router resolves a base first, so the record would stop opening),
+and an icon the admin does not have (a Flux icon, its own or the project's in `resources/views/flux/icon`; the sidebar renders it on every admin page). The config
+and language files are edited as text by the shape Pint gives them (a top-level `'section' => [` closed by `],`,
+the `use` line placed in sorted order); a file of another shape, one whose imports already hold the class's short
+name, or one that would no longer load with the new lines, is left as it was and its lines are printed to add by
+hand. A file that already holds the type's lines (left from an earlier run or added by hand) is not touched. Any
+other failure midway (a file that cannot be written) puts every changed file back and removes the class file. Afterwards: translate the
+lines, run `permissions:sync`, give the permissions to roles, and rebuild the config and route caches if they are
+cached. The command only writes files; it runs no migration and writes nothing to the database.
 
 `config/content.php` → `trash_days` (30): how long a trashed record is kept (`PruneEntryTrash`).
 
@@ -613,7 +649,10 @@ with fields (`ProductsType`: one control per field, local and shared values stor
 cards for `pages`, the language card states and links (trashed included) and its absence on a one-language site, the
 editor's images and the detached picker, the same query count for few and many translations and pages, and the media
 library's usage link to the edit page (also for a trashed record).
-`tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, a duplicate key and invalid bases refused, `pages`, the permissions after a
+`tests/Feature/Console/MakeContentTypeTest.php`: the generator on copies of the project's own config and language
+files (the class, the config entry, the lines in both languages), the options, every refusal changing nothing, and a
+file of another shape left alone.
+`tests/Feature/Content/ContentRegistryTest.php`: the registry and `pattern()`, the types of the config list in its order, a duplicate key and invalid bases refused, `pages`, the permissions after a
 sync and for the editor, every field kind's round trip and rules, shared and local fields, media ids.
 `tests/Feature/Models/EntryTest.php`: public/scheduled/trashed visibility, the unique indexes, translations, the
 tree, the null-on-delete keys, `url()`, `fieldValue()` and the search index. The
