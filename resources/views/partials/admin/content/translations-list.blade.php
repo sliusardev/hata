@@ -13,7 +13,7 @@
     - $fromId          the record the create links copy (`from`), or null.
 
     A language with a record shows its title as a link to its edit page, its state, and "unlink". A language
-    without one offers "Choose" (the link dialog of the edit page) and "Create" (`admin.content.create` with `from`
+    without one offers "Choose" (the `choose-translation` event, which opens the translation picker) and "Create" (`admin.content.create` with `from`
     and `locale`). A record in the trash is struck through and only links to its page.
 --}}
 @php
@@ -59,7 +59,7 @@
                     @if ($canLink || ($canCreate && $fromId !== null))
                         <div class="mt-2 flex flex-wrap gap-2">
                             @if ($canLink)
-                                <flux:button size="xs" icon="magnifying-glass" x-on:click="$wire.chooseTranslation(@js($language->code))" data-test="translation-choose-{{ $language->code }}">{{ __('content.translations.choose') }}</flux:button>
+                                <flux:button size="xs" icon="magnifying-glass" x-on:click="Livewire.dispatch('choose-translation', { locale: @js($language->code) })" data-test="translation-choose-{{ $language->code }}">{{ __('content.translations.choose') }}</flux:button>
                             @endif
                             @if ($canCreate && $fromId !== null)
                                 <flux:button size="xs" icon="plus" :href="route('admin.content.create', ['type' => $type, 'from' => $fromId, 'locale' => $language->code])" wire:navigate data-test="translation-create-{{ $language->code }}">{{ __('content.translations.create') }}</flux:button>

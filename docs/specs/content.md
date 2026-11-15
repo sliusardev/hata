@@ -460,7 +460,7 @@ for the language box of WordPress and Joomla): a row per other language of the s
 with `data-state` (`Published`, `Draft`, `Scheduled`, `trashed`, `missing`). A language with a record shows its title
 linking to its edit page, its state, an edit button and, for an editable saved record, "Unlink"
 (`confirmUnlink(<id>)`). A trashed one is struck through and only links to its read-only page. A language without one
-offers "Choose" (`chooseTranslation('<code>')`, an editable saved record) and "Create" (`create`; the create page with
+offers "Choose" (the `choose-translation` browser event with the code, an editable saved record) and "Create" (`create`; the create page with
 `from` and `locale`). A switched-off language is marked. It makes no query.
 
 **Form** (`pages::admin.content.create` and `pages::admin.content.edit`, both on `App\Livewire\Admin\EntryFormPage`
@@ -474,8 +474,9 @@ offers "Choose" (`chooseTranslation('<code>')`, an editable saved record) and "C
   translation those its group lacks (trashed records counted). Choosing one calls `changeLocale()` and changes the record in place, with no
   reload and no redirect: the typed values stay, the parent becomes the one that language has (none, or for a
   translation the source's parent in that language, `copyFor()`), the slug is made free in the language
-  (`EntryPaths::suggest()` on the slug, else the title), and the action returns the new address prefix and parents'
-  paths, which the form's script keeps; the editors take the language from the `entry-locale:changed` event, and the
+  (`EntryPaths::suggest()` on the slug, else the title), and the action returns the new address prefix, which the form's
+  script keeps (the parents' paths are `data-path` on the parent select's options, re-rendered with them, so the form
+  carries each path once); the editors take the language from the `entry-locale:changed` event, and the
   address bar drops its `locale` (a translation keeps it next to `from`, updated). It authorizes `create` and ignores
   a language that is not offered (returns null; the select goes back). The status of a new record is Published for an actor with the type's `edit`
   (the user's request, decision 64: it goes live on Save, with the saving time as its date) and Draft, the only one
@@ -499,10 +500,14 @@ error instead of creating a record outside the group. Save calls
   applied on Save, a hint under the select says so, and the form counts as changed. A record with anything under it
   gets the fixed language row with the reason instead (one `exists` query, only on a hierarchical type of a
   multilingual site). Choosing and unlinking translations are immediate actions of their own, apart from Save and
-  without a reload: `chooseTranslation($locale)` (404 for a language the group has or the site lacks) opens a dialog
-  with a search over the live records of the type in that language outside the group (one query while it is open, at
-  most 20; a record that is someone's translation says for which languages, as it will leave them), `link($id)` runs
-  `LinkTranslations`; `confirmUnlink($id)` (the record itself or a live record of its group, else 404) asks, and
+  without a reload: the translation picker (`<livewire:translation-picker>`,
+  `resources/views/components/⚡translation-picker.blade.php`, a component of its own, so typing in its search
+  renders only the dialog and costs two queries, not the form's) opens on `choose-translation` (`choose($locale)`,
+  404 for a language the group has or the site lacks) with a search over the live records of the type in that
+  language outside the group (one query while it is open; 20 listed, with a line when there are more), `pick($id)`
+  runs `LinkTranslations` and dispatches `translations-changed`, on which the page shows the group again; a record
+  that is someone's translation says for which languages and is linked only after a second click on "Link" under a
+  warning that it will leave them; `confirmUnlink($id)` (the record itself or a live record of its group, else 404) asks, and
   `unlink()` runs `UnlinkTranslation`. All of them need `update` on a record outside the trash; a refusal is a danger
   toast. A record in the trash is read-only and refuses Save (403); trashing
   a record that is already in the trash does nothing (no toast, no redirect). The record the route bound serves the

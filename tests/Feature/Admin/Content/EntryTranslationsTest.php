@@ -36,6 +36,11 @@ function translationForm(Entry $entry): Testable
     return Livewire::test('pages::admin.content.edit', ['type' => $entry->type, 'entry' => $entry]);
 }
 
+function translationPicker(Entry $entry): Testable
+{
+    return Livewire::test('translation-picker', ['type' => $entry->type, 'entryId' => $entry->id]);
+}
+
 /**
  * The data the edit form would send for the record as it is.
  *
@@ -149,24 +154,62 @@ test('an existing record is chosen as the translation in its language', function
     Entry::factory()->inLocale('uk')->create(['title' => 'У кошику', 'deleted_at' => now()]);
     $emptied = $ukrainian->entry_group_id;
 
-    translationForm($page)
+    translationPicker($page)
         ->assertDontSeeHtml('data-test="link-candidate-'.$ukrainian->id.'"')
-        ->call('chooseTranslation', 'uk')
-        ->assertSet('showLinkModal', true)
+        ->call('choose', 'uk')
+        ->assertSet('open', true)
         ->assertSeeHtml('data-test="link-candidate-'.$ukrainian->id.'"')
         ->assertSeeHtml('data-test="link-candidate-'.$other->id.'"')
         ->assertDontSeeHtml('data-test="link-candidate-'.$english->id.'"')
         ->assertDontSee('У кошику')
-        ->set('linkSearch', 'про')
+        ->set('search', 'про')
         ->assertDontSeeHtml('data-test="link-candidate-'.$other->id.'"')
-        ->call('link', $ukrainian->id)
-        ->assertSet('showLinkModal', false)
-        ->assertSeeHtml('data-test="translation-unlink-uk"')
-        ->assertSee('Про нас');
+        ->call('pick', $ukrainian->id)
+        ->assertSet('open', false)
+        ->assertDispatched('translations-changed');
 
     expect($ukrainian->fresh()->entry_group_id)->toBe($page->entry_group_id)
         ->and(EntryGroup::query()->whereKey($emptied)->exists())->toBeFalse()
         ->and($ukrainian->fresh()->updated_at->eq($ukrainian->updated_at))->toBeTrue();
+
+    translationForm($page)
+        ->assertSeeHtml('data-test="translation-choose-pl"')
+        ->assertSeeHtml('data-test="translation-unlink-uk"')
+        ->dispatch('translations-changed')
+        ->assertSee('Про нас');
+});
+
+test('a record that is someone\'s translation is linked only after a second click', function () {
+    $this->actingAs(translator());
+    $page = Entry::factory()->create();
+    $ukrainian = Entry::factory()->inLocale('uk')->create();
+    Entry::factory()->translationOf($ukrainian, 'pl')->create();
+
+    $picker = translationPicker($page)
+        ->call('choose', 'uk')
+        ->assertSee(__('content.link.linked_to', ['languages' => 'PL']))
+        ->call('pick', $ukrainian->id)
+        ->assertSet('open', true)
+        ->assertSeeHtml('data-test="link-confirm"')
+        ->assertSee(__('content.link.leaves', ['languages' => 'PL']));
+
+    expect($ukrainian->fresh()->entry_group_id)->not->toBe($page->entry_group_id);
+
+    $picker->call('pick', $ukrainian->id)->assertSet('open', false);
+
+    expect($ukrainian->fresh()->entry_group_id)->toBe($page->entry_group_id);
+});
+
+test('the picker lists twenty records and says when there are more', function () {
+    $this->actingAs(translator());
+    $page = Entry::factory()->create();
+    Entry::factory()->inLocale('uk')->count(20)->create();
+
+    $picker = translationPicker($page)->call('choose', 'uk')->assertDontSeeHtml('data-test="link-more"');
+
+    Entry::factory()->inLocale('uk')->create();
+
+    $picker->set('search', '')->call('choose', 'uk')->assertSeeHtml('data-test="link-more"');
 });
 
 test('a chosen record leaves its former translations, which stay linked to each other', function () {
@@ -206,13 +249,13 @@ test('choosing a translation needs edit, and only for a language the record lack
     $polish = Entry::factory()->inLocale('pl')->create();
 
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view', 'pages.create'])->create());
-    translationForm($page)->call('chooseTranslation', 'pl')->assertForbidden();
-    translationForm($page)->call('link', $polish->id)->assertForbidden();
+    translationPicker($page)->call('choose', 'pl')->assertForbidden();
+    translationPicker($page)->call('pick', $polish->id)->assertForbidden();
 
     $this->actingAs(translator());
-    translationForm($page)->call('chooseTranslation', 'uk')->assertNotFound();
-    translationForm($page)->call('chooseTranslation', 'fr')->assertNotFound();
-    translationForm($page)->call('link', 999)->assertNotFound();
+    translationPicker($page)->call('choose', 'uk')->assertNotFound();
+    translationPicker($page)->call('choose', 'fr')->assertNotFound();
+    translationPicker($page)->call('pick', 999)->assertNotFound();
 });
 
 test('a translation is unlinked after a confirmation and takes a copy of the shared values', function () {

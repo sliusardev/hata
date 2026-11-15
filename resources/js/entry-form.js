@@ -17,14 +17,14 @@
  * paths and the editors follow the new language, and the address bar drops its `locale` (a translation keeps it,
  * next to `from`).
  */
-export default function entryForm({ readonly, slugFollows, prefix, parentPaths, siteName, nowLocal, editorModels, leaveModal, savedLocale, savedState, saveLabels }) {
+export default function entryForm({ readonly, slugFollows, prefix, siteName, nowLocal, editorModels, leaveModal, savedLocale, savedState, saveLabels }) {
     let initial = null;
     let ticket = 0;
 
     return {
         slugFollows: slugFollows && !readonly,
         prefix,
-        parentPaths,
+        optionsVersion: 0,
         editorChanged: false,
         savedLocale,
         savedState,
@@ -57,7 +57,13 @@ export default function entryForm({ readonly, slugFollows, prefix, parentPaths, 
         },
 
         addressPrefix() {
-            const path = this.parentPaths[String(this.$wire.form.parent_id ?? '')];
+            const id = String(this.$wire.form.parent_id ?? '');
+
+            // The parents' paths sit on the select's options (`data-path`), not in the form's state; the counter
+            // makes this run again once a language change has re-rendered them.
+            void this.optionsVersion;
+
+            const path = id === '' ? '' : this.$root.querySelector(`option[data-path][value="${CSS.escape(id)}"]`)?.dataset.path;
 
             return this.prefix + (path ? `${path}/` : '');
         },
@@ -73,7 +79,7 @@ export default function entryForm({ readonly, slugFollows, prefix, parentPaths, 
             }
 
             this.prefix = result.prefix;
-            this.parentPaths = result.parentPaths;
+            this.$nextTick(() => this.optionsVersion++);
             window.dispatchEvent(new CustomEvent('entry-locale:changed', { detail: { locale: result.locale } }));
 
             const url = new URL(window.location.href);

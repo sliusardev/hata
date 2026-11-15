@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Admin;
 
-use App\Actions\Content\LinkTranslations;
 use App\Actions\Content\RestoreEntry;
 use App\Actions\Content\TrashEntry;
 use App\Actions\Content\UnlinkTranslation;
@@ -17,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 
 /**
  * A saved record: edited with the type's `edit`, read-only with `view` alone or while it is in the trash (then
@@ -28,7 +28,6 @@ use Livewire\Attributes\Locked;
  * @property-read Entry $entry
  * @property-read Collection<int, Entry> $groupRecords
  * @property-read bool $hasDescendants
- * @property-read Collection<int, Entry> $linkCandidates
  */
 abstract class EntryEditPage extends EntryFormPage
 {
@@ -39,16 +38,6 @@ abstract class EntryEditPage extends EntryFormPage
 
     #[Locked]
     public int $trashingChildren = 0;
-
-    public bool $showLinkModal = false;
-
-    public string $linkSearch = '';
-
-    /**
-     * The language the link dialog chooses a record for.
-     */
-    #[Locked]
-    public string $linkLocale = '';
 
     public bool $showUnlinkModal = false;
 
@@ -162,67 +151,12 @@ abstract class EntryEditPage extends EntryFormPage
     }
 
     /**
-     * Opens the dialog that chooses an existing record for a language the group lacks (in the trash too).
+     * The translation picker linked a record: show the group as it is now.
      */
-    public function chooseTranslation(string $locale): void
+    #[On('translations-changed')]
+    public function translationsChanged(): void
     {
-        $this->authorizeLocaleChange();
-
-        $taken = $this->groupRecords->pluck('locale')->push($this->entry->locale)->all();
-
-        abort_if(in_array($locale, $taken, true) || ! in_array($locale, array_map(fn ($language) => $language->code, $this->languages), true), 404);
-
-        $this->linkLocale = $locale;
-        $this->linkSearch = '';
-        $this->showLinkModal = true;
-    }
-
-    /**
-     * Records the link dialog offers: live ones of this type in the chosen language, outside the group. One query,
-     * only while the dialog is open; at most 20, narrowed by the search.
-     *
-     * @return Collection<int, Entry>
-     */
-    #[Computed]
-    public function linkCandidates(): Collection
-    {
-        if (! $this->showLinkModal || $this->linkLocale === '') {
-            return collect();
-        }
-
-        return Entry::query()
-            ->ofType($this->type)
-            ->where('locale', $this->linkLocale)
-            ->where('entry_group_id', '!=', $this->entry->entry_group_id)
-            ->search($this->linkSearch)
-            ->with('groupEntries:id,entry_group_id,locale')
-            ->orderBy('title')
-            ->orderBy('id')
-            ->limit(20)
-            ->get(['id', 'entry_group_id', 'type', 'locale', 'title', 'path', 'status', 'published_at']);
-    }
-
-    public function link(int $id, LinkTranslations $linkTranslations): void
-    {
-        $this->authorizeLocaleChange();
-
-        $other = Entry::query()->ofType($this->type)->find($id);
-
-        try {
-            abort_if($other === null, 404);
-            $linkTranslations->handle(Auth::user(), $this->entry, $other);
-        } catch (ProtectedActionException $exception) {
-            Flux::toast(variant: 'danger', text: $exception->getMessage());
-            unset($this->linkCandidates);
-
-            return;
-        }
-
-        $this->showLinkModal = false;
-        $this->linkSearch = '';
-        unset($this->groupRecords, $this->localeChoices, $this->linkCandidates);
-
-        Flux::toast(variant: 'success', text: __('content.link.linked', ['title' => $other->title]));
+        unset($this->groupRecords, $this->localeChoices);
     }
 
     /**

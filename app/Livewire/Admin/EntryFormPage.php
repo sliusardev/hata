@@ -97,10 +97,10 @@ abstract class EntryFormPage extends Component
     /**
      * Makes the form one of another language, in place: the typed values stay, the parent becomes the one the
      * language has (none, or the translation of the source's parent), and the slug is made free in the language.
-     * Nothing is stored. Returns what the browser keeps for itself (the address prefix and the parents' paths), or
-     * null for a language that is not offered.
+     * Nothing is stored. Returns what the browser keeps for itself (the address prefix; the parents' paths come
+     * with the re-rendered options), or null for a language that is not offered.
      *
-     * @return array{locale: string, prefix: string, parentPaths: array<int, string>}|null
+     * @return array{locale: string, prefix: string}|null
      */
     public function changeLocale(string $locale): ?array
     {
@@ -127,7 +127,6 @@ abstract class EntryFormPage extends Component
         return [
             'locale' => $locale,
             'prefix' => $this->addressPrefix,
-            'parentPaths' => collect($this->parentOptions)->mapWithKeys(fn (array $option): array => [(string) $option['id'] => $option['path']])->all(),
         ];
     }
 

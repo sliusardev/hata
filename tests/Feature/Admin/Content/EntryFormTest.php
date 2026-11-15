@@ -707,8 +707,9 @@ test('choosing another language changes the new record in place and keeps what w
         ->assertSee('Компанія')
         ->assertReturned(fn (array $state): bool => $state['locale'] === 'uk'
             && str_ends_with($state['prefix'], '/uk/')
-            && $state['parentPaths'][(string) $ukParent->id] === 'kompaniia'
-            && ! isset($state['parentPaths'][(string) $parent->id]));
+            && ! isset($state['parentPaths']))
+        ->assertSeeHtml('data-path="kompaniia" data-test="parent-option-'.$ukParent->id.'"')
+        ->assertDontSeeHtml('data-test="parent-option-'.$parent->id.'"');
 
     $form->call('save')->assertHasNoErrors();
 

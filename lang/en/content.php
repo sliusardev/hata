@@ -47,8 +47,10 @@ return [
         'overlap' => 'These records cannot be linked: there is already a translation in this language.',
         'alone' => 'This record has no translations.',
         'not_found' => 'Nothing found.',
-        'linked_to' => 'translation of :languages',
-        'leaves' => 'The record is linked to other translations now and will be unlinked from them',
+        'linked_to' => 'already linked to :languages',
+        'leaves' => 'This record is already linked to :languages. It will be unlinked from them and become the translation of this page.',
+        'confirm' => 'Link',
+        'more' => 'The first :count are shown. Narrow the search to find the others.',
         'unlink_self' => 'Unlink this record from its translations',
     ],
     'translations' => [

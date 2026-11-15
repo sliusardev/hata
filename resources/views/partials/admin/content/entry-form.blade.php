@@ -34,7 +34,6 @@
         'readonly' => $readOnly,
         'slugFollows' => $entry === null,
         'prefix' => $this->addressPrefix,
-        'parentPaths' => collect($parentOptions)->mapWithKeys(fn ($option) => [(string) $option['id'] => $option['path']])->all(),
         'siteName' => (string) config('app.name'),
         'nowLocal' => now()->tz($timezone)->format('Y-m-d\TH:i'),
         'editorModels' => collect($contentType->fields())->filter(fn ($field) => $field instanceof App\Support\Content\Fields\RichText)->map(fn ($field) => $field->name)->values()->all(),
@@ -344,7 +343,7 @@
                         <flux:select wire:model="form.parent_id" :label="__('content.form.parent')" x-on:change="onParentChange()" :disabled="$readOnly" data-test="entry-parent">
                             <flux:select.option value="">{{ __('content.form.no_parent') }}</flux:select.option>
                             @foreach ($parentOptions as $option)
-                                <flux:select.option :value="(string) $option['id']" wire:key="parent-{{ $option['id'] }}" data-test="parent-option-{{ $option['id'] }}">{{ str_repeat("\u{00A0}\u{00A0}\u{00A0}", min($option['depth'], 8)) }}{{ $option['depth'] > 0 ? '└ ' : '' }}{{ $option['title'] }}</flux:select.option>
+                                <flux:select.option :value="(string) $option['id']" wire:key="parent-{{ $option['id'] }}" data-path="{{ $option['path'] }}" data-test="parent-option-{{ $option['id'] }}">{{ str_repeat("\u{00A0}\u{00A0}\u{00A0}", min($option['depth'], 8)) }}{{ $option['depth'] > 0 ? '└ ' : '' }}{{ $option['title'] }}</flux:select.option>
                             @endforeach
                         </flux:select>
                     @endif
@@ -402,48 +401,10 @@
 
     @if ($entry !== null && ! $readOnly && $multilingual)
         @php
-            $linkLanguage = collect($languages)->firstWhere('code', $this->linkLocale);
             $unlinkTarget = $this->unlinkId > 0 ? $this->unlinkTarget($this->unlinkId) : null;
         @endphp
 
-        <flux:modal wire:model.self="showLinkModal" class="w-full max-w-lg" data-test="link-modal">
-            <div class="space-y-5">
-                <div class="space-y-2">
-                    <flux:heading size="lg">{{ __('content.link.title', ['language' => $linkLanguage?->native ?? '']) }}</flux:heading>
-                    <flux:text>{{ __('content.link.description') }}</flux:text>
-                </div>
-
-                <flux:input wire:model.live.debounce.300ms="linkSearch" icon="magnifying-glass" :placeholder="__('content.link.search')" clearable data-test="link-search" />
-
-                <div class="max-h-80 space-y-1 overflow-y-auto" wire:loading.class="opacity-60" wire:target="linkSearch">
-                    @forelse ($this->linkCandidates as $candidate)
-                        @php $candidateState = $candidate->state(); @endphp
-                        <button type="button" wire:click="link({{ $candidate->id }})" wire:key="link-candidate-{{ $candidate->id }}" class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start hover:bg-zinc-100 dark:hover:bg-white/10" data-test="link-candidate-{{ $candidate->id }}">
-                            <span @class(['size-2 shrink-0 rounded-full', 'bg-green-500' => $candidateState === App\Enums\EntryState::Published, 'bg-amber-400' => $candidateState !== App\Enums\EntryState::Published]) title="{{ __('content.list.state.'.strtolower($candidateState->name)) }}"></span>
-                            <span class="min-w-0 flex-1">
-                                <span class="block truncate text-sm font-medium text-zinc-900 dark:text-white">{{ $candidate->title }}</span>
-                                <span class="block truncate text-xs text-zinc-500 dark:text-zinc-400">/{{ $candidate->path }}</span>
-                            </span>
-                            @if ($candidate->groupEntries->count() > 1)
-                                <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400" title="{{ __('content.link.leaves') }}">{{ __('content.link.linked_to', ['languages' => mb_strtoupper($candidate->translations()->pluck('locale')->implode(', '))]) }}</span>
-                            @endif
-                        </button>
-                    @empty
-                        <flux:text class="px-3 py-6 text-center text-sm">{{ $this->linkSearch === '' ? __('content.link.empty') : __('content.link.not_found') }}</flux:text>
-                    @endforelse
-                </div>
-
-                @if ($sharedFields !== [])
-                    <flux:text class="text-xs">{{ __('content.link.shared_note') }}</flux:text>
-                @endif
-
-                <div class="flex justify-end">
-                    <flux:modal.close>
-                        <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
-                    </flux:modal.close>
-                </div>
-            </div>
-        </flux:modal>
+        <livewire:translation-picker :type="$type" :entry-id="$entry->id" key="translation-picker" />
 
         <x-confirm-modal
             wire:model.self="showUnlinkModal"
