@@ -183,7 +183,7 @@ new class extends EntryFormPage {
 
         Toast::success($entry->wasRecentlyCreated ? __('content.form.created') : __('content.form.exists'));
 
-        $this->redirectRoute('admin.content.edit', ['type' => $this->type, 'entry' => $entry->id]);
+        $this->redirectRoute('admin.content.edit', ['type' => $this->type, 'entry' => $entry->id], navigate: true);
     }
 }; ?>
 

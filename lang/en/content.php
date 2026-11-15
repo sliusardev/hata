@@ -78,7 +78,6 @@ return [
         'back' => 'Back to the list',
         'columns' => [
             'title' => 'Title',
-            'translations' => 'Translations',
             'author' => 'Author',
             'date' => 'Date',
             'removal' => 'Removed on',
@@ -94,7 +93,6 @@ return [
         'removed_on' => 'Removed on :date',
         'actions' => [
             'view' => 'View on site',
-            'translate' => 'Add translation',
             'trash' => 'Move to trash',
             'restore' => 'Restore',
             'delete' => 'Delete for good',
@@ -149,6 +147,14 @@ return [
     'form' => [
         'page_title' => ':type: :title',
         'save' => 'Save',
+        'save_publish' => 'Publish',
+        'save_schedule' => 'Schedule',
+        'save_draft' => 'Save draft',
+        'translation' => [
+            'title' => 'This is a copy of ":title" (:language)',
+            'text' => 'Translate the text before saving: with the status "Published" the page appears on the site at once. To work on the translation longer, choose the status "Draft".',
+            'text_draft' => 'Translate the text and save: the translation stays a draft until an editor publishes it.',
+        ],
         'view' => 'View on site',
         'preview' => 'Preview',
         'language_off' => 'This language is switched off, so the page is not on the site yet.',
@@ -234,9 +240,6 @@ return [
         'trashed' => ':language: in the trash',
         'off' => 'off',
         'legend' => [
-            'published' => 'published',
-            'draft' => 'draft or scheduled',
-            'missing' => 'none',
             'trashed' => 'in the trash',
         ],
     ],

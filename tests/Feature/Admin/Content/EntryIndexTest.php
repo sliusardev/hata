@@ -202,31 +202,51 @@ test('missing=uk lists only records without a uk translation', function () {
         ->assertDontSee('Has Ukrainian');
 });
 
-test('the list shows every language by default, marked by its code, then the chosen one, remembered in the session', function () {
+test('the list shows every language by default, one row per group of translations', function () {
     $this->actingAs(contentViewer());
-    $english = Entry::factory()->create(['title' => 'English page']);
-    $ukrainian = Entry::factory()->inLocale('uk')->create(['title' => 'Українська сторінка']);
-    Entry::factory()->inLocale('fr')->create(['title' => 'Page hors du site']);
+    $about = Entry::factory()->published()->create(['title' => 'About us']);
+    $pro = Entry::factory()->translationOf($about, 'uk')->create(['title' => 'Про нас']);
+    $onlyUkrainian = Entry::factory()->inLocale('uk')->create(['title' => 'Лише українською']);
+    $foreign = Entry::factory()->inLocale('fr')->create(['title' => 'Page hors du site']);
+    $row = fn (Entry $entry): string => 'data-test="entry-row-'.$entry->id.'"';
 
     $list = entryList()
         ->assertSet('locale', '')
-        ->assertSee(['English page', 'Українська сторінка'])
-        ->assertDontSee('Page hors du site')
-        ->assertSeeHtml('data-test="entry-language-'.$english->id.'"')
-        ->assertSeeHtml('data-test="entry-language-'.$ukrainian->id.'"');
+        ->assertSeeHtml([$row($about), $row($onlyUkrainian)])
+        ->assertDontSeeHtml([$row($pro), $row($foreign)])
+        ->assertSeeHtml('data-test="translations-'.$onlyUkrainian->id.'"');
 
-    expect($list->instance()->counts['all'])->toBe(2);
+    expect($list->instance()->counts)->toMatchArray(['all' => 2, 'published' => 1, 'drafts' => 2]);
 
-    entryList()->set('locale', 'uk')
-        ->assertSee('Українська сторінка')
-        ->assertDontSee('English page')
-        ->assertDontSeeHtml('data-test="entry-language-'.$ukrainian->id.'"');
+    // A tab or a search shows the group by the first of its records that matches.
+    $list->set('tab', 'drafts')->assertSeeHtml([$row($pro), $row($onlyUkrainian)])->assertDontSeeHtml($row($about));
+    $list->set('tab', 'all')->set('search', 'про')->assertSeeHtml($row($pro))->assertDontSeeHtml($row($about));
+});
+
+test('a chosen language lists its records and is remembered in the session', function () {
+    $this->actingAs(contentViewer());
+    Entry::factory()->create(['title' => 'English page']);
+    Entry::factory()->inLocale('uk')->create(['title' => 'Українська сторінка']);
+
+    entryList()->set('locale', 'uk')->assertSee('Українська сторінка')->assertDontSee('English page');
     expect(session('content.list_locale'))->toBe('uk');
 
     entryList()->assertSet('locale', 'uk')->assertSee('Українська сторінка')
         ->set('locale', '')->assertSee('English page');
 
     entryList()->assertSet('locale', '');
+});
+
+test('the trash lists every record on its own, marked by its language', function () {
+    $this->actingAs(contentViewer());
+    $about = Entry::factory()->create(['title' => 'About us', 'deleted_at' => now()]);
+    $pro = Entry::factory()->translationOf($about, 'uk')->create(['title' => 'Про нас', 'deleted_at' => now()]);
+
+    $list = entryList(['tab' => 'trash'])
+        ->assertSee(['About us', 'Про нас'])
+        ->assertSeeHtml('data-test="entry-language-'.$pro->id.'"');
+
+    expect($list->instance()->counts['trash'])->toBe(2);
 });
 
 test('with every language listed the trees follow the site\'s order of languages', function () {
@@ -246,14 +266,17 @@ test('a locale that is not on the site shows every language', function () {
     entryList()->set('locale', 'xx')->assertSet('locale', '');
 });
 
-test('the translations bar counts every language of the site, the switched-off ones too', function () {
+test('a row lists every language of the site as a link to the translation or to creating it', function () {
     $this->actingAs(contentViewer(['pages.create']));
     $page = Entry::factory()->published()->create(['title' => 'Group page']);
-    Entry::factory()->translationOf($page, 'uk')->create();
+    $uk = Entry::factory()->translationOf($page, 'uk')->create();
 
-    entryList()
+    entryList(['locale' => 'en'])
         ->assertSeeHtml('data-test="translations-'.$page->id.'"')
-        ->assertSee('2/3')
+        ->assertSeeHtml('data-test="chip-en" data-state="this"')
+        ->assertSeeHtml('data-test="chip-uk" data-state="draft"')
+        ->assertSeeHtml('data-test="chip-pl" data-state="missing"')
+        ->assertSee(route('admin.content.edit', ['type' => 'pages', 'entry' => $uk->id]), false)
         ->assertSee(route('admin.content.create', ['type' => 'pages', 'from' => $page->id, 'locale' => 'pl']));
 });
 

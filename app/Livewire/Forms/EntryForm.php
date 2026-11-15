@@ -50,6 +50,14 @@ class EntryForm extends Form
      */
     public array $fields = [];
 
+    /**
+     * A stored date as the `datetime-local` input takes it, in the site's display timezone; empty for none.
+     */
+    public function localDate(?DateTimeInterface $date): string
+    {
+        return $date === null ? '' : Date::instance($date)->tz((string) config('admin.timezone'))->format('Y-m-d\TH:i');
+    }
+
     public function fillFromEntry(Entry $entry): void
     {
         $this->fillFromData([
@@ -85,9 +93,7 @@ class EntryForm extends Form
         $this->author_id = isset($data['author_id']) ? (string) $data['author_id'] : '';
         $this->image_id = isset($data['image_id']) ? (int) $data['image_id'] : null;
         $this->status = (string) ($data['status'] ?? EntryStatus::Draft->value);
-        $this->published_at = $date instanceof DateTimeInterface
-            ? Date::instance($date)->tz((string) config('admin.timezone'))->format('Y-m-d\TH:i')
-            : '';
+        $this->published_at = $this->localDate($date instanceof DateTimeInterface ? $date : null);
         $this->excerpt = (string) ($data['excerpt'] ?? '');
         $this->seo_title = (string) ($data['seo_title'] ?? '');
         $this->seo_description = (string) ($data['seo_description'] ?? '');

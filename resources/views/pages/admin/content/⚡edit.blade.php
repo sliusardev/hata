@@ -280,7 +280,7 @@ new class extends EntryFormPage {
         abort_if($this->entry->trashed(), 403);
 
         try {
-            $updateEntry->handle(Auth::user(), $this->entry, $this->form->data($this->contentType), $this->locale !== $this->openedLocale ? $this->locale : null);
+            $entry = $updateEntry->handle(Auth::user(), $this->entry, $this->form->data($this->contentType), $this->locale !== $this->openedLocale ? $this->locale : null);
         } catch (ValidationException $exception) {
             $this->forgetUnsaved();
             $this->showErrors($exception);
@@ -293,11 +293,20 @@ new class extends EntryFormPage {
             return;
         }
 
-        $this->finished = true;
+        // No redirect: the page stays where it is (scroll, caret), re-rendered from the stored record.
+        $this->forgetUnsaved();
+        $this->openedLocale = $entry->locale;
+        $this->locale = $entry->locale;
+        $this->form->published_at = $this->form->localDate($this->entry->published_at);
 
-        Toast::success(__('content.form.saved'));
+        Flux::toast(variant: 'success', text: __('content.form.saved'));
 
-        $this->redirectRoute('admin.content.edit', ['type' => $this->type, 'entry' => $this->entryId]);
+        $this->dispatch(
+            'entry-saved',
+            locale: $this->entry->locale,
+            state: strtolower($this->entry->state()->name),
+            title: __('content.form.page_title', ['type' => $this->contentType->label(), 'title' => $this->entry->title]).' - '.config('app.name'),
+        );
     }
 
     /**
@@ -357,7 +366,7 @@ new class extends EntryFormPage {
 
         Toast::success(__('content.list.restored', ['title' => $restored->title]));
 
-        $this->redirectRoute('admin.content.edit', ['type' => $this->type, 'entry' => $this->entryId]);
+        $this->redirectRoute('admin.content.edit', ['type' => $this->type, 'entry' => $this->entryId], navigate: true);
     }
 }; ?>
 

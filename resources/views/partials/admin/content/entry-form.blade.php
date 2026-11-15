@@ -29,7 +29,6 @@
     $state = $entry?->state();
     $languageCodes = array_map(fn ($language) => $language->code, $languages);
     $present = collect($groupEntries)->whereIn('locale', $languageCodes);
-    $publishedCount = $present->filter(fn ($record) => $record->state() === App\Enums\EntryState::Published)->count();
     $card = 'rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-700 dark:bg-zinc-900/40';
     $config = [
         'readonly' => $readOnly,
@@ -41,7 +40,16 @@
         'editorModels' => collect($contentType->fields())->filter(fn ($field) => $field instanceof App\Support\Content\Fields\RichText)->map(fn ($field) => $field->name)->values()->all(),
         'leaveModal' => 'leave-entry-form',
         'savedLocale' => $entry?->locale,
+        'savedState' => $entry === null ? null : strtolower($state->name),
+        'saveLabels' => [
+            'save' => __('content.form.save'),
+            'publish' => __('content.form.save_publish'),
+            'schedule' => __('content.form.save_schedule'),
+            'draft' => __('content.form.save_draft'),
+        ],
     ];
+    $source = $entry === null && $fromId !== null ? collect($groupEntries)->firstWhere('id', $fromId) : null;
+    $activeCodes = array_map(fn ($language) => $language->code, app(App\Support\Localization\ContentLocales::class)->active());
 @endphp
 
 <section
@@ -50,6 +58,7 @@
     x-on:keydown.window="onKeydown($event)"
     x-on:rich-text:changed="editorChanged = true"
     x-on:entry-form-invalid.window="scrollToError()"
+    x-on:entry-saved.window="onSaved($event.detail)"
     x-on:livewire:navigate.document="onNavigate($event)"
     x-on:beforeunload.window="onUnload($event)"
     data-readonly="{{ $readOnly ? 'true' : 'false' }}"
@@ -73,6 +82,21 @@
                         <flux:badge size="sm" color="sky">{{ __('content.list.state.scheduled') }}</flux:badge>
                     @endif
                 </div>
+                @if ($multilingual && ($entry !== null || $present->isNotEmpty()))
+                    {{-- The languages of the page at a glance, each a link to that translation. --}}
+                    <div class="mt-2" data-test="header-translations">
+                        @include('partials.admin.content.translation-chips', [
+                            'type' => $type,
+                            'languages' => $languages,
+                            'current' => $entry?->locale,
+                            'records' => $groupEntries,
+                            'trashed' => $trashedEntries,
+                            'canCreate' => $abilities['create'] && ! $trashed,
+                            'fromId' => $fromId,
+                            'activeCodes' => $activeCodes,
+                        ])
+                    </div>
+                @endif
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
@@ -87,7 +111,7 @@
                     @endif
                 @endif
                 @unless ($readOnly)
-                    <flux:button type="submit" variant="primary" data-test="save-entry">{{ __('content.form.save') }}</flux:button>
+                    <flux:button type="submit" variant="primary" data-test="save-entry"><span x-text="saveLabel()">{{ __('content.form.save') }}</span></flux:button>
                 @endunless
             </div>
         </div>
@@ -99,6 +123,14 @@
                 </flux:callout>
             @enderror
         @endforeach
+
+        @if ($source !== null)
+            {{-- A translation opens as a copy of its source: say so, since Save may put it on the site. --}}
+            <flux:callout icon="language" data-test="translation-callout">
+                <flux:callout.heading>{{ __('content.form.translation.title', ['title' => $source->title, 'language' => mb_strtoupper($source->locale)]) }}</flux:callout.heading>
+                <flux:callout.text>{{ $abilities['edit'] ? __('content.form.translation.text') : __('content.form.translation.text_draft') }}</flux:callout.text>
+            </flux:callout>
+        @endif
 
         @if ($trashed)
             <flux:callout variant="warning" icon="trash" data-test="trashed-callout">
@@ -348,7 +380,7 @@
                     <span class="size-2 rounded-full bg-amber-400"></span>{{ __('content.form.unsaved') }}
                 </span>
                 <span class="hidden text-xs text-zinc-400 sm:inline dark:text-zinc-500" x-text="shortcutHint(@js(__('content.form.shortcut')))"></span>
-                <flux:button type="submit" variant="primary">{{ __('content.form.save') }}</flux:button>
+                <flux:button type="submit" variant="primary"><span x-text="saveLabel()">{{ __('content.form.save') }}</span></flux:button>
             </div>
         @endunless
     </form>

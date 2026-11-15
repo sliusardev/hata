@@ -140,14 +140,15 @@ test('editing changes the title, the parent and the slug', function () {
         ->set('form.slug', 'people')
         ->call('save')
         ->assertHasNoErrors()
-        ->assertRedirect(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]));
+        ->assertNoRedirect()
+        ->assertDispatched('entry-saved', locale: 'en', state: 'draft')
+        ->assertSee('Our people');
 
     $page->refresh();
 
     expect($page->title)->toBe('Our people')
         ->and($page->parent_id)->toBe($company->id)
-        ->and($page->path)->toBe('company/people')
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('content.form.saved'));
+        ->and($page->path)->toBe('company/people');
 });
 
 test('validation errors stay on their fields', function () {
@@ -762,4 +763,39 @@ test('changing the language needs the right to create', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
 
     $form->call('changeLocale', 'uk')->assertForbidden();
+});
+
+test('publishing without a date stays on the page and shows the date the record got', function () {
+    $this->actingAs(formEditor());
+    $this->travelTo('2026-03-04 10:00:00');
+    $page = Entry::factory()->draft()->create();
+
+    editForm($page)
+        ->set('form.status', 'published')
+        ->call('save')
+        ->assertNoRedirect()
+        ->assertDispatched('entry-saved', state: 'published')
+        ->assertSet('form.published_at', '2026-03-04T10:00');
+});
+
+test('the header lists the languages of the page as links, and a translation says it is a copy', function () {
+    $this->actingAs(formEditor());
+    $page = Entry::factory()->published()->create(['title' => 'Home']);
+    $uk = Entry::factory()->translationOf($page, 'uk')->create();
+
+    $header = Str::of(editForm($page)->assertSeeHtml('data-test="header-translations"')->assertDontSeeHtml('data-test="translation-callout"')->html())
+        ->after('data-test="header-translations"')->before('data-test="save-entry"')->toString();
+
+    expect($header)->toContain('data-test="chip-en" data-state="this"')
+        ->toContain('data-test="chip-uk" data-state="draft"')
+        ->toContain('data-test="chip-pl" data-state="missing"')
+        ->toContain(route('admin.content.edit', ['type' => 'pages', 'entry' => $uk->id]))
+        ->toContain(e(route('admin.content.create', ['type' => 'pages', 'from' => $page->id, 'locale' => 'pl'])));
+
+    createForm()->assertDontSeeHtml('data-test="header-translations"')->assertDontSeeHtml('data-test="translation-callout"');
+
+    createForm(['from' => (string) $page->id, 'locale' => 'pl'])
+        ->assertSeeHtml('data-test="translation-callout"')
+        ->assertSee(__('content.form.translation.title', ['title' => 'Home', 'language' => 'EN']))
+        ->assertSeeHtml('data-test="chip-en" data-state="published"');
 });

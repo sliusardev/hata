@@ -8,6 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
  * The records of one type as the admin list shows them, in one language or in all the site's: a tab, a search, a "missing translation in"
@@ -136,6 +137,10 @@ final class EntryListQuery
 
         $this->inLanguages($query);
 
+        if ($this->isGrouped()) {
+            $this->onePerGroup($query);
+        }
+
         $now = now();
 
         match ($this->tab) {
@@ -159,6 +164,57 @@ final class EntryListQuery
     }
 
     /**
+     * Whether the list shows one row per group of translations: every language listed, outside the trash (where
+     * each record is restored or deleted on its own).
+     */
+    public function isGrouped(): bool
+    {
+        return $this->locale === '' && $this->tab !== 'trash' && count($this->locales) > 1;
+    }
+
+    /**
+     * Keeps, of every group, the record in the first of the site's languages among those the tab and the search
+     * match: no live record of the group in an earlier language matches them too. A correlated `not exists` on the
+     * (`entry_group_id`, `locale`) index, a few rows per listed record.
+     *
+     * @param  Builder<Entry>  $query
+     */
+    private function onePerGroup(Builder $query): void
+    {
+        $query->whereNotExists(function (QueryBuilder $earlier): void {
+            $earlier->selectRaw('1')
+                ->from('entries as earlier')
+                ->whereColumn('earlier.entry_group_id', 'entries.entry_group_id')
+                ->whereNull('earlier.deleted_at')
+                ->where(function (QueryBuilder $ranks): void {
+                    foreach ($this->locales as $position => $code) {
+                        if ($position > 0) {
+                            $ranks->orWhere(fn (QueryBuilder $rank) => $rank
+                                ->where('entries.locale', $code)
+                                ->whereIn('earlier.locale', array_slice($this->locales, 0, $position)));
+                        }
+                    }
+                });
+
+            $now = now();
+            $published = EntryStatus::Published->value;
+
+            match ($this->tab) {
+                'published' => $earlier->where('earlier.status', $published)->where('earlier.published_at', '<=', $now),
+                'drafts' => $earlier->where(fn (QueryBuilder $drafts) => $drafts->where('earlier.status', EntryStatus::Draft->value)->orWhereNull('earlier.published_at')),
+                'scheduled' => $earlier->where('earlier.status', $published)->where('earlier.published_at', '>', $now),
+                default => null,
+            };
+
+            $term = mb_strtolower(trim((string) $this->search));
+
+            if ($term !== '') {
+                $earlier->where('earlier.search_index', 'like', '%'.$term.'%');
+            }
+        });
+    }
+
+    /**
      * @return LengthAwarePaginator<int, Entry>
      */
     public function paginate(int $perPage): LengthAwarePaginator
@@ -167,7 +223,9 @@ final class EntryListQuery
     }
 
     /**
-     * How many records of the type in the list's languages each tab holds, whatever the search and filter: one query.
+     * How many rows each tab holds, whatever the search and filter: records of the type in the list's languages, or
+     * groups of translations with a record in that state while every language is listed (the trash always counts
+     * records). One query.
      *
      * @return array{all: int, published: int, drafts: int, scheduled: int, trash: int}
      */
@@ -176,14 +234,24 @@ final class EntryListQuery
         $now = (new Entry)->fromDateTime(now());
         $published = EntryStatus::Published->value;
 
-        $row = $this->inLanguages(Entry::withTrashed()->ofType($this->type->key()))
-            ->toBase()
-            ->selectRaw('sum(case when deleted_at is null then 1 else 0 end) as all_count')
-            ->selectRaw('sum(case when deleted_at is null and status = ? and published_at <= ? then 1 else 0 end) as published_count', [$published, $now])
-            ->selectRaw('sum(case when deleted_at is null and (status <> ? or published_at is null) then 1 else 0 end) as drafts_count', [$published])
-            ->selectRaw('sum(case when deleted_at is null and status = ? and published_at > ? then 1 else 0 end) as scheduled_count', [$published, $now])
-            ->selectRaw('sum(case when deleted_at is not null then 1 else 0 end) as trash_count')
-            ->first();
+        $base = $this->inLanguages(Entry::withTrashed()->ofType($this->type->key()))->toBase();
+
+        // Rows are groups while every language is listed: a group counts once per tab it has a record in.
+        $row = $this->locale === '' && count($this->locales) > 1
+            ? $base
+                ->selectRaw('count(distinct case when deleted_at is null then entry_group_id end) as all_count')
+                ->selectRaw('count(distinct case when deleted_at is null and status = ? and published_at <= ? then entry_group_id end) as published_count', [$published, $now])
+                ->selectRaw('count(distinct case when deleted_at is null and (status <> ? or published_at is null) then entry_group_id end) as drafts_count', [$published])
+                ->selectRaw('count(distinct case when deleted_at is null and status = ? and published_at > ? then entry_group_id end) as scheduled_count', [$published, $now])
+                ->selectRaw('sum(case when deleted_at is not null then 1 else 0 end) as trash_count')
+                ->first()
+            : $base
+                ->selectRaw('sum(case when deleted_at is null then 1 else 0 end) as all_count')
+                ->selectRaw('sum(case when deleted_at is null and status = ? and published_at <= ? then 1 else 0 end) as published_count', [$published, $now])
+                ->selectRaw('sum(case when deleted_at is null and (status <> ? or published_at is null) then 1 else 0 end) as drafts_count', [$published])
+                ->selectRaw('sum(case when deleted_at is null and status = ? and published_at > ? then 1 else 0 end) as scheduled_count', [$published, $now])
+                ->selectRaw('sum(case when deleted_at is not null then 1 else 0 end) as trash_count')
+                ->first();
 
         return [
             'all' => (int) ($row->all_count ?? 0),

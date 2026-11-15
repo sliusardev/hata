@@ -269,32 +269,6 @@ new class extends Component {
         ];
     }
 
-    /**
-     * Published and draft (or scheduled) records of the row's group in the site's languages, from the loaded group.
-     *
-     * @return array{published: int, drafts: int, total: int}
-     */
-    public function translationStats(Entry $entry): array
-    {
-        $codes = array_map(fn (Language $language): string => $language->code, $this->languages);
-        $present = $entry->groupEntries->filter(fn (Entry $record): bool => in_array($record->locale, $codes, true));
-        $published = $present->filter(fn (Entry $record): bool => $record->state() === EntryState::Published)->count();
-
-        return ['published' => $published, 'drafts' => $present->count() - $published, 'total' => count($codes)];
-    }
-
-    /**
-     * The site's languages the row's group has no record in, for "Add translation".
-     *
-     * @return list<Language>
-     */
-    public function missingLanguages(Entry $entry): array
-    {
-        $present = $entry->groupEntries->pluck('locale')->push($entry->locale)->all();
-
-        return array_values(array_filter($this->languages, fn (Language $language): bool => ! in_array($language->code, $present, true)));
-    }
-
     public function isFiltered(): bool
     {
         return trim($this->search) !== '' || $this->missing !== '';
@@ -724,9 +698,6 @@ new class extends Component {
                     @else
                         <flux:table.column sortable :sorted="$this->sortColumn() === 'title'" :direction="$this->sortDirection()" wire:click="sort('title')">{{ __('content.list.columns.title') }}</flux:table.column>
                     @endif
-                    @if ($showTranslations)
-                        <flux:table.column class="max-md:hidden">{{ __('content.list.columns.translations') }}</flux:table.column>
-                    @endif
                     <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.author') }}</flux:table.column>
                     @if ($inTrash)
                         <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.removal') }}</flux:table.column>
@@ -764,7 +735,7 @@ new class extends Component {
                                     @endif
                                     <div class="min-w-0 max-w-[14rem] sm:max-w-sm xl:max-w-md">
                                         <div class="flex min-w-0 items-center gap-2">
-                                            @if ($this->multilingual && $locale === '')
+                                            @if ($this->multilingual && $inTrash)
                                                 <span @class(['shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700 uppercase dark:bg-white/10 dark:text-zinc-200', 'opacity-60' => ! in_array($entry->locale, $activeCodes, true)]) data-test="entry-language-{{ $entry->id }}">{{ $entry->locale }}</span>
                                             @endif
                                             <a href="{{ $editUrl }}" wire:navigate class="truncate font-medium text-zinc-900 hover:underline dark:text-white" data-test="edit-entry-link-{{ $entry->id }}">{{ $entry->title }}</a>
@@ -775,40 +746,25 @@ new class extends Component {
                                             @endif
                                         </div>
                                         <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $entry->url(false) }}</div>
+                                        @if ($showTranslations)
+                                            <div class="mt-1.5" data-test="translations-{{ $entry->id }}">
+                                                @include('partials.admin.content.translation-chips', [
+                                                    'type' => $type,
+                                                    'languages' => $this->languages,
+                                                    'current' => $entry->locale,
+                                                    'records' => $entry->groupEntries,
+                                                    'canCreate' => $abilities['create'],
+                                                    'fromId' => $entry->id,
+                                                    'activeCodes' => $activeCodes,
+                                                ])
+                                            </div>
+                                        @endif
                                         @if ($inTrash)
                                             <div class="text-xs text-zinc-500 lg:hidden dark:text-zinc-400">{{ __('content.list.removed_on', ['date' => $entry->deleted_at->copy()->addDays($trashDays)->tz($timezone)->isoFormat('LL')]) }}</div>
                                         @endif
                                     </div>
                                 </div>
                             </flux:table.cell>
-
-                            @if ($showTranslations)
-                                @php $stats = $this->translationStats($entry); @endphp
-                                <flux:table.cell class="max-md:hidden">
-                                    <flux:tooltip interactive position="bottom" align="start">
-                                        <button type="button" class="flex items-center gap-2 rounded-md py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="{{ __('content.list.translations_summary', ['count' => $stats['published'] + $stats['drafts'], 'total' => $stats['total']]) }}" data-test="translations-{{ $entry->id }}">
-                                            <span class="flex h-1.5 w-20 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700">
-                                                <span class="bg-green-500" style="width: {{ round($stats['published'] / $stats['total'] * 100, 1) }}%"></span>
-                                                <span class="bg-amber-400" style="width: {{ round($stats['drafts'] / $stats['total'] * 100, 1) }}%"></span>
-                                            </span>
-                                            <span class="text-xs text-zinc-500 tabular-nums dark:text-zinc-400">{{ $stats['published'] + $stats['drafts'] }}/{{ $stats['total'] }}</span>
-                                        </button>
-
-                                        <flux:tooltip.content class="w-72 border border-zinc-200 bg-white! p-3! text-zinc-700! shadow-lg dark:border-zinc-700 dark:bg-zinc-900! dark:text-zinc-300!">
-                                            <div class="mb-2 flex items-center justify-between gap-3 text-xs">
-                                                <span class="font-semibold text-zinc-900 dark:text-white">{{ __('content.list.columns.translations') }}</span>
-                                                <span class="font-normal text-zinc-500 dark:text-zinc-400">{{ __('content.list.translations_summary', ['count' => $stats['published'] + $stats['drafts'], 'total' => $stats['total']]) }}</span>
-                                            </div>
-                                            @include('partials.admin.content.translations-grid', [
-                                                'entry' => $entry,
-                                                'languages' => $this->languages,
-                                                'groupEntries' => $entry->groupEntries,
-                                                'canCreate' => $abilities['create'],
-                                            ])
-                                        </flux:tooltip.content>
-                                    </flux:tooltip>
-                                </flux:table.cell>
-                            @endif
 
                             <flux:table.cell class="max-lg:hidden">{{ $entry->author?->name ?? '—' }}</flux:table.cell>
 
@@ -839,18 +795,6 @@ new class extends Component {
                                             @else
                                                 <p class="max-w-60 px-2 py-1.5 text-xs text-zinc-500 dark:text-zinc-400" data-test="language-off-note-{{ $entry->id }}">{{ __('content.form.language_off') }}</p>
                                             @endif
-                                        @endif
-                                        @if ($abilities['create'] && $this->multilingual && ($missingLanguages = $this->missingLanguages($entry)) !== [])
-                                            <flux:menu.submenu icon="language" :heading="__('content.list.actions.translate')">
-                                                @foreach ($missingLanguages as $language)
-                                                    <flux:menu.item :href="route('admin.content.create', ['type' => $type, 'from' => $entry->id, 'locale' => $language->code])" wire:navigate wire:key="translate-{{ $entry->id }}-{{ $language->code }}">
-                                                        <span class="me-2 font-mono text-xs text-zinc-400 uppercase">{{ $language->code }}</span>{{ $language->native }}
-                                                        @unless (in_array($language->code, $activeCodes, true))
-                                                            <span class="ms-2 text-xs text-zinc-400">{{ __('content.list.off') }}</span>
-                                                        @endunless
-                                                    </flux:menu.item>
-                                                @endforeach
-                                            </flux:menu.submenu>
                                         @endif
                                         @if ($abilities['delete'])
                                             <flux:menu.separator />
