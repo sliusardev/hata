@@ -12,8 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
- * The records of one type as the admin list shows them, in one language or in all the site's: a tab, a search, a "missing translation in"
- * filter and a sort. The query count does not depend on the number of rows: the image, the author and the group's
+ * The records of one type as the admin list shows them, in one language or in all the site's: a tab, a search and a sort. The query count does not depend on the number of rows: the image, the author and the group's
  * records are eager loaded with only the columns a row shows.
  */
 final class EntryListQuery
@@ -33,8 +32,6 @@ final class EntryListQuery
     private string $tab = 'all';
 
     private ?string $search = null;
-
-    private ?string $missing = null;
 
     private string $sort;
 
@@ -84,16 +81,6 @@ final class EntryListQuery
     public function search(?string $term): self
     {
         $this->search = $term;
-
-        return $this;
-    }
-
-    /**
-     * Only records whose group has no live record in that language. Ignored for the list's own language.
-     */
-    public function missingIn(?string $locale): self
-    {
-        $this->missing = $locale !== null && $locale !== '' && $locale !== $this->locale ? $locale : null;
 
         return $this;
     }
@@ -149,15 +136,6 @@ final class EntryListQuery
             'trash' => $query->onlyTrashed(),
             default => null,
         };
-
-        if ($this->missing !== null) {
-            $query->whereNotExists(fn ($others) => $others
-                ->selectRaw('1')
-                ->from('entries as translated')
-                ->whereColumn('translated.entry_group_id', 'entries.entry_group_id')
-                ->where('translated.locale', $this->missing)
-                ->whereNull('translated.deleted_at'));
-        }
 
         return $this->order($query);
     }

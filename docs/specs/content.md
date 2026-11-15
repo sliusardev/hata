@@ -391,10 +391,9 @@ then Media; the group shows when any of them or `media.view` holds.
   (the chosen one, or all of the site's), whatever the search and the filter.
 - Filters: search (`search_index`, title and slug, case-insensitive with Cyrillic; the term is cut at 200 characters,
   `SEARCH_MAX`, in `mount()` and `updatedSearch()`, and the input has `maxlength="200"`); the list's language ("All languages", the
-  default, then every language added to the site, a switched-off one marked "off"); "Missing: <language>" (records whose group has no live
-  record in that language, trashed translations count as missing). Both language selects and the row's language codes
+  default, then every language added to the site, a switched-off one marked "off"). The language select and the row's language codes
   are absent on a site with one language.
-- State in the query string: `tab` (default `all`), `q`, `locale`, `missing`, `sort`, `dir`, `page`, so a filtered list
+- State in the query string: `tab` (default `all`), `q`, `locale`, `sort`, `dir`, `page`, so a filtered list
   can be bookmarked and Back works. The list shows every language of the site by default (`locale` empty; the user's
   request, decision 64); a chosen language is remembered in the session (`content.list_locale`, empty again after
   choosing "All languages"), and a value that is not a language of the site shows them all. With every language
@@ -408,12 +407,14 @@ then Media; the group shows when any of them or `media.view` holds.
   defaults to tree order and a third click on a header (or the "Tree order" button) goes back to it. Tree order sorts
   by `path` with `/` read as a space, so `about/team` comes right after `about` and before `about-us`; with every
   language listed, each language's tree follows the other in the site's order of languages; rows are
-  indented by `depth()` only on the All tab with no search and no "Missing" filter (a status tab or a filter can
+  indented by `depth()` only on the All tab with no search (a status tab or a search can
   hide a row's parent, and a child would be indented under nothing).
-- Row: thumbnail (`thumbUrl()` of the image, else a neutral block; fixed 40 px), the title linking to the edit page
-  with a Draft or Scheduled badge, the address (`url(false)`), the language codes of the group (the translation
-  chips, below; in the Trash tab the record's own code instead, `data-test="entry-language-<id>"`), author, date, and
-  the "⋮" menu. On a phone the author and date columns are hidden; the codes stay, under the address.
+- Row: thumbnail (`thumbUrl()` of the image, else a neutral block; fixed 40 px), the title linking to the edit page,
+  the address (`url(false)`), the language codes of the group (the translation
+  chips, below; in the Trash tab the record's own code instead, `data-test="entry-language-<id>"`), the Status column (a badge for every record:
+  Published green, Scheduled blue, Draft grey; `data-test="entry-state-<id>"`; not in the Trash tab), author, date,
+  and the "⋮" menu. On a phone the status, author and date columns are hidden: the status badge sits by the title
+  instead, and the codes stay under the address.
 - Menu: Edit (`edit`), Publish (a draft or scheduled record) and Unpublish (a published or scheduled one), both
   `edit`, at once with a toast and no confirmation since each undoes the other (`setStatus()`,
   `App\Actions\Content\SetEntryStatus`: publishing a record with no date or a date ahead dates it now, unpublishing
@@ -446,8 +447,7 @@ then Media; the group shows when any of them or `media.view` holds.
   the list is on, it shows the last page that still has rows.
 
 `App\Support\Content\EntryListQuery::for($type, $locale, $locales)` (an empty `$locale` means every language in
-`$locales`, the site's) builds the list: `tab()`, `search()`, `missingIn()` (a `not
-exists` on the group), `sort('title'|'date'|'tree', 'asc'|'desc')`, `isTree()`, `query()`, `paginate($perPage)` and
+`$locales`, the site's) builds the list: `tab()`, `search()`, `sort('title'|'date'|'tree', 'asc'|'desc')`, `isTree()`, `query()`, `paginate($perPage)` and
 `counts()` (one aggregate query). It selects only the columns a row shows and eager loads `image`, `author` (`id`,
 `name`) and `groupEntries` (`id`, `entry_group_id`, `locale`, `title`, `status`, `published_at`), so the page's query
 count does not depend on the number of rows (asserted with 5 and 20 rows). Permissions are checked once per render,
@@ -753,7 +753,7 @@ started for a public page and a public redirect, an editor with a session still 
 and the form's "Preview".
 `tests/Feature/Admin/Content/EntryIndexTest.php`: access (guest, 403, unknown type), the sidebar item and group, tabs
 and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
-the tree, `missing`, the list's language (every language by default with the code per row and the trees in the
+the tree, the list's language (every language by default with the code per row and the trees in the
 site's order, the chosen one in the session, fallback), bulk trash, restore and delete for good with their
 permissions and confirmations, emptying the trash for the listed languages, the picks dropped by a filter, the row's language codes and their links, one row per group with every language listed (the group found by a tab
 and a search through any of its records), the trash listing records, the one-language

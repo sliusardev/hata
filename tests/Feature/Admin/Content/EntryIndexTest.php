@@ -159,7 +159,7 @@ test('a hierarchical type is listed in tree order and indented by depth', functi
         ->assertSeeHtml('data-depth="2" data-test="entry-row-'.$lead->id.'"');
 });
 
-test('rows are indented only on the all tab without a search or a missing filter', function () {
+test('rows are indented only on the all tab without a search', function () {
     $this->actingAs(contentViewer());
     $about = Entry::factory()->published()->create(['title' => 'About', 'slug' => 'about', 'path' => 'about']);
     $team = Entry::factory()->childOf($about)->published()->create(['title' => 'Team', 'slug' => 'team', 'path' => 'about/team']);
@@ -167,7 +167,6 @@ test('rows are indented only on the all tab without a search or a missing filter
 
     entryList()->assertSeeHtml('data-depth="1" data-test="entry-row-'.$team->id.'"');
     entryList(['tab' => 'published'])->assertSeeHtml('data-depth="0" data-test="entry-row-'.$team->id.'"');
-    entryList(['missing' => 'uk'])->assertSeeHtml('data-depth="0" data-test="entry-row-'.$team->id.'"');
 });
 
 test('sorting by title and back to the tree order', function () {
@@ -186,20 +185,6 @@ test('sorting by title and back to the tree order', function () {
         ->assertSet('sort', '')
         ->call('sort', 'password')
         ->assertSet('sort', '');
-});
-
-test('missing=uk lists only records without a uk translation', function () {
-    $this->actingAs(contentViewer());
-    $translated = Entry::factory()->create(['title' => 'Has Ukrainian']);
-    Entry::factory()->translationOf($translated, 'uk')->create(['title' => 'Є українською']);
-    Entry::factory()->create(['title' => 'Needs Ukrainian']);
-    $trashedOnly = Entry::factory()->create(['title' => 'Ukrainian in trash']);
-    Entry::factory()->translationOf($trashedOnly, 'uk')->create()->delete();
-
-    entryList(['missing' => 'uk'])
-        ->assertSet('missing', 'uk')
-        ->assertSee(['Needs Ukrainian', 'Ukrainian in trash'])
-        ->assertDontSee('Has Ukrainian');
 });
 
 test('the list shows every language by default, one row per group of translations', function () {
@@ -294,7 +279,6 @@ test('one language site hides the language controls and the translations column'
 
     entryList()
         ->assertDontSeeHtml('data-test="list-locale"')
-        ->assertDontSeeHtml('data-test="list-missing"')
         ->assertDontSeeHtml('data-test="translations-'.$page->id.'"')
         ->assertDontSee(__('content.list.columns.translations'));
 });
@@ -303,7 +287,7 @@ test('two language site shows the language controls', function () {
     $this->actingAs(contentViewer());
     Entry::factory()->create();
 
-    entryList()->assertSeeHtml('data-test="list-locale"')->assertSeeHtml('data-test="list-missing"');
+    entryList()->assertSeeHtml('data-test="list-locale"');
 });
 
 test('the create button needs pages.create, and the new form opens in the language of the list', function () {
@@ -709,4 +693,19 @@ test('picked rows are published and taken off the site together, never those in 
     entryList()->set('selected', [(string) $first->id])->call('setStatusSelected', 'draft');
 
     expect($first->fresh()->status)->toBe(EntryStatus::Draft);
+});
+
+test('every row shows its publication status', function () {
+    $this->actingAs(contentViewer());
+    $live = Entry::factory()->published()->create();
+    $draft = Entry::factory()->draft()->create();
+    $planned = Entry::factory()->scheduled()->create();
+    $state = fn (Entry $entry, string $state): string => 'data-test="entry-state-'.$entry->id.'" data-state="'.$state.'"';
+
+    entryList()
+        ->assertSeeHtml([$state($live, 'published'), $state($draft, 'draft'), $state($planned, 'scheduled')])
+        ->assertSee([__('content.list.state.published'), __('content.list.columns.status')]);
+
+    $draft->delete();
+    entryList(['tab' => 'trash'])->assertDontSeeHtml('data-test="entry-state-'.$draft->id.'"');
 });

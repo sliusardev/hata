@@ -15,7 +15,7 @@ new class extends EntryListPage {
     $abilities = $this->abilities;
     $inTrash = $tab === 'trash';
     // Only the full tree is indented: a status tab or a filter can hide a row's parent.
-    $indent = $this->listQuery->isTree() && $tab === 'all' && trim($search) === '' && $missing === '';
+    $indent = $this->listQuery->isTree() && $tab === 'all' && trim($search) === '';
     $showTranslations = $this->multilingual && ! $inTrash;
     $activeCodes = app(App\Support\Localization\ContentLocales::class)->activeCodes();
     $timezone = config('admin.timezone');
@@ -94,16 +94,6 @@ new class extends EntryListPage {
                     </flux:select.option>
                 @endforeach
             </flux:select>
-
-            <flux:select wire:model.live="missing" :aria-label="__('content.list.missing')" class="sm:max-w-60" data-test="list-missing">
-                <flux:select.option value="">{{ __('content.list.missing_all') }}</flux:select.option>
-                @foreach ($this->languages as $language)
-                    @continue($language->code === $locale)
-                    <flux:select.option :value="$language->code" wire:key="missing-{{ $language->code }}">
-                        {{ __('content.list.missing_option', ['name' => $language->native]) }}
-                    </flux:select.option>
-                @endforeach
-            </flux:select>
         @endif
 
         @if ($inTrash && $abilities['delete'] && $counts['trash'] > 0)
@@ -151,6 +141,9 @@ new class extends EntryListPage {
                     @else
                         <flux:table.column sortable :sorted="$this->sortColumn() === 'title'" :direction="$this->sortDirection()" wire:click="sort('title')">{{ __('content.list.columns.title') }}</flux:table.column>
                     @endif
+                    @unless ($inTrash)
+                        <flux:table.column class="max-md:hidden">{{ __('content.list.columns.status') }}</flux:table.column>
+                    @endunless
                     <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.author') }}</flux:table.column>
                     @if ($inTrash)
                         <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.removal') }}</flux:table.column>
@@ -167,6 +160,12 @@ new class extends EntryListPage {
                             $depth = $indent ? $entry->depth() : 0;
                             $editUrl = route('admin.content.edit', ['type' => $type, 'entry' => $entry->id]);
                             $thumb = $entry->image?->thumbUrl();
+                            $stateColor = match ($state) {
+                                App\Enums\EntryState::Published => 'green',
+                                App\Enums\EntryState::Scheduled => 'sky',
+                                default => 'zinc',
+                            };
+                            $stateLabel = __('content.list.state.'.strtolower($state->name));
                         @endphp
                         <flux:table.row :key="$entry->id">
                             @if ($selectable)
@@ -192,11 +191,10 @@ new class extends EntryListPage {
                                                 <span @class(['shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700 uppercase dark:bg-white/10 dark:text-zinc-200', 'opacity-60' => ! in_array($entry->locale, $activeCodes, true)]) data-test="entry-language-{{ $entry->id }}">{{ $entry->locale }}</span>
                                             @endif
                                             <a href="{{ $editUrl }}" wire:navigate class="truncate font-medium text-zinc-900 hover:underline dark:text-white" data-test="edit-entry-link-{{ $entry->id }}">{{ $entry->title }}</a>
-                                            @if (! $inTrash && $state === App\Enums\EntryState::Draft)
-                                                <flux:badge size="sm" color="zinc" class="shrink-0">{{ __('content.list.state.draft') }}</flux:badge>
-                                            @elseif (! $inTrash && $state === App\Enums\EntryState::Scheduled)
-                                                <flux:badge size="sm" color="sky" class="shrink-0">{{ __('content.list.state.scheduled') }}</flux:badge>
-                                            @endif
+                                            {{-- On a narrow screen the Status column is hidden, so the state sits by the title. --}}
+                                            @unless ($inTrash)
+                                                <flux:badge size="sm" :color="$stateColor" class="shrink-0 md:hidden">{{ $stateLabel }}</flux:badge>
+                                            @endunless
                                         </div>
                                         <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $entry->url(false) }}</div>
                                         @if ($showTranslations)
@@ -218,6 +216,12 @@ new class extends EntryListPage {
                                     </div>
                                 </div>
                             </flux:table.cell>
+
+                            @unless ($inTrash)
+                                <flux:table.cell class="max-md:hidden">
+                                    <flux:badge size="sm" :color="$stateColor" data-test="entry-state-{{ $entry->id }}" data-state="{{ strtolower($state->name) }}">{{ $stateLabel }}</flux:badge>
+                                </flux:table.cell>
+                            @endunless
 
                             <flux:table.cell class="max-lg:hidden">{{ $entry->author?->name ?? '—' }}</flux:table.cell>
 

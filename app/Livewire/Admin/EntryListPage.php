@@ -30,7 +30,7 @@ use Livewire\WithPagination;
 use Throwable;
 
 /**
- * The list of one content type's records: tabs, search, the language and "missing translation" filters, sorting,
+ * The list of one content type's records: tabs, search, the language filter, sorting,
  * the row actions, bulk selection and the trash. The page `pages::admin.content.index` extends it and holds the
  * markup (decision 32: a class, so PHPStan analyses it).
  *
@@ -72,9 +72,6 @@ abstract class EntryListPage extends Component
      */
     #[Url(except: '')]
     public string $locale = '';
-
-    #[Url(except: '')]
-    public string $missing = '';
 
     /**
      * Empty means the type's default: tree order for a hierarchical type, newest first otherwise.
@@ -128,7 +125,6 @@ abstract class EntryListPage extends Component
         $this->tab = in_array($this->tab, EntryListQuery::TABS, true) ? $this->tab : 'all';
         $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
         $this->locale = $this->validLocale($this->locale !== '' ? $this->locale : (string) session(self::LOCALE_SESSION_KEY));
-        $this->missing = $this->validMissing($this->missing);
         session()->put(self::LOCALE_SESSION_KEY, $this->locale);
 
         // At most once an hour per type, after the response is sent: records whose time in the trash is over.
@@ -161,15 +157,7 @@ abstract class EntryListPage extends Component
     {
         $this->selected = [];
         $this->locale = $this->validLocale($this->locale);
-        $this->missing = $this->validMissing($this->missing);
         session()->put(self::LOCALE_SESSION_KEY, $this->locale);
-        $this->resetPage();
-    }
-
-    public function updatedMissing(): void
-    {
-        $this->selected = [];
-        $this->missing = $this->validMissing($this->missing);
         $this->resetPage();
     }
 
@@ -213,7 +201,6 @@ abstract class EntryListPage extends Component
     public function clearFilters(): void
     {
         $this->search = '';
-        $this->missing = '';
         $this->resetPage();
     }
 
@@ -229,7 +216,6 @@ abstract class EntryListPage extends Component
         return EntryListQuery::for($this->contentType, $this->locale, $this->listedLocales())
             ->tab($this->tab)
             ->search($this->search)
-            ->missingIn($this->missing)
             ->sort($this->sortColumn(), $this->sortDirection());
     }
 
@@ -287,7 +273,7 @@ abstract class EntryListPage extends Component
 
     public function isFiltered(): bool
     {
-        return trim($this->search) !== '' || $this->missing !== '';
+        return trim($this->search) !== '';
     }
 
     public function confirmTrash(int $entryId): void
@@ -526,11 +512,6 @@ abstract class EntryListPage extends Component
         $locales = app(ContentLocales::class);
 
         return $code !== '' && $locales->has($code) ? $code : '';
-    }
-
-    protected function validMissing(string $code): string
-    {
-        return $code !== '' && $code !== $this->locale && app(ContentLocales::class)->has($code) ? $code : '';
     }
 
     protected function forgetList(): void
