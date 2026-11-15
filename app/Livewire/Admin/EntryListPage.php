@@ -60,6 +60,11 @@ abstract class EntryListPage extends Component
      */
     public const int SEARCH_MAX = 200;
 
+    /**
+     * How many terms the filter of one taxonomy offers.
+     */
+    public const int TERM_FILTER_OPTIONS = 300;
+
     #[Locked]
     public string $type = '';
 
@@ -245,8 +250,8 @@ abstract class EntryListPage extends Component
 
     /**
      * The terms each taxonomy's filter offers, by taxonomy key: the live terms of the listed languages in tree order,
-     * each with its language code while every language is listed. One query, only for a type with taxonomies; at
-     * most 300 terms.
+     * each with its language code while every language is listed. One query per taxonomy that has a filter, at most
+     * `TERM_FILTER_OPTIONS` terms each.
      *
      * @return array<string, list<array{id: int, label: string}>>
      */
@@ -260,19 +265,22 @@ abstract class EntryListPage extends Component
             return [];
         }
 
-        $terms = Entry::query()
-            ->whereIn('type', array_keys($options))
-            ->whereIn('locale', $this->listedLocales())
-            ->orderBy('locale')
-            ->orderByRaw("replace(path, '/', ' ') asc")
-            ->limit(300)
-            ->get(['id', 'type', 'locale', 'title', 'path']);
+        // A query per taxonomy, each with its own limit, so a large one never crowds another out.
+        foreach (array_keys($options) as $key) {
+            $terms = Entry::query()
+                ->ofType($key)
+                ->whereIn('locale', $this->listedLocales())
+                ->orderBy('locale')
+                ->orderByRaw("replace(path, '/', ' ') asc")
+                ->limit(self::TERM_FILTER_OPTIONS)
+                ->get(['id', 'type', 'locale', 'title', 'path']);
 
-        foreach ($terms as $term) {
-            $options[$term->type][] = [
-                'id' => $term->id,
-                'label' => str_repeat("\u{00A0}\u{00A0}", min($term->depth(), 6)).$term->title.($this->locale === '' && $this->multilingual ? ' ('.mb_strtoupper($term->locale).')' : ''),
-            ];
+            foreach ($terms as $term) {
+                $options[$key][] = [
+                    'id' => $term->id,
+                    'label' => str_repeat("\u{00A0}\u{00A0}", min($term->depth(), 6)).$term->title.($this->locale === '' && $this->multilingual ? ' ('.mb_strtoupper($term->locale).')' : ''),
+                ];
+            }
         }
 
         return array_filter($options);

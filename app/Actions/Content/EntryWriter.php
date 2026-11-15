@@ -97,6 +97,12 @@ class EntryWriter
             }
         }
 
+        // A term in the trash is not in the form, but its link stays: restoring the term brings the record back
+        // under it.
+        if ($entry->exists && ! $entry->wasRecentlyCreated) {
+            $ids = [...$ids, ...$entry->terms()->onlyTrashed()->pluck('entries.id')->all()];
+        }
+
         $entry->terms()->sync(array_values(array_unique($ids)));
     }
 

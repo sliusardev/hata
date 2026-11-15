@@ -1,7 +1,9 @@
 # Content
 
-Content types (pages now, posts later) and their extra fields. The registry, the record tables and models, the
-slug and path rules, the body sanitizer, the save actions, the trash, the admin list, the record form and the public pages exist so far. Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
+Content types (pages, posts) with their extra fields, and taxonomies (categories, tags), which are content types too.
+This spec covers the registry, the record tables and models, the slug and path rules, the body sanitizer, the save
+actions, the trash, the admin list, the record form and the public pages. A short how-to for developers (adding a
+type, fields, a taxonomy) is in the README, section "Content types". Design: `docs/superpowers/specs/2026-11-14-content-types-design.md`.
 
 ## Content types
 
@@ -18,6 +20,10 @@ slug and path rules, the body sanitizer, the save actions, the trash, the admin 
 | `description()` | the line under the admin list's heading, from `content.types.<key>.description` |
 | `createLabel()` | the list's "Create" button ("Create page"), from `content.types.<key>.create` |
 | `newLabel()` | the heading of a new record's form ("New page"), from `content.types.<key>.new`, else `createLabel()` |
+| `required()` | true for a type the site cannot do without (pages): it has no switch in Site settings → Content types |
+| `taxonomyOf()` | the keys of the types this type is a taxonomy of (`['posts']`); empty for an ordinary type. `isTaxonomy()` tells whether it names any |
+| `hasListFilter()` | for a taxonomy: whether the list of its types has a filter by its terms (true by default) |
+| `supports($feature)` | whether a record has the `body`, the `image`, the `publication` card (status and date) or the `author`; false for a taxonomy, whose record is a name, an address and a description |
 | `perPage()` | admin list page size, 20 by default |
 | `permission($action)` | `"{key}.{action}"` |
 | `assertValidBase($locale)` | throws `InvalidArgumentException` when `base($locale)` is neither null nor one segment matching `EntrySlug::FORMAT` (`blog/news`, `/blog`, `Blog` and `''` are refused): `Entry::url()` would build an address the content route never matches |
@@ -51,21 +57,26 @@ permissions by default; `admin` gets them through `*`.
 
 ### Taxonomies
 
-A taxonomy (categories, tags) is a content type whose `taxonomyOf()` names the types its records classify (decision
-70). Its records are **terms**: ordinary rows of `entries`, one per language with translations in a group, a slug, a
+A taxonomy (categories, tags) is a content type whose `taxonomyOf()` names the types it belongs to (decision 70).
+To add one: generate a type with `make:content-type` (or write the class by the shape of `CategoriesType`), add
+`taxonomyOf()` returning the keys of its types, translate its lines and run `permissions:sync`; nothing else is
+registered anywhere, the form cards, the list column and filter, the menu item and the public term pages follow
+from that method. Its records are **terms**: ordinary rows of `entries`, one per language with translations in a group, a slug, a
 path, redirects and the trash like any record, so it has the same list and form pages, the same four permissions
 (`categories.view|create|edit|delete`) and the same translation tools. What differs:
 
 - `isTaxonomy()` is true and `supports('body'|'image'|'publication'|'author')` is false: the form has the title, the
   address, the description (`excerpt`), the parent (a tree taxonomy), the language card and the SEO card; the list has
   no status tabs and columns and shows how many records are filed under each term (`withCount('termRecords')`).
-- A term is always published: `CreateEntry` and `UpdateEntry` force the status, and creating one needs only `create`.
-- It has no switch of its own: `ContentTypes::isActive()` is true while a type it classifies is on. The sidebar lists it
+- A term is always published: `CreateEntry` and `UpdateEntry` force the status of any type without
+  `supports('publication')`, `SetEntryStatus` leaves such a record alone, and creating one needs only `create`.
+- It has no switch of its own: `ContentTypes::isActive()` is true while a type it belongs to is on. The sidebar lists it
   after that type, and Site settings → Content types names it under the type's row.
-- A record of a classified type is filed under terms **of its own language** (as in Polylang; the user's choice):
+- A record of such a type is filed under terms **of its own language** (as in Polylang; the user's choice):
   `entry_terms` (`entry_id`, `term_id`, both rows of `entries`, cascade on delete; primary key on both and an index
   `term_id`, `entry_id`), `Entry::terms()` and, for a term, `Entry::termRecords()`. Trashed terms drop out of both
-  through the soft-delete scope and come back when restored; deleting one for good removes its links.
+  through the soft-delete scope and come back when restored (saving a record keeps its links to trashed terms);
+  deleting one for good removes its links.
 - A term records are filed under keeps its language (`content.entry.locale_has_records`), since those records are
   of that language.
 - `ContentTypes::taxonomiesOf($key)` gives a type's taxonomies. The kit has `CategoriesType` (tree, base
@@ -75,10 +86,12 @@ path, redirects and the trash like any record, so it has the same list and form 
 only live records of the type's taxonomies in the record's language (else a `terms` error,
 `content.entry.terms_invalid`) and names for flat taxonomies only. `EntryWriter` syncs the links and, for each name,
 takes the live term with that name in the language (whatever the case) or makes one: published, in a group of its
-own, with a free slug. Names are dropped for an actor without the type's `edit`. No query for a type without
+own, with a free slug. Names are dropped for an actor without that taxonomy's `create`. No query for a type without
 taxonomies. A new translation (`copyFor()`) and a record moved to another language (`changeLocale()`) take the
 translations of the record's terms in that language (`Entry::translationIds()`, two queries); terms without one are
-left behind.
+left behind. The form remembers what was chosen in each language it has been in (`termsByLocale`), so switching the
+language and back loses nothing; after a save on the edit page the form's terms are the stored ones and the typed
+names are cleared.
 
 ### Switching a type off
 
@@ -443,7 +456,7 @@ then Media; the group shows when any of them or `media.view` holds.
 - A type with taxonomies shows the rows' terms in a column headed by the taxonomies' names (one eager-load query) and
   a select per taxonomy that narrows the list to one of its terms; chosen together they keep the records filed under
   all of them (`term[<taxonomy>]=<id>` in the query string, `termFilter` on the page; the options are the live terms
-  of the listed languages, one query for all the selects, at most 300; a value that is not a term of that taxonomy is
+  of the listed languages, one query per select, at most 300 each; a value that is not a term of that taxonomy is
   dropped, and changing the language clears them). A taxonomy whose `hasListFilter()` returns false has no select
   (its terms still show in the column).
 - Filters: search (`search_index`, title and slug, case-insensitive with Cyrillic; the term is cut at 200 characters,
@@ -618,10 +631,10 @@ error instead of creating a record outside the group. Save calls
   and, for a saved record, "Save and go": the form is saved and the page the editor was leaving for opens once the
   save has succeeded; a refused save keeps the editor on the form at the first error.
 - **Terms** (a type with taxonomies): a card per taxonomy that is on, after the language card
-  (`partials/admin/content/terms-card.blade.php`, the options from `termOptions`, one query for all of them in the
-  form's language, at most 1000). A tree taxonomy is a list of checkboxes indented by depth; a flat one shows the
+  (`partials/admin/content/terms-card.blade.php`, the options from `termOptions`, one query per taxonomy in the
+  form's language, at most 500 each plus any chosen term beyond that). A tree taxonomy is a list of checkboxes indented by depth; a flat one shows the
   chosen terms as chips with an input that filters the existing ones as you type, where Enter on a name that matches
-  none adds it as a new term made on Save (only with the type's `edit`). Both write `form.terms`; new names go to
+  none adds it as a new term made on Save (only with the taxonomy's `create`). Both write `form.terms`; new names go to
   `form.newTerms.<key>`. The card is keyed by the language, so a language change re-renders it with that language's
   terms.
 - **Field partials**: `partials/admin/content/fields/<Field::view()>.blade.php` (`text`, `textarea`, `rich-text`,
@@ -762,9 +775,11 @@ no public translation), and nothing when there is only one. The switcher lists e
 **Lists.** A type's bare base (`/posts`) is the list of its public records in the current language, newest first, 12
 a page with "Newer" and "Older" links and no count query (`ContentLookup::listOf`, `ContentMatch::list()`, the view
 `site.list`; no query in the lookup, then the records and their images: two queries). `hreflang` and the switcher
-lead to the list in every active language. A taxonomy's bare base is 404: its terms are the lists. A term's own
+lead to the list in every active language where the type has a base. In a language that is switched off the list
+is 404 for everyone (only records preview there). A taxonomy's bare base is 404: its terms are the lists. A term's own
 address (`/categories/news`) shows its name, its description and the public records filed under it, of the
-classified types that are on, the same way (`site.term`; the term, its translations, the records and their images).
+types the taxonomy belongs to that are on, the same way (`site.term`, under the preview strip when it is a preview; the term, its translations, the records and their
+images, the records loaded with a card's columns only).
 Only the term's own records are listed, not those of the terms under it. A record's page lists the terms it is filed
 under, by taxonomy, each linking to its page (one query, only for a type with taxonomies).
 

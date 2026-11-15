@@ -52,11 +52,12 @@ class UpdateEntry
             $this->assertMayBecome($entry, $locale);
         }
 
-        if ($type->isTaxonomy()) {
+        if (! $type->supports('publication')) {
             $data = [...$data, 'status' => EntryStatus::Published->value];
         }
 
         $input = EntryInput::validate($type, $locale, $entry, $data);
+        $input['new_terms'] = array_filter($input['new_terms'], fn (string $taxonomy): bool => $actor->can("{$taxonomy}.create"), ARRAY_FILTER_USE_KEY);
 
         try {
             return DB::transaction(function () use ($entry, $type, $input, $locale, $moves): Entry {

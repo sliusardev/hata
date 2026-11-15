@@ -323,7 +323,8 @@
                     @include('partials.admin.content.terms-card', [
                         'taxonomy' => $taxonomy,
                         'options' => $this->termOptions[$taxonomy->key()] ?? [],
-                        'canCreate' => $abilities['edit'] && ! $readOnly,
+                        // A typed name makes a term: only with the right to create in that taxonomy.
+                        'canCreate' => ! $readOnly && auth()->user()->can('create', [App\Models\Entry::class, $taxonomy->key()]),
                     ])
                 @endforeach
 

@@ -7,6 +7,10 @@
     'noindex' => $preview,
 ])
 
+@section('strip')
+    @include('partials.site.preview-strip')
+@endsection
+
 @section('content')
     <header class="flex items-start justify-between gap-4">
         <div>

@@ -97,6 +97,81 @@ The interface is available in English (`en`, the default and fallback) and Ukrai
 
 `tests/Feature/Localization/TranslationParityTest.php` fails if a file or key is missing, a value is empty, or placeholders differ from English. It also fails if the code uses a translation key that does not exist.
 
+## Content types
+
+Pages, posts and their taxonomies are content types: small classes in `app/Support/Content/Types`, listed in
+`config/content.php` → `types`. Every type gets the same admin list and form, translations (one record per language),
+addresses with redirects, a trash and four permissions (`<key>.view|create|edit|delete`). The kit has `pages` (a tree at
+the site root), `posts` (at `/posts`, with a gallery field) and the posts' taxonomies `categories` and `tags`.
+
+### Adding a content type
+
+```bash
+php artisan make:content-type Recipes          # flat, at /recipes
+php artisan make:content-type Docs --tree      # a tree, like pages
+php artisan permissions:sync
+php artisan content:check                      # no existing page is hidden by the new base
+```
+
+The command writes the class, adds it to `config/content.php` and adds English lines to `lang/*/content.php` and
+`lang/*/permissions.php` for you to translate. Then give the new permissions to roles (the Roles page, or
+`config/permissions.php` → `roles` for new installs).
+
+### Adding fields
+
+A type's extra fields are its `fields()` method; no migration is needed (values are stored as JSON on the record):
+
+```php
+use App\Support\Content\Fields\{Date, Gallery, MediaFile, Number, RichText, Select, Text, Textarea, Toggle};
+
+public function fields(): array
+{
+    return [
+        Text::make('subtitle'),
+        Number::make('price')->required()->shared(),   // shared: one value for every translation
+        Select::make('size')->options(['s' => 'Small', 'l' => 'Large']),
+        Gallery::make('gallery'),
+    ];
+}
+```
+
+Add each field's label to `lang/*/content.php` → `fields` (`'subtitle' => 'Subtitle'`). The admin form shows the
+fields at once; on the public page a gallery is printed by the kit's template, other fields are read in the template
+with `$entry->fieldValue('subtitle')` (`resources/views/site/entry.blade.php`).
+
+### Adding a taxonomy
+
+A taxonomy is a content type that names the types it belongs to. Its terms are records too, one per language, and a
+record is filed under terms of its own language:
+
+```php
+// app/Support/Content/Types/BrandsType.php
+class BrandsType extends ContentType
+{
+    public function key(): string { return 'brands'; }
+    public function icon(): string { return 'tag'; }
+    public function hierarchical(): bool { return false; }       // true: a tree with checkboxes (categories)
+    public function base(string $locale): ?string { return 'brands'; }
+
+    public function taxonomyOf(): array
+    {
+        return ['posts'];                                         // or several: ['posts', 'recipes']
+    }
+}
+```
+
+Generate it with `make:content-type Brands` and add the `taxonomyOf()` method. That one method gives the posts' form
+a "Brands" card, the posts' list a column and a filter (return `false` from `hasListFilter()` to leave the filter out),
+the menu an item under Posts, and the site a page per term at `/brands/<slug>`.
+
+### Switching a type off
+
+Site settings → Content types switches a type off without removing it: it leaves the admin menu and the site (404),
+and its records, translations and permissions are kept. A taxonomy goes off with its type. Pages cannot be switched
+off.
+
+Details: `docs/specs/content.md`.
+
 ## Public registration
 
 Registration is disabled by default. Turn it on in **Admin → Site settings** (or set `ADMIN_REGISTRATION_ENABLED=true`). Registered users get the role chosen there, no role by default, so they cannot open the admin panel until an administrator assigns one.

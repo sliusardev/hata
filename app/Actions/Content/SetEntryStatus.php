@@ -25,6 +25,11 @@ class SetEntryStatus
             throw ProtectedActionException::because('content.entry.trashed');
         }
 
+        // A type without a status (a term) is always published: nothing to set.
+        if (! $entry->type()->supports('publication')) {
+            return $entry;
+        }
+
         $values = ['status' => $status];
 
         if ($status === EntryStatus::Published && ($entry->published_at === null || $entry->published_at->isFuture())) {

@@ -6,7 +6,10 @@
     - $options    list<array{id: int, title: string, depth: int}>, its live terms in the form's language, in tree
                   order (EntryFormPage::termOptions(), no query here);
     - $readOnly   whether the form is read-only;
-    - $canCreate  whether the actor may make a new term from here (the record type's `edit`; flat taxonomies only).
+    - $canCreate  whether the actor may make a new term from here (the taxonomy's `create`; flat taxonomies only).
+
+    The card is keyed by the language and the number of options, so a language change or a tag made on Save
+    re-renders it and its script starts again with the new options.
 
     A tree taxonomy (categories) is a list of checkboxes indented by depth. A flat one (tags) is the chosen terms as
     chips and an input that filters the existing ones as you type; Enter on a name that matches none adds it as a
@@ -17,7 +20,7 @@
     $box = 'size-4 shrink-0 cursor-pointer rounded accent-zinc-800 disabled:cursor-not-allowed dark:accent-white';
 @endphp
 
-<div class="{{ $card }} p-5" data-test="terms-{{ $key }}" wire:key="terms-{{ $key }}-{{ $locale }}">
+<div class="{{ $card }} p-5" data-test="terms-{{ $key }}" wire:key="terms-{{ $key }}-{{ $locale }}-{{ count($options) }}">
     <flux:heading level="2" class="mb-3">{{ $taxonomy->pluralLabel() }}</flux:heading>
 
     @if ($taxonomy->hierarchical())

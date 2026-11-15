@@ -53,7 +53,12 @@ class ContentController extends Controller
 
         abort_if($match === null, 404);
 
+        // In a language that is switched off only a record opens, as a preview; its lists stay 404.
+        $languageOff = ! $this->locales->isActive($this->locales->current()->code);
+
         if ($match->listOf !== null) {
+            abort_if($languageOff, 404);
+
             return $this->listOf($match->listOf);
         }
 
@@ -66,8 +71,6 @@ class ContentController extends Controller
         $entry = $match->entry;
 
         // In a language that is switched off every page is a preview, for those who may preview its type only.
-        $languageOff = ! $this->locales->isActive($this->locales->current()->code);
-
         abort_if($languageOff && ! ($request->user()?->can('preview', $entry) ?? false), 404);
 
         $preview = $match->preview || $languageOff;
@@ -102,7 +105,12 @@ class ContentController extends Controller
         $alternates = [];
 
         foreach ($this->locales->active() as $language) {
-            $alternates[$language->code] = $this->locales->route('content', ['path' => trim((string) $type->base($language->code), '/')], $language->code);
+            $base = trim((string) $type->base($language->code), '/');
+
+            // A language where the type sits at the root has no list address.
+            if ($base !== '') {
+                $alternates[$language->code] = $this->locales->route('content', ['path' => $base], $language->code);
+            }
         }
 
         $this->locales->useAlternates($alternates);
@@ -123,7 +131,8 @@ class ContentController extends Controller
     {
         $types = array_values(array_filter($term->type()->taxonomyOf(), fn (string $key): bool => $this->types->isActive($key)));
 
-        return $this->page($term->termRecords()->getQuery()->whereIn('entries.type', $types)->select('entries.*'));
+        // No select here: page() names the columns a card needs (a select would bring the bodies along).
+        return $this->page($term->termRecords()->getQuery()->whereIn('entries.type', $types));
     }
 
     /**

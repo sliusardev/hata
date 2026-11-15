@@ -236,6 +236,14 @@ abstract class EntryEditPage extends EntryFormPage
         $this->locale = $entry->locale;
         $this->form->published_at = $this->form->localDate($this->entry->published_at);
 
+        // The terms as stored: a tag typed in the form exists now and is one of them.
+        if ($this->taxonomies !== []) {
+            $this->form->terms = array_values(array_map(strval(...), $this->entry->terms()->pluck('entries.id')->all()));
+            $this->form->newTerms = [];
+            $this->termsByLocale = [];
+            unset($this->termOptions);
+        }
+
         Flux::toast(variant: 'success', text: __('content.form.saved'));
 
         $this->dispatch(

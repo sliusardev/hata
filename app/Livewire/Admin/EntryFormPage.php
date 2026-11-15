@@ -64,6 +64,19 @@ abstract class EntryFormPage extends Component
     abstract public function record(): ?Entry;
 
     /**
+     * How many terms of one taxonomy a terms card offers.
+     */
+    public const int TERM_OPTIONS = 500;
+
+    /**
+     * The terms chosen in each language the form has been in, so a language change and back keeps them.
+     *
+     * @var array<string, list<string>>
+     */
+    #[Locked]
+    public array $termsByLocale = [];
+
+    /**
      * Whether every control is disabled (no Save, no trash).
      */
     abstract public function readOnly(): bool;
@@ -112,8 +125,11 @@ abstract class EntryFormPage extends Component
             return null;
         }
 
-        // Terms are of one language: the record keeps those that have a translation in the new one.
-        $this->form->terms = array_map(strval(...), Entry::translationIds($this->form->terms, $locale));
+        // Terms are of one language: the record takes those that have a translation in the new one. What was
+        // chosen in a language is remembered, so switching away and back loses nothing.
+        $this->termsByLocale[$this->locale] = $this->form->terms;
+        $this->form->terms = $this->termsByLocale[$locale]
+            ?? array_map(strval(...), Entry::translationIds($this->form->terms, $locale));
 
         $this->locale = $locale;
         unset($this->language, $this->parentOptions, $this->addressPrefix, $this->localeChoices, $this->termOptions);
@@ -149,28 +165,30 @@ abstract class EntryFormPage extends Component
 
     /**
      * The live terms of each taxonomy in the form's language, in tree order: what the terms cards offer. One
-     * query for all the taxonomies, none for a type without any; at most 500 terms each way.
+     * query per taxonomy (each has its own limit, `TERM_OPTIONS`), none for a type without any.
      *
      * @return array<string, list<array{id: int, title: string, depth: int}>>
      */
     #[Computed]
     public function termOptions(): array
     {
-        $options = array_fill_keys(array_keys($this->taxonomies), []);
+        $options = [];
+        $chosen = array_map(intval(...), $this->form->terms);
 
-        if ($options === []) {
-            return [];
-        }
+        foreach ($this->taxonomies as $key => $taxonomy) {
+            $terms = Entry::query()
+                ->ofType($key)
+                ->where('locale', $this->locale)
+                ->orderByRaw("replace(path, '/', ' ') asc")
+                ->limit(self::TERM_OPTIONS)
+                ->get(['id', 'type', 'title', 'path']);
 
-        $terms = Entry::query()
-            ->whereIn('type', array_keys($options))
-            ->where('locale', $this->locale)
-            ->orderByRaw("replace(path, '/', ' ') asc")
-            ->limit(1000)
-            ->get(['id', 'type', 'title', 'path']);
+            // A chosen term beyond the limit is still offered, so it can be taken off.
+            if ($terms->count() === self::TERM_OPTIONS && array_diff($chosen, $terms->modelKeys()) !== []) {
+                $terms = $terms->concat(Entry::query()->ofType($key)->whereKey(array_diff($chosen, $terms->modelKeys()))->get(['id', 'type', 'title', 'path']));
+            }
 
-        foreach ($terms as $term) {
-            $options[$term->type][] = ['id' => $term->id, 'title' => $term->title, 'depth' => $term->depth()];
+            $options[$key] = array_values($terms->map(fn (Entry $term): array => ['id' => $term->id, 'title' => $term->title, 'depth' => $term->depth()])->all());
         }
 
         return $options;

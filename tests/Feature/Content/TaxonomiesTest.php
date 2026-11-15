@@ -1,10 +1,13 @@
 <?php
 
 use App\Actions\Content\DeleteEntry;
+use App\Actions\Content\RestoreEntry;
+use App\Actions\Content\SetEntryStatus;
 use App\Actions\Content\TrashEntry;
 use App\Actions\Content\UpdateEntry;
 use App\Actions\Settings\SetContentTypeActive;
 use App\Enums\EntryStatus;
+use App\Livewire\Admin\EntryListPage;
 use App\Models\Entry;
 use App\Models\User;
 use App\Support\Content\ContentTypes;
@@ -150,7 +153,7 @@ test('a term of another language or of no taxonomy of the type is a field error'
     expect(Entry::query()->where('type', 'posts')->exists())->toBeFalse();
 });
 
-test('a creator without edit files a post under existing terms but makes no new tag', function () {
+test('without the right to create tags a post is filed under existing terms but no new tag is made', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'posts.view', 'posts.create'])->create());
     $news = term('categories', 'News');
 
@@ -388,4 +391,140 @@ test('a taxonomy can leave its filter out of the list', function () {
         ->assertSee('Winter')
         ->set('termFilter', ['series' => (string) $series->id])
         ->assertSet('termFilter', []);
+});
+
+test('a term in the trash keeps its links when the record is saved, and comes back with them', function () {
+    $this->actingAs($this->admin);
+    $news = term('categories', 'News');
+    $other = term('categories', 'Other');
+    $filed = post('Open day');
+    $filed->terms()->sync([$news->id, $other->id]);
+
+    app(TrashEntry::class)->handle($this->admin, $news);
+
+    postForm($filed)
+        ->assertSet('form.terms', [(string) $other->id])
+        ->set('form.title', 'Open day, fixed')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(DB::table('entry_terms')->where('entry_id', $filed->id)->pluck('term_id')->sort()->values()->all())->toBe([$news->id, $other->id]);
+
+    app(RestoreEntry::class)->handle($this->admin, Entry::onlyTrashed()->findOrFail($news->id));
+
+    expect($filed->terms()->pluck('entries.id')->sort()->values()->all())->toBe([$news->id, $other->id]);
+});
+
+test('switching the form to another language and back keeps the terms', function () {
+    $this->actingAs($this->admin);
+    $news = term('categories', 'News');
+    $filed = post('Open day');
+    $filed->terms()->sync([$news->id]);
+
+    postForm($filed)
+        ->call('changeLocale', 'uk')
+        ->assertSet('form.terms', [])
+        ->call('changeLocale', 'en')
+        ->assertSet('form.terms', [(string) $news->id]);
+});
+
+test('after a save the typed tag is an ordinary chosen term of the form', function () {
+    $this->actingAs($this->admin);
+    $filed = post('Open day');
+
+    $form = postForm($filed)
+        ->set('form.newTerms', ['tags' => ['Roofs']])
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertSet('form.newTerms', []);
+
+    $roofs = Entry::query()->where('type', 'tags')->sole();
+
+    $form->assertSet('form.terms', [(string) $roofs->id])->call('save')->assertHasNoErrors();
+
+    expect(Entry::query()->where('type', 'tags')->count())->toBe(1);
+});
+
+test('a term cannot be made a draft, and a typed tag needs the right to create tags', function () {
+    $news = term('categories', 'News');
+
+    app(SetEntryStatus::class)->handle($this->admin, $news, EntryStatus::Draft);
+
+    expect($news->fresh()->status)->toBe(EntryStatus::Published);
+
+    // May edit posts, may not create tags.
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'posts.view', 'posts.create', 'posts.edit'])->create());
+
+    postForm()
+        ->assertSee(__('content.terms.placeholder'))
+        ->assertDontSee(__('content.terms.create_hint'))
+        ->set('form.title', 'Open day')
+        ->set('form.slug', 'open-day')
+        ->set('form.newTerms', ['tags' => ['Windows']])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Entry::query()->where('type', 'tags')->exists())->toBeFalse();
+});
+
+test('a language that is switched off has no list, and its term page opens under the preview strip', function () {
+    app(SiteSettings::class)->put([
+        'content_locales' => [['code' => 'en', 'active' => true], ['code' => 'uk', 'active' => false]],
+        'content_default_locale' => 'en',
+    ]);
+    term('categories', 'Новини', ['locale' => 'uk', 'slug' => 'novyny', 'path' => 'novyny']);
+    post('Українською', ['locale' => 'uk', 'slug' => 'ukr', 'path' => 'ukr']);
+
+    $this->actingAs($this->admin)->withCookie((string) config('session.cookie'), 'a-session');
+
+    $this->get('/uk/posts')->assertNotFound();
+    $this->get('/uk/categories/novyny')->assertOk()->assertSee('data-test="preview-strip"', escape: false);
+});
+
+test('each taxonomy has its own limit of terms in the list filter', function () {
+    $this->actingAs($this->admin);
+    term('categories', 'Zebra');
+
+    foreach (range(1, EntryListPage::TERM_FILTER_OPTIONS + 5) as $number) {
+        term('tags', 'Tag '.$number);
+    }
+
+    Livewire::test('pages::admin.content.index', ['type' => 'posts'])
+        ->assertSeeHtml(['data-test="list-term-categories"', 'data-test="list-term-tags"'])
+        ->assertSee('Zebra');
+});
+
+test('a term page loads only what a card shows of each record', function () {
+    $news = term('categories', 'News');
+    post('Open day', ['body' => '<p>A long body</p>'])->terms()->sync([$news->id]);
+
+    $selects = [];
+    DB::listen(function ($query) use (&$selects) {
+        if (str_contains($query->sql, 'entry_terms') && str_contains($query->sql, 'limit')) {
+            $selects[] = $query->sql;
+        }
+    });
+
+    $this->get('/categories/news')->assertOk()->assertSee('Open day');
+
+    expect($selects)->toHaveCount(1)->and($selects[0])->not->toContain('"entries".*')->not->toContain('body');
+});
+
+test('the list of a type that has a base in one language only still opens', function () {
+    app(ContentTypes::class)->register(new class extends PostsType
+    {
+        public function key(): string
+        {
+            return 'notes';
+        }
+
+        public function base(string $locale): ?string
+        {
+            return $locale === 'en' ? 'notes' : null;
+        }
+    });
+
+    Entry::factory()->published()->create(['type' => 'notes', 'title' => 'A note', 'slug' => 'a-note', 'path' => 'a-note']);
+
+    $this->get('/notes')->assertOk()->assertSee('A note')->assertDontSee('<link rel="alternate" hreflang="uk"', escape: false);
 });
