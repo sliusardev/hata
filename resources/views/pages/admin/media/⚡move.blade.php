@@ -85,7 +85,7 @@ new #[Title('media.move.title')] class extends MediaBatchPage {
     $outcomeColors = ['moved' => 'green', 'missing' => 'red', 'failed' => 'amber', 'changed' => 'zinc'];
 @endphp
 
-<div class="mx-auto w-full max-w-3xl space-y-6" data-test="media-move" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
+<div class="w-full max-w-3xl space-y-6" data-test="media-move" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
     <div class="flex items-center gap-3">
         <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.batch.back')" :tooltip="__('media.batch.back')" />
         <div class="min-w-0">

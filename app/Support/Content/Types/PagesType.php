@@ -21,6 +21,11 @@ class PagesType extends ContentType
         return true;
     }
 
+    public function required(): bool
+    {
+        return true;
+    }
+
     public function base(string $locale): ?string
     {
         return null;

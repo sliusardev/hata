@@ -64,6 +64,38 @@ class ContentTypes
         return $this->types;
     }
 
+    /**
+     * The keys switched off in Site settings → Content types (`content.disabled_types`, a stored site setting read
+     * at call time, so a change applies at once).
+     *
+     * @return list<string>
+     */
+    public function disabledKeys(): array
+    {
+        return array_values(array_filter((array) config('content.disabled_types', []), is_string(...)));
+    }
+
+    /**
+     * Whether the type is registered and switched on. A type that is off keeps its records, permissions and
+     * reserved base, but has no admin pages and no public addresses.
+     */
+    public function isActive(string $key): bool
+    {
+        $type = $this->find($key);
+
+        return $type !== null && ($type->required() || ! in_array($key, $this->disabledKeys(), true));
+    }
+
+    /**
+     * The types that are switched on, in registration order.
+     *
+     * @return array<string, ContentType>
+     */
+    public function active(): array
+    {
+        return array_filter($this->types, fn (ContentType $type): bool => $this->isActive($type->key()));
+    }
+
     public function find(string $key): ?ContentType
     {
         return $this->types[$key] ?? null;

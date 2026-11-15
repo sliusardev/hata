@@ -136,7 +136,8 @@ class ContentRouter
         $segments = explode('/', $path, 2);
         $atRoot = [];
 
-        foreach ($this->types->all() as $type) {
+        // Only the types that are switched on: a type that is off has no public addresses.
+        foreach ($this->types->active() as $type) {
             $base = trim((string) $type->base($locale), '/');
 
             if ($base === '') {

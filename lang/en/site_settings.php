@@ -13,6 +13,29 @@ return [
         'timezone_description' => 'Dates in the admin panel are shown in this timezone.',
     ],
 
+    'content' => [
+        'heading' => 'Content types',
+        'list_heading' => 'Content types of the site',
+        'list_description' => 'A type that is off disappears from the admin menu and from the site. Its records, translations and permissions are kept: switch it on again and everything is back.',
+        'records' => ':count record|:count records',
+        'switch' => 'Switch on or off: :type',
+        'badges' => [
+            'required' => 'Always on',
+            'off' => 'Off',
+        ],
+        'off' => [
+            'title' => 'Switch off ":type"?',
+            'body' => 'The pages of this type will stop opening on the site (a 404 error) and the section will leave the menu. Nothing is deleted: the type can be switched on again at any time.',
+            'submit' => 'Switch off',
+        ],
+        'messages' => [
+            'turned_on' => 'The type ":type" is on.',
+            'turned_off' => 'The type ":type" is off.',
+            'unknown' => 'There is no such content type.',
+            'required' => 'The type ":type" cannot be switched off.',
+        ],
+    ],
+
     'languages' => [
         'heading' => 'Languages',
         'list_heading' => 'Site languages',

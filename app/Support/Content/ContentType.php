@@ -53,6 +53,15 @@ abstract class ContentType
         return [];
     }
 
+    /**
+     * Whether the site cannot do without the type: it then has no switch in Site settings → Content types and
+     * is always on.
+     */
+    public function required(): bool
+    {
+        return false;
+    }
+
     public function label(): string
     {
         return __("content.types.{$this->key()}.label");

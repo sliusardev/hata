@@ -175,6 +175,8 @@ class SiteSettingsForm extends Form
         'general' => ['site_name', 'timezone'],
         // The list of content languages changes at once through its own actions; Save stores the interface default.
         'languages' => ['default_locale'],
+        // Content types are switched at once, without the Save button.
+        'content' => [],
         'access' => ['registration_enabled', 'default_role'],
         'mail' => ['mail_mailer', 'mail_host', 'mail_port', 'mail_scheme', 'mail_username', 'mail_password', 'mail_from_address', 'mail_from_name'],
         // Logos are uploaded and removed right away, without the Save button.

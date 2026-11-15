@@ -46,6 +46,22 @@ list existed has no `types` key; the provider then registers `PagesType` alone i
 restoring need `edit`; trashing and deleting for good need `delete`. The `editor` role gets the four `pages.*` and the four `posts.*`
 permissions by default; `admin` gets them through `*`.
 
+### Switching a type off
+
+A registered type can be switched off without removing it: Site settings → Content types (`SetContentTypeActive`,
+`settings.edit`; decision 68). The keys that are off are the site setting `content_disabled_types` (config
+`content.disabled_types`), read at call time by `ContentTypes::disabledKeys()`, `isActive($key)` and `active()`
+(`all()` still returns every registered type). A type whose `required()` returns true is always on (`PagesType`).
+
+While a type is off: the sidebar leaves it out (`active()`), its admin pages answer 404 (the list, the create and the
+edit page check `isActive()` in `mount()`), and `ContentRouter` looks only among the active types, so its public
+addresses answer 404 like any miss. Everything else stays: the records, their translations, redirects and media
+usages, the permissions (the role matrix keeps the group), the trash prune, and the type's base, which stays
+reserved (`isReserved()` and `content:check` use `all()`), so no page can take its address meanwhile. The media
+library still names a record of such a type as a file's usage, without a link (`Entry::mediaUsageUrl()` is null).
+Switching the type on brings everything back as it was. No extra query: the list is part of the settings every
+request already loads.
+
 ### Adding a type
 
 `php artisan make:content-type Posts` (`App\Console\Commands\MakeContentType` over
@@ -781,6 +797,10 @@ refusals (a language the group has, in the trash too, one not on the site, a pag
 trashed record); choosing an existing record (candidates, search, the emptied group gone, `updated_at` kept), a chosen
 record leaving its former translations, the refused links, the permissions and 404s; unlinking a translation and the
 record itself (the copy of the shared values, the others staying together) and its refusals.
+`tests/Feature/Admin/Content/ContentTypeSwitchTest.php`: switching a type off and on (records kept), the refusals
+(pages, an unknown type, no `settings.edit`), a type that is off (404 in the admin and on the site, no menu item, its
+base still reserved, the media usage named without a link), and the settings tab (the list, the confirmation, the
+reload, no Save button, the permission).
 `tests/Feature/Content/GalleryFieldTest.php`: a gallery field on the public page (the picked order, images only) and no
 media query for an empty one, with the fixture type. The site's own types need no tests: `Tests\TestCase` runs every
 test with the pages type alone, whatever `config/content.php` lists (and drops those types' permissions from the role

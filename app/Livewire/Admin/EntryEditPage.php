@@ -8,6 +8,7 @@ use App\Actions\Content\UnlinkTranslation;
 use App\Actions\Content\UpdateEntry;
 use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
+use App\Support\Content\ContentTypes;
 use App\Support\Localization\Language;
 use App\Support\Toast;
 use Flux\Flux;
@@ -61,7 +62,7 @@ abstract class EntryEditPage extends EntryFormPage
 
     public function mount(string $type, Entry $entry): void
     {
-        abort_unless($entry->type === $type, 404);
+        abort_unless($entry->type === $type && app(ContentTypes::class)->isActive($type), 404);
 
         $this->authorize('view', $entry);
 

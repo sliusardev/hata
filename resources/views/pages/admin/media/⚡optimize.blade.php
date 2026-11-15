@@ -84,7 +84,7 @@ new #[Title('media.optimize.title')] class extends MediaBatchPage {
     $outcomeColors = ['optimized' => 'green', 'already_optimal' => 'zinc', 'too_large' => 'amber', 'unreadable' => 'amber', 'missing' => 'red', 'changed' => 'zinc'];
 @endphp
 
-<div class="mx-auto w-full max-w-3xl space-y-6" data-test="media-optimize" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
+<div class="w-full max-w-3xl space-y-6" data-test="media-optimize" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
     <div class="flex items-center gap-3">
         <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.batch.back')" :tooltip="__('media.batch.back')" />
         <div class="min-w-0">

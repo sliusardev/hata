@@ -339,7 +339,8 @@ class Entry extends Model implements UsesMedia
      */
     public function mediaUsageUrl(string $field, ?User $viewer): ?string
     {
-        if ($viewer === null || ! Gate::forUser($viewer)->allows('view', $this)) {
+        // A type that is switched off has no admin pages to link to.
+        if ($viewer === null || ! app(ContentTypes::class)->isActive($this->type) || ! Gate::forUser($viewer)->allows('view', $this)) {
             return null;
         }
 

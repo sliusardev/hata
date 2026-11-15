@@ -69,6 +69,7 @@ class SiteSettings
         'media_s3_prefix' => 'filesystems.disks.s3.root',
         'content_locales' => 'content.locales',
         'content_default_locale' => 'content.default_locale',
+        'content_disabled_types' => 'content.disabled_types',
     ];
 
     /**

@@ -25,6 +25,8 @@ new class extends EntryFormPage {
 
     public function mount(string $type, ContentLocales $locales): void
     {
+        abort_unless(app(App\Support\Content\ContentTypes::class)->isActive($type), 404);
+
         $this->authorize('create', [Entry::class, $type]);
 
         $this->type = $type;

@@ -54,7 +54,7 @@
 @endphp
 
 <section
-    class="mx-auto w-full max-w-6xl"
+    class="w-full max-w-6xl"
     x-data="entryForm(@js($config))"
     x-on:keydown.window="onKeydown($event)"
     x-on:rich-text:changed="editorChanged = true"

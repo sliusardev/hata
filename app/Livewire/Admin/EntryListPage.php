@@ -119,6 +119,8 @@ abstract class EntryListPage extends Component
 
     public function mount(string $type): void
     {
+        abort_unless(app(ContentTypes::class)->isActive($type), 404);
+
         $this->authorize('viewAny', [Entry::class, $type]);
 
         $this->type = $type;

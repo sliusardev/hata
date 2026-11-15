@@ -24,7 +24,7 @@
 
                     @php
                         $contentTypes = array_filter(
-                            app(App\Support\Content\ContentTypes::class)->all(),
+                            app(App\Support\Content\ContentTypes::class)->active(),
                             fn ($contentType) => auth()->user()->can('viewAny', [App\Models\Entry::class, $contentType->key()]),
                         );
                     @endphp

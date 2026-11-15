@@ -7,6 +7,9 @@ use App\Actions\Settings\AddContentLocale;
 use App\Actions\Settings\RemoveContentLocale;
 use App\Actions\Settings\RemoveLogo;
 use App\Actions\Settings\SetContentLocaleActive;
+use App\Actions\Settings\SetContentTypeActive;
+use App\Models\Entry;
+use App\Support\Content\ContentTypes;
 use App\Actions\Settings\SetDefaultContentLocale;
 use App\Exceptions\ContentLocaleException;
 use App\Actions\Settings\UpdateSiteSettings;
@@ -105,6 +108,14 @@ new #[Title('site_settings.title')] class extends Component {
     public string $languageCode = '';
 
     public bool $showLanguageModal = false;
+
+    /**
+     * The content type the "switch off" confirmation of the Content types tab is about.
+     */
+    #[Locked]
+    public string $contentTypeOff = '';
+
+    public bool $showContentTypeModal = false;
 
     /**
      * "Use it for the admin and sign-in pages too" in the make-default confirmation.
@@ -233,6 +244,75 @@ new #[Title('site_settings.title')] class extends Component {
         $this->form->fill(Arr::only($this->savedValues, SiteSettingsForm::SECTIONS['languages']));
 
         $this->redirectRoute('admin.settings.edit', ['tab' => 'languages']);
+    }
+
+    /**
+     * Every registered content type, whether it is on and how many records it holds (the trash included). One
+     * grouped query, only for the Content types tab.
+     *
+     * @return list<array{type: App\Support\Content\ContentType, active: bool, count: int}>
+     */
+    #[Computed]
+    public function contentTypeRows(): array
+    {
+        $types = app(ContentTypes::class);
+        $counts = Entry::withTrashed()->toBase()->selectRaw('type, count(*) as total')->groupBy('type')->pluck('total', 'type');
+
+        return array_values(array_map(fn ($type): array => [
+            'type' => $type,
+            'active' => $types->isActive($type->key()),
+            'count' => (int) ($counts[$type->key()] ?? 0),
+        ], $types->all()));
+    }
+
+    /**
+     * Switches a type on at once; switching one off asks first, as its pages leave the site.
+     */
+    public function toggleContentType(string $key, SetContentTypeActive $setContentTypeActive): void
+    {
+        $this->authorize('settings.edit');
+
+        if (app(ContentTypes::class)->isActive($key)) {
+            $this->contentTypeOff = $key;
+            $this->showContentTypeModal = true;
+
+            return;
+        }
+
+        $this->changeContentType($setContentTypeActive, $key, true);
+    }
+
+    public function turnOffContentType(SetContentTypeActive $setContentTypeActive): void
+    {
+        $this->showContentTypeModal = false;
+
+        if ($this->contentTypeOff !== '') {
+            $this->changeContentType($setContentTypeActive, $this->contentTypeOff, false);
+        }
+    }
+
+    /**
+     * Stores the change and reloads the tab, so the sidebar is rendered with the type's item gone or back.
+     */
+    private function changeContentType(SetContentTypeActive $setContentTypeActive, string $key, bool $active): void
+    {
+        $this->authorize('settings.edit');
+
+        try {
+            $setContentTypeActive->handle(Auth::user(), $key, $active);
+        } catch (ProtectedActionException $exception) {
+            $this->contentTypeOff = '';
+            unset($this->contentTypeRows);
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
+
+            return;
+        }
+
+        Toast::success(__($active ? 'site_settings.content.messages.turned_on' : 'site_settings.content.messages.turned_off', [
+            'type' => app(ContentTypes::class)->get($key)->pluralLabel(),
+        ]));
+
+        $this->redirectRoute('admin.settings.edit', ['tab' => 'content']);
     }
 
     public function mount(SiteSettings $settings): void
@@ -769,7 +849,7 @@ new #[Title('site_settings.title')] class extends Component {
 }; ?>
 
 <section
-    class="w-full max-w-3xl space-y-6"
+    class="w-full max-w-5xl space-y-6"
     x-data="{
         fields: @js(array_merge(...array_values(App\Livewire\Forms\SiteSettingsForm::SECTIONS))),
         pendingUrl: null,
@@ -796,20 +876,31 @@ new #[Title('site_settings.title')] class extends Component {
         <flux:subheading>{{ __('site_settings.description') }}</flux:subheading>
     </div>
 
-    <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 dark:border-zinc-700" data-test="site-settings-tabs">
-        @foreach (['general' => 'cog-6-tooth', 'languages' => 'language', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch', 'media' => 'adjustments-horizontal'] as $section => $icon)
-            <flux:navbar.item
-                :icon="$icon"
-                :current="$tab === $section"
-                wire:click="switchTab('{{ $section }}')"
-                wire:key="tab-{{ $section }}"
-                class="cursor-pointer"
-            >
+    @php
+        $sections = ['general' => 'cog-6-tooth', 'languages' => 'language', 'content' => 'squares-2x2', 'access' => 'lock-closed', 'mail' => 'envelope', 'logo' => 'photo', 'colors' => 'swatch', 'media' => 'adjustments-horizontal'];
+    @endphp
+
+    {{-- The sections: a list at the side from a tablet up (they no longer fit in one row), a row that scrolls on a phone. --}}
+    <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 md:hidden dark:border-zinc-700" data-test="site-settings-tabs-row">
+        @foreach ($sections as $section => $icon)
+            <flux:navbar.item :icon="$icon" :current="$tab === $section" wire:click="switchTab('{{ $section }}')" wire:key="tab-row-{{ $section }}" class="cursor-pointer">
                 {{ __("site_settings.{$section}.heading") }}
             </flux:navbar.item>
         @endforeach
     </flux:navbar>
 
+    <div class="flex items-start gap-8 lg:gap-10">
+    <div class="sticky top-4 w-52 shrink-0 max-md:hidden">
+        <flux:navlist aria-label="{{ __('site_settings.title') }}" data-test="site-settings-tabs">
+            @foreach ($sections as $section => $icon)
+                <flux:navlist.item :icon="$icon" :current="$tab === $section" wire:click="switchTab('{{ $section }}')" wire:key="tab-{{ $section }}" class="cursor-pointer" data-test="site-settings-tab-{{ $section }}">
+                    {{ __("site_settings.{$section}.heading") }}
+                </flux:navlist.item>
+            @endforeach
+        </flux:navlist>
+    </div>
+
+    <div class="min-w-0 max-w-3xl flex-1 space-y-6">
     <form wire:submit="save" class="space-y-6">
         @if ($tab === 'general')
             <flux:input wire:model="form.site_name" :label="__('site_settings.general.site_name')" :description="__('site_settings.general.site_name_description')" required />
@@ -823,6 +914,8 @@ new #[Title('site_settings.title')] class extends Component {
             </div>
         @elseif ($tab === 'languages')
             @include('partials.admin.settings.languages')
+        @elseif ($tab === 'content')
+            @include('partials.admin.settings.content-types')
         @elseif ($tab === 'access')
             <flux:switch wire:model="form.registration_enabled" :label="__('site_settings.access.registration')" :description="__('site_settings.access.registration_description')" align="left" />
 
@@ -1157,7 +1250,7 @@ new #[Title('site_settings.title')] class extends Component {
                 @endif
             </div>
 
-            @unless ($tab === 'logo')
+            @unless (in_array($tab, ['logo', 'content'], true))
                 <flux:button variant="primary" type="submit" data-test="save-site-settings-button">
                     {{ __('common.actions.save') }}
                 </flux:button>
@@ -1173,9 +1266,24 @@ new #[Title('site_settings.title')] class extends Component {
             </div>
         @endif
     </form>
+    </div>
+    </div>
 
     @if ($tab === 'languages')
         @include('partials.admin.settings.languages-modals')
+    @endif
+
+    @if ($tab === 'content')
+        @php($typeOff = $contentTypeOff === '' ? null : app(ContentTypes::class)->find($contentTypeOff))
+        <x-confirm-modal
+            wire:model.self="showContentTypeModal"
+            :heading="__('site_settings.content.off.title', ['type' => $typeOff?->pluralLabel() ?? ''])"
+            :confirm-label="__('site_settings.content.off.submit')"
+            confirm-action="turnOffContentType"
+            data-test="content-type-off-modal"
+        >
+            {{ __('site_settings.content.off.body') }}
+        </x-confirm-modal>
     @endif
 
     <x-confirm-modal
