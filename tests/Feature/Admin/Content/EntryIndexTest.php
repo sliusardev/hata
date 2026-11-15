@@ -187,25 +187,22 @@ test('sorting by title and back to the tree order', function () {
         ->assertSet('sort', '');
 });
 
-test('the list shows every language by default, one row per group of translations', function () {
+test('the list shows every record of every language by default, each marked by its language', function () {
     $this->actingAs(contentViewer());
     $about = Entry::factory()->published()->create(['title' => 'About us']);
     $pro = Entry::factory()->translationOf($about, 'uk')->create(['title' => 'Про нас']);
-    $onlyUkrainian = Entry::factory()->inLocale('uk')->create(['title' => 'Лише українською']);
     $foreign = Entry::factory()->inLocale('fr')->create(['title' => 'Page hors du site']);
     $row = fn (Entry $entry): string => 'data-test="entry-row-'.$entry->id.'"';
 
     $list = entryList()
         ->assertSet('locale', '')
-        ->assertSeeHtml([$row($about), $row($onlyUkrainian)])
-        ->assertDontSeeHtml([$row($pro), $row($foreign)])
-        ->assertSeeHtml('data-test="translations-'.$onlyUkrainian->id.'"');
+        ->assertSeeHtml([$row($about), $row($pro)])
+        ->assertDontSeeHtml($row($foreign))
+        ->assertSeeHtml(['data-test="entry-language-'.$about->id.'"', 'data-test="entry-language-'.$pro->id.'"']);
 
-    expect($list->instance()->counts)->toMatchArray(['all' => 2, 'published' => 1, 'drafts' => 2]);
+    expect($list->instance()->counts)->toMatchArray(['all' => 2, 'published' => 1, 'drafts' => 1]);
 
-    // A tab or a search shows the group by the first of its records that matches.
-    $list->set('tab', 'drafts')->assertSeeHtml([$row($pro), $row($onlyUkrainian)])->assertDontSeeHtml($row($about));
-    $list->set('tab', 'all')->set('search', 'про')->assertSeeHtml($row($pro))->assertDontSeeHtml($row($about));
+    entryList(['locale' => 'uk'])->assertSeeHtml($row($pro))->assertDontSeeHtml([$row($about), 'data-test="entry-language-'.$pro->id.'"']);
 });
 
 test('a chosen language lists its records and is remembered in the session', function () {

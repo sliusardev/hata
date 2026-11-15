@@ -397,11 +397,8 @@ then Media; the group shows when any of them or `media.view` holds.
   can be bookmarked and Back works. The list shows every language of the site by default (`locale` empty; the user's
   request, decision 64); a chosen language is remembered in the session (`content.list_locale`, empty again after
   choosing "All languages"), and a value that is not a language of the site shows them all. With every language
-  listed the rows are groups of translations, one per group (the user's choice, decision 65): the group's record in
-  the first of the site's languages among those the tab and the search match (so a draft translation of a published
-  page is found on the Drafts tab, and a search finds a group by any of its titles), and the tab counts are of groups
-  with a record in that state (`EntryListQuery::isGrouped()`, a correlated `not exists` on the `entry_group_id`,
-  `locale` index; the Trash tab always lists and counts records). A chosen language lists that language's records. Records in a language that
+  listed each record is a row of its own (a row per group of translations was tried and dropped, decision 67), marked
+  by its language code before the title (`data-test="entry-language-<id>"`). Records in a language that
   is not on the site are never listed. An unknown tab is `all`.
 - Sort: title and date (`coalesce(published_at, created_at)`), toggled by the column headers. A hierarchical type
   defaults to tree order and a third click on a header (or the "Tree order" button) goes back to it. Tree order sorts
@@ -411,7 +408,7 @@ then Media; the group shows when any of them or `media.view` holds.
   hide a row's parent, and a child would be indented under nothing).
 - Row: thumbnail (`thumbUrl()` of the image, else a neutral block; fixed 40 px), the title linking to the edit page,
   the address (`url(false)`), the language codes of the group (the translation
-  chips, below; in the Trash tab the record's own code instead, `data-test="entry-language-<id>"`), the Status column (a badge for every record:
+  chips, below; in the Trash tab the record's own code instead), the Status column (a badge for every record:
   Published green, Scheduled blue, Draft grey; `data-test="entry-state-<id>"`; not in the Trash tab), author, date,
   and the "⋮" menu. On a phone the status, author and date columns are hidden: the status badge sits by the title
   instead, and the codes stay under the address.
@@ -755,8 +752,7 @@ and the form's "Preview".
 and counts, Cyrillic search, tree order and indent for three levels (with an `about-us` sibling), title sort and back to
 the tree, the list's language (every language by default with the code per row and the trees in the
 site's order, the chosen one in the session, fallback), bulk trash, restore and delete for good with their
-permissions and confirmations, emptying the trash for the listed languages, the picks dropped by a filter, the row's language codes and their links, one row per group with every language listed (the group found by a tab
-and a search through any of its records), the trash listing records, the one-language
+permissions and confirmations, emptying the trash for the listed languages, the picks dropped by a filter, the row's language codes and their links, the trash listing records, the one-language
 site, the Create button, trash/restore/delete for good with their permissions and confirmation texts, the row menu, empty
 states, the query string, the search term cut at 200 characters, the same query count for 5 and 20 rows, the hourly
 prune, the indent only on the full tree, that the create and edit pages authorize, `edit` or `create` without `view`

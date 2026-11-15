@@ -187,7 +187,7 @@ new class extends EntryListPage {
                                     @endif
                                     <div class="min-w-0 max-w-[14rem] sm:max-w-sm xl:max-w-md">
                                         <div class="flex min-w-0 items-center gap-2">
-                                            @if ($this->multilingual && $inTrash)
+                                            @if ($this->multilingual && ($inTrash || $locale === ''))
                                                 <span @class(['shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700 uppercase dark:bg-white/10 dark:text-zinc-200', 'opacity-60' => ! in_array($entry->locale, $activeCodes, true)]) data-test="entry-language-{{ $entry->id }}">{{ $entry->locale }}</span>
                                             @endif
                                             <a href="{{ $editUrl }}" wire:navigate class="truncate font-medium text-zinc-900 hover:underline dark:text-white" data-test="edit-entry-link-{{ $entry->id }}">{{ $entry->title }}</a>
