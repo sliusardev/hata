@@ -19,7 +19,7 @@
 @php
     $byLocale = collect($groupEntries)->keyBy('locale');
     $trashedByLocale = collect($trashedEntries ?? []);
-    $activeCodes = array_map(fn ($language) => $language->code, app(App\Support\Localization\ContentLocales::class)->active());
+    $activeCodes = app(App\Support\Localization\ContentLocales::class)->activeCodes();
     $badge = 'mt-0.5 w-8 shrink-0 rounded bg-zinc-100 py-0.5 text-center text-[11px] font-semibold text-zinc-700 uppercase dark:bg-white/10 dark:text-zinc-200';
 @endphp
 

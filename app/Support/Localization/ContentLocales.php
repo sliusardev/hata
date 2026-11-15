@@ -96,6 +96,26 @@ class ContentLocales
         ));
     }
 
+    /**
+     * The codes of every language added to the site, in their order.
+     *
+     * @return list<string>
+     */
+    public function codes(): array
+    {
+        return array_map(fn (Language $language): string => $language->code, $this->all());
+    }
+
+    /**
+     * The codes of the switched-on languages, in their order.
+     *
+     * @return list<string>
+     */
+    public function activeCodes(): array
+    {
+        return array_map(fn (Language $language): string => $language->code, $this->active());
+    }
+
     public function default(): Language
     {
         return $this->language($this->defaultCode());

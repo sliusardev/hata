@@ -1,0 +1,514 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use App\Actions\Content\BulkEntries;
+use App\Actions\Content\DeleteEntry;
+use App\Actions\Content\EmptyEntryTrash;
+use App\Actions\Content\PruneEntryTrash;
+use App\Actions\Content\RestoreEntry;
+use App\Actions\Content\TrashEntry;
+use App\Exceptions\ProtectedActionException;
+use App\Models\Entry;
+use App\Models\User;
+use App\Support\Content\ContentType;
+use App\Support\Content\ContentTypes;
+use App\Support\Content\EntryListQuery;
+use App\Support\Localization\ContentLocales;
+use App\Support\Localization\Language;
+use Flux\Flux;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
+use Livewire\Component;
+use Livewire\WithPagination;
+use Throwable;
+
+/**
+ * The list of one content type's records: tabs, search, the language and "missing translation" filters, sorting,
+ * the row actions, bulk selection and the trash. The page `pages::admin.content.index` extends it and holds the
+ * markup (decision 32: a class, so PHPStan analyses it).
+ *
+ * @property-read ContentType $contentType
+ * @property-read EntryListQuery $listQuery
+ * @property-read LengthAwarePaginator<int, Entry> $entries
+ * @property-read array{all: int, published: int, drafts: int, scheduled: int, trash: int} $counts
+ * @property-read list<Language> $languages
+ * @property-read bool $multilingual
+ * @property-read array{create: bool, edit: bool, delete: bool} $abilities
+ * @property-read Entry|null $trashingEntry
+ * @property-read Entry|null $deletingEntry
+ */
+abstract class EntryListPage extends Component
+{
+    use WithPagination;
+
+    /**
+     * The session key that remembers the language the list was last narrowed to (empty: every language).
+     */
+    public const string LOCALE_SESSION_KEY = 'content.list_locale';
+
+    /**
+     * The longest search term used; a longer one (a pasted text, a crafted query string) is cut.
+     */
+    public const int SEARCH_MAX = 200;
+
+    #[Locked]
+    public string $type = '';
+
+    #[Url(except: 'all')]
+    public string $tab = 'all';
+
+    #[Url(as: 'q', except: '')]
+    public string $search = '';
+
+    /**
+     * Empty means every language of the site, which is the default.
+     */
+    #[Url(except: '')]
+    public string $locale = '';
+
+    #[Url(except: '')]
+    public string $missing = '';
+
+    /**
+     * Empty means the type's default: tree order for a hierarchical type, newest first otherwise.
+     */
+    #[Url(except: '')]
+    public string $sort = '';
+
+    #[Url(except: '')]
+    public string $dir = '';
+
+    #[Locked]
+    public ?int $trashingId = null;
+
+    #[Locked]
+    public int $trashingChildren = 0;
+
+    public bool $showTrashModal = false;
+
+    #[Locked]
+    public ?int $deletingId = null;
+
+    #[Locked]
+    public int $deletingChildren = 0;
+
+    public bool $showDeleteModal = false;
+
+    /**
+     * The ids of the rows picked with the checkboxes (strings, as the checkboxes send them). Cleared whenever the
+     * rows change; the bulk actions use only those that are records of this type.
+     *
+     * @var list<string>
+     */
+    public array $selected = [];
+
+    /**
+     * What the bulk dialog asks about: `trash` or `delete` for the picked rows, `empty` for the whole trash.
+     */
+    #[Locked]
+    public string $bulkAction = '';
+
+    #[Locked]
+    public int $bulkCount = 0;
+
+    public bool $showBulkModal = false;
+
+    public function mount(string $type): void
+    {
+        $this->authorize('viewAny', [Entry::class, $type]);
+
+        $this->type = $type;
+        $this->tab = in_array($this->tab, EntryListQuery::TABS, true) ? $this->tab : 'all';
+        $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
+        $this->locale = $this->validLocale($this->locale !== '' ? $this->locale : (string) session(self::LOCALE_SESSION_KEY));
+        $this->missing = $this->validMissing($this->missing);
+        session()->put(self::LOCALE_SESSION_KEY, $this->locale);
+
+        // At most once an hour per type, after the response is sent: records whose time in the trash is over.
+        if (Cache::add('content.prune_trash', true, now()->addHour())) {
+            defer(function (): void {
+                try {
+                    app(PruneEntryTrash::class)->handle();
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            });
+        }
+    }
+
+    public function updatedTab(): void
+    {
+        $this->selected = [];
+        $this->tab = in_array($this->tab, EntryListQuery::TABS, true) ? $this->tab : 'all';
+        $this->resetPage();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->selected = [];
+        $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
+        $this->resetPage();
+    }
+
+    public function updatedLocale(): void
+    {
+        $this->selected = [];
+        $this->locale = $this->validLocale($this->locale);
+        $this->missing = $this->validMissing($this->missing);
+        session()->put(self::LOCALE_SESSION_KEY, $this->locale);
+        $this->resetPage();
+    }
+
+    public function updatedMissing(): void
+    {
+        $this->selected = [];
+        $this->missing = $this->validMissing($this->missing);
+        $this->resetPage();
+    }
+
+    /**
+     * Title and date toggle between ascending and descending; on a hierarchical type a third click goes back to
+     * the tree order.
+     */
+    public function sort(string $column): void
+    {
+        if (! in_array($column, ['title', 'date'], true)) {
+            return;
+        }
+
+        $first = $column === 'title' ? 'asc' : 'desc';
+
+        if ($this->sortColumn() !== $column) {
+            [$this->sort, $this->dir] = [$column, $first];
+        } elseif ($this->sortDirection() === $first) {
+            [$this->sort, $this->dir] = [$column, $first === 'asc' ? 'desc' : 'asc'];
+        } elseif ($this->contentType->hierarchical()) {
+            [$this->sort, $this->dir] = ['', ''];
+        } else {
+            [$this->sort, $this->dir] = [$column, $first];
+        }
+
+        $this->selected = [];
+        $this->resetPage();
+    }
+
+    public function updatedPaginators(): void
+    {
+        $this->selected = [];
+    }
+
+    public function resetSort(): void
+    {
+        [$this->sort, $this->dir] = ['', ''];
+        $this->resetPage();
+    }
+
+    public function clearFilters(): void
+    {
+        $this->search = '';
+        $this->missing = '';
+        $this->resetPage();
+    }
+
+    #[Computed]
+    public function contentType(): ContentType
+    {
+        return app(ContentTypes::class)->get($this->type);
+    }
+
+    #[Computed]
+    public function listQuery(): EntryListQuery
+    {
+        return EntryListQuery::for($this->contentType, $this->locale, $this->listedLocales())
+            ->tab($this->tab)
+            ->search($this->search)
+            ->missingIn($this->missing)
+            ->sort($this->sortColumn(), $this->sortDirection());
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, Entry>
+     */
+    #[Computed]
+    public function entries(): LengthAwarePaginator
+    {
+        return $this->listQuery->paginate($this->contentType->perPage());
+    }
+
+    /**
+     * @return array{all: int, published: int, drafts: int, scheduled: int, trash: int}
+     */
+    #[Computed]
+    public function counts(): array
+    {
+        return $this->listQuery->counts();
+    }
+
+    /**
+     * Every language added to the site, the switched-off ones included.
+     *
+     * @return list<Language>
+     */
+    #[Computed]
+    public function languages(): array
+    {
+        return app(ContentLocales::class)->all();
+    }
+
+    #[Computed]
+    public function multilingual(): bool
+    {
+        return count($this->languages) > 1;
+    }
+
+    /**
+     * The type's permissions for the actor, checked once per render instead of once per row.
+     *
+     * @return array{create: bool, edit: bool, delete: bool}
+     */
+    #[Computed]
+    public function abilities(): array
+    {
+        $user = Auth::user();
+
+        return [
+            'create' => $user->can('create', [Entry::class, $this->type]),
+            'edit' => $user->can($this->contentType->permission('edit')),
+            'delete' => $user->can($this->contentType->permission('delete')),
+        ];
+    }
+
+    public function isFiltered(): bool
+    {
+        return trim($this->search) !== '' || $this->missing !== '';
+    }
+
+    public function confirmTrash(int $entryId): void
+    {
+        $entry = $this->liveEntry($entryId);
+
+        $this->authorize('delete', $entry);
+
+        $this->trashingId = $entry->id;
+        $this->trashingChildren = $entry->descendantsCount();
+        $this->showTrashModal = true;
+    }
+
+    public function trash(TrashEntry $trashEntry): void
+    {
+        $entry = $this->liveEntry((int) $this->trashingId);
+
+        $count = $trashEntry->handle(Auth::user(), $entry);
+
+        Flux::toast(variant: 'success', text: $count > 1
+            ? trans_choice('content.list.trash.done_with_children', $count)
+            : __('content.list.trash.done'));
+
+        $this->showTrashModal = false;
+        $this->trashingId = null;
+        $this->forgetList();
+    }
+
+    public function restore(int $entryId, RestoreEntry $restoreEntry): void
+    {
+        $entry = $this->trashedEntry($entryId);
+
+        $this->authorize('restore', $entry);
+
+        try {
+            $restored = $restoreEntry->handle(Auth::user(), $entry);
+
+            Flux::toast(variant: 'success', text: __('content.list.restored', ['title' => $restored->title]));
+        } catch (ProtectedActionException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
+        }
+
+        $this->forgetList();
+    }
+
+    public function confirmDelete(int $entryId): void
+    {
+        $entry = $this->trashedEntry($entryId);
+
+        $this->authorize('forceDelete', $entry);
+
+        $this->deletingId = $entry->id;
+        $this->deletingChildren = $entry->descendantsCount();
+        $this->showDeleteModal = true;
+    }
+
+    public function deleteForGood(DeleteEntry $deleteEntry): void
+    {
+        $entry = $this->trashedEntry((int) $this->deletingId);
+
+        try {
+            $deleteEntry->handle(Auth::user(), $entry);
+
+            Flux::toast(variant: 'success', text: __('content.list.delete.done'));
+        } catch (ProtectedActionException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
+        }
+
+        $this->showDeleteModal = false;
+        $this->deletingId = null;
+        $this->forgetList();
+    }
+
+    /**
+     * Opens the dialog for a bulk action that needs a confirmation.
+     */
+    public function confirmBulk(string $action): void
+    {
+        abort_unless(in_array($action, ['trash', 'delete', 'empty'], true), 404);
+        abort_unless($this->abilities['delete'], 403);
+
+        // Counted in the database: a pick may name rows that are gone or in another state by now.
+        $this->bulkCount = match ($action) {
+            'empty' => $this->counts['trash'],
+            'trash' => Entry::query()->ofType($this->type)->whereKey($this->selectedIds())->count(),
+            default => Entry::onlyTrashed()->ofType($this->type)->whereKey($this->selectedIds())->count(),
+        };
+
+        if ($this->bulkCount === 0) {
+            return;
+        }
+
+        $this->bulkAction = $action;
+        $this->showBulkModal = true;
+    }
+
+    public function runBulk(BulkEntries $bulk, EmptyEntryTrash $emptyTrash): void
+    {
+        abort_unless($this->abilities['delete'], 403);
+
+        if ($this->bulkAction === '') {
+            $this->showBulkModal = false;
+
+            return;
+        }
+
+        $count = match ($this->bulkAction) {
+            'trash' => $bulk->trash($this->actor(), $this->contentType, $this->selectedIds()),
+            'delete' => $bulk->delete($this->actor(), $this->contentType, $this->selectedIds()),
+            default => $emptyTrash->handle($this->actor(), $this->contentType, $this->listedLocales()),
+        };
+
+        Flux::toast(variant: 'success', text: $this->bulkAction === 'trash'
+            ? trans_choice('content.list.trash.done_with_children', $count)
+            : trans_choice('content.list.bulk.deleted', $count));
+
+        $this->showBulkModal = false;
+        $this->bulkAction = '';
+        $this->selected = [];
+        $this->forgetList();
+    }
+
+    public function restoreSelected(BulkEntries $bulk): void
+    {
+        abort_unless($this->abilities['edit'], 403);
+
+        $result = $bulk->restore($this->actor(), $this->contentType, $this->selectedIds());
+
+        foreach ($result['failed'] as $message) {
+            Flux::toast(variant: 'danger', text: $message);
+        }
+
+        if ($result['restored'] > 0) {
+            Flux::toast(variant: 'success', text: trans_choice('content.list.bulk.restored', $result['restored']));
+        }
+
+        $this->selected = [];
+        $this->forgetList();
+    }
+
+    protected function actor(): User
+    {
+        $user = Auth::user();
+
+        abort_unless($user instanceof User, 403);
+
+        return $user;
+    }
+
+    /**
+     * @return list<int>
+     */
+    protected function selectedIds(): array
+    {
+        return array_values(array_unique(array_filter(array_map(intval(...), $this->selected), fn (int $id): bool => $id > 0)));
+    }
+
+    /**
+     * The languages the list shows: the chosen one, or every language of the site.
+     *
+     * @return list<string>
+     */
+    protected function listedLocales(): array
+    {
+        return $this->locale !== '' ? [$this->locale] : app(ContentLocales::class)->codes();
+    }
+
+    #[Computed]
+    public function trashingEntry(): ?Entry
+    {
+        return $this->trashingId ? Entry::query()->ofType($this->type)->find($this->trashingId, ['id', 'title']) : null;
+    }
+
+    #[Computed]
+    public function deletingEntry(): ?Entry
+    {
+        return $this->deletingId ? Entry::onlyTrashed()->ofType($this->type)->find($this->deletingId, ['id', 'title']) : null;
+    }
+
+    public function sortColumn(): string
+    {
+        return $this->sort !== '' ? $this->sort : ($this->contentType->hierarchical() ? 'tree' : 'date');
+    }
+
+    public function sortDirection(): string
+    {
+        if (in_array($this->dir, ['asc', 'desc'], true)) {
+            return $this->dir;
+        }
+
+        return in_array($this->sortColumn(), ['title', 'tree'], true) ? 'asc' : 'desc';
+    }
+
+    protected function liveEntry(int $entryId): Entry
+    {
+        return Entry::query()->ofType($this->type)->findOrFail($entryId);
+    }
+
+    protected function trashedEntry(int $entryId): Entry
+    {
+        return Entry::onlyTrashed()->ofType($this->type)->findOrFail($entryId);
+    }
+
+    protected function validLocale(string $code): string
+    {
+        $locales = app(ContentLocales::class);
+
+        return $code !== '' && $locales->has($code) ? $code : '';
+    }
+
+    protected function validMissing(string $code): string
+    {
+        return $code !== '' && $code !== $this->locale && app(ContentLocales::class)->has($code) ? $code : '';
+    }
+
+    protected function forgetList(): void
+    {
+        unset($this->entries, $this->counts, $this->listQuery, $this->trashingEntry, $this->deletingEntry);
+
+        // The action emptied the page the list was on: show the last one that still has rows.
+        if ($this->getPage() > 1 && $this->entries->isEmpty()) {
+            $this->setPage(max(1, $this->entries->lastPage()));
+            unset($this->entries);
+        }
+    }
+}

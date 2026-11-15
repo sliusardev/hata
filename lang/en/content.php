@@ -75,7 +75,6 @@ return [
         'missing_option' => 'Missing: :name',
         'off' => 'off',
         'tree_order' => 'Tree order',
-        'back' => 'Back to the list',
         'columns' => [
             'title' => 'Title',
             'author' => 'Author',

@@ -2,6 +2,7 @@
 
 namespace App\Support\Content;
 
+use App\Enums\EntryState;
 use App\Enums\EntryStatus;
 use App\Models\Entry;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -141,12 +142,10 @@ final class EntryListQuery
             $this->onePerGroup($query);
         }
 
-        $now = now();
-
         match ($this->tab) {
-            'published' => $query->where('status', EntryStatus::Published->value)->where('published_at', '<=', $now),
-            'drafts' => $query->where(fn (Builder $drafts) => $drafts->where('status', EntryStatus::Draft->value)->orWhereNull('published_at')),
-            'scheduled' => $query->where('status', EntryStatus::Published->value)->where('published_at', '>', $now),
+            'published' => $query->inState(EntryState::Published),
+            'drafts' => $query->inState(EntryState::Draft),
+            'scheduled' => $query->inState(EntryState::Scheduled),
             'trash' => $query->onlyTrashed(),
             default => null,
         };
@@ -201,7 +200,7 @@ final class EntryListQuery
 
             match ($this->tab) {
                 'published' => $earlier->where('earlier.status', $published)->where('earlier.published_at', '<=', $now),
-                'drafts' => $earlier->where(fn (QueryBuilder $drafts) => $drafts->where('earlier.status', EntryStatus::Draft->value)->orWhereNull('earlier.published_at')),
+                'drafts' => $earlier->where(fn (QueryBuilder $drafts) => $drafts->where('earlier.status', '<>', $published)->orWhereNull('earlier.published_at')),
                 'scheduled' => $earlier->where('earlier.status', $published)->where('earlier.published_at', '>', $now),
                 default => null,
             };

@@ -34,6 +34,24 @@ class RestoreEntry
             return $entry;
         }
 
+        $trashedAt = $entry->deleted_at;
+
+        try {
+            return $this->restore($entry);
+        } catch (ProtectedActionException $exception) {
+            // The writes were rolled back: the record the caller holds is in the trash again too.
+            $entry->setAttribute('deleted_at', $trashedAt);
+            $entry->syncOriginalAttribute('deleted_at');
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * @throws ProtectedActionException
+     */
+    private function restore(Entry $entry): Entry
+    {
         return DB::transaction(function () use ($entry): Entry {
             Entry::onlyTrashed()
                 ->where('type', $entry->type)

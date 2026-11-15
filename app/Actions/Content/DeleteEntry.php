@@ -60,10 +60,7 @@ class DeleteEntry
                 $query->whereKey($records->modelKeys());
 
                 foreach ($records as $record) {
-                    $query->orWhere(fn (Builder $query) => $query
-                        ->where('type', $record->type)
-                        ->where('locale', $record->locale)
-                        ->where('path', 'like', $record->path.'/%'));
+                    $query->orWhere(fn (Builder $query) => $query->under($record->type, $record->locale, $record->path));
                 }
             })
             ->lockForUpdate()

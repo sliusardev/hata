@@ -4,6 +4,7 @@ namespace App\Actions\Content;
 
 use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
+use App\Models\EntryGroup;
 use App\Models\User;
 use App\Support\Content\EntryInput;
 use App\Support\Content\EntryPaths;
@@ -75,7 +76,7 @@ class UpdateEntry
     {
         $problem = match (true) {
             ! $this->locales->has($locale) => 'content.entry.locale_invalid',
-            Entry::withTrashed()->where('entry_group_id', $entry->entry_group_id)->where('locale', $locale)->exists() => 'content.entry.locale_taken',
+            in_array($locale, EntryGroup::takenLocales($entry->entry_group_id), true) => 'content.entry.locale_taken',
             $entry->descendants()->withTrashed()->exists() => 'content.entry.locale_has_children',
             default => null,
         };

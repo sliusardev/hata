@@ -163,7 +163,34 @@ class Entry extends Model implements UsesMedia
      */
     public function scopePublic(Builder $query): void
     {
-        $query->where('status', EntryStatus::Published->value)->where('published_at', '<=', now());
+        $query->inState(EntryState::Published);
+    }
+
+    /**
+     * The records `state()` gives that state: the one definition of draft, scheduled and published in SQL.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeInState(Builder $query, EntryState $state): void
+    {
+        match ($state) {
+            EntryState::Published => $query->where('status', EntryStatus::Published->value)->where('published_at', '<=', now()),
+            EntryState::Scheduled => $query->where('status', EntryStatus::Published->value)->where('published_at', '>', now()),
+            EntryState::Draft => $query->where(fn (Builder $drafts) => $drafts
+                ->where('status', '<>', EntryStatus::Published->value)
+                ->orWhereNull('published_at')),
+        };
+    }
+
+    /**
+     * The records under a path: same type and language, path starting with it and `/`. The one definition of a
+     * subtree by path.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeUnder(Builder $query, string $type, string $locale, string $path): void
+    {
+        $query->where('type', $type)->where('locale', $locale)->where('path', 'like', $path.'/%');
     }
 
     public function type(): ContentType
@@ -215,10 +242,7 @@ class Entry extends Model implements UsesMedia
      */
     public function descendants(): Builder
     {
-        return self::query()
-            ->where('type', $this->type)
-            ->where('locale', $this->locale)
-            ->where('path', 'like', $this->path.'/%');
+        return self::query()->under($this->type, $this->locale, $this->path);
     }
 
     /**

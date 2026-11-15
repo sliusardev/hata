@@ -31,6 +31,25 @@ class EntryGroup extends Model implements UsesMedia
     /**
      * @return array<string, string>
      */
+    /**
+     * The languages a group holds a record in, the trash included (the unique index counts both): the one answer
+     * to "is this language taken" for creating, linking and moving a record.
+     *
+     * @return list<string>
+     */
+    public static function takenLocales(int $groupId): array
+    {
+        return array_values(Entry::withTrashed()->where('entry_group_id', $groupId)->pluck('locale')->all());
+    }
+
+    /**
+     * The group's record in a language, trashed or not.
+     */
+    public static function recordIn(int $groupId, string $locale): ?Entry
+    {
+        return Entry::withTrashed()->where('entry_group_id', $groupId)->where('locale', $locale)->first();
+    }
+
     protected function casts(): array
     {
         return ['shared' => 'array'];

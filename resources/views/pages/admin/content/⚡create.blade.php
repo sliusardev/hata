@@ -34,7 +34,7 @@ new class extends EntryFormPage {
         if ($locale !== null) {
             abort_unless(is_string($locale) && $locales->has($locale), 404);
         } else {
-            $remembered = (string) session('content.list_locale');
+            $remembered = (string) session(App\Livewire\Admin\EntryListPage::LOCALE_SESSION_KEY);
             $locale = $remembered !== '' && $locales->has($remembered) ? $remembered : $locales->defaultCode();
         }
 
@@ -55,10 +55,10 @@ new class extends EntryFormPage {
 
         // The group already has this language (in the trash too): open that record instead of a form that could
         // never be saved.
-        $existing = Entry::withTrashed()->where('entry_group_id', $source->entry_group_id)->where('locale', $locale)->value('id');
+        $existing = App\Models\EntryGroup::recordIn($source->entry_group_id, $locale);
 
         if ($existing !== null) {
-            $this->redirectRoute('admin.content.edit', ['type' => $type, 'entry' => $existing]);
+            $this->redirectRoute('admin.content.edit', ['type' => $type, 'entry' => $existing->id]);
 
             return;
         }
@@ -98,10 +98,8 @@ new class extends EntryFormPage {
     public function localeChoices(): array
     {
         // The trash counts: the group's language is taken there too (CreateEntry would hand back that record).
-        $taken = $this->sourceId === null ? [] : Entry::withTrashed()
-            ->where('entry_group_id', Entry::query()->select('entry_group_id')->whereKey($this->sourceId))
-            ->pluck('locale')
-            ->all();
+        $groupId = $this->groupEntries->first()?->entry_group_id;
+        $taken = $groupId === null ? [] : App\Models\EntryGroup::takenLocales($groupId);
 
         return array_values(array_filter(
             $this->languages,

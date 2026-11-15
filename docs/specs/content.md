@@ -115,7 +115,9 @@ path index is 307 characters wide, which fits MySQL's limit on utf8mb4 (checked 
 nulls `author_id`, deleting a media file nulls `image_id`, deleting a parent nulls `parent_id`, deleting an entry
 for good removes its redirects.
 
-`App\Models\EntryGroup`: casts `shared` to an array; `entries()`. `App\Models\EntryRedirect`: `entry()`.
+`App\Models\EntryGroup`: casts `shared` to an array; `entries()`; `takenLocales($groupId)` (the languages the group
+holds a record in, trashed ones included) and `recordIn($groupId, $locale)` (that record, trashed or not) are the one
+answer to "is this language taken" for `CreateEntry`, `UpdateEntry` and the create page. `App\Models\EntryRedirect`: `entry()`.
 
 `App\Models\Entry` (soft deletes are the trash; `HasSearchIndex` from title and slug):
 
@@ -125,6 +127,8 @@ for good removes its redirects.
 | `groupEntries()` | relation: every record of the group, this one included, trashed left out; eager load it in lists |
 | `translations()` | method, not a relation: the other records of the group, taken from the loaded `groupEntries` when there is one (no query per record) |
 | `ofType($type)`, `inLocale($locale)` | scopes |
+| `inState(EntryState)` | scope: the SQL of `state()`, the one definition the list's tabs and `public()` use |
+| `under($type, $locale, $path)` | scope: the records under a path (same type and language, path starting with it and `/`); `descendants()` and the purge use it |
 | `public()` | scope: `published`, `published_at <= now()`, not trashed |
 | `type()` | the registered `ContentType` |
 | `state()` | `EntryState`: `Draft` (also a published record with no date), `Scheduled` (published with a future date) or `Published`; derived, never stored |
@@ -371,7 +375,8 @@ Routes in `routes/admin.php` (prefix `admin`, `auth`, `verified`, `can:admin.acc
 **Sidebar.** The "Content" group lists every registered type the actor may view (`viewAny`: `view`, `edit` or `create`; its plural label and icon),
 then Media; the group shows when any of them or `media.view` holds.
 
-**List** (`pages::admin.content.index`, a plain full-page component, no islands):
+**List** (`pages::admin.content.index`, a plain full-page component, no islands; its logic is the class
+`App\Livewire\Admin\EntryListPage`, which the page extends, so PHPStan analyses it, decision 32):
 
 - Header: the type's plural label and description; "Create page" (`create`) links to `admin.content.create` (no
   `locale`: the new form takes the list's remembered language, else the default).
@@ -408,12 +413,15 @@ then Media; the group shows when any of them or `media.view` holds.
   row's language codes.
 - Trash tab: a flat list by `deleted_at`, newest first, with "Removed on <date>" (`deleted_at` + `trash_days`). Menu:
   Restore (`edit`, `RestoreEntry`) and Delete for good (`delete`, `DeleteEntry`).
+- The bulk actions are `App\Actions\Content\BulkEntries` (`trash`, `restore`, `delete`, each taking the actor, the
+  type and ids and leaving out ids that are not records of the type in the needed state); the page only reports.
 - Bulk selection: a checkbox per row and one in the header for the whole page, shown to those who have a bulk action
   (`delete`; in the trash `edit` or `delete`). The picks are the `selected` property, bound from Alpine
   (`x-model="$wire.selected"`), so picking makes no request; a bar above the table shows the count and the actions:
   "Move to trash" (`confirmBulk('trash')`, then `runBulk`: `TrashEntry` per record, parents first, so a page under a
   picked one counts once), in the trash "Restore" (`restoreSelected`, `edit`, no confirmation, parents first; a row
-  its parent brought back is skipped) and "Delete for good" (`confirmBulk('delete')`, one `DeleteEntry::purge()` of
+  its parent brought back is skipped, and a record that cannot be restored is a danger toast without stopping the
+  others) and "Delete for good" (`confirmBulk('delete')`, one `DeleteEntry::purge()` of
   the picked trashed records). The dialog's count is of the picked rows that exist in that state. Only ids that are records of the type in the right state are acted on. The picks are
   dropped when the tab, the search, a filter, the sort or the page changes, and after an action.
 - "Empty the trash" (the Trash tab, `delete`, shown while the trash holds anything): after a confirmation naming the
@@ -456,7 +464,7 @@ offers "Choose" (`chooseTranslation('<code>')`, an editable saved record) and "C
 `from` and `locale`). A switched-off language is marked. It makes no query.
 
 **Form** (`pages::admin.content.create` and `pages::admin.content.edit`, both on `App\Livewire\Admin\EntryFormPage`
-(decision 32), the markup in `partials/admin/content/entry-form.blade.php`, the values in
+(decision 32; the edit page's own logic is `App\Livewire\Admin\EntryEditPage`, which extends it), the markup in `partials/admin/content/entry-form.blade.php`, the values in
 `App\Livewire\Forms\EntryForm`; plain full-page components, no islands, `wire:model` without `.live` everywhere):
 
 - **New record.** `locale` from the query must be a language of the site (`ContentLocales::has()`), else 404; without it

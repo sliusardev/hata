@@ -75,7 +75,6 @@ return [
         'missing_option' => 'Немає перекладу: :name',
         'off' => 'вимкнена',
         'tree_order' => 'Порядок дерева',
-        'back' => 'Назад до списку',
         'columns' => [
             'title' => 'Заголовок',
             'author' => 'Автор',

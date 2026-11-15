@@ -49,7 +49,7 @@
         ],
     ];
     $source = $entry === null && $fromId !== null ? collect($groupEntries)->firstWhere('id', $fromId) : null;
-    $activeCodes = array_map(fn ($language) => $language->code, app(App\Support\Localization\ContentLocales::class)->active());
+    $activeCodes = app(App\Support\Localization\ContentLocales::class)->activeCodes();
 @endphp
 
 <section

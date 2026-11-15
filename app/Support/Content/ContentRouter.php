@@ -100,7 +100,7 @@ class ContentRouter
             return ContentMatch::redirect($entry->url());
         }
 
-        $activeLocales = array_map(fn (Language $language): string => $language->code, $this->locales->active());
+        $activeLocales = $this->locales->activeCodes();
 
         if (count($activeLocales) === 1) {
             // One language: no hreflang and no switcher, so no translations to look up.

@@ -44,14 +44,6 @@ final class EntryInput
     public const int BODY_MAX_BYTES = 1_000_000;
 
     /**
-     * @return array<string, list<mixed>>
-     */
-    public static function rules(ContentType $type, string $locale, ?Entry $entry): array
-    {
-        return self::buildRules($type, $locale, $entry, self::parentResolver($type, $locale, $entry));
-    }
-
-    /**
      * Validates the data and returns it ready to write: ids as integers, the parent as a record, the status as
      * the enum, the date in UTC (it arrives in the site's display timezone, decision 38), empty texts as null and
      * every field of the type keyed by name (its form value; the writer converts it for storage).

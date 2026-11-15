@@ -91,9 +91,6 @@ class CreateEntry
             return null;
         }
 
-        return Entry::withTrashed()
-            ->where('entry_group_id', $source->entry_group_id)
-            ->where('locale', $locale)
-            ->first();
+        return EntryGroup::recordIn($source->entry_group_id, $locale);
     }
 }
