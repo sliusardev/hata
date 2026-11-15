@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Entry;
+use App\Models\Media;
 use App\Support\Content\BodyRenderer;
 use App\Support\Content\ContentLookup;
 use App\Support\Content\ContentRouter;
+use App\Support\Content\Fields\Gallery;
 use App\Support\Localization\ContentLocales;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,6 +55,7 @@ class ContentController extends Controller
         $response = response()->view('site.entry', [
             'entry' => $entry,
             'body' => $this->renderer->render($entry->body),
+            'galleries' => $this->galleries($entry),
             'preview' => $match->preview,
             'editUrl' => $request->user()?->can('update', $entry)
                 ? route('admin.content.edit', ['type' => $entry->type, 'entry' => $entry->id])
@@ -60,6 +63,50 @@ class ContentController extends Controller
         ]);
 
         return $match->preview ? $response->header('Cache-Control', 'no-store') : $response;
+    }
+
+    /**
+     * The images of the record's gallery fields, by field name, in the order they were picked. One query, and only
+     * for a record whose type has a gallery with something in it.
+     *
+     * @return array<string, list<Media>>
+     */
+    private function galleries(Entry $entry): array
+    {
+        $ids = [];
+
+        foreach ($entry->type()->fields() as $field) {
+            if ($field instanceof Gallery) {
+                $ids[$field->name] = $field->mediaIds($entry->fieldValue($field->name));
+            }
+        }
+
+        $all = array_values(array_unique(array_merge(...array_values($ids))));
+
+        if ($all === []) {
+            return [];
+        }
+
+        $files = Media::query()->whereKey($all)->get()->keyBy('id');
+        $galleries = [];
+
+        foreach ($ids as $name => $fieldIds) {
+            $images = [];
+
+            foreach ($fieldIds as $id) {
+                $file = $files->get($id);
+
+                if ($file instanceof Media && $file->isImage()) {
+                    $images[] = $file;
+                }
+            }
+
+            if ($images !== []) {
+                $galleries[$name] = $images;
+            }
+        }
+
+        return $galleries;
     }
 
     /**

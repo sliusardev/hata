@@ -1,6 +1,6 @@
 {{--
     A content record on the public site: title, image and body. The type's own fields are not printed here.
-    Receives $entry (with its image loaded), $body (rendered), $preview and $editUrl (null without the type's edit).
+    Receives $entry (with its image loaded), $body (rendered), $galleries (field name => images), $preview and $editUrl (null without the type's edit).
 --}}
 @extends('layouts.site', [
     'pageTitle' => $entry->documentTitle(),
@@ -52,5 +52,18 @@
         @if ($body->toHtml() !== '')
             <div class="rich-text-content mt-8">{{ $body }}</div>
         @endif
+
+        {{-- Gallery fields of the type: a grid of the images, each opening the full file. --}}
+        @foreach ($galleries as $name => $images)
+            <ul class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3" data-test="gallery-{{ $name }}">
+                @foreach ($images as $image)
+                    <li>
+                        <a href="{{ $image->url() }}" class="block overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                            <img src="{{ $image->url() }}" alt="{{ $image->altFor(app()->getLocale()) }}" loading="lazy" decoding="async" class="aspect-square h-full w-full object-cover transition hover:opacity-90">
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
+        @endforeach
     </article>
 @endsection

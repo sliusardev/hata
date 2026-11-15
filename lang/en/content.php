@@ -9,8 +9,17 @@ return [
             'new' => 'New page',
             'create' => 'Create page',
         ],
+        'posts' => [
+            'label' => 'Post',
+            'plural' => 'Posts',
+            'description' => 'The posts of your site.',
+            'new' => 'New post',
+            'create' => 'Create post',
+        ],
     ],
-    'fields' => [],
+    'fields' => [
+        'gallery' => 'Gallery',
+    ],
     'slug' => [
         'format' => 'The address part may contain only lowercase Latin letters, digits and single hyphens.',
         'reserved' => 'This address part is reserved. Choose another one.',

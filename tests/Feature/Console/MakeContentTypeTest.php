@@ -5,7 +5,6 @@ use App\Support\Content\ContentType;
 use App\Support\Content\ContentTypeGenerator;
 use App\Support\Content\ContentTypes;
 use App\Support\Content\Types\CaseStudiesType;
-use App\Support\Content\Types\PagesType;
 use App\Support\Content\Types\RecipesType;
 use App\Support\Localization\LanguageCatalog;
 use App\Support\Localization\ReservedSlugs;
@@ -76,7 +75,7 @@ test('it writes a flat type with its config entry and its lines in every languag
         ->and((new ContentTypes)->register($type)->find('recipes'))->toBe($type);
 
     expect((require $this->root.'/config/content.php')['types'])
-        ->toBe([PagesType::class, 'App\Support\Content\Types\RecipesType']);
+        ->toBe([...(require config_path('content.php'))['types'], 'App\Support\Content\Types\RecipesType']);
 
     foreach (['en', 'uk'] as $locale) {
         $content = require "{$this->root}/lang/{$locale}/content.php";
@@ -141,14 +140,14 @@ test('it refuses an unusable type and changes nothing', function (array $argumen
 })->with([
     'a name that is no class name' => [['name' => '123'], 'cannot be a class name'],
     'a registered key' => [['name' => 'Pages'], 'The content type [pages] is already registered.'],
-    'a key with a capital letter' => [['name' => 'Posts', '--key' => 'Posts'], 'The key [Posts] may contain only'],
-    'a base of two segments' => [['name' => 'Posts', '--base' => 'blog/news'], 'The base [blog/news] must be one address segment'],
-    'a base that is a service address' => [['name' => 'Posts', '--base' => 'admin'], 'The base [admin] is reserved'],
-    'a base that is a language code' => [['name' => 'Posts', '--base' => 'de'], 'The base [de] is reserved'],
+    'a key with a capital letter' => [['name' => 'Reviews', '--key' => 'Reviews'], 'The key [Reviews] may contain only'],
+    'a base of two segments' => [['name' => 'Reviews', '--base' => 'blog/news'], 'The base [blog/news] must be one address segment'],
+    'a base that is a service address' => [['name' => 'Reviews', '--base' => 'admin'], 'The base [admin] is reserved'],
+    'a base that is a language code' => [['name' => 'Reviews', '--base' => 'de'], 'The base [de] is reserved'],
     'a base of another type' => [['name' => 'Goods', '--base' => 'products'], 'already used by the content type [products]'],
     'a key that is a permission group' => [['name' => 'Users'], 'The key [users] is already a permission group'],
-    'an icon that is no icon name' => [['name' => 'Posts', '--icon' => "x'; evil();"], 'is not an icon of the admin'],
-    'an icon the admin does not have' => [['name' => 'Posts', '--icon' => 'newspapper'], 'is not an icon of the admin'],
+    'an icon that is no icon name' => [['name' => 'Reviews', '--icon' => "x'; evil();"], 'is not an icon of the admin'],
+    'an icon the admin does not have' => [['name' => 'Reviews', '--icon' => 'newspapper'], 'is not an icon of the admin'],
 ]);
 
 test('it keeps an acronym one word and makes the default base of an underscored key a slug', function () {
@@ -166,11 +165,11 @@ test('it keeps the imports of the config in sorted order', function () {
     $config = File::get($this->root.'/config/content.php');
 
     expect($config)->toContain("use App\\Support\\Content\\Types\\ArticlesType;\nuse App\\Support\\Content\\Types\\PagesType;\n")
-        ->and((require $this->root.'/config/content.php')['types'])->toBe([PagesType::class, 'App\Support\Content\Types\ArticlesType']);
+        ->and((require $this->root.'/config/content.php')['types'])->toBe([...(require config_path('content.php'))['types'], 'App\Support\Content\Types\ArticlesType']);
 });
 
 test('it refuses a base that is the address of an existing page, trashed or not', function (bool $trashed) {
-    $page = Entry::factory()->page()->published()->create(['slug' => 'posts', 'path' => 'posts']);
+    $page = Entry::factory()->page()->published()->create(['slug' => 'reviews', 'path' => 'reviews']);
 
     if ($trashed) {
         $page->delete();
@@ -178,8 +177,8 @@ test('it refuses a base that is the address of an existing page, trashed or not'
 
     $before = generatedFiles($this->root);
 
-    $this->artisan('make:content-type', ['name' => 'Posts'])
-        ->expectsOutputToContain('The base [posts] is the address of an existing record')
+    $this->artisan('make:content-type', ['name' => 'Reviews'])
+        ->expectsOutputToContain('The base [reviews] is the address of an existing record')
         ->assertFailed();
 
     expect(generatedFiles($this->root))->toBe($before);
@@ -188,22 +187,22 @@ test('it refuses a base that is the address of an existing page, trashed or not'
 test('it does not touch a file that already holds the lines of the type', function () {
     $translated = str_replace(
         "    'types' => [\n",
-        "    'types' => [\n        'posts' => ['label' => 'Запис', 'plural' => 'Записи', 'description' => 'Записи.', 'new' => 'Новий запис', 'create' => 'Створити запис'],\n",
+        "    'types' => [\n        'reviews' => ['label' => 'Відгук', 'plural' => 'Відгуки', 'description' => 'Відгуки.', 'new' => 'Новий відгук', 'create' => 'Створити відгук'],\n",
         File::get($this->root.'/lang/uk/content.php'),
     );
     File::put($this->root.'/lang/uk/content.php', $translated);
 
-    $this->artisan('make:content-type', ['name' => 'Posts'])->assertSuccessful();
+    $this->artisan('make:content-type', ['name' => 'Reviews'])->assertSuccessful();
 
     expect(File::get($this->root.'/lang/uk/content.php'))->toBe($translated)
-        ->and((require $this->root.'/lang/en/content.php')['types']['posts']['label'])->toBe('Post');
+        ->and((require $this->root.'/lang/en/content.php')['types']['reviews']['label'])->toBe('Review');
 });
 
 test('it puts every file back when one cannot be written', function () {
     $before = generatedFiles($this->root);
     chmod($this->root.'/lang/uk/permissions.php', 0444);
 
-    $this->artisan('make:content-type', ['name' => 'Posts'])
+    $this->artisan('make:content-type', ['name' => 'Reviews'])
         ->expectsOutputToContain('Nothing was changed')
         ->assertFailed();
 
@@ -212,24 +211,24 @@ test('it puts every file back when one cannot be written', function () {
 
 test('it refuses to overwrite an existing class file', function () {
     File::ensureDirectoryExists($this->root.'/types');
-    File::put($this->root.'/types/PostsType.php', '<?php // mine');
+    File::put($this->root.'/types/ReviewsType.php', '<?php // mine');
 
-    $this->artisan('make:content-type', ['name' => 'Posts'])
+    $this->artisan('make:content-type', ['name' => 'Reviews'])
         ->expectsOutputToContain('already exists')
         ->assertFailed();
 
-    expect(File::get($this->root.'/types/PostsType.php'))->toBe('<?php // mine');
+    expect(File::get($this->root.'/types/ReviewsType.php'))->toBe('<?php // mine');
 });
 
 test('it leaves a file of another shape alone and prints its lines to add by hand', function () {
     File::put($this->root.'/lang/uk/content.php', "<?php\n\nreturn ['types' => []];\n");
 
-    $this->artisan('make:content-type', ['name' => 'Posts'])
+    $this->artisan('make:content-type', ['name' => 'Reviews'])
         ->expectsOutputToContain('Add these lines by hand')
-        ->expectsOutputToContain("'create' => 'Create post',")
+        ->expectsOutputToContain("'create' => 'Create review',")
         ->assertSuccessful();
 
     expect(File::get($this->root.'/lang/uk/content.php'))->toBe("<?php\n\nreturn ['types' => []];\n")
-        ->and((require $this->root.'/lang/en/content.php')['types'])->toHaveKey('posts')
-        ->and((require $this->root.'/lang/uk/permissions.php')['items'])->toHaveKey('posts');
+        ->and((require $this->root.'/lang/en/content.php')['types'])->toHaveKey('reviews')
+        ->and((require $this->root.'/lang/uk/permissions.php')['items'])->toHaveKey('reviews');
 });

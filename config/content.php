@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\Content\Types\PagesType;
+use App\Support\Content\Types\PostsType;
 
 return [
 
@@ -18,6 +19,7 @@ return [
 
     'types' => [
         PagesType::class,
+        PostsType::class,
     ],
 
     /*

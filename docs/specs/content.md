@@ -37,12 +37,13 @@ another provider boots, and a type registered after that has no admin pages (and
 was built with).
 
 `App\Providers\ContentServiceProvider` binds the singleton and registers the classes listed in `config/content.php`
-→ `types`, in that order (each made by the container): `PagesType` (key `pages`, hierarchical, no base, no fields) in
-the kit. The list holds class names only, so the config cache keeps it and a request pays nothing for it; a type's
+→ `types`, in that order (each made by the container): `PagesType` (key `pages`, hierarchical, no base, no fields) and
+`PostsType` (key `posts`, flat, base `posts` in every language, one field: `Gallery::make('gallery')`, per language)
+in the kit. The list holds class names only, so the config cache keeps it and a request pays nothing for it; a type's
 definition stays a class, because fields are objects and `base()` may need logic. Its `boot()` builds the registry,
 so the kit's types have registered their permissions before anything reads them. A config cache built before the
 list existed has no `types` key; the provider then registers `PagesType` alone instead of nothing. Publishing and
-restoring need `edit`; trashing and deleting for good need `delete`. The `editor` role gets the four `pages.*`
+restoring need `edit`; trashing and deleting for good need `delete`. The `editor` role gets the four `pages.*` and the four `posts.*`
 permissions by default; `admin` gets them through `*`.
 
 ### Adding a type
@@ -669,7 +670,9 @@ without (`LookUpContent`, above); either way the hidden record's 404 cannot be t
 
 **Controller** (`App\Http\Controllers\ContentController`): null → 404; a redirect → 301 with `Cache-Control: no-cache`
 (the old path may be taken by a new record later, so a browser must not keep it for good); else the view `site.entry`
-with the record, the body through `BodyRenderer::render()`, `preview` and `editUrl` (the admin edit page, only for a
+with the record, the body through `BodyRenderer::render()`, `galleries` (the images of the type's `Gallery`
+fields by field name, in the picked order; one query, made only for a record whose gallery holds something; the view
+prints each as a grid under the body, every image linking to its file), `preview` and `editUrl` (the admin edit page, only for a
 viewer with the type's `edit`). A preview answers `Cache-Control: no-store`.
 
 **Alternates.** The controller passes `ContentLocales::useAlternates()` the addresses of the group's records that are
@@ -778,6 +781,10 @@ refusals (a language the group has, in the trash too, one not on the site, a pag
 trashed record); choosing an existing record (candidates, search, the emptied group gone, `updated_at` kept), a chosen
 record leaving its former translations, the refused links, the permissions and 404s; unlinking a translation and the
 record itself (the copy of the shared values, the others staying together) and its refusals.
+`tests/Feature/Content/GalleryFieldTest.php`: a gallery field on the public page (the picked order, images only) and no
+media query for an empty one, with the fixture type. The site's own types need no tests: `Tests\TestCase` runs every
+test with the pages type alone, whatever `config/content.php` lists (and drops those types' permissions from the role
+defaults), so adding a type never changes a test's result; a test that needs another type registers a fixture.
 `tests/Feature/Console/CheckContentAddressesTest.php`: `content:check` passing, and listing the pages at and under
 another type's base.
 `tests/Feature/Console/MakeContentTypeTest.php`: the generator on copies of the project's own config and language

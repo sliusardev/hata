@@ -10,6 +10,7 @@ return [
         'settings' => 'Site settings',
         'maintenance' => 'Maintenance',
         'pages' => 'Pages',
+        'posts' => 'Posts',
     ],
 
     'items' => [
@@ -45,6 +46,12 @@ return [
             'create' => 'Create pages',
             'edit' => 'Edit and publish pages',
             'delete' => 'Move pages to the trash and delete them',
+        ],
+        'posts' => [
+            'view' => 'View posts',
+            'create' => 'Create posts',
+            'edit' => 'Edit and publish posts',
+            'delete' => 'Move posts to the trash and delete them',
         ],
     ],
 

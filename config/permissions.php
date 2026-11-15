@@ -41,7 +41,7 @@ return [
 
     'roles' => [
         'admin' => ['*'],
-        'editor' => ['admin.access', 'media.view', 'media.upload', 'media.edit', 'media.delete', 'pages.view', 'pages.create', 'pages.edit', 'pages.delete'],
+        'editor' => ['admin.access', 'media.view', 'media.upload', 'media.edit', 'media.delete', 'pages.view', 'pages.create', 'pages.edit', 'pages.delete', 'posts.view', 'posts.create', 'posts.edit', 'posts.delete'],
         'author' => ['admin.access'],
     ],
 
