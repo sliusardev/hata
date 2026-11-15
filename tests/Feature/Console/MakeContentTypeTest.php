@@ -164,7 +164,11 @@ test('it keeps the imports of the config in sorted order', function () {
 
     $config = File::get($this->root.'/config/content.php');
 
-    expect($config)->toContain("use App\\Support\\Content\\Types\\ArticlesType;\nuse App\\Support\\Content\\Types\\PagesType;\n")
+    preg_match_all('/^use [^;]+;$/m', $config, $imports);
+    $sorted = $imports[0];
+    sort($sorted);
+
+    expect($imports[0])->toBe($sorted)->toContain('use App\\Support\\Content\\Types\\ArticlesType;')
         ->and((require $this->root.'/config/content.php')['types'])->toBe([...(require config_path('content.php'))['types'], 'App\Support\Content\Types\ArticlesType']);
 });
 

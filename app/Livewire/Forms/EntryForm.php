@@ -5,6 +5,7 @@ namespace App\Livewire\Forms;
 use App\Enums\EntryStatus;
 use App\Models\Entry;
 use App\Support\Content\ContentType;
+use App\Support\Content\ContentTypes;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Date;
 use Livewire\Form;
@@ -51,6 +52,20 @@ class EntryForm extends Form
     public array $fields = [];
 
     /**
+     * The ids of the terms the record is filed under (strings, as the checkboxes send them).
+     *
+     * @var list<string>
+     */
+    public array $terms = [];
+
+    /**
+     * Names of terms to make with the record, by taxonomy key (tags typed in the form).
+     *
+     * @var array<string, list<string>>
+     */
+    public array $newTerms = [];
+
+    /**
      * A stored date as the `datetime-local` input takes it, in the site's display timezone; empty for none.
      */
     public function localDate(?DateTimeInterface $date): string
@@ -69,6 +84,7 @@ class EntryForm extends Form
             'status' => $entry->status->value,
             'published_at' => $entry->published_at,
             'excerpt' => $entry->excerpt,
+            'terms' => app(ContentTypes::class)->taxonomiesOf($entry->type) === [] ? [] : $entry->terms()->pluck('entries.id')->all(),
             'seo_title' => $entry->seo_title,
             'seo_description' => $entry->seo_description,
             'body' => $entry->body,
@@ -99,6 +115,8 @@ class EntryForm extends Form
         $this->seo_description = (string) ($data['seo_description'] ?? '');
         $this->body = (string) ($data['body'] ?? '');
         $this->fields = is_array($data['fields'] ?? null) ? $data['fields'] : [];
+        $this->terms = array_values(array_map(strval(...), is_array($data['terms'] ?? null) ? $data['terms'] : []));
+        $this->newTerms = [];
     }
 
     /**
@@ -131,6 +149,8 @@ class EntryForm extends Form
             'seo_description' => $this->seo_description,
             'body' => $this->body,
             'fields' => $this->fields,
+            'terms' => $this->terms,
+            'new_terms' => $this->newTerms,
         ];
 
         if ($type->hierarchical()) {

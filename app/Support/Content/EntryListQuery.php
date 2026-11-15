@@ -7,13 +7,15 @@ use App\Models\Entry;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
  * The records of one type as the admin list shows them, in one language or in all the site's: a tab, a search and a sort. The query count does not depend on the number of rows: the image, the author and the group's
- * records are eager loaded with only the columns a row shows.
+ * records are eager loaded with only the columns a row shows; a type with taxonomies loads the rows' terms (one query more), a
+ * taxonomy the number of records under each term (a subquery).
  */
 final class EntryListQuery
 {
@@ -32,6 +34,11 @@ final class EntryListQuery
     private string $tab = 'all';
 
     private ?string $search = null;
+
+    /**
+     * @var list<int>
+     */
+    private array $terms = [];
 
     private string $sort;
 
@@ -86,6 +93,18 @@ final class EntryListQuery
     }
 
     /**
+     * Only records filed under every one of these terms (one per taxonomy filter).
+     *
+     * @param  array<array-key, int>  $ids
+     */
+    public function terms(array $ids): self
+    {
+        $this->terms = array_values(array_filter($ids, fn (int $id): bool => $id > 0));
+
+        return $this;
+    }
+
+    /**
      * `tree` is path order and only applies to a hierarchical type; an unknown sort keeps the type's default.
      */
     public function sort(string $column, string $direction): self
@@ -122,6 +141,23 @@ final class EntryListQuery
                 'groupEntries' => fn (HasMany $entries) => $entries->select(['id', 'entry_group_id', 'locale', 'title', 'status', 'published_at']),
             ])
             ->search($this->search);
+
+        $registry = app(ContentTypes::class);
+
+        if ($this->type->isTaxonomy()) {
+            // A term's row says how many records are filed under it.
+            $query->withCount('termRecords');
+        } elseif ($registry->taxonomiesOf($this->type->key()) !== []) {
+            $query->with(['terms' => fn (BelongsToMany $terms) => $terms->select(['entries.id', 'entries.type', 'entries.title'])]);
+        }
+
+        foreach ($this->terms as $term) {
+            $query->whereExists(fn (QueryBuilder $filed) => $filed
+                ->selectRaw('1')
+                ->from('entry_terms')
+                ->whereColumn('entry_terms.entry_id', 'entries.id')
+                ->where('entry_terms.term_id', $term));
+        }
 
         $this->inLanguages($query);
 

@@ -23,10 +23,23 @@
                     </flux:sidebar.group>
 
                     @php
-                        $contentTypes = array_filter(
-                            app(App\Support\Content\ContentTypes::class)->active(),
-                            fn ($contentType) => auth()->user()->can('viewAny', [App\Models\Entry::class, $contentType->key()]),
-                        );
+                        // Each type, followed by the taxonomies that classify it (a taxonomy shows once, under its first type).
+                        $registry = app(App\Support\Content\ContentTypes::class);
+                        $contentTypes = [];
+
+                        foreach ($registry->active() as $contentType) {
+                            if ($contentType->isTaxonomy()) {
+                                continue;
+                            }
+
+                            $contentTypes[$contentType->key()] = $contentType;
+
+                            foreach ($registry->taxonomiesOf($contentType->key()) as $taxonomy) {
+                                $contentTypes[$taxonomy->key()] ??= $taxonomy;
+                            }
+                        }
+
+                        $contentTypes = array_filter($contentTypes, fn ($contentType) => auth()->user()->can('viewAny', [App\Models\Entry::class, $contentType->key()]));
                     @endphp
                     @if ($contentTypes !== [] || auth()->user()->can('media.view'))
                         <flux:sidebar.group :heading="__('navigation.content')" :class="$groupClasses">

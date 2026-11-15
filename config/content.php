@@ -1,7 +1,9 @@
 <?php
 
+use App\Support\Content\Types\CategoriesType;
 use App\Support\Content\Types\PagesType;
 use App\Support\Content\Types\PostsType;
+use App\Support\Content\Types\TagsType;
 
 return [
 
@@ -20,6 +22,8 @@ return [
     'types' => [
         PagesType::class,
         PostsType::class,
+        CategoriesType::class,
+        TagsType::class,
     ],
 
     /*

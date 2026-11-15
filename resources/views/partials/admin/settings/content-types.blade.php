@@ -27,6 +27,9 @@
                         @endif
                     </div>
                     <flux:text size="sm">{{ $type->description() }}</flux:text>
+                    @if ($row['taxonomies'] !== [])
+                        <flux:text size="sm" class="mt-0.5" data-test="content-type-taxonomies-{{ $type->key() }}">{{ __('site_settings.content.with', ['names' => implode(', ', $row['taxonomies'])]) }}</flux:text>
+                    @endif
                 </div>
 
                 <div class="w-32 text-sm text-zinc-500 tabular-nums max-sm:hidden dark:text-zinc-400">{{ trans_choice('site_settings.content.records', $row['count']) }}</div>

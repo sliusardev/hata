@@ -115,7 +115,7 @@ new class extends EntryFormPage {
      */
     private function publishByDefault(): void
     {
-        if ($this->abilities['edit']) {
+        if ($this->abilities['edit'] || $this->contentType->isTaxonomy()) {
             $this->form->status = App\Enums\EntryStatus::Published->value;
         }
     }

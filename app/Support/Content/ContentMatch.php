@@ -6,7 +6,7 @@ use App\Models\Entry;
 
 /**
  * What a public address resolved to: a record to show (`preview` when it is not public and only an editor sees it),
- * or the address it has moved to.
+ * the list of a type's public records (`listOf`), or the address it has moved to.
  */
 final readonly class ContentMatch
 {
@@ -14,6 +14,7 @@ final readonly class ContentMatch
         public ?Entry $entry,
         public bool $preview,
         public ?string $redirectTo,
+        public ?ContentType $listOf = null,
     ) {}
 
     public static function entry(Entry $entry, bool $preview = false): self
@@ -24,5 +25,10 @@ final readonly class ContentMatch
     public static function redirect(string $url): self
     {
         return new self(null, false, $url);
+    }
+
+    public static function list(ContentType $type): self
+    {
+        return new self(null, false, null, $type);
     }
 }

@@ -11,6 +11,8 @@ return [
         'maintenance' => 'Maintenance',
         'pages' => 'Pages',
         'posts' => 'Posts',
+        'categories' => 'Categories',
+        'tags' => 'Tags',
     ],
 
     'items' => [
@@ -52,6 +54,18 @@ return [
             'create' => 'Create posts',
             'edit' => 'Edit and publish posts',
             'delete' => 'Move posts to the trash and delete them',
+        ],
+        'categories' => [
+            'view' => 'View categories',
+            'create' => 'Create categories',
+            'edit' => 'Edit categories',
+            'delete' => 'Move categories to the trash and delete them',
+        ],
+        'tags' => [
+            'view' => 'View tags',
+            'create' => 'Create tags',
+            'edit' => 'Edit tags',
+            'delete' => 'Move tags to the trash and delete them',
         ],
     ],
 

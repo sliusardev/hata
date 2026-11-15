@@ -19,6 +19,7 @@ return [
         'list_description' => 'A type that is off disappears from the admin menu and from the site. Its records, translations and permissions are kept: switch it on again and everything is back.',
         'records' => ':count record|:count records',
         'switch' => 'Switch on or off: :type',
+        'with' => 'With it: :names',
         'badges' => [
             'required' => 'Always on',
             'off' => 'Off',

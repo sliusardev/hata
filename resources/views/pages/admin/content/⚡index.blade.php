@@ -15,7 +15,10 @@ new class extends EntryListPage {
     $abilities = $this->abilities;
     $inTrash = $tab === 'trash';
     // Only the full tree is indented: a status tab or a filter can hide a row's parent.
-    $indent = $this->listQuery->isTree() && $tab === 'all' && trim($search) === '';
+    $indent = $this->listQuery->isTree() && $tab === 'all' && trim($search) === '' && $termFilter === [];
+    // A term is always published and has no author: its list has no status tabs and columns, and counts its records.
+    $publishes = $contentType->supports('publication');
+    $taxonomies = $this->taxonomies;
     $showTranslations = $this->multilingual && ! $inTrash;
     $activeCodes = app(App\Support\Localization\ContentLocales::class)->activeCodes();
     $timezone = config('admin.timezone');
@@ -51,6 +54,7 @@ new class extends EntryListPage {
     <div class="border-b border-zinc-200 dark:border-zinc-700">
     <nav class="-mb-px flex gap-6 overflow-x-auto text-sm" aria-label="{{ $contentType->pluralLabel() }}">
         @foreach (App\Support\Content\EntryListQuery::TABS as $tabKey)
+            @continue(! $publishes && ! in_array($tabKey, ['all', 'trash'], true))
             <button
                 type="button"
                 wire:key="tab-{{ $tabKey }}"
@@ -95,6 +99,16 @@ new class extends EntryListPage {
                 @endforeach
             </flux:select>
         @endif
+
+        {{-- A filter per taxonomy of the type; chosen together they narrow the list to records under all of them. --}}
+        @foreach ($this->termFilterOptions as $taxonomyKey => $options)
+            <flux:select wire:model.live="termFilter.{{ $taxonomyKey }}" :aria-label="$taxonomies[$taxonomyKey]->pluralLabel()" class="sm:max-w-52" wire:key="term-filter-{{ $taxonomyKey }}" data-test="list-term-{{ $taxonomyKey }}">
+                <flux:select.option value="">{{ __('content.list.term_all', ['taxonomy' => $taxonomies[$taxonomyKey]->pluralLabel()]) }}</flux:select.option>
+                @foreach ($options as $option)
+                    <flux:select.option :value="(string) $option['id']" wire:key="term-option-{{ $option['id'] }}">{{ $option['label'] }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        @endforeach
 
         @if ($inTrash && $abilities['delete'] && $counts['trash'] > 0)
             <flux:button variant="danger" size="sm" icon="trash" x-on:click="$wire.confirmBulk('empty')" class="sm:ms-auto" data-test="empty-trash">
@@ -141,10 +155,18 @@ new class extends EntryListPage {
                     @else
                         <flux:table.column sortable :sorted="$this->sortColumn() === 'title'" :direction="$this->sortDirection()" wire:click="sort('title')">{{ __('content.list.columns.title') }}</flux:table.column>
                     @endif
-                    @unless ($inTrash)
+                    @if ($taxonomies !== [])
+                        <flux:table.column class="max-lg:hidden">{{ implode(' / ', array_map(fn ($taxonomy) => $taxonomy->pluralLabel(), $taxonomies)) }}</flux:table.column>
+                    @endif
+                    @if ($contentType->isTaxonomy())
+                        <flux:table.column class="max-md:hidden">{{ __('content.list.columns.records') }}</flux:table.column>
+                    @endif
+                    @if (! $inTrash && $publishes)
                         <flux:table.column class="max-md:hidden">{{ __('content.list.columns.status') }}</flux:table.column>
-                    @endunless
-                    <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.author') }}</flux:table.column>
+                    @endif
+                    @if ($contentType->supports('author'))
+                        <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.author') }}</flux:table.column>
+                    @endif
                     @if ($inTrash)
                         <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.removal') }}</flux:table.column>
                     @else
@@ -192,9 +214,9 @@ new class extends EntryListPage {
                                             @endif
                                             <a href="{{ $editUrl }}" wire:navigate class="truncate font-medium text-zinc-900 hover:underline dark:text-white" data-test="edit-entry-link-{{ $entry->id }}">{{ $entry->title }}</a>
                                             {{-- On a narrow screen the Status column is hidden, so the state sits by the title. --}}
-                                            @unless ($inTrash)
+                                            @if (! $inTrash && $publishes)
                                                 <flux:badge size="sm" :color="$stateColor" class="shrink-0 md:hidden">{{ $stateLabel }}</flux:badge>
-                                            @endunless
+                                            @endif
                                         </div>
                                         <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $entry->url(false) }}</div>
                                         @if ($showTranslations)
@@ -217,13 +239,31 @@ new class extends EntryListPage {
                                 </div>
                             </flux:table.cell>
 
-                            @unless ($inTrash)
+                            @if ($taxonomies !== [])
+                                <flux:table.cell class="max-lg:hidden">
+                                    <div class="max-w-56 text-sm text-zinc-600 dark:text-zinc-300" data-test="entry-terms-{{ $entry->id }}">
+                                        @forelse ($entry->terms->groupBy('type') as $termType => $terms)
+                                            <div class="truncate" title="{{ $terms->pluck('title')->implode(', ') }}">{{ $terms->pluck('title')->implode(', ') }}</div>
+                                        @empty
+                                            <span class="text-zinc-400">—</span>
+                                        @endforelse
+                                    </div>
+                                </flux:table.cell>
+                            @endif
+
+                            @if ($contentType->isTaxonomy())
+                                <flux:table.cell class="tabular-nums max-md:hidden" data-test="term-records-{{ $entry->id }}">{{ $entry->term_records_count }}</flux:table.cell>
+                            @endif
+
+                            @if (! $inTrash && $publishes)
                                 <flux:table.cell class="max-md:hidden">
                                     <flux:badge size="sm" :color="$stateColor" data-test="entry-state-{{ $entry->id }}" data-state="{{ strtolower($state->name) }}">{{ $stateLabel }}</flux:badge>
                                 </flux:table.cell>
-                            @endunless
+                            @endif
 
-                            <flux:table.cell class="max-lg:hidden">{{ $entry->author?->name ?? '—' }}</flux:table.cell>
+                            @if ($contentType->supports('author'))
+                                <flux:table.cell class="max-lg:hidden">{{ $entry->author?->name ?? '—' }}</flux:table.cell>
+                            @endif
 
                             <flux:table.cell class="max-lg:hidden">
                                 @if ($inTrash)
@@ -246,7 +286,7 @@ new class extends EntryListPage {
                                         @if ($abilities['edit'])
                                             <flux:menu.item icon="pencil-square" :href="$editUrl" wire:navigate data-test="edit-entry-menu-{{ $entry->id }}">{{ __('common.actions.edit') }}</flux:menu.item>
                                         @endif
-                                        @if ($abilities['edit'])
+                                        @if ($abilities['edit'] && $publishes)
                                             @if ($state !== App\Enums\EntryState::Published)
                                                 <flux:menu.item icon="eye" wire:click="setStatus({{ $entry->id }}, 'published')" data-test="publish-entry-{{ $entry->id }}">{{ __('content.list.actions.publish') }}</flux:menu.item>
                                             @endif
@@ -288,7 +328,7 @@ new class extends EntryListPage {
                             <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('delete')" data-test="bulk-delete">{{ __('content.list.actions.delete') }}</flux:button>
                         @endif
                     @else
-                        @if ($abilities['edit'])
+                        @if ($abilities['edit'] && $publishes)
                             <flux:button size="sm" icon="eye" x-on:click="$wire.setStatusSelected('published')" data-test="bulk-publish">{{ __('content.list.actions.publish') }}</flux:button>
                             <flux:button size="sm" icon="eye-slash" x-on:click="$wire.setStatusSelected('draft')" data-test="bulk-unpublish">{{ __('content.list.actions.unpublish') }}</flux:button>
                         @endif

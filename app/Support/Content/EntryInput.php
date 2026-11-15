@@ -33,6 +33,8 @@ use Illuminate\Validation\ValidationException;
  *     seo_description: string|null,
  *     body: string|null,
  *     fields: array<string, mixed>,
+ *     terms: list<int>,
+ *     new_terms: array<string, list<string>>,
  * }
  */
 final class EntryInput
@@ -80,7 +82,34 @@ final class EntryInput
             'seo_description' => self::text($validated['seo_description'] ?? null),
             'body' => is_string($validated['body'] ?? null) ? $validated['body'] : null,
             'fields' => $fields,
+            'terms' => array_values(array_unique(array_map(intval(...), (array) ($validated['terms'] ?? [])))),
+            'new_terms' => self::newTerms($type, $validated['new_terms'] ?? []),
         ];
+    }
+
+    /**
+     * The names of terms to create with the record, by taxonomy: only for the flat taxonomies of the type (tags),
+     * trimmed, without empty ones and repeats.
+     *
+     * @return array<string, list<string>>
+     */
+    private static function newTerms(ContentType $type, mixed $given): array
+    {
+        $names = [];
+
+        foreach (app(ContentTypes::class)->taxonomiesOf($type->key()) as $key => $taxonomy) {
+            if ($taxonomy->hierarchical() || ! is_array($given) || ! is_array($given[$key] ?? null)) {
+                continue;
+            }
+
+            $own = array_values(array_unique(array_filter(array_map(fn (mixed $name): string => trim((string) $name), $given[$key]), fn (string $name): bool => $name !== '')));
+
+            if ($own !== []) {
+                $names[$key] = $own;
+            }
+        }
+
+        return $names;
     }
 
     /**
@@ -143,6 +172,28 @@ final class EntryInput
                 }
             }],
             'fields' => ['nullable', 'array'],
+            // Terms: live records of the type's taxonomies in the record's language.
+            'terms' => ['nullable', 'array', 'max:200', function (string $attribute, mixed $value, Closure $fail) use ($type, $locale): void {
+                $ids = array_values(array_unique(array_map(intval(...), (array) $value)));
+
+                if ($ids === []) {
+                    return;
+                }
+
+                $found = Entry::query()
+                    ->whereIn('type', array_keys(app(ContentTypes::class)->taxonomiesOf($type->key())))
+                    ->where('locale', $locale)
+                    ->whereKey($ids)
+                    ->count();
+
+                if ($found !== count($ids)) {
+                    $fail('content.entry.terms_invalid')->translate();
+                }
+            }],
+            'terms.*' => ['integer'],
+            'new_terms' => ['nullable', 'array'],
+            'new_terms.*' => ['array', 'max:20'],
+            'new_terms.*.*' => ['string', 'max:100'],
         ];
 
         foreach ($withSharedFields ? $type->fields() : $type->localFields() as $field) {

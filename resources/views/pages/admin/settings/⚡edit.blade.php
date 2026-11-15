@@ -250,7 +250,7 @@ new #[Title('site_settings.title')] class extends Component {
      * Every registered content type, whether it is on and how many records it holds (the trash included). One
      * grouped query, only for the Content types tab.
      *
-     * @return list<array{type: App\Support\Content\ContentType, active: bool, count: int}>
+     * @return list<array{type: App\Support\Content\ContentType, active: bool, count: int, taxonomies: list<string>}>
      */
     #[Computed]
     public function contentTypeRows(): array
@@ -258,11 +258,13 @@ new #[Title('site_settings.title')] class extends Component {
         $types = app(ContentTypes::class);
         $counts = Entry::withTrashed()->toBase()->selectRaw('type, count(*) as total')->groupBy('type')->pluck('total', 'type');
 
+        // A taxonomy has no row: it goes on and off with the type it classifies, and is named under it.
         return array_values(array_map(fn ($type): array => [
             'type' => $type,
             'active' => $types->isActive($type->key()),
             'count' => (int) ($counts[$type->key()] ?? 0),
-        ], $types->all()));
+            'taxonomies' => array_values(array_map(fn ($taxonomy): string => $taxonomy->pluralLabel(), $types->taxonomiesOf($type->key()))),
+        ], array_filter($types->all(), fn ($type): bool => ! $type->isTaxonomy())));
     }
 
     /**

@@ -144,12 +144,12 @@ describe('pages', function () {
         $this->get('/about/')->assertOk();
     });
 
-    it('opens a record under its type\'s base, and leaves the bare base to the lists of a later part', function () {
+    it('opens a record under its type\'s base, and the list of the type at the bare base', function () {
         app(ContentTypes::class)->register(new ProductsType);
         Entry::factory()->published()->create(['type' => 'products', 'locale' => 'uk', 'title' => 'Чашка', 'slug' => 'mug', 'path' => 'mug']);
 
         $this->get('/products/mug')->assertOk()->assertSeeText('Чашка');
-        $this->get('/products')->assertNotFound();
+        $this->get('/products')->assertOk()->assertSeeText('Чашка')->assertSee('href="'.url('/products/mug').'"', escape: false);
         $this->get('/mug')->assertNotFound();
     });
 

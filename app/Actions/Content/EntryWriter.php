@@ -9,6 +9,7 @@ use App\Models\EntryRedirect;
 use App\Models\MediaUsage;
 use App\Support\Content\BodySanitizer;
 use App\Support\Content\ContentType;
+use App\Support\Content\ContentTypes;
 use App\Support\Content\EntryInput;
 use App\Support\Content\EntryPaths;
 use App\Support\Content\Fields\Field;
@@ -72,6 +73,67 @@ class EntryWriter
 
         $sharedWritten = $this->saveShared($group, $type, $input['fields']);
         $this->syncUsages($entry, $group, $type, $sharedWritten);
+        $this->syncTerms($entry, $type, $input['terms'], $input['new_terms']);
+    }
+
+    /**
+     * Files the record under the given terms and under those named in `$new`, which are found by name in the
+     * record's language or made (a tag typed in the form). No query for a type without taxonomies.
+     *
+     * @param  list<int>  $ids
+     * @param  array<string, list<string>>  $new
+     */
+    private function syncTerms(Entry $entry, ContentType $type, array $ids, array $new): void
+    {
+        $taxonomies = app(ContentTypes::class)->taxonomiesOf($type->key());
+
+        if ($taxonomies === []) {
+            return;
+        }
+
+        foreach ($new as $key => $names) {
+            foreach ($names as $name) {
+                $ids[] = $this->termNamed($taxonomies[$key], $entry->locale, $name)->id;
+            }
+        }
+
+        $entry->terms()->sync(array_values(array_unique($ids)));
+    }
+
+    /**
+     * The live term of the taxonomy with that name in the language (whatever the case), else a new one: published,
+     * in a group of its own, with a free slug.
+     */
+    private function termNamed(ContentType $taxonomy, string $locale, string $name): Entry
+    {
+        $wanted = mb_strtolower($name);
+
+        $existing = Entry::query()
+            ->ofType($taxonomy->key())
+            ->where('locale', $locale)
+            ->search($name)
+            ->get()
+            ->first(fn (Entry $term): bool => mb_strtolower($term->title) === $wanted);
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $slug = $this->paths->suggest($taxonomy, $locale, null, $name);
+        $slug = $slug !== '' ? $slug : $this->paths->suggest($taxonomy, $locale, null, $taxonomy->key());
+
+        $group = EntryGroup::query()->create(['type' => $taxonomy->key(), 'shared' => null]);
+
+        return Entry::query()->create([
+            'entry_group_id' => $group->id,
+            'type' => $taxonomy->key(),
+            'locale' => $locale,
+            'title' => $name,
+            'slug' => $slug,
+            'path' => $this->paths->pathFor($taxonomy, null, $slug),
+            'status' => EntryStatus::Published,
+            'published_at' => now(),
+        ]);
     }
 
     /**

@@ -55,7 +55,7 @@ class LookUpContent
 
         if (! self::mayBeSignedIn($request)) {
             // Only public content can be shown to this request: anything else is the same 404 as a miss.
-            abort_if($lookup === null || ! $lookup->entry->isPublic(), 404);
+            abort_if($lookup === null || ! $lookup->isPublic(), 404);
         }
 
         // Set for a miss too (null), so the controller answers it without looking the address up again.

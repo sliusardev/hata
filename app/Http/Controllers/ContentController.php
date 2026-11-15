@@ -7,8 +7,13 @@ use App\Models\Media;
 use App\Support\Content\BodyRenderer;
 use App\Support\Content\ContentLookup;
 use App\Support\Content\ContentRouter;
+use App\Support\Content\ContentType;
+use App\Support\Content\ContentTypes;
 use App\Support\Content\Fields\Gallery;
 use App\Support\Localization\ContentLocales;
+use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,7 +24,13 @@ use Illuminate\Http\Response;
  */
 class ContentController extends Controller
 {
+    /**
+     * How many records a list page shows.
+     */
+    public const int PER_PAGE = 12;
+
     public function __construct(
+        private readonly ContentTypes $types,
         private readonly ContentRouter $router,
         private readonly ContentLocales $locales,
         private readonly BodyRenderer $renderer,
@@ -42,6 +53,10 @@ class ContentController extends Controller
 
         abort_if($match === null, 404);
 
+        if ($match->listOf !== null) {
+            return $this->listOf($match->listOf);
+        }
+
         if ($match->redirectTo !== null) {
             // Not kept for good: the old path may be taken by a new record later.
             return redirect($match->redirectTo, 301)->header('Cache-Control', 'no-cache');
@@ -59,8 +74,12 @@ class ContentController extends Controller
 
         $this->locales->useAlternates($this->alternates($entry));
 
-        $response = response()->view('site.entry', [
+        $type = $entry->type();
+
+        $response = response()->view($type->isTaxonomy() ? 'site.term' : 'site.entry', [
             'entry' => $entry,
+            'records' => $type->isTaxonomy() ? $this->filedUnder($entry) : null,
+            'terms' => $this->termsOf($entry),
             'body' => $this->renderer->render($entry->body),
             'galleries' => $this->galleries($entry),
             'preview' => $preview,
@@ -71,6 +90,81 @@ class ContentController extends Controller
         ]);
 
         return $preview ? $response->header('Cache-Control', 'no-store') : $response;
+    }
+
+    /**
+     * The list of a type's public records in the current language, newest first, a page at a time. Two queries, a
+     * third for the rows' images.
+     */
+    private function listOf(ContentType $type): Response
+    {
+        $locale = $this->locales->current()->code;
+        $alternates = [];
+
+        foreach ($this->locales->active() as $language) {
+            $alternates[$language->code] = $this->locales->route('content', ['path' => trim((string) $type->base($language->code), '/')], $language->code);
+        }
+
+        $this->locales->useAlternates($alternates);
+
+        return response()->view('site.list', [
+            'type' => $type,
+            'records' => $this->page(Entry::query()->ofType($type->key())->where('locale', $locale)),
+        ]);
+    }
+
+    /**
+     * The public records filed under a term, newest first, a page at a time: records of the types the taxonomy
+     * classifies that are switched on, in the term's language.
+     *
+     * @return Paginator<int, Entry>
+     */
+    private function filedUnder(Entry $term): Paginator
+    {
+        $types = array_values(array_filter($term->type()->taxonomyOf(), fn (string $key): bool => $this->types->isActive($key)));
+
+        return $this->page($term->termRecords()->getQuery()->whereIn('entries.type', $types)->select('entries.*'));
+    }
+
+    /**
+     * One page of public records, newest first, with only what a card shows and its image. Prev/next links only
+     * (no count query).
+     *
+     * @param  Builder<Entry>  $query
+     * @return Paginator<int, Entry>
+     */
+    private function page(Builder $query): Paginator
+    {
+        return $query
+            ->public()
+            ->with(['image' => fn (BelongsTo $image) => $image->select(['id', 'key', 'name', 'disk', 'path', 'thumb_path', 'kind', 'mime', 'version', 'width', 'height', 'alt'])])
+            ->orderByDesc('entries.published_at')
+            ->orderByDesc('entries.id')
+            ->simplePaginate(self::PER_PAGE, ['entries.id', 'entries.type', 'entries.locale', 'entries.title', 'entries.path', 'entries.excerpt', 'entries.image_id', 'entries.published_at'])
+            ->withQueryString();
+    }
+
+    /**
+     * The live terms a record is filed under, by taxonomy key, for its page. One query, only for a type with
+     * taxonomies that are on.
+     *
+     * @return array<string, list<Entry>>
+     */
+    private function termsOf(Entry $entry): array
+    {
+        $taxonomies = array_filter($this->types->taxonomiesOf($entry->type), fn (ContentType $taxonomy): bool => $this->types->isActive($taxonomy->key()));
+
+        if ($taxonomies === []) {
+            return [];
+        }
+
+        $terms = [];
+
+        foreach ($entry->terms()->whereIn('entries.type', array_keys($taxonomies))->orderBy('entries.title')->get(['entries.id', 'entries.type', 'entries.locale', 'entries.title', 'entries.path']) as $term) {
+            $terms[$term->type][] = $term;
+        }
+
+        return $terms;
     }
 
     /**

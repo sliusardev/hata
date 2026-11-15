@@ -1,6 +1,6 @@
 {{--
     A content record on the public site: title, image and body. The type's own fields are not printed here.
-    Receives $entry (with its image loaded), $body (rendered), $galleries (field name => images), $preview, $languageOff (the page's language is switched off) and $editUrl (null without the type's edit).
+    Receives $entry (with its image loaded), $body (rendered), $galleries (field name => images), $terms (taxonomy key => the record's terms), $preview, $languageOff (the page's language is switched off) and $editUrl (null without the type's edit).
 --}}
 @extends('layouts.site', [
     'pageTitle' => $entry->documentTitle(),
@@ -53,6 +53,22 @@
 
         @if ($body->toHtml() !== '')
             <div class="rich-text-content mt-8">{{ $body }}</div>
+        @endif
+
+        {{-- The terms the record is filed under, by taxonomy, each linking to its page. --}}
+        @if ($terms !== [])
+            <dl class="mt-8 space-y-2 border-t border-zinc-200 pt-6 text-sm dark:border-zinc-700" data-test="entry-terms">
+                @foreach ($terms as $taxonomyKey => $taxonomyTerms)
+                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ $taxonomyTerms[0]->type()->pluralLabel() }}:</dt>
+                        <dd class="flex flex-wrap gap-1.5">
+                            @foreach ($taxonomyTerms as $term)
+                                <a href="{{ $term->url() }}" class="rounded-md bg-zinc-100 px-2 py-0.5 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $term->title }}</a>
+                            @endforeach
+                        </dd>
+                    </div>
+                @endforeach
+            </dl>
         @endif
 
         {{-- Gallery fields of the type: a grid of the images' thumbnails, each opening the full file. --}}

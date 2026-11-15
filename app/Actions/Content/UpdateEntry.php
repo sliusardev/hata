@@ -2,6 +2,7 @@
 
 namespace App\Actions\Content;
 
+use App\Enums\EntryStatus;
 use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
 use App\Models\EntryGroup;
@@ -51,6 +52,10 @@ class UpdateEntry
             $this->assertMayBecome($entry, $locale);
         }
 
+        if ($type->isTaxonomy()) {
+            $data = [...$data, 'status' => EntryStatus::Published->value];
+        }
+
         $input = EntryInput::validate($type, $locale, $entry, $data);
 
         try {
@@ -86,6 +91,8 @@ class UpdateEntry
             ! $this->locales->has($locale) => 'content.entry.locale_invalid',
             in_array($locale, EntryGroup::takenLocales($entry->entry_group_id), true) => 'content.entry.locale_taken',
             $entry->descendants()->withTrashed()->exists() => 'content.entry.locale_has_children',
+            // Records are filed under terms of their own language: a term in use stays in its language.
+            $entry->type()->isTaxonomy() && $entry->termRecords()->withTrashed()->exists() => 'content.entry.locale_has_records',
             default => null,
         };
 

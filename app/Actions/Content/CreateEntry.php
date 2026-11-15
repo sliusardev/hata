@@ -55,6 +55,11 @@ class CreateEntry
 
         $mayEdit = $actor->can($type->permission('edit'));
 
+        if ($type->isTaxonomy()) {
+            // A term has no draft: it is there or it is not.
+            $data = [...$data, 'status' => EntryStatus::Published->value, 'published_at' => null];
+        }
+
         if (! $mayEdit) {
             // Only those who may edit the type choose the author; anyone else writes as themselves.
             $data['author_id'] = null;
@@ -64,7 +69,12 @@ class CreateEntry
             $input = EntryInput::validate($type, $locale, null, $data, withSharedFields: $source === null || $mayEdit);
             $input['author_id'] ??= $actor->id;
 
-            if ($input['status'] === EntryStatus::Published && ! $mayEdit) {
+            if (! $mayEdit) {
+                // Making a tag on the fly changes a taxonomy the others share: for those who may edit only.
+                $input['new_terms'] = [];
+            }
+
+            if ($input['status'] === EntryStatus::Published && ! $mayEdit && ! $type->isTaxonomy()) {
                 throw ValidationException::withMessages(['status' => __('content.entry.publish_forbidden')]);
             }
 

@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -138,6 +139,57 @@ class Entry extends Model implements UsesMedia
         return $this->groupEntries
             ->reject(fn (Entry $entry): bool => $entry->getKey() === $this->getKey())
             ->values();
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     */
+    /**
+     * The terms the record is filed under: live records of the taxonomies of its type, in its language.
+     *
+     * @return BelongsToMany<Entry, $this>
+     */
+    public function terms(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'entry_terms', 'entry_id', 'term_id');
+    }
+
+    /**
+     * For a term: the records filed under it.
+     *
+     * @return BelongsToMany<Entry, $this>
+     */
+    public function termRecords(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'entry_terms', 'term_id', 'entry_id');
+    }
+
+    /**
+     * The ids of the translations, in a language, of the terms the record is filed under: what a translation of
+     * the record, or the record moved to that language, is filed under. Two queries, none without terms.
+     *
+     * @return list<int>
+     */
+    public function termIdsIn(string $locale): array
+    {
+        return self::translationIds($this->terms()->pluck('entries.id')->all(), $locale);
+    }
+
+    /**
+     * The ids of the live translations, in a language, of the given records. Two queries, none for no ids.
+     *
+     * @param  array<array-key, int|string>  $ids
+     * @return list<int>
+     */
+    public static function translationIds(array $ids, string $locale): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $groups = self::query()->whereKey($ids)->pluck('entry_group_id');
+
+        return $groups->isEmpty() ? [] : array_values(self::query()->where('locale', $locale)->whereIn('entry_group_id', $groups)->pluck('id')->all());
     }
 
     /**
@@ -323,6 +375,7 @@ class Entry extends Model implements UsesMedia
             'title' => $this->title,
             'slug' => '',
             'parent_id' => $parentId,
+            'terms' => app(ContentTypes::class)->taxonomiesOf($this->type) === [] ? [] : $this->termIdsIn($locale),
             'author_id' => $this->author_id,
             'image_id' => $this->image_id,
             'status' => EntryStatus::Draft->value,

@@ -43,7 +43,7 @@ class ContentRouter
      * What the address holds, whoever asks: the record at the path in any status (trashed ones left out), else the
      * live record an old path points to. Needs no session or user, so it runs before the session starts
      * (LookUpContent) and a miss costs nothing more. One query for a record, two for a redirect or a miss; none for
-     * an address that cannot be content.
+     * an address that cannot be content and for a type's bare base (its list).
      */
     public function lookup(string $locale, string $path): ?ContentLookup
     {
@@ -55,8 +55,15 @@ class ContentRouter
 
         [$types, $recordPath] = $this->candidates($locale, $path);
 
-        if ($types === [] || $recordPath === '') {
+        if ($types === []) {
             return null;
+        }
+
+        if ($recordPath === '') {
+            // A bare base is the list of the type's records; a taxonomy has none (its terms are the lists).
+            $type = $this->types->get($types[0]);
+
+            return $type->isTaxonomy() ? null : new ContentLookup(null, redirect: false, listOf: $type);
         }
 
         $entry = $this->first($types, Entry::query()->where('locale', $locale)->where('path', $recordPath));
@@ -87,6 +94,10 @@ class ContentRouter
 
         if ($lookup === null) {
             return null;
+        }
+
+        if ($lookup->listOf !== null || $lookup->entry === null) {
+            return $lookup->listOf !== null ? ContentMatch::list($lookup->listOf) : null;
         }
 
         $entry = $lookup->entry;

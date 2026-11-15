@@ -79,7 +79,22 @@ class ContentTypes
     {
         $type = $this->find($key);
 
-        return $type !== null && ($type->required() || ! in_array($key, $this->disabledKeys(), true));
+        if ($type === null) {
+            return false;
+        }
+
+        // A taxonomy has no switch of its own: it is on while a type it classifies is.
+        if ($type->isTaxonomy()) {
+            foreach ($type->taxonomyOf() as $classified) {
+                if ($this->isActive($classified)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return $type->required() || ! in_array($key, $this->disabledKeys(), true);
     }
 
     /**
@@ -108,6 +123,16 @@ class ContentTypes
                 $type->assertValidBase($locale);
             }
         }
+    }
+
+    /**
+     * The taxonomies whose terms a record of the type can be filed under, in registration order.
+     *
+     * @return array<string, ContentType>
+     */
+    public function taxonomiesOf(string $key): array
+    {
+        return array_filter($this->types, fn (ContentType $type): bool => in_array($key, $type->taxonomyOf(), true));
     }
 
     public function find(string $key): ?ContentType

@@ -49,6 +49,37 @@ list existed has no `types` key; the provider then registers `PagesType` alone i
 restoring need `edit`; trashing and deleting for good need `delete`. The `editor` role gets the four `pages.*` and the four `posts.*`
 permissions by default; `admin` gets them through `*`.
 
+### Taxonomies
+
+A taxonomy (categories, tags) is a content type whose `taxonomyOf()` names the types its records classify (decision
+70). Its records are **terms**: ordinary rows of `entries`, one per language with translations in a group, a slug, a
+path, redirects and the trash like any record, so it has the same list and form pages, the same four permissions
+(`categories.view|create|edit|delete`) and the same translation tools. What differs:
+
+- `isTaxonomy()` is true and `supports('body'|'image'|'publication'|'author')` is false: the form has the title, the
+  address, the description (`excerpt`), the parent (a tree taxonomy), the language card and the SEO card; the list has
+  no status tabs and columns and shows how many records are filed under each term (`withCount('termRecords')`).
+- A term is always published: `CreateEntry` and `UpdateEntry` force the status, and creating one needs only `create`.
+- It has no switch of its own: `ContentTypes::isActive()` is true while a type it classifies is on. The sidebar lists it
+  after that type, and Site settings → Content types names it under the type's row.
+- A record of a classified type is filed under terms **of its own language** (as in Polylang; the user's choice):
+  `entry_terms` (`entry_id`, `term_id`, both rows of `entries`, cascade on delete; primary key on both and an index
+  `term_id`, `entry_id`), `Entry::terms()` and, for a term, `Entry::termRecords()`. Trashed terms drop out of both
+  through the soft-delete scope and come back when restored; deleting one for good removes its links.
+- A term records are filed under keeps its language (`content.entry.locale_has_records`), since those records are
+  of that language.
+- `ContentTypes::taxonomiesOf($key)` gives a type's taxonomies. The kit has `CategoriesType` (tree, base
+  `categories`) and `TagsType` (flat, base `tags`), both of `posts`.
+
+**Saving terms.** The form data carries `terms` (ids) and `new_terms` (taxonomy key => names). `EntryInput` accepts
+only live records of the type's taxonomies in the record's language (else a `terms` error,
+`content.entry.terms_invalid`) and names for flat taxonomies only. `EntryWriter` syncs the links and, for each name,
+takes the live term with that name in the language (whatever the case) or makes one: published, in a group of its
+own, with a free slug. Names are dropped for an actor without the type's `edit`. No query for a type without
+taxonomies. A new translation (`copyFor()`) and a record moved to another language (`changeLocale()`) take the
+translations of the record's terms in that language (`Entry::translationIds()`, two queries); terms without one are
+left behind.
+
 ### Switching a type off
 
 A registered type can be switched off without removing it: Site settings → Content types (`SetContentTypeActive`,
@@ -409,6 +440,12 @@ then Media; the group shows when any of them or `media.view` holds.
 - Tabs All, Published, Drafts, Scheduled, Trash with counts. Published is `public()`; Drafts is `draft` or a published
   record without a date; Scheduled is published with a future date. The counts are of the type in the list's languages
   (the chosen one, or all of the site's), whatever the search and the filter.
+- A type with taxonomies shows the rows' terms in a column headed by the taxonomies' names (one eager-load query) and
+  a select per taxonomy that narrows the list to one of its terms; chosen together they keep the records filed under
+  all of them (`term[<taxonomy>]=<id>` in the query string, `termFilter` on the page; the options are the live terms
+  of the listed languages, one query for all the selects, at most 300; a value that is not a term of that taxonomy is
+  dropped, and changing the language clears them). A taxonomy whose `hasListFilter()` returns false has no select
+  (its terms still show in the column).
 - Filters: search (`search_index`, title and slug, case-insensitive with Cyrillic; the term is cut at 200 characters,
   `SEARCH_MAX`, in `mount()` and `updatedSearch()`, and the input has `maxlength="200"`); the list's language ("All languages", the
   default, then every language added to the site, a switched-off one marked "off"). The language select and the row's language codes
@@ -580,6 +617,13 @@ error instead of creating a record outside the group. Save calls
 - **Leaving with unsaved changes** (a link, Back, closing the tab): a dialog offers to stay, to leave without saving
   and, for a saved record, "Save and go": the form is saved and the page the editor was leaving for opens once the
   save has succeeded; a refused save keeps the editor on the form at the first error.
+- **Terms** (a type with taxonomies): a card per taxonomy that is on, after the language card
+  (`partials/admin/content/terms-card.blade.php`, the options from `termOptions`, one query for all of them in the
+  form's language, at most 1000). A tree taxonomy is a list of checkboxes indented by depth; a flat one shows the
+  chosen terms as chips with an input that filters the existing ones as you type, where Enter on a name that matches
+  none adds it as a new term made on Save (only with the type's `edit`). Both write `form.terms`; new names go to
+  `form.newTerms.<key>`. The card is keyed by the language, so a language change re-renders it with that language's
+  terms.
 - **Field partials**: `partials/admin/content/fields/<Field::view()>.blade.php` (`text`, `textarea`, `rich-text`,
   `number`, `date`, `toggle`, `select`, `media-file`, `gallery`) get `$field`, `$model` (`form.fields.<name>`),
   `$readOnly`, `$images` and `$locale`; the label is `labelText()`, errors sit under each field. `media-file` and
@@ -715,6 +759,15 @@ preview; that viewer's `hreflang` lists them as well, which no crawler sees. The
 `hreflang` partial prints them plus `x-default` (the default language's address, left out when the default language has
 no public translation), and nothing when there is only one. The switcher lists every active language.
 
+**Lists.** A type's bare base (`/posts`) is the list of its public records in the current language, newest first, 12
+a page with "Newer" and "Older" links and no count query (`ContentLookup::listOf`, `ContentMatch::list()`, the view
+`site.list`; no query in the lookup, then the records and their images: two queries). `hreflang` and the switcher
+lead to the list in every active language. A taxonomy's bare base is 404: its terms are the lists. A term's own
+address (`/categories/news`) shows its name, its description and the public records filed under it, of the
+classified types that are on, the same way (`site.term`; the term, its translations, the records and their images).
+Only the term's own records are listed, not those of the terms under it. A record's page lists the terms it is filed
+under, by taxonomy, each linking to its page (one query, only for a type with taxonomies).
+
 **Hidden addresses.** A type's base takes that first segment for itself, so a page stored at it (or under it) before
 the base existed cannot be reached. The form refuses such new slugs (`isReserved()`); `php artisan content:check`
 lists the stored ones (in every language, trashed ones included) and fails when there are any, and
@@ -820,6 +873,13 @@ record itself (the copy of the shared values, the others staying together) and i
 (pages, an unknown type, no `settings.edit`), a type that is off (404 in the admin and on the site, no menu item, its
 base still reserved, the media usage named without a link), and the settings tab (the list, the confirmation, the
 reload, no Save button, the permission).
+`tests/Feature/Content/TaxonomiesTest.php`: categories and tags as taxonomies of the posts (on and off with them), a
+category made on the trimmed form and published at once, a post filed under terms of its language with a typed tag
+made or found by name, a term of another language refused, no new tag without `edit`, the terms a translation and a
+moved record take, a term in use keeping its language, the list's terms column and filter and a taxonomy's record
+count, the sidebar order, the public list (order, language, pages, `hreflang`, 404 for a taxonomy's base), a term's
+page and the terms on a record's page, a trashed and a deleted term, everything gone while the type is off, and the
+query counts of a list and a term page.
 `tests/Feature/Content/GalleryFieldTest.php`: a gallery field on the public page (the picked order, images only) and no
 media query for an empty one, with the fixture type. The site's own types need no tests: `Tests\TestCase` runs every
 test with the pages type alone, whatever `config/content.php` lists (and drops those types' permissions from the role
@@ -870,5 +930,5 @@ gallery).
 
 ## Not included yet
 
-Lists of a type under its base, head tags beyond the title (description, canonical, Open Graph), `sitemap.xml` and the
+Head tags beyond the title (description, canonical, Open Graph), `sitemap.xml` and the
 home page setting (a later part).

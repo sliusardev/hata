@@ -39,7 +39,8 @@
         'editorModels' => collect($contentType->fields())->filter(fn ($field) => $field instanceof App\Support\Content\Fields\RichText)->map(fn ($field) => $field->name)->values()->all(),
         'leaveModal' => 'leave-entry-form',
         'savedLocale' => $entry?->locale,
-        'savedState' => $entry === null ? null : strtolower($state->name),
+        // A term is always published: its Save is plain "Save" from the start.
+        'savedState' => $contentType->isTaxonomy() ? 'published' : ($entry === null ? null : strtolower($state->name)),
         'localeRefused' => __('content.form.language.refused'),
         'canSaveAndLeave' => $entry !== null,
         'saveLabels' => [
@@ -128,7 +129,7 @@
             @enderror
         @endforeach
 
-        @if ($source !== null)
+        @if ($source !== null && ! $contentType->isTaxonomy())
             {{-- A translation opens as a copy of its source: say so, since Save may put it on the site. --}}
             <flux:callout icon="language" data-test="translation-callout">
                 <flux:callout.heading>{{ __('content.form.translation.title', ['title' => $source->title, 'language' => mb_strtoupper($source->locale)]) }}</flux:callout.heading>
@@ -183,7 +184,9 @@
                         @endunless
                     </flux:field>
 
-                    <x-admin.rich-text wire:model="form.body" :label="__('content.form.body')" :images="$images" :locale="$locale" :readonly="$readOnly" />
+                    @if ($contentType->supports('body'))
+                        <x-admin.rich-text wire:model="form.body" :label="__('content.form.body')" :images="$images" :locale="$locale" :readonly="$readOnly" />
+                    @endif
 
                     <flux:textarea wire:model="form.excerpt" :label="__('content.form.excerpt')" :description:trailing="__('content.form.excerpt_hint')" :disabled="$readOnly" rows="3" resize="vertical" maxlength="1000" />
                 </div>
@@ -220,6 +223,7 @@
 
             {{-- Right: publication and what the record shares --}}
             <div class="min-w-0 space-y-6">
+                @if ($contentType->supports('publication'))
                 <div class="{{ $card }} space-y-5 p-5">
                     <flux:heading level="2">{{ __('content.form.publication.title') }}</flux:heading>
 
@@ -242,6 +246,7 @@
                         @endunless
                     </div>
                 </div>
+                @endif
 
                 @if ($multilingual)
                     @php
@@ -314,6 +319,14 @@
                     </div>
                 @endif
 
+                @foreach ($this->taxonomies as $taxonomy)
+                    @include('partials.admin.content.terms-card', [
+                        'taxonomy' => $taxonomy,
+                        'options' => $this->termOptions[$taxonomy->key()] ?? [],
+                        'canCreate' => $abilities['edit'] && ! $readOnly,
+                    ])
+                @endforeach
+
                 @if ($sharedFields !== [])
                     <div class="{{ $card }}" data-test="shared-fields">
                         <div class="border-b border-zinc-200 px-5 py-3 dark:border-zinc-700">
@@ -333,6 +346,7 @@
                     </div>
                 @endif
 
+                @if ($contentType->supports('image'))
                 <div class="{{ $card }} space-y-3 p-5">
                     <flux:heading level="2">{{ __('content.form.image.title') }}</flux:heading>
                     @if ($readOnly)
@@ -343,7 +357,9 @@
                     @endif
                     <flux:text class="text-xs">{{ __('content.form.image.hint') }}</flux:text>
                 </div>
+                @endif
 
+                @if ($contentType->hierarchical() || $contentType->supports('author'))
                 <div class="{{ $card }} space-y-5 p-5">
                     <flux:heading level="2">{{ __('content.form.attributes') }}</flux:heading>
 
@@ -356,7 +372,8 @@
                         </flux:select>
                     @endif
 
-                    @if ($abilities['edit'] && ! $readOnly)
+                    @if (! $contentType->supports('author'))
+                    @elseif ($abilities['edit'] && ! $readOnly)
                         <flux:select wire:model="form.author_id" :label="__('content.form.author')">
                             <flux:select.option value="">{{ __('content.form.no_author') }}</flux:select.option>
                             @foreach ($this->authorOptions as $id => $name)
@@ -371,6 +388,7 @@
                         </div>
                     @endif
                 </div>
+                @endif
 
                 @if ($entry !== null && ! $readOnly && $abilities['delete'])
                     <button type="button" wire:click="confirmTrash" class="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10" data-test="trash-entry">

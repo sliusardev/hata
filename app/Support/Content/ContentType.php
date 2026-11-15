@@ -62,6 +62,41 @@ abstract class ContentType
         return false;
     }
 
+    /**
+     * The keys of the types this type is a taxonomy of (`['posts']` for categories and tags). A type that names any
+     * is a taxonomy: its records are terms, a record of a named type is filed under terms of its own language, and
+     * the taxonomy is on while any of those types is.
+     *
+     * @return list<string>
+     */
+    public function taxonomyOf(): array
+    {
+        return [];
+    }
+
+    /**
+     * Whether the admin list of the types this taxonomy belongs to has a filter by its terms. Return false to
+     * leave the filter out (a taxonomy with thousands of terms, or one nobody filters by).
+     */
+    public function hasListFilter(): bool
+    {
+        return true;
+    }
+
+    public function isTaxonomy(): bool
+    {
+        return $this->taxonomyOf() !== [];
+    }
+
+    /**
+     * Whether a record of the type has a part of the common form: `body`, `image`, `publication` (status and
+     * date) or `author`. A term has none of them: it is a name, an address and a description, always published.
+     */
+    public function supports(string $feature): bool
+    {
+        return ! $this->isTaxonomy();
+    }
+
     public function label(): string
     {
         return __("content.types.{$this->key()}.label");

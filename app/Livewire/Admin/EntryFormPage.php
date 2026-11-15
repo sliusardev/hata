@@ -29,6 +29,8 @@ use Livewire\Component;
  * @property-read list<Language> $languages
  * @property-read Language $language
  * @property-read array{create: bool, edit: bool, delete: bool} $abilities
+ * @property-read array<string, ContentType> $taxonomies
+ * @property-read array<string, list<array{id: int, title: string, depth: int}>> $termOptions
  * @property-read list<array{id: int, title: string, path: string, depth: int}> $parentOptions
  * @property-read array<int, string> $authorOptions
  * @property-read string|null $authorName
@@ -110,8 +112,11 @@ abstract class EntryFormPage extends Component
             return null;
         }
 
+        // Terms are of one language: the record keeps those that have a translation in the new one.
+        $this->form->terms = array_map(strval(...), Entry::translationIds($this->form->terms, $locale));
+
         $this->locale = $locale;
-        unset($this->language, $this->parentOptions, $this->addressPrefix, $this->localeChoices);
+        unset($this->language, $this->parentOptions, $this->addressPrefix, $this->localeChoices, $this->termOptions);
 
         $parent = $this->localeSource()?->parentTranslation($locale);
 
@@ -127,6 +132,48 @@ abstract class EntryFormPage extends Component
             'locale' => $locale,
             'prefix' => $this->addressPrefix,
         ];
+    }
+
+    /**
+     * The taxonomies of the record's type that are on, by key.
+     *
+     * @return array<string, ContentType>
+     */
+    #[Computed]
+    public function taxonomies(): array
+    {
+        $types = app(ContentTypes::class);
+
+        return array_filter($types->taxonomiesOf($this->type), fn (ContentType $taxonomy): bool => $types->isActive($taxonomy->key()));
+    }
+
+    /**
+     * The live terms of each taxonomy in the form's language, in tree order: what the terms cards offer. One
+     * query for all the taxonomies, none for a type without any; at most 500 terms each way.
+     *
+     * @return array<string, list<array{id: int, title: string, depth: int}>>
+     */
+    #[Computed]
+    public function termOptions(): array
+    {
+        $options = array_fill_keys(array_keys($this->taxonomies), []);
+
+        if ($options === []) {
+            return [];
+        }
+
+        $terms = Entry::query()
+            ->whereIn('type', array_keys($options))
+            ->where('locale', $this->locale)
+            ->orderByRaw("replace(path, '/', ' ') asc")
+            ->limit(1000)
+            ->get(['id', 'type', 'title', 'path']);
+
+        foreach ($terms as $term) {
+            $options[$term->type][] = ['id' => $term->id, 'title' => $term->title, 'depth' => $term->depth()];
+        }
+
+        return $options;
     }
 
     #[Computed]

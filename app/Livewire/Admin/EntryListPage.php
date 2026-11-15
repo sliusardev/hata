@@ -35,6 +35,8 @@ use Throwable;
  * markup (decision 32: a class, so PHPStan analyses it).
  *
  * @property-read ContentType $contentType
+ * @property-read array<string, ContentType> $taxonomies
+ * @property-read array<string, list<array{id: int, label: string}>> $termFilterOptions
  * @property-read EntryListQuery $listQuery
  * @property-read LengthAwarePaginator<int, Entry> $entries
  * @property-read array{all: int, published: int, drafts: int, scheduled: int, trash: int} $counts
@@ -72,6 +74,15 @@ abstract class EntryListPage extends Component
      */
     #[Url(except: '')]
     public string $locale = '';
+
+    /**
+     * The term the list is narrowed to in each taxonomy of the type: taxonomy key => term id (`?term[categories]=5`).
+     * A taxonomy without a choice has no key.
+     *
+     * @var array<string, string>
+     */
+    #[Url(as: 'term', except: [])]
+    public array $termFilter = [];
 
     /**
      * Empty means the type's default: tree order for a hierarchical type, newest first otherwise.
@@ -128,6 +139,7 @@ abstract class EntryListPage extends Component
         $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
         $this->locale = $this->validLocale($this->locale !== '' ? $this->locale : (string) session(self::LOCALE_SESSION_KEY));
         session()->put(self::LOCALE_SESSION_KEY, $this->locale);
+        $this->termFilter = $this->validTerms($this->termFilter);
 
         // At most once an hour per type, after the response is sent: records whose time in the trash is over.
         if (Cache::add('content.prune_trash', true, now()->addHour())) {
@@ -157,6 +169,8 @@ abstract class EntryListPage extends Component
 
     public function updatedLocale(): void
     {
+        $this->termFilter = [];
+        unset($this->termFilterOptions);
         $this->selected = [];
         $this->locale = $this->validLocale($this->locale);
         session()->put(self::LOCALE_SESSION_KEY, $this->locale);
@@ -201,11 +215,94 @@ abstract class EntryListPage extends Component
         $this->resetPage();
     }
 
+    public function updatedTermFilter(): void
+    {
+        $this->termFilter = $this->validTerms($this->termFilter);
+        $this->selected = [];
+        $this->resetPage();
+    }
+
     public function clearFilters(): void
     {
         $this->search = '';
+        $this->termFilter = [];
         $this->selected = [];
         $this->resetPage();
+    }
+
+    /**
+     * The taxonomies of the list's type that are on, by key (none for a taxonomy or a type without any).
+     *
+     * @return array<string, ContentType>
+     */
+    #[Computed]
+    public function taxonomies(): array
+    {
+        $types = app(ContentTypes::class);
+
+        return array_filter($types->taxonomiesOf($this->type), fn (ContentType $taxonomy): bool => $types->isActive($taxonomy->key()));
+    }
+
+    /**
+     * The terms each taxonomy's filter offers, by taxonomy key: the live terms of the listed languages in tree order,
+     * each with its language code while every language is listed. One query, only for a type with taxonomies; at
+     * most 300 terms.
+     *
+     * @return array<string, list<array{id: int, label: string}>>
+     */
+    #[Computed]
+    public function termFilterOptions(): array
+    {
+        // Only the taxonomies that want a filter (ContentType::hasListFilter()).
+        $options = array_fill_keys(array_keys(array_filter($this->taxonomies, fn (ContentType $taxonomy): bool => $taxonomy->hasListFilter())), []);
+
+        if ($options === []) {
+            return [];
+        }
+
+        $terms = Entry::query()
+            ->whereIn('type', array_keys($options))
+            ->whereIn('locale', $this->listedLocales())
+            ->orderBy('locale')
+            ->orderByRaw("replace(path, '/', ' ') asc")
+            ->limit(300)
+            ->get(['id', 'type', 'locale', 'title', 'path']);
+
+        foreach ($terms as $term) {
+            $options[$term->type][] = [
+                'id' => $term->id,
+                'label' => str_repeat("\u{00A0}\u{00A0}", min($term->depth(), 6)).$term->title.($this->locale === '' && $this->multilingual ? ' ('.mb_strtoupper($term->locale).')' : ''),
+            ];
+        }
+
+        return array_filter($options);
+    }
+
+    /**
+     * The choices that are a live term of their own taxonomy (one query for all of them); anything else is dropped.
+     *
+     * @param  array<array-key, mixed>  $given
+     * @return array<string, string>
+     */
+    protected function validTerms(array $given): array
+    {
+        $wanted = [];
+
+        foreach ($this->taxonomies as $key => $taxonomy) {
+            $id = $given[$key] ?? '';
+
+            if ($taxonomy->hasListFilter() && is_string($id) && ctype_digit($id)) {
+                $wanted[$key] = (int) $id;
+            }
+        }
+
+        if ($wanted === []) {
+            return [];
+        }
+
+        $types = Entry::query()->whereKey(array_values($wanted))->pluck('type', 'id');
+
+        return array_map(strval(...), array_filter($wanted, fn (int $id, string $key): bool => ($types[$id] ?? null) === $key, ARRAY_FILTER_USE_BOTH));
     }
 
     #[Computed]
@@ -220,6 +317,7 @@ abstract class EntryListPage extends Component
         return EntryListQuery::for($this->contentType, $this->locale, $this->listedLocales())
             ->tab($this->tab)
             ->search($this->search)
+            ->terms(array_map(intval(...), $this->termFilter))
             ->sort($this->sortColumn(), $this->sortDirection());
     }
 
@@ -277,7 +375,7 @@ abstract class EntryListPage extends Component
 
     public function isFiltered(): bool
     {
-        return trim($this->search) !== '';
+        return trim($this->search) !== '' || $this->termFilter !== [];
     }
 
     public function confirmTrash(int $entryId): void
