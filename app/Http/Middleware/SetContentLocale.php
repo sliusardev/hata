@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Content\ContentTypes;
 use App\Support\Localization\ContentLocales;
 use Closure;
 use Illuminate\Http\Request;
@@ -13,8 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Decides the content language of a public page from its address (routes registered with Route::localized()).
  *
- * No prefix is the default language; `/<code>/…` is that language when it is on, a 404 when it is off or not
- * added, and a redirect to the address without the prefix when it is the default one. Livewire runs this
+ * No prefix is the default language; `/<code>/…` is that language when it is on, a 404 when it is off (but a
+ * preview of a content record for an editor) or not added, and a redirect to the address without the prefix when it is the default one. Livewire runs this
  * middleware again on its update requests (it is a persistent middleware), against the page's original
  * address, so a component keeps the language of the page it lives on.
  */
@@ -39,7 +40,9 @@ class SetContentLocale
             return redirect($this->withoutPrefix($request, $prefix), 301)->header('Cache-Control', 'no-cache');
         }
 
-        abort_unless($this->locales->isActive($code), 404);
+        if (! $this->locales->isActive($code)) {
+            abort_unless($this->mayPreviewOffLanguage($request, $code, $fromLivewire), 404);
+        }
 
         $route?->forgetParameter('locale');
 
@@ -61,6 +64,32 @@ class SetContentLocale
         }
 
         return $next($request);
+    }
+
+    /**
+     * A language that is switched off opens only as a preview: a content record's address, for a signed-in user
+     * who may edit some content type (the controller then checks the record's own type). Everything else in that
+     * language, and a language that is not added, stays 404.
+     */
+    private function mayPreviewOffLanguage(Request $request, string $code, bool $fromLivewire): bool
+    {
+        $user = $request->user();
+
+        if ($fromLivewire || $user === null || ! $this->locales->has($code)) {
+            return false;
+        }
+
+        if (Str::after((string) $request->route()?->getName(), ContentLocales::ROUTE_PREFIX) !== 'content') {
+            return false;
+        }
+
+        foreach (app(ContentTypes::class)->active() as $type) {
+            if ($user->can($type->permission('edit'))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function withoutPrefix(Request $request, string $prefix): string

@@ -50,19 +50,27 @@ class ContentController extends Controller
         /** @var Entry $entry */
         $entry = $match->entry;
 
+        // In a language that is switched off every page is a preview, for those who may preview its type only.
+        $languageOff = ! $this->locales->isActive($this->locales->current()->code);
+
+        abort_if($languageOff && ! ($request->user()?->can('preview', $entry) ?? false), 404);
+
+        $preview = $match->preview || $languageOff;
+
         $this->locales->useAlternates($this->alternates($entry));
 
         $response = response()->view('site.entry', [
             'entry' => $entry,
             'body' => $this->renderer->render($entry->body),
             'galleries' => $this->galleries($entry),
-            'preview' => $match->preview,
+            'preview' => $preview,
+            'languageOff' => $languageOff,
             'editUrl' => $request->user()?->can('update', $entry)
                 ? route('admin.content.edit', ['type' => $entry->type, 'entry' => $entry->id])
                 : null,
         ]);
 
-        return $match->preview ? $response->header('Cache-Control', 'no-store') : $response;
+        return $preview ? $response->header('Cache-Control', 'no-store') : $response;
     }
 
     /**

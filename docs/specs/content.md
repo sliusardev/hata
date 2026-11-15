@@ -546,8 +546,8 @@ error instead of creating a record outside the group. Save calls
   Draft/Scheduled/"In the trash" badge, "View on site" (a public record) or "Preview" (a draft or scheduled one, only
   for a viewer with the type's `edit`, who may preview it; a view-only user gets no link), both opening `Entry::url()`
   in a new tab and only for a saved record outside the trash; a record in a switched-off language shows the muted note
-  "This language is switched off, so the page is not on the site yet" (`content.form.language_off`) instead, since its
-  address answers 404 for everyone (previewing an off language is not included). Under the title, on a multilingual
+  "This language is switched off, so the page is not on the site yet" (`content.form.language_off`) and, for a
+  viewer with the type's `edit`, "Preview" (its address answers 404 for visitors and opens as a preview for editors). Under the title, on a multilingual
   site, the translation chips of the record's group (`data-test="header-translations"`; a new record has them only
   as a translation). Then Save, labelled by what it will do (the form's script, from the status, the date and the
   saved state): "Publish" or "Schedule" for a record that is not that yet, "Save draft" for a new draft, else
@@ -636,10 +636,12 @@ Livewire). `bootstrap/app.php` puts it in the middleware priority list right bef
 language from the address the way `SetContentLocale` does, through the same `ContentLocales` methods:
 `codeForPrefix($prefix)` (the `{locale}` parameter, else the default) and `isDefaultPrefix($prefix)`. The default
 language's own prefix is passed on untouched, so `SetContentLocale` redirects it (after the session, as before); a
-language that is off or not added answers 404 here, before the session. Then `ContentRouter::lookup()`, and the rule
+language that is not added answers 404 here, before the session, and so does one that is off unless the request may
+come from a signed-in user (below): that one goes on, and `SetContentLocale` decides after the session. Then `ContentRouter::lookup()`, and the rule
 that keeps hidden content indistinguishable from a miss, decided on the request, not on the record
-(`LookUpContent::mayBeSignedIn()`: the request carries the cookie named `config('session.cookie')`; its presence is
-enough, it is not decrypted):
+(`LookUpContent::mayBeSignedIn()`: the request carries the cookie named `config('session.cookie')`, or a "remember
+me" cookie, `remember_<guard>_…`, with which a user whose session has ended is signed in again once the session
+starts; presence is enough, nothing is decrypted):
 
 - **No session cookie** (it cannot come from a signed-in editor): a miss, a record that is not public (draft or
   scheduled) and a redirect to such a record are all the same 404 here, before the session: no session started, no
@@ -687,6 +689,16 @@ for a missing page (status, `Cache-Control` and body; no redirect lookup is made
 user, so it is made after the session for a visitor with a session cookie, and before it, like a miss, for one
 without (`LookUpContent`, above); either way the hidden record's 404 cannot be told from a miss's. A trashed record is
 404 for everyone.
+
+**A language that is switched off** (decision 69) opens only as a preview. `SetContentLocale` lets the request through
+when the address is a content record's (`content` route), the language is added, and the signed-in user may edit
+some active content type; the language's home page, any other route and a Livewire update stay 404. The controller
+then requires `preview` on the record's own type (else 404) and renders every page there as a preview, published
+ones too: the strip says "The language is switched off" (`content.public.language_off`) for a published record,
+with `noindex` and `no-store`. The switcher lists only the active languages. A visitor, a session without a user and
+a user without `edit` get 404; for a request with a session cookie that 404 comes after the session (for a language
+that is not added it comes before), so such a visitor could tell an added-but-off language from one that is not
+added, which reveals nothing about its pages.
 
 **Controller** (`App\Http\Controllers\ContentController`): null → 404; a redirect → 301 with `Cache-Control: no-cache`
 (the old path may be taken by a new record later, so a browser must not keep it for good); else the view `site.entry`
@@ -762,7 +774,10 @@ on a one-language site, the hidden record's 404 equal to a missing one, the imag
 rendered body, no Livewire or script files, the public stylesheet instead of the admin's; preview (draft, scheduled and trashed are 404 for a guest and a user without
 `pages.edit`; the strip, `noindex`, `no-store` and the edit link for an editor; the scheduled date in the site's
 timezone; the Edit link on a published page); `hreflang` (public translations in active languages, `x-default`, none for
-one, no `x-default` without the default language) and the switcher (an unpublished translation linked only for an
+one, no `x-default` without the default language), a page in a switched-off language (404 for a visitor, a session
+without a user and a view-only user; a preview with the strip, `noindex` and `no-store` for an editor; the home
+page, a miss and a language not added still 404), a draft previewed with a "remember me" cookie alone and the 404
+for a forged one, and the switcher (an unpublished translation linked only for an
 editor); `/de/about`; languages off or not added; no leak of
 alternates into the next request; redirects in both languages, to a draft only for an editor, after a `move()`; every
 other route unchanged (by the router's match), reserved slugs, `url()` from the route without a query, the compiled route

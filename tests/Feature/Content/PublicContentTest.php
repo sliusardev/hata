@@ -343,6 +343,47 @@ describe('languages', function () {
         $this->get('/uk/about')->assertStatus(301)->assertRedirect(url('/about'));
     });
 
+    it('opens a page in a switched-off language only as a preview for an editor', function () {
+        [$about] = aboutPages();
+        Entry::factory()->page()->published()->translationOf($about, 'pl')->create(['title' => 'O nas', 'slug' => 'o-nas', 'path' => 'o-nas']);
+        Entry::factory()->page()->draft()->inLocale('pl')->create(['slug' => 'szkic', 'path' => 'szkic']);
+
+        // A visitor, with or without a session, and a signed-in user who may not edit: 404.
+        $this->get('/pl/o-nas')->assertNotFound();
+        $this->withCookie((string) config('session.cookie'), 'a-session')->get('/pl/o-nas')->assertNotFound();
+        browseAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
+        $this->get('/pl/o-nas')->assertNotFound();
+
+        browseAs(pageEditor());
+
+        $this->get('/pl/o-nas')->assertOk()
+            ->assertSee('O nas')
+            ->assertSee('data-test="preview-strip"', escape: false)
+            ->assertSee(__('content.public.language_off'))
+            ->assertSee('<meta name="robots" content="noindex">', escape: false)
+            ->assertHeader('Cache-Control', 'no-store, private');
+        $this->get('/pl/szkic')->assertOk()->assertSee(__('content.public.draft'));
+
+        // Only content records: the language's home page, a miss, and a language that is not added stay 404.
+        $this->get('/pl')->assertNotFound();
+        $this->get('/pl/nie-ma')->assertNotFound();
+        $this->get('/fr/about')->assertNotFound();
+    });
+
+    it('lets an editor signed in by "remember me" alone preview a draft', function () {
+        hiddenContent();
+
+        // No session cookie and no remember cookie: the same 404 as a miss, before the session.
+        $this->actingAs(pageEditor())->get('/draft')->assertNotFound();
+
+        $this->actingAs(pageEditor())->withCookie('remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d', 'recaller')
+            ->get('/draft')->assertOk()->assertSee('data-test="preview-strip"', escape: false);
+
+        // A visitor who sends such a cookie without being signed in still gets the 404.
+        auth()->logout();
+        $this->withCookie('remember_web_x', 'forged')->get('/draft')->assertNotFound();
+    });
+
     it('does not let the alternates of one page leak into the next request', function () {
         aboutPages();
 

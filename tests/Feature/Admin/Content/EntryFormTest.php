@@ -378,7 +378,7 @@ test('the header links to the site: View on site for a public record, Preview fo
     createForm()->assertDontSeeHtml('data-test="view-entry"');
 });
 
-test('Preview shows only to those who may preview, and a record in a switched-off language has a note instead of a link', function () {
+test('Preview shows only to those who may preview, and a record in a switched-off language has a note with it', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
     $public = Entry::factory()->published()->create();
     $draft = Entry::factory()->create();
@@ -389,10 +389,16 @@ test('Preview shows only to those who may preview, and a record in a switched-of
 
     $this->actingAs(formEditor());
 
+    // In a switched-off language an editor gets the note and a preview; a view-only user the note alone.
     editForm($off)
-        ->assertDontSeeHtml('data-test="view-entry"')
+        ->assertSeeHtml('data-test="view-entry"')
+        ->assertSee(__('content.form.preview'))
         ->assertSeeHtml('data-test="language-off-note"')
         ->assertSee(__('content.form.language_off'));
+
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
+    editForm($off)->assertDontSeeHtml('data-test="view-entry"')->assertSeeHtml('data-test="language-off-note"');
+    $this->actingAs(formEditor());
 
     $this->get(route('admin.content.index', ['type' => 'pages', 'locale' => 'de']))
         ->assertDontSeeHtml('data-test="view-entry-'.$off->id.'"')

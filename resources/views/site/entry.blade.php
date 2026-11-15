@@ -1,6 +1,6 @@
 {{--
     A content record on the public site: title, image and body. The type's own fields are not printed here.
-    Receives $entry (with its image loaded), $body (rendered), $galleries (field name => images), $preview and $editUrl (null without the type's edit).
+    Receives $entry (with its image loaded), $body (rendered), $galleries (field name => images), $preview, $languageOff (the page's language is switched off) and $editUrl (null without the type's edit).
 --}}
 @extends('layouts.site', [
     'pageTitle' => $entry->documentTitle(),
@@ -13,7 +13,9 @@
             <div class="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-sm sm:px-6">
                 <p>
                     <span class="font-semibold">
-                        @if ($entry->state() === App\Enums\EntryState::Scheduled)
+                        @if ($languageOff && $entry->isPublic())
+                            {{ __('content.public.language_off') }}
+                        @elseif ($entry->state() === App\Enums\EntryState::Scheduled)
                             {{ __('content.public.scheduled', ['date' => $entry->published_at->tz(config('admin.timezone'))->isoFormat('LLL')]) }}
                         @else
                             {{ __('content.public.draft') }}

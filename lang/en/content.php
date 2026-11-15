@@ -303,6 +303,7 @@ return [
     ],
     'public' => [
         'draft' => 'Draft',
+        'language_off' => 'The language is switched off',
         'scheduled' => 'Scheduled for :date',
         'preview_note' => 'Visitors don’t see this page yet.',
         'edit' => 'Edit',

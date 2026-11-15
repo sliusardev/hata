@@ -45,7 +45,11 @@ class LookUpContent
         $code = $this->locales->codeForPrefix($prefix);
         $path = $route?->parameter('path');
 
-        abort_unless($this->locales->isActive($code), 404);
+        // A language that is switched off answers 404, except that a request which may come from a signed-in user
+        // goes on: SetContentLocale lets an editor preview its pages, after the session. One not added is always 404.
+        if (! $this->locales->isActive($code)) {
+            abort_unless($this->locales->has($code) && self::mayBeSignedIn($request), 404);
+        }
 
         $lookup = is_string($path) ? $this->router->lookup($code, $path) : null;
 
@@ -62,11 +66,22 @@ class LookUpContent
 
     /**
      * Whether the request could come from a signed-in user: it carries the session cookie
-     * (`config('session.cookie')`). Its presence is enough; it is not decrypted or read. Every signed-in visitor has
-     * it, and probing bots send no cookies.
+     * (`config('session.cookie')`) or a "remember me" cookie (`remember_<guard>_…`), with which a user whose session
+     * has ended is signed in again once the session starts. Presence is enough; nothing is decrypted or read. Every
+     * signed-in visitor has one of them, and probing bots send no cookies.
      */
     public static function mayBeSignedIn(Request $request): bool
     {
-        return $request->cookies->has((string) config('session.cookie'));
+        if ($request->cookies->has((string) config('session.cookie'))) {
+            return true;
+        }
+
+        foreach ($request->cookies->keys() as $name) {
+            if (str_starts_with((string) $name, 'remember_')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -102,12 +102,15 @@
 
             <div class="flex flex-wrap items-center gap-2">
                 @if ($entry !== null && ! $trashed)
-                    {{-- An off language answers 404 for everyone; a hidden record opens only for those who may preview it. --}}
-                    @if (! app(App\Support\Localization\ContentLocales::class)->isActive($entry->locale))
+                    {{-- A record that is hidden, or in a language that is switched off, opens only as a preview for
+                         those who may edit the type; visitors get 404 there. --}}
+                    @php $languageOn = app(App\Support\Localization\ContentLocales::class)->isActive($entry->locale); @endphp
+                    @unless ($languageOn)
                         <flux:text class="max-w-64 text-xs" data-test="language-off-note">{{ __('content.form.language_off') }}</flux:text>
-                    @elseif ($entry->isPublic() || $abilities['edit'])
+                    @endunless
+                    @if (($languageOn && $entry->isPublic()) || $abilities['edit'])
                         <flux:button :href="$entry->url()" target="_blank" icon:trailing="arrow-top-right-on-square" data-test="view-entry">
-                            {{ $entry->isPublic() ? __('content.form.view') : __('content.form.preview') }}
+                            {{ $languageOn && $entry->isPublic() ? __('content.form.view') : __('content.form.preview') }}
                         </flux:button>
                     @endif
                 @endif

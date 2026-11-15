@@ -98,8 +98,9 @@ Public pages today:
   minimal language switcher; its text is still Laravel's demo page (decision 10).
 - Content records (`content` / `localized.content`, `{path}` matching lowercase slugs joined by `/`, registered as fallbacks inside
   `Route::localized()` so every explicit route wins; `docs/specs/content.md`, Public side). `LookUpContent` runs on
-  these two routes before the session starts: a language that is off or not added answers its 404 there, without a
-  session, and for a request without a session cookie an address with no record or with hidden content too; the default language's prefix still goes to
+  these two routes before the session starts: a language that is not added answers its 404 there, without a
+  session, and so does one that is off unless the request carries a session or "remember me" cookie (an editor may
+  preview a content record in it; `SetContentLocale` decides after the session, see the content spec), and for a request without a session cookie an address with no record or with hidden content too; the default language's prefix still goes to
   `SetContentLocale` for its 301. They hand their public
   translations to `useAlternates()`, so `hreflang` lists only those, with `x-default` only when the default language has
   one, and the switcher (`partials/site/language-switcher.blade.php`) links a language without a translation to that
