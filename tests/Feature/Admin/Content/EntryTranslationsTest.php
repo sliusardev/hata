@@ -271,3 +271,37 @@ test('unlinking refuses a record without translations, one in the trash and an a
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
     translationForm($page)->call('confirmUnlink', $page->id)->assertForbidden();
 });
+
+test('a form left open does not undo a language change made elsewhere', function () {
+    $this->actingAs($actor = translator());
+    $page = Entry::factory()->create(['slug' => 'about', 'path' => 'about']);
+    $stale = translationForm($page);
+
+    translationForm($page)->call('changeLocale', 'uk')->call('save')->assertHasNoErrors();
+
+    $stale->set('form.title', 'A fixed typo')->call('save')->assertHasNoErrors();
+
+    expect($page->fresh())->locale->toBe('uk')->title->toBe('A fixed typo');
+});
+
+test('a new translation is not offered a language its group has in the trash', function () {
+    $this->actingAs(translator());
+    $page = Entry::factory()->create();
+    Entry::factory()->translationOf($page, 'pl')->create(['deleted_at' => now()]);
+
+    Livewire::withQueryParams(['from' => (string) $page->id, 'locale' => 'uk'])
+        ->test('pages::admin.content.create', ['type' => 'pages'])
+        ->assertDontSee('Polski (PL)')
+        ->call('changeLocale', 'pl')
+        ->assertReturned(null)
+        ->assertSet('locale', 'uk');
+});
+
+test('a page can be dated before 1970 and after 2038', function (string $date) {
+    $this->actingAs(translator());
+    $page = Entry::factory()->create();
+
+    translationForm($page)->set('form.status', 'published')->set('form.published_at', $date.'T10:00')->call('save')->assertHasNoErrors();
+
+    expect($page->fresh()->published_at->format('Y-m-d'))->toBe($date);
+})->with(['1965-05-01', '2040-02-03']);

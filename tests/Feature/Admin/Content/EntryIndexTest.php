@@ -5,6 +5,7 @@ use App\Enums\EntryStatus;
 use App\Models\Entry;
 use App\Models\Media;
 use App\Models\User;
+use App\Support\Content\ContentTypes;
 use App\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -558,7 +559,7 @@ test('picked rows of the trash are deleted for good after a confirmation, live o
     entryList(['tab' => 'trash'])
         ->set('selected', [(string) $binned->id, (string) $live->id])
         ->call('confirmBulk', 'delete')
-        ->assertSee(trans_choice('content.list.bulk.delete_confirm', 2))
+        ->assertSee(trans_choice('content.list.bulk.delete_confirm', 1))
         ->call('runBulk');
 
     expect(Entry::withTrashed()->pluck('id')->sort()->values()->all())->toBe([$kept->id, $live->id]);
@@ -596,3 +597,32 @@ test('changing the tab, the search or the language drops the picked rows', funct
 
     entryList()->set('selected', [(string) $entry->id])->set($property, $value)->assertSet('selected', []);
 })->with([['tab', 'drafts'], ['search', 'x'], ['locale', 'uk']]);
+
+test('an action that empties the last page shows the page before it', function () {
+    $this->actingAs(contentViewer(['pages.delete']));
+    $perPage = app(ContentTypes::class)->get('pages')->perPage();
+    Entry::factory()->count($perPage)->sequence(fn ($sequence) => ['title' => 'Page '.$sequence->index, 'slug' => 'p'.$sequence->index, 'path' => 'p'.$sequence->index])->create();
+    $last = Entry::factory()->create(['title' => 'The last one', 'slug' => 'z', 'path' => 'z']);
+
+    entryList()
+        ->call('setPage', 2)
+        ->assertSee('The last one')
+        ->set('selected', [(string) $last->id])
+        ->call('confirmBulk', 'trash')
+        ->call('runBulk')
+        ->assertSee('Page 0')
+        ->assertDontSee(__('content.list.empty_tab.title'));
+});
+
+test('the bulk dialog counts the picked rows that exist, not the picks', function () {
+    $this->actingAs(contentViewer(['pages.delete']));
+    $entry = Entry::factory()->create();
+
+    entryList()
+        ->set('selected', [(string) $entry->id, '999', '1000'])
+        ->call('confirmBulk', 'trash')
+        ->assertSet('bulkCount', 1);
+
+    entryList()->set('selected', ['999'])->call('confirmBulk', 'trash')->assertSet('showBulkModal', false);
+    entryList()->call('runBulk')->assertSet('showBulkModal', false);
+});

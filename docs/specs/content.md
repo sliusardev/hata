@@ -107,7 +107,9 @@ an existing file of the right kind.
 
 Tables: `entry_groups` (`type`, `shared` JSON), `entries` and `entry_redirects`. Columns as in the design. Lengths:
 `type` 40, `locale` 12, `title`, `slug` and `path` 255. Unique indexes: (`entry_group_id`, `locale`) and
-(`type`, `locale`, `path`); (`type`, `locale`, `status`, `published_at`) is a plain index. `parent_id` has no explicit
+(`type`, `locale`, `path`); (`type`, `locale`, `deleted_at`, `status`, `published_at`) is a plain index (the list's counters and page count
+read it alone), and so is `deleted_at` (the trash prune). `published_at` is a `dateTime`, not a `timestamp`, whose
+range on MySQL is 1970 to 2038. `parent_id` has no explicit
 index: MySQL creates one for its foreign key; on SQLite the column has none. The
 path index is 307 characters wide, which fits MySQL's limit on utf8mb4 (checked on MySQL 8). Deleting a user
 nulls `author_id`, deleting a media file nulls `image_id`, deleting a parent nulls `parent_id`, deleting an entry
@@ -409,7 +411,7 @@ then Media; the group shows when any of them or `media.view` holds.
   "Move to trash" (`confirmBulk('trash')`, then `runBulk`: `TrashEntry` per record, parents first, so a page under a
   picked one counts once), in the trash "Restore" (`restoreSelected`, `edit`, no confirmation, parents first; a row
   its parent brought back is skipped) and "Delete for good" (`confirmBulk('delete')`, one `DeleteEntry::purge()` of
-  the picked trashed records). Only ids that are records of the type in the right state are acted on. The picks are
+  the picked trashed records). The dialog's count is of the picked rows that exist in that state. Only ids that are records of the type in the right state are acted on. The picks are
   dropped when the tab, the search, a filter, the sort or the page changes, and after an action.
 - "Empty the trash" (the Trash tab, `delete`, shown while the trash holds anything): after a confirmation naming the
   count, `EmptyEntryTrash` for the languages the list shows.
@@ -419,7 +421,8 @@ then Media; the group shows when any of them or `media.view` holds.
 - Empty states: no records at all invites creating the first; a search or filter with no match offers "Clear filters";
   an empty trash says how long records stay there; an empty tab says so.
 - Opening the list prunes the trash (`PruneEntryTrash`) after the response at most once an hour per type (cache key
-  `content.prune_trash.<type>`), so no cron is required.
+  `content.prune_trash`; the prune covers every type), so no cron is required. After an action that empties the page
+  the list is on, it shows the last page that still has rows.
 
 `App\Support\Content\EntryListQuery::for($type, $locale, $locales)` (an empty `$locale` means every language in
 `$locales`, the site's) builds the list: `tab()`, `search()`, `missingIn()` (a `not
@@ -456,7 +459,7 @@ offers "Choose" (`chooseTranslation('<code>')`, an editable saved record) and "C
   the list's remembered language, else the default (the list's Create buttons send no `locale`; the "Add
   translation" links send `from` and `locale`). On a multilingual site the language card holds a select "Language of
   the record" instead of the fixed language row: every language of the site (a switched-off one marked), or for a
-  translation those its group lacks. Choosing one calls `changeLocale()` and changes the record in place, with no
+  translation those its group lacks (trashed records counted). Choosing one calls `changeLocale()` and changes the record in place, with no
   reload and no redirect: the typed values stay, the parent becomes the one that language has (none, or for a
   translation the source's parent in that language, `copyFor()`), the slug is made free in the language
   (`EntryPaths::suggest()` on the slug, else the title), and the action returns the new address prefix and parents'
@@ -474,7 +477,8 @@ error instead of creating a record outside the group. Save calls
   `CreateEntry` and redirects to the edit page with a toast ("The record is created.", or "already exists" when the
   action returned an existing translation).
 - **Saved record.** `entryId` is locked; the record is loaded with its group (shared field values). Save calls
-  `UpdateEntry` with the form's language and redirects back with a toast. The language select is the new record's one,
+  `UpdateEntry` and redirects back with a toast; the form's language is passed only when it differs from the record's
+  language when the form opened (`openedLocale`), so a form left open never undoes a language change made elsewhere. The language select is the new record's one,
   offering the record's language and those its group lacks (trashed ones counted): `changeLocale()` (here it
   authorizes `update` and refuses a trashed record) changes the form in place and stores nothing; the language is
   applied on Save, a hint under the select says so, and the form counts as changed. A record with anything under it

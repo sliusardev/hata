@@ -97,7 +97,11 @@ new class extends EntryFormPage {
     #[Computed]
     public function localeChoices(): array
     {
-        $taken = $this->groupEntries->pluck('locale')->all();
+        // The trash counts: the group's language is taken there too (CreateEntry would hand back that record).
+        $taken = $this->sourceId === null ? [] : Entry::withTrashed()
+            ->where('entry_group_id', Entry::query()->select('entry_group_id')->whereKey($this->sourceId))
+            ->pluck('locale')
+            ->all();
 
         return array_values(array_filter(
             $this->languages,

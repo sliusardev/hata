@@ -111,7 +111,7 @@ new class extends Component {
         session()->put(self::LOCALE_SESSION_KEY, $this->locale);
 
         // At most once an hour per type, after the response is sent: records whose time in the trash is over.
-        if (Cache::add("content.prune_trash.{$type}", true, now()->addHour())) {
+        if (Cache::add('content.prune_trash', true, now()->addHour())) {
             defer(function (): void {
                 try {
                     app(PruneEntryTrash::class)->handle();
@@ -379,7 +379,12 @@ new class extends Component {
         abort_unless(in_array($action, ['trash', 'delete', 'empty'], true), 404);
         abort_unless($this->abilities['delete'], 403);
 
-        $this->bulkCount = $action === 'empty' ? $this->counts['trash'] : count($this->selectedIds());
+        // Counted in the database: a pick may name rows that are gone or in another state by now.
+        $this->bulkCount = match ($action) {
+            'empty' => $this->counts['trash'],
+            'trash' => Entry::query()->ofType($this->type)->whereKey($this->selectedIds())->count(),
+            default => Entry::onlyTrashed()->ofType($this->type)->whereKey($this->selectedIds())->count(),
+        };
 
         if ($this->bulkCount === 0) {
             return;
@@ -392,6 +397,12 @@ new class extends Component {
     public function runBulk(TrashEntry $trashEntry, DeleteEntry $deleteEntry, EmptyEntryTrash $emptyTrash): void
     {
         abort_unless($this->abilities['delete'], 403);
+
+        if ($this->bulkAction === '') {
+            $this->showBulkModal = false;
+
+            return;
+        }
 
         $count = match ($this->bulkAction) {
             'trash' => $this->trashSelected($trashEntry),
@@ -542,6 +553,12 @@ new class extends Component {
     private function forgetList(): void
     {
         unset($this->entries, $this->counts, $this->listQuery, $this->trashingEntry, $this->deletingEntry);
+
+        // The action emptied the page the list was on: show the last one that still has rows.
+        if ($this->getPage() > 1 && $this->entries->isEmpty()) {
+            $this->setPage(max(1, $this->entries->lastPage()));
+            unset($this->entries);
+        }
     }
 }; ?>
 

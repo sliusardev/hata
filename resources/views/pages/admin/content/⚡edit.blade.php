@@ -49,6 +49,13 @@ new class extends EntryFormPage {
     public int $unlinkId = 0;
 
     /**
+     * The record's language when the form opened. Save moves the record to another language only when the form's
+     * language differs from it, so a form left open never undoes a change made elsewhere.
+     */
+    #[Locked]
+    public string $openedLocale = '';
+
+    /**
      * The record the route bound, used for the first render so it is not loaded twice; later requests load it again.
      */
     protected ?Entry $boundEntry = null;
@@ -61,6 +68,7 @@ new class extends EntryFormPage {
 
         $this->type = $type;
         $this->locale = $entry->locale;
+        $this->openedLocale = $entry->locale;
         $this->entryId = $entry->id;
         $this->boundEntry = $entry->loadMissing('group');
         $this->form->fillFromEntry($this->entry);
@@ -272,12 +280,14 @@ new class extends EntryFormPage {
         abort_if($this->entry->trashed(), 403);
 
         try {
-            $updateEntry->handle(Auth::user(), $this->entry, $this->form->data($this->contentType), $this->locale);
+            $updateEntry->handle(Auth::user(), $this->entry, $this->form->data($this->contentType), $this->locale !== $this->openedLocale ? $this->locale : null);
         } catch (ValidationException $exception) {
+            $this->forgetUnsaved();
             $this->showErrors($exception);
 
             return;
         } catch (ProtectedActionException $exception) {
+            $this->forgetUnsaved();
             Flux::toast(variant: 'danger', text: $exception->getMessage());
 
             return;
@@ -288,6 +298,15 @@ new class extends EntryFormPage {
         Toast::success(__('content.form.saved'));
 
         $this->redirectRoute('admin.content.edit', ['type' => $this->type, 'entry' => $this->entryId]);
+    }
+
+    /**
+     * A refused save leaves the action's unsaved values on the loaded record: render the stored one.
+     */
+    private function forgetUnsaved(): void
+    {
+        $this->boundEntry = null;
+        unset($this->entry, $this->groupRecords, $this->localeChoices);
     }
 
     public function confirmTrash(): void

@@ -28,14 +28,19 @@ return new class extends Migration
             $table->foreignId('image_id')->nullable()->constrained('media')->nullOnDelete();
             $table->json('fields')->nullable();
             $table->string('status', 20)->default('draft');
-            $table->timestamp('published_at')->nullable();
+            // Not a timestamp: MySQL's ends in 2038 and starts in 1970, and a page may be dated outside that.
+            $table->dateTime('published_at')->nullable();
             $table->text('search_index')->nullable();
             $table->softDeletes();
             $table->timestamps();
 
             $table->unique(['entry_group_id', 'locale']);
             $table->unique(['type', 'locale', 'path']);
-            $table->index(['type', 'locale', 'status', 'published_at']);
+            // `deleted_at` third: the list's counters and its page count filter on it, and the public lookups
+            // (live, published, by date) keep their equality prefix.
+            $table->index(['type', 'locale', 'deleted_at', 'status', 'published_at']);
+            // The trash prune looks for what is due across every type.
+            $table->index('deleted_at');
         });
     }
 
