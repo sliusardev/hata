@@ -228,3 +228,22 @@ test('a redirect row that already exists for an old path is pointed at the recor
     expect(EntryRedirect::where('path', 'a')->count())->toBe(1)
         ->and(EntryRedirect::where('path', 'a')->value('entry_id'))->toBe($holder->id);
 });
+
+test('every statement of a move names the table with the connection\'s prefix', function () {
+    $parent = Entry::factory()->create(['slug' => 'old', 'path' => 'old']);
+    Entry::factory()->childOf($parent)->create(['slug' => 'child', 'path' => 'old/child']);
+
+    DB::connection()->setTablePrefix('kit_');
+
+    try {
+        // Nothing runs (the tables are not really prefixed here); the statements are what is checked.
+        $statements = collect(DB::pretend(fn () => app(EntryPaths::class)->move($parent, 'new')))->pluck('query');
+    } finally {
+        DB::connection()->setTablePrefix('');
+    }
+
+    $onEntries = $statements->filter(fn (string $sql): bool => str_contains(strtolower($sql), 'entries'));
+
+    expect($onEntries->filter(fn (string $sql): bool => str_starts_with(strtolower($sql), 'update'))->count())->toBeGreaterThanOrEqual(2)
+        ->and($onEntries->every(fn (string $sql): bool => str_contains($sql, 'kit_entries')))->toBeTrue();
+});

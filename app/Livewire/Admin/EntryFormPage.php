@@ -113,8 +113,7 @@ abstract class EntryFormPage extends Component
         $this->locale = $locale;
         unset($this->language, $this->parentOptions, $this->addressPrefix, $this->localeChoices);
 
-        $parentId = $this->localeSource()?->copyFor($locale)['parent_id'] ?? null;
-        $parent = $parentId !== null ? Entry::query()->find((int) $parentId) : null;
+        $parent = $this->localeSource()?->parentTranslation($locale);
 
         $this->form->parent_id = $parent !== null ? (string) $parent->id : '';
 

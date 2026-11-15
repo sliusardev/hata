@@ -121,8 +121,9 @@ class EntryPaths
         $entry->path = $newPath;
         $entry->save();
 
+        // The table name through the grammar, so a table prefix of the connection applies as to every other query.
         DB::update(
-            'UPDATE '.$entry->getTable().' SET path = '.$this->prefixSwap($oldPath).' WHERE type = ? AND locale = ? AND path LIKE ?',
+            'UPDATE '.DB::connection()->getQueryGrammar()->wrapTable($entry->getTable()).' SET path = '.$this->prefixSwap($oldPath).' WHERE type = ? AND locale = ? AND path LIKE ?',
             [$newPath, $entry->type, $entry->locale, $oldPath.'/%'],
         );
 

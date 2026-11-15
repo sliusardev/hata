@@ -67,7 +67,7 @@ class DeleteEntry
             ->get(['id', 'entry_group_id']);
 
         $ids = $entries->modelKeys();
-        $groupIds = $entries->pluck('entry_group_id')->unique()->values()->all();
+        $groupIds = array_values(array_unique($entries->map(fn (Entry $entry): int => (int) $entry->entry_group_id)->all()));
 
         MediaUsage::query()
             ->where('usable_type', (new Entry)->getMorphClass())
@@ -76,16 +76,7 @@ class DeleteEntry
 
         $removed = (int) Entry::onlyTrashed()->whereKey($ids)->forceDelete();
 
-        $emptied = EntryGroup::query()
-            ->whereKey($groupIds)
-            ->whereDoesntHave('entries', fn (Builder $query) => $query->withTrashed())
-            ->pluck('id')
-            ->all();
-
-        if ($emptied !== []) {
-            MediaUsage::query()->where('usable_type', (new EntryGroup)->getMorphClass())->whereIn('usable_id', $emptied)->delete();
-            EntryGroup::query()->whereKey($emptied)->delete();
-        }
+        EntryGroup::deleteEmptied($groupIds);
 
         return $removed;
     }

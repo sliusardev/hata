@@ -19,6 +19,16 @@
  */
 export default function entryForm({ readonly, slugFollows, prefix, siteName, nowLocal, editorModels, leaveModal, savedLocale, savedState, saveLabels, localeRefused }) {
     let initial = null;
+
+    // The site's clock runs on from the time the page was rendered: the difference to the browser's clock is kept,
+    // so "now" stays right on a form left open (saving no longer reloads the page).
+    const clockOffset = new Date(nowLocal).getTime() - Date.now();
+    const pad = (number) => String(number).padStart(2, '0');
+    const siteNow = () => {
+        const now = new Date(Date.now() + clockOffset);
+
+        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    };
     let ticket = 0;
 
     return {
@@ -148,7 +158,7 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
         isScheduled() {
             const date = String(this.$wire.form.published_at ?? '');
 
-            return this.$wire.form.status === 'published' && date !== '' && date > nowLocal;
+            return this.$wire.form.status === 'published' && date !== '' && date > siteNow();
         },
 
         publishesNow() {

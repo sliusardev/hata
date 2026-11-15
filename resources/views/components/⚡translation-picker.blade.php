@@ -72,6 +72,14 @@ new class extends Component {
         $this->open = true;
     }
 
+    /**
+     * Takes back the first click on a record that is someone's translation.
+     */
+    public function cancelConfirmation(): void
+    {
+        $this->confirmingId = 0;
+    }
+
     public function updatedSearch(): void
     {
         $this->confirmingId = 0;
@@ -167,7 +175,7 @@ new class extends Component {
                                 <p>{{ __('content.link.leaves', ['languages' => mb_strtoupper($others->implode(', '))]) }}</p>
                                 <div class="mt-3 flex gap-2">
                                     <flux:button size="xs" variant="primary" wire:click="pick({{ $candidate->id }})" data-test="link-confirm-button">{{ __('content.link.confirm') }}</flux:button>
-                                    <flux:button size="xs" variant="ghost" wire:click="$set('confirmingId', 0)">{{ __('common.actions.cancel') }}</flux:button>
+                                    <flux:button size="xs" variant="ghost" wire:click="cancelConfirmation" data-test="link-confirm-cancel">{{ __('common.actions.cancel') }}</flux:button>
                                 </div>
                             </div>
                         @endif

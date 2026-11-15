@@ -5,9 +5,7 @@ namespace App\Actions\Content;
 use App\Exceptions\ProtectedActionException;
 use App\Models\Entry;
 use App\Models\EntryGroup;
-use App\Models\MediaUsage;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -69,14 +67,6 @@ class LinkTranslations
         Entry::withTrashed()->whereKey($theirs->id)->toBase()->update(['entry_group_id' => $mine->entry_group_id]);
 
         // Only a group that is really empty goes (the foreign key would take a record added meanwhile with it).
-        $emptied = EntryGroup::query()
-            ->whereKey($left)
-            ->whereDoesntHave('entries', fn (Builder $query) => $query->withTrashed())
-            ->exists();
-
-        if ($emptied) {
-            MediaUsage::query()->where('usable_type', (new EntryGroup)->getMorphClass())->where('usable_id', $left)->delete();
-            EntryGroup::query()->whereKey($left)->delete();
-        }
+        EntryGroup::deleteEmptied([$left]);
     }
 }

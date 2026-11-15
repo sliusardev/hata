@@ -706,3 +706,11 @@ test('every row shows its publication status', function () {
     $draft->delete();
     entryList(['tab' => 'trash'])->assertDontSeeHtml('data-test="entry-state-'.$draft->id.'"');
 });
+
+test('going back to the tree order and clearing the filters drop the picked rows too', function () {
+    $this->actingAs(contentViewer(['pages.delete']));
+    $entry = Entry::factory()->create();
+
+    entryList()->call('sort', 'title')->set('selected', [(string) $entry->id])->call('resetSort')->assertSet('selected', []);
+    entryList()->set('selected', [(string) $entry->id])->call('clearFilters')->assertSet('selected', []);
+});

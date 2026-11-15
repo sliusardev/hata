@@ -196,7 +196,9 @@ test('a record that is someone\'s translation is linked only after a second clic
 
     expect($ukrainian->fresh()->entry_group_id)->not->toBe($page->entry_group_id);
 
-    $picker->call('pick', $ukrainian->id)->assertSet('open', false);
+    $picker->call('cancelConfirmation')->assertSet('confirmingId', 0)->assertDontSeeHtml('data-test="link-confirm"');
+
+    $picker->call('pick', $ukrainian->id)->assertSeeHtml('data-test="link-confirm"')->call('pick', $ukrainian->id)->assertSet('open', false);
 
     expect($ukrainian->fresh()->entry_group_id)->toBe($page->entry_group_id);
 });

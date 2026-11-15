@@ -7,6 +7,7 @@ use App\Support\Content\ContentTypes;
 use App\Support\Localization\ContentLocales;
 use Database\Factories\EntryGroupFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -29,9 +30,6 @@ class EntryGroup extends Model implements UsesMedia
     use HasFactory;
 
     /**
-     * @return array<string, string>
-     */
-    /**
      * The languages a group holds a record in, the trash included (the unique index counts both): the one answer
      * to "is this language taken" for creating, linking and moving a record.
      *
@@ -50,6 +48,31 @@ class EntryGroup extends Model implements UsesMedia
         return Entry::withTrashed()->where('entry_group_id', $groupId)->where('locale', $locale)->first();
     }
 
+    /**
+     * Deletes those of the groups that have no record left (trashed ones counted), with their media usages. For the
+     * caller's transaction, after it took records out of the groups: the one place a group ends.
+     *
+     * @param  list<int>  $groupIds
+     */
+    public static function deleteEmptied(array $groupIds): void
+    {
+        $emptied = self::query()
+            ->whereKey($groupIds)
+            ->whereDoesntHave('entries', fn (Builder $query) => $query->withTrashed())
+            ->pluck('id')
+            ->all();
+
+        if ($emptied === []) {
+            return;
+        }
+
+        MediaUsage::query()->where('usable_type', (new self)->getMorphClass())->whereIn('usable_id', $emptied)->delete();
+        self::query()->whereKey($emptied)->delete();
+    }
+
+    /**
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return ['shared' => 'array'];

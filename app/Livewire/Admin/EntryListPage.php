@@ -197,12 +197,14 @@ abstract class EntryListPage extends Component
     public function resetSort(): void
     {
         [$this->sort, $this->dir] = ['', ''];
+        $this->selected = [];
         $this->resetPage();
     }
 
     public function clearFilters(): void
     {
         $this->search = '';
+        $this->selected = [];
         $this->resetPage();
     }
 

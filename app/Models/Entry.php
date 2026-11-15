@@ -287,6 +287,22 @@ class Entry extends Model implements UsesMedia
     }
 
     /**
+     * The translation of the record's parent in a language: the parent a translation of this record gets there.
+     * Null without a parent or when it has none in that language. One query.
+     */
+    public function parentTranslation(string $locale): ?self
+    {
+        if ($this->parent_id === null) {
+            return null;
+        }
+
+        return self::query()
+            ->where('locale', $locale)
+            ->where('entry_group_id', self::query()->select('entry_group_id')->whereKey($this->parent_id))
+            ->first();
+    }
+
+    /**
      * The form data of a new translation of this record into a language: a copy of its texts, image, author, SEO
      * and fields (shared ones carry the group's values), the parent's translation in that language (or none), an
      * empty slug and the draft status. Nothing is stored.
@@ -295,14 +311,7 @@ class Entry extends Model implements UsesMedia
      */
     public function copyFor(string $locale): array
     {
-        $parentId = null;
-
-        if ($this->parent_id !== null) {
-            $parentId = self::query()
-                ->where('locale', $locale)
-                ->where('entry_group_id', self::query()->select('entry_group_id')->whereKey($this->parent_id))
-                ->value('id');
-        }
+        $parentId = $this->parentTranslation($locale)?->id;
 
         $fields = [];
 
