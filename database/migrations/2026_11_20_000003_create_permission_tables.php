@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * spatie/laravel-permission's tables, with Hata's `label` and `is_system` on roles.
+     * spatie/laravel-permission's tables (its own migration, unchanged). Skipped as a whole when the host already
+     * ran spatie's migration; Hata's columns on roles are added by `add_hata_columns_to_roles_table`.
      */
     public function up(): void
     {
@@ -19,6 +20,10 @@ return new class extends Migration
 
         throw_if(empty($tableNames), 'Error: config/permission.php not loaded. Run [php artisan config:clear] and try again.');
         throw_if($teams && empty($columnNames['team_foreign_key'] ?? null), 'Error: team_foreign_key on config/permission.php not loaded. Run [php artisan config:clear] and try again.');
+
+        if (Schema::hasTable($tableNames['permissions'])) {
+            return;
+        }
 
         /**
          * See `docs/prerequisites.md` for suggested lengths on 'name' and 'guard_name' if "1071 Specified key was too long" errors are encountered.
@@ -42,9 +47,7 @@ return new class extends Migration
                 $table->index($columnNames['team_foreign_key'], 'roles_team_foreign_key_index');
             }
             $table->string('name');
-            $table->string('label')->nullable();
             $table->string('guard_name');
-            $table->boolean('is_system')->default(false);
             $table->timestamps();
             if ($teams || config('permission.testing')) {
                 $table->unique([$columnNames['team_foreign_key'], 'name', 'guard_name']);

@@ -28,6 +28,10 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
 
+// Install tests build the schema themselves (as a host's `migrate` would), so they run without RefreshDatabase.
+pest()->extend(TestCase::class)
+    ->in('Install');
+
 /*
 |--------------------------------------------------------------------------
 | Expectations

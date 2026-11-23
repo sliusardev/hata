@@ -218,7 +218,7 @@ with the package and checks the `hata::` keys.
 
 ### Installer (`php artisan hata:install`)
 
-Idempotent, prints what it did and what it left: publishes `config/hata.php` and spatie's migration if needed; adds
+Idempotent, prints what it did and what it left: publishes `config/hata.php` (not spatie's migration: Hata ships spatie's tables, skipped when they exist); adds
 the trait to `App\Models\User` (edits the file by its starter shape, else prints the lines, like the content-type
 generator); removes Laravel's `welcome` route and view (Hata registers `home`); adds the host defaults to
 `AppServiceProvider`; ensures the `laravel-assets` publish in `post-update-cmd`; publishes assets; runs migrations;
