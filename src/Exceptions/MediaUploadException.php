@@ -14,12 +14,12 @@ class MediaUploadException extends AuthorizationException
 {
     public static function unsupported(string $name): self
     {
-        return new self(__('media.errors.unsupported', ['name' => $name]));
+        return new self(__('hata::media.errors.unsupported', ['name' => $name]));
     }
 
     public static function tooLarge(int $sizeBytes, int $limitBytes): self
     {
-        return new self(__('media.errors.too_large', [
+        return new self(__('hata::media.errors.too_large', [
             'size' => self::megabytes($sizeBytes),
             'limit' => self::megabytes($limitBytes),
         ]));
@@ -27,12 +27,12 @@ class MediaUploadException extends AuthorizationException
 
     public static function heicUnsupported(): self
     {
-        return new self(__('media.errors.heic_unsupported'));
+        return new self(__('hata::media.errors.heic_unsupported'));
     }
 
     public static function otherKind(MediaKind $current): self
     {
-        return new self(__('media.errors.other_kind', ['kind' => __("media.errors.kinds.{$current->value}")]));
+        return new self(__('hata::media.errors.other_kind', ['kind' => __("hata::media.errors.kinds.{$current->value}")]));
     }
 
     /**
@@ -41,12 +41,12 @@ class MediaUploadException extends AuthorizationException
      */
     public static function svgBoundary(): self
     {
-        return new self(__('media.replace.svg_boundary'));
+        return new self(__('hata::media.replace.svg_boundary'));
     }
 
     public static function storageFailed(?Throwable $previous = null): self
     {
-        return new self(__('media.errors.storage_failed'), previous: $previous);
+        return new self(__('hata::media.errors.storage_failed'), previous: $previous);
     }
 
     private static function megabytes(int $bytes): string

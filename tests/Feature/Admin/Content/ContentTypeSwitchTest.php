@@ -102,7 +102,7 @@ test('the settings tab lists the types and switches them, asking before switchin
         ->assertSeeHtml('data-test="content-type-products" data-active="true"')
         ->assertDontSeeHtml('data-test="content-type-switch-pages"')
         ->assertDontSeeHtml('data-test="save-site-settings-button"')
-        ->assertSee(trans_choice('site_settings.content.records', 2))
+        ->assertSee(trans_choice('hata::site_settings.content.records', 2))
         ->call('toggleContentType', 'products')
         ->assertSet('showContentTypeModal', true);
 
@@ -111,7 +111,7 @@ test('the settings tab lists the types and switches them, asking before switchin
     $page->call('turnOffContentType')->assertRedirect(route('admin.settings.edit', ['tab' => 'content']));
 
     expect(app(ContentTypes::class)->isActive('products'))->toBeFalse()
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('site_settings.content.messages.turned_off', ['type' => 'Products']));
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.content.messages.turned_off', ['type' => 'Products']));
 
     Livewire::withQueryParams(['tab' => 'content'])
         ->test('hata::admin.settings.edit')

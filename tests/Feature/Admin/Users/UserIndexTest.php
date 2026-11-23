@@ -29,7 +29,7 @@ test('it lists users with their translated roles', function () {
     $this->get(route('admin.users.index'))
         ->assertOk()
         ->assertSee('Ed Itor')
-        ->assertSee(__('roles.names.editor'));
+        ->assertSee(__('hata::roles.names.editor'));
 });
 
 test('the navigation shows users only with the users.view permission', function () {
@@ -130,8 +130,8 @@ test('it shows a no results state when nothing matches', function () {
 
     Livewire::test('hata::admin.users.index')
         ->set('search', 'nobody-matches-this')
-        ->assertSee(__('users.index.no_results.title'))
-        ->assertDontSee(__('users.index.empty.title'));
+        ->assertSee(__('hata::users.index.no_results.title'))
+        ->assertDontSee(__('hata::users.index.empty.title'));
 });
 
 test('it loads roles without a query per user', function () {
@@ -167,7 +167,7 @@ describe('deleting from the list', function () {
         Livewire::test('hata::admin.users.index')
             ->call('confirmDelete', $user->id)
             ->assertSet('showDeleteModal', true)
-            ->assertSee(__('users.delete.confirm', ['name' => 'To Delete']))
+            ->assertSee(__('hata::users.delete.confirm', ['name' => 'To Delete']))
             ->call('deleteUser')
             ->assertSet('showDeleteModal', false)
             ->assertDontSee('To Delete');

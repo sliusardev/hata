@@ -37,7 +37,7 @@ it('rejects a value of the wrong shape', function (mixed $value, bool $multiple)
     $value = $value === 'id' ? $image->id : ($value === 'list' ? [$image->id] : $value);
 
     expect(validateSelection($value, new MediaSelection(accept: 'image', multiple: $multiple)))
-        ->toBe([false, __('media.picker.invalid')]);
+        ->toBe([false, __('hata::media.picker.invalid')]);
 })->with([
     'array for single' => ['list', false],
     'int for multiple' => ['id', true],
@@ -48,14 +48,14 @@ it('rejects a value of the wrong shape', function (mixed $value, bool $multiple)
 
 it('rejects an id that does not exist', function () {
     expect(validateSelection(999, new MediaSelection(accept: 'image')))
-        ->toBe([false, __('media.picker.invalid')]);
+        ->toBe([false, __('hata::media.picker.invalid')]);
 });
 
 it('rejects a document where an image is expected', function () {
     $document = Media::factory()->document()->create();
 
     expect(validateSelection($document->id, new MediaSelection(accept: 'image')))
-        ->toBe([false, __('media.picker.invalid')])
+        ->toBe([false, __('hata::media.picker.invalid')])
         ->and(validateSelection($document->id, new MediaSelection(accept: 'document')))->toBe([true, null]);
 });
 
@@ -64,7 +64,7 @@ it('rejects an image whose extension is not in the list', function () {
     $logoExtensions = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
 
     expect(validateSelection($gif->id, new MediaSelection(accept: 'image', extensions: $logoExtensions)))
-        ->toBe([false, __('media.picker.invalid')])
+        ->toBe([false, __('hata::media.picker.invalid')])
         ->and(validateSelection([$gif->id], new MediaSelection(accept: 'image', multiple: true, extensions: $logoExtensions)))
-        ->toBe([false, __('media.picker.invalid')]);
+        ->toBe([false, __('hata::media.picker.invalid')]);
 });

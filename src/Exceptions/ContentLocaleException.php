@@ -11,22 +11,22 @@ class ContentLocaleException extends RuntimeException
 {
     public static function unknown(): self
     {
-        return new self(__('site_settings.languages.errors.unknown'));
+        return new self(__('hata::site_settings.languages.errors.unknown'));
     }
 
     public static function alreadyAdded(): self
     {
-        return new self(__('site_settings.languages.errors.already_added'));
+        return new self(__('hata::site_settings.languages.errors.already_added'));
     }
 
     public static function notAdded(): self
     {
-        return new self(__('site_settings.languages.errors.not_added'));
+        return new self(__('hata::site_settings.languages.errors.not_added'));
     }
 
     public static function isDefault(): self
     {
-        return new self(__('site_settings.languages.errors.is_default'));
+        return new self(__('hata::site_settings.languages.errors.is_default'));
     }
 
     /**
@@ -34,11 +34,11 @@ class ContentLocaleException extends RuntimeException
      */
     public static function hasContent(int $count): self
     {
-        return new self(trans_choice('site_settings.languages.errors.has_content', $count));
+        return new self(trans_choice('hata::site_settings.languages.errors.has_content', $count));
     }
 
     public static function inactive(): self
     {
-        return new self(__('site_settings.languages.errors.inactive'));
+        return new self(__('hata::site_settings.languages.errors.inactive'));
     }
 }

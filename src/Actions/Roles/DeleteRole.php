@@ -21,7 +21,7 @@ class DeleteRole
         Gate::forUser($actor)->authorize('delete', $role);
 
         if ($denial = $this->rules->roleDeletionDenial($role)) {
-            throw ProtectedActionException::because($denial, ['users' => trans_choice('users.count', $role->users()->count())]);
+            throw ProtectedActionException::because($denial, ['users' => trans_choice('hata::users.count', $role->users()->count())]);
         }
 
         DB::transaction(fn () => $role->delete());

@@ -7,7 +7,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('hata::layouts.app')] #[Title('settings.language.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::settings.language.title')] class extends Component {
     public string $locale = '';
 
     /**
@@ -31,7 +31,7 @@ new #[Layout('hata::layouts.app')] #[Title('settings.language.title')] class ext
 
         app()->setLocale($validated['locale']);
 
-        Toast::success(__('settings.language.saved'));
+        Toast::success(__('hata::settings.language.saved'));
 
         $this->redirectRoute('language.edit');
     }
@@ -40,18 +40,18 @@ new #[Layout('hata::layouts.app')] #[Title('settings.language.title')] class ext
 <section class="w-full">
     @include('hata::partials.settings-heading')
 
-    <flux:heading level="2" class="sr-only">{{ __('settings.language.title') }}</flux:heading>
+    <flux:heading level="2" class="sr-only">{{ __('hata::settings.language.title') }}</flux:heading>
 
-    <x-hata::settings.layout :heading="__('settings.language.heading')" :subheading="__('settings.language.description')">
+    <x-hata::settings.layout :heading="__('hata::settings.language.heading')" :subheading="__('hata::settings.language.description')">
         <form wire:submit="updateLocale" class="my-6 w-full space-y-6">
-            <flux:select wire:model="locale" :label="__('settings.language.label')">
+            <flux:select wire:model="locale" :label="__('hata::settings.language.label')">
                 @foreach (config('app.available_locales') as $code => $name)
                     <flux:select.option :value="$code" wire:key="locale-{{ $code }}">{{ $name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:button variant="primary" type="submit" data-test="update-locale-button">
-                {{ __('common.actions.save') }}
+                {{ __('hata::common.actions.save') }}
             </flux:button>
         </form>
     </x-hata::settings.layout>

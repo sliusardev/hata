@@ -47,7 +47,7 @@ it('is forbidden without media.view', function () {
 it('shows the content group in the sidebar only with media.view', function () {
     $this->actingAs(mediaViewer());
     $this->get(route('admin.dashboard'))
-        ->assertSee(__('navigation.content'))
+        ->assertSee(__('hata::navigation.content'))
         ->assertSee(route('admin.media.index'));
 
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
@@ -160,7 +160,7 @@ it('tells the user to switch to the list once the grid reached its cap', functio
     $component->assertSet('gridLimit', 400)
         ->assertDontSeeHtml('data-test="media-show-more"')
         ->assertSeeHtml('data-test="media-grid-capped"')
-        ->assertSee(__('media.index.grid_capped', ['shown' => 400, 'total' => 401]));
+        ->assertSee(__('hata::media.index.grid_capped', ['shown' => 400, 'total' => 401]));
 });
 
 it('ignores hostile url input', function (array $params) {
@@ -309,27 +309,27 @@ describe('direct serving warning', function () {
 
         $this->get(route('admin.media.index'))
             ->assertOk()
-            ->assertSee(__('media.index.direct_warning'))
+            ->assertSee(__('hata::media.index.direct_warning'))
             ->assertSee(route('admin.settings.edit', ['tab' => 'media']), false);
     })->with(['link_missing', 'unreachable']);
 
     it('stays quiet while direct serving works or has not been checked', function (string $state) {
         DirectServing::fake(state: $state);
 
-        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('media.index.direct_warning'));
+        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('hata::media.index.direct_warning'));
     })->with(['direct', 'unchecked']);
 
     it('stays quiet without settings.edit', function () {
         $this->actingAs(mediaViewer());
         DirectServing::fake(state: 'link_missing');
 
-        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('media.index.direct_warning'));
+        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('hata::media.index.direct_warning'));
     });
 
     it('stays quiet when the site disk is not served by this server', function () {
         config(['media.disk' => 's3']);
         DirectServing::fake(state: 'link_missing');
 
-        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('media.index.direct_warning'));
+        $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('hata::media.index.direct_warning'));
     });
 });

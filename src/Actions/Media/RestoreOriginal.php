@@ -25,7 +25,7 @@ class RestoreOriginal
         $original = $media->original_path;
 
         if ($original === null || $original === '' || ! Storage::disk($media->originalsDisk())->exists($original)) {
-            throw ValidationException::withMessages(['original' => __('media.errors.no_original')]);
+            throw ValidationException::withMessages(['original' => __('hata::media.errors.no_original')]);
         }
 
         $source = MediaSource::for($media);

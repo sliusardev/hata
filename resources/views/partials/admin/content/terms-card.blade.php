@@ -25,7 +25,7 @@
 
     @if ($taxonomy->hierarchical())
         @if ($options === [])
-            <flux:text class="text-sm">{{ __('content.terms.none_yet', ['language' => $this->language->native]) }}</flux:text>
+            <flux:text class="text-sm">{{ __('hata::content.terms.none_yet', ['language' => $this->language->native]) }}</flux:text>
         @else
             <ul class="max-h-64 space-y-1.5 overflow-y-auto pe-1">
                 @foreach ($options as $option)
@@ -79,16 +79,16 @@
                     <span class="inline-flex max-w-full items-center gap-1 rounded-md bg-zinc-100 py-0.5 ps-2 pe-1 text-sm text-zinc-800 dark:bg-white/10 dark:text-zinc-100" data-test="term-chip">
                         <span class="truncate" x-text="option.title"></span>
                         @unless ($readOnly)
-                            <button type="button" class="rounded p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-white" x-on:click="drop(option)" :aria-label="@js(__('content.terms.remove')) + ' ' + option.title">
+                            <button type="button" class="rounded p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-white" x-on:click="drop(option)" :aria-label="@js(__('hata::content.terms.remove')) + ' ' + option.title">
                                 <flux:icon.x-mark variant="micro" />
                             </button>
                         @endunless
                     </span>
                 </template>
                 <template x-for="name in fresh()" :key="'new-' + name">
-                    <span class="inline-flex max-w-full items-center gap-1 rounded-md border border-dashed border-zinc-300 py-0.5 ps-2 pe-1 text-sm text-zinc-700 dark:border-zinc-600 dark:text-zinc-200" title="{{ __('content.terms.new_hint') }}" data-test="term-chip-new">
+                    <span class="inline-flex max-w-full items-center gap-1 rounded-md border border-dashed border-zinc-300 py-0.5 ps-2 pe-1 text-sm text-zinc-700 dark:border-zinc-600 dark:text-zinc-200" title="{{ __('hata::content.terms.new_hint') }}" data-test="term-chip-new">
                         <span class="truncate" x-text="name"></span>
-                        <button type="button" class="rounded p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-white" x-on:click="dropFresh(name)" :aria-label="@js(__('content.terms.remove')) + ' ' + name">
+                        <button type="button" class="rounded p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-white" x-on:click="dropFresh(name)" :aria-label="@js(__('hata::content.terms.remove')) + ' ' + name">
                             <flux:icon.x-mark variant="micro" />
                         </button>
                     </span>
@@ -105,7 +105,7 @@
                         x-on:keydown.escape="open = false"
                         size="sm"
                         icon="tag"
-                        :placeholder="$canCreate ? __('content.terms.placeholder_create') : __('content.terms.placeholder')"
+                        :placeholder="$canCreate ? __('hata::content.terms.placeholder_create') : __('hata::content.terms.placeholder')"
                         :aria-label="$taxonomy->pluralLabel()"
                         autocomplete="off"
                         data-test="term-input-{{ $key }}"
@@ -120,7 +120,7 @@
                     </ul>
                 </div>
                 @if ($canCreate)
-                    <flux:text class="mt-2 text-xs">{{ __('content.terms.create_hint') }}</flux:text>
+                    <flux:text class="mt-2 text-xs">{{ __('hata::content.terms.create_hint') }}</flux:text>
                 @endif
             @endunless
         </div>

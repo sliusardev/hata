@@ -87,8 +87,8 @@ test('a category is made on the common form without a body, an image or a status
 
     Livewire::withQueryParams(['locale' => 'en'])
         ->test('hata::admin.content.create', ['type' => 'categories'])
-        ->assertDontSee(__('content.form.publication.title'))
-        ->assertDontSee(__('content.form.image.title'))
+        ->assertDontSee(__('hata::content.form.publication.title'))
+        ->assertDontSee(__('hata::content.form.image.title'))
         ->assertDontSeeHtml('data-test="translation-callout"')
         ->set('form.title', 'Local news')
         ->set('form.slug', 'local')
@@ -201,7 +201,7 @@ test('a term that records are filed under keeps its language', function () {
     $data = fn (Entry $term): array => ['title' => $term->title, 'slug' => $term->slug, 'status' => 'published'];
 
     expect(fn () => app(UpdateEntry::class)->handle($this->admin, $news, $data($news), 'uk'))
-        ->toThrow(fn (ValidationException $exception) => expect($exception->errors()['locale'])->toBe([__('content.entry.locale_has_records')]));
+        ->toThrow(fn (ValidationException $exception) => expect($exception->errors()['locale'])->toBe([__('hata::content.entry.locale_has_records')]));
 
     app(UpdateEntry::class)->handle($this->admin, $free, $data($free), 'uk');
 
@@ -256,9 +256,9 @@ test('the sidebar lists the taxonomies after their type', function () {
     $this->actingAs($this->admin);
 
     $this->get(route('admin.dashboard'))->assertSeeInOrder([
-        __('content.types.posts.plural'),
-        __('content.types.categories.plural'),
-        __('content.types.tags.plural'),
+        __('hata::content.types.posts.plural'),
+        __('hata::content.types.categories.plural'),
+        __('hata::content.types.tags.plural'),
     ]);
 });
 
@@ -456,8 +456,8 @@ test('a term cannot be made a draft, and a typed tag needs the right to create t
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'posts.view', 'posts.create', 'posts.edit'])->create());
 
     postForm()
-        ->assertSee(__('content.terms.placeholder'))
-        ->assertDontSee(__('content.terms.create_hint'))
+        ->assertSee(__('hata::content.terms.placeholder'))
+        ->assertDontSee(__('hata::content.terms.create_hint'))
         ->set('form.title', 'Open day')
         ->set('form.slug', 'open-day')
         ->set('form.newTerms', ['tags' => ['Windows']])

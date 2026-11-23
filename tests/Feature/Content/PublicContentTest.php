@@ -217,7 +217,7 @@ describe('preview', function () {
         $response = $this->get('/draft')->assertOk()
             ->assertSeeText('Чернетка')
             ->assertSee('data-test="preview-strip"', escape: false)
-            ->assertSeeText(__('content.public.draft', locale: 'uk'))
+            ->assertSeeText(__('hata::content.public.draft', locale: 'uk'))
             ->assertSee('<meta name="robots" content="noindex">', escape: false)
             ->assertSee('href="'.route('admin.content.edit', ['type' => 'pages', 'entry' => $draft->id]).'"', escape: false);
 
@@ -356,10 +356,10 @@ describe('languages', function () {
         $this->get('/pl/o-nas')->assertOk()
             ->assertSee('O nas')
             ->assertSee('data-test="preview-strip"', escape: false)
-            ->assertSee(__('content.public.language_off'))
+            ->assertSee(__('hata::content.public.language_off'))
             ->assertSee('<meta name="robots" content="noindex">', escape: false)
             ->assertHeader('Cache-Control', 'no-store, private');
-        $this->get('/pl/szkic')->assertOk()->assertSee(__('content.public.draft'));
+        $this->get('/pl/szkic')->assertOk()->assertSee(__('hata::content.public.draft'));
 
         // Only content records: the language's home page, a miss, and a language that is not added stay 404.
         $this->get('/pl')->assertNotFound();
@@ -676,7 +676,7 @@ describe('admin links', function () {
         Livewire::withQueryParams(['locale' => 'uk'])->test('hata::admin.content.index', ['type' => 'pages'])
             ->assertSeeHtml('href="'.$about->url().'"');
         Livewire::test('hata::admin.content.edit', ['type' => 'pages', 'entry' => $draft])
-            ->assertSee(__('content.form.preview'))
+            ->assertSee(__('hata::content.form.preview'))
             ->assertSeeHtml('href="'.$draft->url().'"');
 
         $this->get($about->url())->assertOk()->assertSeeText('Про нас');

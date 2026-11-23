@@ -203,7 +203,7 @@ it('refuses an upload the cloud disk did not store and creates no row', function
     Storage::disk('s3')->failWrites = true;
 
     expect(fn () => cloudUploadedPhoto($this->actor))
-        ->toThrow(MediaUploadException::class, __('media.errors.storage_failed'));
+        ->toThrow(MediaUploadException::class, __('hata::media.errors.storage_failed'));
 
     expect(Media::query()->count())->toBe(0)
         ->and(Storage::disk('s3')->allFiles())->toBe([]);

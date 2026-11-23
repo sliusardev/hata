@@ -6,6 +6,11 @@ use Hata\Support\Content\ContentType;
 
 class PagesType extends ContentType
 {
+    public function translationPrefix(): string
+    {
+        return 'hata::';
+    }
+
     public function key(): string
     {
         return 'pages';

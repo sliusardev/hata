@@ -38,7 +38,7 @@ class Role extends SpatieRole
     public function displayName(): string
     {
         if ($this->is_system) {
-            $key = "roles.names.{$this->name}";
+            $key = "hata::roles.names.{$this->name}";
 
             if (__($key) !== $key) {
                 return __($key);

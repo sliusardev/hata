@@ -103,9 +103,9 @@ class RoleForm extends Form
     private function attributeNames(): array
     {
         return [
-            'label' => __('roles.form.label'),
-            'name' => __('roles.form.name'),
-            'permissions' => __('roles.form.permissions'),
+            'label' => __('hata::roles.form.label'),
+            'name' => __('hata::roles.form.name'),
+            'permissions' => __('hata::roles.form.permissions'),
         ];
     }
 }

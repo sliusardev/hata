@@ -19,6 +19,6 @@
             <span class="min-w-0 truncate text-sm text-zinc-700 dark:text-zinc-300">{{ $file->name }}</span>
         </div>
     @empty
-        <flux:text class="text-sm">{{ __('content.form.no_file') }}</flux:text>
+        <flux:text class="text-sm">{{ __('hata::content.form.no_file') }}</flux:text>
     @endforelse
 </div>

@@ -173,8 +173,8 @@ describe('actions', function () {
     it('refuses a language that is unknown or already added', function () {
         $actor = languagesAdmin();
 
-        expect(fn () => app(AddContentLocale::class)->handle($actor, 'xx'))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.unknown'))
-            ->and(fn () => app(AddContentLocale::class)->handle($actor, 'en'))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.already_added'));
+        expect(fn () => app(AddContentLocale::class)->handle($actor, 'xx'))->toThrow(ContentLocaleException::class, __('hata::site_settings.languages.errors.unknown'))
+            ->and(fn () => app(AddContentLocale::class)->handle($actor, 'en'))->toThrow(ContentLocaleException::class, __('hata::site_settings.languages.errors.already_added'));
     });
 
     it('switches a language on and off, but never the default', function () {
@@ -186,8 +186,8 @@ describe('actions', function () {
 
         app(SetContentLocaleActive::class)->handle($actor, 'uk', false);
         expect(app(ContentLocales::class)->isActive('uk'))->toBeFalse()
-            ->and(fn () => app(SetContentLocaleActive::class)->handle($actor, 'en', false))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.is_default'))
-            ->and(fn () => app(SetContentLocaleActive::class)->handle($actor, 'de', true))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.not_added'));
+            ->and(fn () => app(SetContentLocaleActive::class)->handle($actor, 'en', false))->toThrow(ContentLocaleException::class, __('hata::site_settings.languages.errors.is_default'))
+            ->and(fn () => app(SetContentLocaleActive::class)->handle($actor, 'de', true))->toThrow(ContentLocaleException::class, __('hata::site_settings.languages.errors.not_added'));
     });
 
     it('makes an active language the default, and the interface default only when asked and possible', function () {
@@ -205,8 +205,8 @@ describe('actions', function () {
         expect($locales->defaultCode())->toBe('de')
             ->and($locales->interfaceDefault())->toBe('uk')
             ->and($locales->isActive('uk'))->toBeTrue()
-            ->and(fn () => app(SetDefaultContentLocale::class)->handle($actor, 'pl'))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.inactive'))
-            ->and(fn () => app(SetDefaultContentLocale::class)->handle($actor, 'fr'))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.not_added'));
+            ->and(fn () => app(SetDefaultContentLocale::class)->handle($actor, 'pl'))->toThrow(ContentLocaleException::class, __('hata::site_settings.languages.errors.inactive'))
+            ->and(fn () => app(SetDefaultContentLocale::class)->handle($actor, 'fr'))->toThrow(ContentLocaleException::class, __('hata::site_settings.languages.errors.not_added'));
     });
 
     it('removes a language, but never the default', function () {
@@ -216,8 +216,8 @@ describe('actions', function () {
         app(RemoveContentLocale::class)->handle($actor, 'uk');
 
         expect(app(ContentLocales::class)->entries())->toBe([['code' => 'en', 'active' => true]])
-            ->and(fn () => app(RemoveContentLocale::class)->handle($actor, 'en'))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.is_default'))
-            ->and(fn () => app(RemoveContentLocale::class)->handle($actor, 'uk'))->toThrow(ContentLocaleException::class, __('site_settings.languages.errors.not_added'));
+            ->and(fn () => app(RemoveContentLocale::class)->handle($actor, 'en'))->toThrow(ContentLocaleException::class, __('hata::site_settings.languages.errors.is_default'))
+            ->and(fn () => app(RemoveContentLocale::class)->handle($actor, 'uk'))->toThrow(ContentLocaleException::class, __('hata::site_settings.languages.errors.not_added'));
     });
 
     it('refuses to remove a language that has records, those in the trash included, and says how many', function () {
@@ -226,14 +226,14 @@ describe('actions', function () {
         Entry::factory()->page()->inLocale('uk')->create()->delete();
 
         expect(fn () => app(RemoveContentLocale::class)->handle($actor, 'uk'))
-            ->toThrow(ContentLocaleException::class, trans_choice('site_settings.languages.errors.has_content', 1))
+            ->toThrow(ContentLocaleException::class, trans_choice('hata::site_settings.languages.errors.has_content', 1))
             ->and(app(ContentLocales::class)->has('uk'))->toBeTrue()
-            ->and(trans_choice('site_settings.languages.errors.has_content', 1))->toContain('1');
+            ->and(trans_choice('hata::site_settings.languages.errors.has_content', 1))->toContain('1');
 
         Entry::factory()->page()->inLocale('uk')->create();
 
         expect(fn () => app(RemoveContentLocale::class)->handle($actor, 'uk'))
-            ->toThrow(ContentLocaleException::class, trans_choice('site_settings.languages.errors.has_content', 2));
+            ->toThrow(ContentLocaleException::class, trans_choice('hata::site_settings.languages.errors.has_content', 2));
     });
 });
 
@@ -350,7 +350,7 @@ describe('addresses', function () {
 
     it('shows a string the content language lacks in the site\'s default interface language', function () {
         siteLanguages(['en' => true, 'uk' => true, 'de' => true], 'en', ['default_locale' => 'uk']);
-        localizedRoutes(fn () => Route::get('probe-text', fn () => __('common.actions.save'))->name('probe.text'));
+        localizedRoutes(fn () => Route::get('probe-text', fn () => __('hata::common.actions.save'))->name('probe.text'));
 
         $this->get('/de/probe-text')->assertOk()->assertSeeText('Зберегти');
         $this->get('/probe-text')->assertOk()->assertSeeText('Save');
@@ -456,7 +456,7 @@ describe('languages tab', function () {
             ->assertSeeHtml('data-test="site-language-en"')
             ->assertSeeHtml('data-test="site-language-uk"')
             ->assertSee('Українська')
-            ->assertSee(__('site_settings.languages.badges.default'))
+            ->assertSee(__('hata::site_settings.languages.badges.default'))
             ->assertSeeHtml('data-test="add-language-de"')
             ->assertDontSeeHtml('data-test="add-language-uk"')
             ->assertDontSeeHtml('data-test="language-switch-en"')
@@ -476,7 +476,7 @@ describe('languages tab', function () {
 
         expect(app(ContentLocales::class)->has('de'))->toBeTrue()
             ->and(app(ContentLocales::class)->isActive('de'))->toBeFalse()
-            ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('site_settings.languages.messages.added', ['language' => 'German']));
+            ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.languages.messages.added', ['language' => 'German']));
     });
 
     it('refuses an unknown language with a message and stores nothing', function () {
@@ -497,7 +497,7 @@ describe('languages tab', function () {
         $confirming = $page()->call('toggleLanguage', 'uk')
             ->assertNoRedirect()
             ->assertSet('showLanguageModal', true)
-            ->assertSee(__('site_settings.languages.confirm.off.heading', ['language' => 'Ukrainian']));
+            ->assertSee(__('hata::site_settings.languages.confirm.off.heading', ['language' => 'Ukrainian']));
         expect(app(ContentLocales::class)->isActive('uk'))->toBeTrue();
 
         $confirming->call('runLanguageAction')->assertRedirect(route('admin.settings.edit', ['tab' => 'languages']));
@@ -510,7 +510,7 @@ describe('languages tab', function () {
         Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
             ->call('confirmLanguage', 'default', 'uk')
             ->assertSet('languageAlsoInterface', true)
-            ->assertSee(__('site_settings.languages.confirm.default.also_interface'))
+            ->assertSee(__('hata::site_settings.languages.confirm.default.also_interface'))
             ->set('languageAlsoInterface', $alsoInterface)
             ->call('runLanguageAction')
             ->assertRedirect(route('admin.settings.edit', ['tab' => 'languages']));
@@ -525,7 +525,7 @@ describe('languages tab', function () {
         Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
             ->call('confirmLanguage', 'default', 'de')
             ->assertSet('showLanguageModal', true)
-            ->assertDontSee(__('site_settings.languages.confirm.default.also_interface'));
+            ->assertDontSee(__('hata::site_settings.languages.confirm.default.also_interface'));
     });
 
     it('removes a language after the confirmation', function () {

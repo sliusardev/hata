@@ -141,6 +141,6 @@ class TestStorageConnection
      */
     private function failed(string $step): array
     {
-        return ['ok' => false, 'step' => $step, 'message' => __("site_settings.media.storage.errors.{$step}")];
+        return ['ok' => false, 'step' => $step, 'message' => __("hata::site_settings.media.storage.errors.{$step}")];
     }
 }

@@ -17,7 +17,7 @@
             <h1 class="text-3xl font-semibold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-4xl">{{ $entry->title }}</h1>
 
             @if ($editUrl !== null && ! $preview)
-                <a href="{{ $editUrl }}" class="mt-2 shrink-0 rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ __('content.public.edit') }}</a>
+                <a href="{{ $editUrl }}" class="mt-2 shrink-0 rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ __('hata::content.public.edit') }}</a>
             @endif
         </header>
 

@@ -13,7 +13,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 
-new #[Layout('hata::layouts.app')] #[Title('roles.edit.title')] class extends RoleFormPage {
+new #[Layout('hata::layouts.app')] #[Title('hata::roles.edit.title')] class extends RoleFormPage {
     #[Locked]
     public Role $role;
 
@@ -56,7 +56,7 @@ new #[Layout('hata::layouts.app')] #[Title('roles.edit.title')] class extends Ro
             return;
         }
 
-        Toast::success(__('roles.messages.updated'));
+        Toast::success(__('hata::roles.messages.updated'));
 
         $this->redirectRoute('admin.roles.index', navigate: true);
     }
@@ -74,7 +74,7 @@ new #[Layout('hata::layouts.app')] #[Title('roles.edit.title')] class extends Ro
             return;
         }
 
-        Toast::success(__('roles.messages.deleted'));
+        Toast::success(__('hata::roles.messages.deleted'));
 
         $this->redirectRoute('admin.roles.index', navigate: true);
     }
@@ -83,34 +83,34 @@ new #[Layout('hata::layouts.app')] #[Title('roles.edit.title')] class extends Ro
 <section class="w-full max-w-3xl space-y-6">
     <div>
         <flux:button variant="ghost" size="sm" icon="arrow-left" :href="route('admin.roles.index')" wire:navigate class="-ms-2 mb-2">
-            {{ __('roles.index.title') }}
+            {{ __('hata::roles.index.title') }}
         </flux:button>
         <div class="flex flex-wrap items-center gap-2">
-            <flux:heading size="xl" level="1">{{ $this->readOnly ? __('roles.edit.view_title') : __('roles.edit.title') }}</flux:heading>
+            <flux:heading size="xl" level="1">{{ $this->readOnly ? __('hata::roles.edit.view_title') : __('hata::roles.edit.title') }}</flux:heading>
             @if ($role->is_system)
-                <flux:badge size="sm" color="zinc">{{ __('roles.system') }}</flux:badge>
+                <flux:badge size="sm" color="zinc">{{ __('hata::roles.system') }}</flux:badge>
             @endif
         </div>
         <flux:subheading>{{ $role->displayName() }} · <code>{{ $role->name }}</code></flux:subheading>
     </div>
 
     @if ($role->isSuperAdmin())
-        <flux:callout icon="shield-check" variant="secondary" :heading="__('roles.form.super_admin_heading')" :text="__('roles.form.super_admin_description')" />
+        <flux:callout icon="shield-check" variant="secondary" :heading="__('hata::roles.form.super_admin_heading')" :text="__('hata::roles.form.super_admin_description')" />
     @else
         @if ($this->readOnly)
-            <flux:callout icon="eye" variant="secondary" :heading="__('roles.edit.read_only')" />
+            <flux:callout icon="eye" variant="secondary" :heading="__('hata::roles.edit.read_only')" />
         @endif
 
         <form wire:submit="save" class="space-y-6">
             <flux:fieldset class="space-y-6">
-                <flux:legend>{{ __('roles.form.details') }}</flux:legend>
+                <flux:legend>{{ __('hata::roles.form.details') }}</flux:legend>
 
                 @if ($role->is_system)
-                    <flux:text>{{ __('roles.form.system_name') }}</flux:text>
+                    <flux:text>{{ __('hata::roles.form.system_name') }}</flux:text>
                 @else
                     <div class="grid gap-6 sm:grid-cols-2">
-                        <flux:input wire:model="form.label" :label="__('roles.form.label')" required :disabled="$this->readOnly" autocomplete="off" />
-                        <flux:input :value="$role->name" :label="__('roles.form.name')" disabled class="font-mono" />
+                        <flux:input wire:model="form.label" :label="__('hata::roles.form.label')" required :disabled="$this->readOnly" autocomplete="off" />
+                        <flux:input :value="$role->name" :label="__('hata::roles.form.name')" disabled class="font-mono" />
                     </div>
                 @endif
             </flux:fieldset>
@@ -118,8 +118,8 @@ new #[Layout('hata::layouts.app')] #[Title('roles.edit.title')] class extends Ro
             <flux:separator variant="subtle" />
 
             <flux:fieldset>
-                <flux:legend>{{ __('roles.form.permissions') }}</flux:legend>
-                <flux:description class="mb-4">{{ __('roles.form.permissions_description') }}</flux:description>
+                <flux:legend>{{ __('hata::roles.form.permissions') }}</flux:legend>
+                <flux:description class="mb-4">{{ __('hata::roles.form.permissions_description') }}</flux:description>
 
                 @include('hata::partials.admin.permission-matrix', ['permissionGroups' => $this->permissionGroups, 'readOnly' => $this->readOnly])
             </flux:fieldset>
@@ -129,14 +129,14 @@ new #[Layout('hata::layouts.app')] #[Title('roles.edit.title')] class extends Ro
                     <div>
                         @if ($this->canDelete)
                             <flux:button variant="danger" icon="trash" wire:click="$set('showDeleteModal', true)" data-test="delete-role-button">
-                                {{ __('roles.delete.submit') }}
+                                {{ __('hata::roles.delete.submit') }}
                             </flux:button>
                         @endif
                     </div>
 
                     <div class="flex gap-3">
-                        <flux:button variant="ghost" :href="route('admin.roles.index')" wire:navigate>{{ __('common.actions.cancel') }}</flux:button>
-                        <flux:button variant="primary" type="submit" data-test="save-role-button">{{ __('roles.edit.submit') }}</flux:button>
+                        <flux:button variant="ghost" :href="route('admin.roles.index')" wire:navigate>{{ __('hata::common.actions.cancel') }}</flux:button>
+                        <flux:button variant="primary" type="submit" data-test="save-role-button">{{ __('hata::roles.edit.submit') }}</flux:button>
                     </div>
                 </div>
             @endunless
@@ -146,15 +146,15 @@ new #[Layout('hata::layouts.app')] #[Title('roles.edit.title')] class extends Ro
     @if ($this->canDelete)
         <x-hata::confirm-modal
             wire:model.self="showDeleteModal"
-            :heading="__('roles.delete.title')"
-            :confirm-label="__('roles.delete.submit')"
+            :heading="__('hata::roles.delete.title')"
+            :confirm-label="__('hata::roles.delete.submit')"
             confirm-action="deleteRole"
             :confirmable="$role->users_count === 0"
         >
             @if ($role->users_count > 0)
-                {{ __('roles.delete.in_use', ['name' => $role->displayName(), 'users' => trans_choice('users.count', $role->users_count)]) }}
+                {{ __('hata::roles.delete.in_use', ['name' => $role->displayName(), 'users' => trans_choice('hata::users.count', $role->users_count)]) }}
             @else
-                {{ __('roles.delete.confirm', ['name' => $role->displayName()]) }}
+                {{ __('hata::roles.delete.confirm', ['name' => $role->displayName()]) }}
             @endif
         </x-hata::confirm-modal>
     @endif

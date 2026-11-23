@@ -20,7 +20,7 @@ class FolderNameValidator
         $name = (string) preg_replace('/^[\s\x{00A0}\x{200B}]+|[\s\x{00A0}\x{200B}]+$/u', '', $name);
 
         if ($name === '' || mb_strlen($name) > 100) {
-            throw ValidationException::withMessages(['name' => __('media.errors.folder_name')]);
+            throw ValidationException::withMessages(['name' => __('hata::media.errors.folder_name')]);
         }
 
         $exists = MediaFolder::query()
@@ -30,7 +30,7 @@ class FolderNameValidator
             ->exists();
 
         if ($exists) {
-            throw ValidationException::withMessages(['name' => __('media.errors.folder_exists')]);
+            throw ValidationException::withMessages(['name' => __('hata::media.errors.folder_exists')]);
         }
 
         return $name;

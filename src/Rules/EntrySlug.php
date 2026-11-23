@@ -36,13 +36,13 @@ class EntrySlug implements ValidationRule
         $paths = app(EntryPaths::class);
 
         if (preg_match(self::FORMAT, $slug) !== 1) {
-            $fail('content.slug.format')->translate();
+            $fail('hata::content.slug.format')->translate();
 
             return;
         }
 
         if ($paths->isReserved($this->type, $this->locale, $this->parent, $slug)) {
-            $fail('content.slug.reserved')->translate();
+            $fail('hata::content.slug.reserved')->translate();
 
             return;
         }
@@ -50,7 +50,7 @@ class EntrySlug implements ValidationRule
         $path = $paths->pathFor($this->type, $this->parent, $slug);
 
         if (strlen($path) > self::MAX_PATH) {
-            $fail('content.slug.too_long')->translate(['max' => self::MAX_PATH]);
+            $fail('hata::content.slug.too_long')->translate(['max' => self::MAX_PATH]);
 
             return;
         }
@@ -59,7 +59,7 @@ class EntrySlug implements ValidationRule
         $holder = $paths->scope($this->type, $this->locale, $this->ignore)->where('path', $path)->first(['id', 'deleted_at']);
 
         if ($holder !== null) {
-            $fail($holder->trashed() ? 'content.slug.taken_trashed' : 'content.slug.taken')->translate();
+            $fail($holder->trashed() ? 'hata::content.slug.taken_trashed' : 'hata::content.slug.taken')->translate();
         }
     }
 }

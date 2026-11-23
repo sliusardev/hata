@@ -10,7 +10,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 
-new #[Layout('hata::layouts.app')] #[Title('media.move.title')] class extends MediaBatchPage {
+new #[Layout('hata::layouts.app')] #[Title('hata::media.move.title')] class extends MediaBatchPage {
     /**
      * The storage the candidates are counted against: the target of a move that is going on, else (no move, or a
      * finished one) the configured storage, which is also where a new move goes. For "this server" (`public`) a row is
@@ -56,7 +56,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.move.title')] class extends Me
         try {
             $this->engine()->start($actor, $this->target);
         } catch (InvalidArgumentException) {
-            Flux::toast(variant: 'danger', text: __('media.move.not_configured'));
+            Flux::toast(variant: 'danger', text: __('hata::media.move.not_configured'));
 
             return false;
         }
@@ -82,34 +82,34 @@ new #[Layout('hata::layouts.app')] #[Title('media.move.title')] class extends Me
     // keep-alive: browsers throttle polling in background tabs, and in browser mode the tab is what moves the files.
     $polling = $run?->status === 'running';
     // The progress card names the disk of its own move; the idle card the one a new move would use.
-    $storage = __('site_settings.media.storage.'.($run?->target ?? $this->target));
+    $storage = __('hata::site_settings.media.storage.'.($run?->target ?? $this->target));
     $outcomeColors = ['moved' => 'green', 'missing' => 'red', 'failed' => 'amber', 'changed' => 'zinc'];
 @endphp
 
 <div class="w-full max-w-3xl space-y-6" data-test="media-move" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
     <div class="flex items-center gap-3">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.batch.back')" :tooltip="__('media.batch.back')" />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('hata::media.batch.back')" :tooltip="__('hata::media.batch.back')" />
         <div class="min-w-0">
-            <flux:heading size="xl" level="1">{{ __('media.move.title') }}</flux:heading>
-            <flux:text>{{ __('media.move.description') }}</flux:text>
+            <flux:heading size="xl" level="1">{{ __('hata::media.move.title') }}</flux:heading>
+            <flux:text>{{ __('hata::media.move.description') }}</flux:text>
         </div>
     </div>
 
     @if ($run === null)
         <flux:card class="space-y-4">
-            <flux:heading size="lg">{{ __('media.move.idle_heading') }}</flux:heading>
-            <flux:text>{{ __('media.move.target', ['storage' => $storage]) }}</flux:text>
+            <flux:heading size="lg">{{ __('hata::media.move.idle_heading') }}</flux:heading>
+            <flux:text>{{ __('hata::media.move.target', ['storage' => $storage]) }}</flux:text>
             <flux:text>
                 @if ($this->candidateCount > 0)
-                    {{ trans_choice('media.move.candidates', $this->candidateCount, ['count' => $this->candidateCount]) }}
+                    {{ trans_choice('hata::media.move.candidates', $this->candidateCount, ['count' => $this->candidateCount]) }}
                 @else
-                    {{ __('media.move.none') }}
+                    {{ __('hata::media.move.none') }}
                 @endif
             </flux:text>
             <flux:button variant="primary" wire:click="start" :disabled="$this->candidateCount === 0" data-test="move-start">
-                {{ __('media.move.start') }}
+                {{ __('hata::media.move.start') }}
             </flux:button>
-            <flux:text size="sm">{{ __('media.move.large_files_note') }}</flux:text>
+            <flux:text size="sm">{{ __('hata::media.move.large_files_note') }}</flux:text>
         </flux:card>
     @else
         @php
@@ -120,7 +120,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.move.title')] class extends Me
 
         @if ($run->status === 'running' && $this->queueAvailable && $this->browserFallback)
             <flux:callout variant="warning" icon="exclamation-triangle" data-test="move-fallback">
-                <flux:callout.text>{{ __('media.batch.fallback') }}</flux:callout.text>
+                <flux:callout.text>{{ __('hata::media.batch.fallback') }}</flux:callout.text>
             </flux:callout>
         @endif
 
@@ -128,36 +128,36 @@ new #[Layout('hata::layouts.app')] #[Title('media.move.title')] class extends Me
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <flux:heading size="lg">
-                        {{ $run->status === 'done' ? __('media.move.done_heading') : trans_choice('media.batch.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
+                        {{ $run->status === 'done' ? __('hata::media.move.done_heading') : trans_choice('hata::media.batch.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
                     </flux:heading>
                     <flux:badge :color="match ($run->status) { 'running' => 'blue', 'paused' => 'amber', default => 'green' }" size="sm">
-                        {{ __("media.move.status.{$run->status}") }}
+                        {{ __("hata::media.move.status.{$run->status}") }}
                     </flux:badge>
                 </div>
                 @if ($secondsLeft !== null)
-                    <flux:text>{{ __('media.batch.time_left', ['time' => \Carbon\CarbonInterval::seconds($secondsLeft)->cascade()->forHumans(['parts' => 2, 'short' => true])]) }}</flux:text>
+                    <flux:text>{{ __('hata::media.batch.time_left', ['time' => \Carbon\CarbonInterval::seconds($secondsLeft)->cascade()->forHumans(['parts' => 2, 'short' => true])]) }}</flux:text>
                 @endif
             </div>
 
-            <flux:text>{{ __('media.move.target', ['storage' => $storage]) }}</flux:text>
+            <flux:text>{{ __('hata::media.move.target', ['storage' => $storage]) }}</flux:text>
 
             <flux:progress :value="$percent" data-test="move-progress" />
 
             <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div>
-                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('media.move.stats.processed') }}</dt>
+                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('hata::media.move.stats.processed') }}</dt>
                     <dd class="font-medium">{{ $processed }} / {{ $run->total }}</dd>
                 </div>
                 <div>
-                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('media.move.stats.moved') }}</dt>
+                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('hata::media.move.stats.moved') }}</dt>
                     <dd class="font-medium">{{ $run->counts['moved'] ?? 0 }}</dd>
                 </div>
                 <div>
-                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('media.move.stats.size') }}</dt>
+                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('hata::media.move.stats.size') }}</dt>
                     <dd class="font-medium" data-test="move-size">{{ Media::formatBytes($run->bytesMoved) }}</dd>
                 </div>
                 <div>
-                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('media.move.stats.skipped') }}</dt>
+                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('hata::media.move.stats.skipped') }}</dt>
                     <dd class="font-medium">{{ $run->skipped() }}</dd>
                 </div>
             </dl>
@@ -166,7 +166,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.move.title')] class extends Me
                 <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400" data-test="move-skipped">
                     @foreach (['missing', 'failed', 'changed'] as $reason)
                         @if (($run->counts[$reason] ?? 0) > 0)
-                            <li>{{ trans_choice("media.move.skipped_reasons.{$reason}", $run->counts[$reason], ['count' => $run->counts[$reason]]) }}</li>
+                            <li>{{ trans_choice("hata::media.move.skipped_reasons.{$reason}", $run->counts[$reason], ['count' => $run->counts[$reason]]) }}</li>
                         @endif
                     @endforeach
                 </ul>
@@ -174,39 +174,39 @@ new #[Layout('hata::layouts.app')] #[Title('media.move.title')] class extends Me
 
             @if ($run->status === 'done')
                 @if ($this->candidateCount > 0)
-                    <flux:text>{{ trans_choice('media.move.done_left', $this->candidateCount, ['count' => $this->candidateCount]) }}</flux:text>
+                    <flux:text>{{ trans_choice('hata::media.move.done_left', $this->candidateCount, ['count' => $this->candidateCount]) }}</flux:text>
                 @endif
                 <div class="flex flex-wrap gap-2">
                     @if ($this->candidateCount > 0)
-                        <flux:button variant="primary" wire:click="start" data-test="move-start-new">{{ __('media.move.start_new') }}</flux:button>
+                        <flux:button variant="primary" wire:click="start" data-test="move-start-new">{{ __('hata::media.move.start_new') }}</flux:button>
                     @endif
-                    <flux:button wire:click="stop">{{ __('common.actions.close') }}</flux:button>
+                    <flux:button wire:click="stop">{{ __('hata::common.actions.close') }}</flux:button>
                 </div>
             @else
                 <div class="flex flex-wrap gap-2">
                     @if ($run->status === 'running')
-                        <flux:button icon="pause" wire:click="pause" data-test="move-pause">{{ __('media.batch.pause') }}</flux:button>
+                        <flux:button icon="pause" wire:click="pause" data-test="move-pause">{{ __('hata::media.batch.pause') }}</flux:button>
                     @else
-                        <flux:button variant="primary" icon="play" wire:click="resume" data-test="move-resume">{{ __('media.batch.resume') }}</flux:button>
+                        <flux:button variant="primary" icon="play" wire:click="resume" data-test="move-resume">{{ __('hata::media.batch.resume') }}</flux:button>
                     @endif
-                    <flux:button variant="danger" icon="stop" wire:click="$set('showStopModal', true)" data-test="move-stop">{{ __('media.batch.stop') }}</flux:button>
+                    <flux:button variant="danger" icon="stop" wire:click="$set('showStopModal', true)" data-test="move-stop">{{ __('hata::media.batch.stop') }}</flux:button>
                 </div>
-                <flux:text size="sm">{{ $browserMode ? __('media.batch.tab_open_browser') : __('media.batch.tab_open_queue') }}</flux:text>
-                <flux:text size="sm">{{ __('media.move.uploads_note') }}</flux:text>
-                <flux:text size="sm">{{ __('media.move.large_files_note') }}</flux:text>
+                <flux:text size="sm">{{ $browserMode ? __('hata::media.batch.tab_open_browser') : __('hata::media.batch.tab_open_queue') }}</flux:text>
+                <flux:text size="sm">{{ __('hata::media.move.uploads_note') }}</flux:text>
+                <flux:text size="sm">{{ __('hata::media.move.large_files_note') }}</flux:text>
             @endif
         </flux:card>
 
         @if ($run->recent !== [])
             <flux:card class="space-y-3">
-                <flux:heading size="lg">{{ __('media.batch.recent') }}</flux:heading>
+                <flux:heading size="lg">{{ __('hata::media.batch.recent') }}</flux:heading>
                 <ul class="divide-y divide-zinc-200 dark:divide-white/10" data-test="move-recent">
                     @foreach ($run->recent as $item)
                         <li wire:key="recent-{{ $loop->index }}-{{ $item['name'] }}" class="flex items-center justify-between gap-3 py-2">
                             <span class="min-w-0 truncate text-sm">{{ $item['name'] }}</span>
                             <span class="flex shrink-0 items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
                                 <span>{{ Media::formatBytes((int) ($item['size'] ?? 0)) }}</span>
-                                <flux:badge :color="$outcomeColors[$item['outcome']] ?? 'zinc'" size="sm">{{ __("media.move.outcomes.{$item['outcome']}") }}</flux:badge>
+                                <flux:badge :color="$outcomeColors[$item['outcome']] ?? 'zinc'" size="sm">{{ __("hata::media.move.outcomes.{$item['outcome']}") }}</flux:badge>
                             </span>
                         </li>
                     @endforeach
@@ -215,7 +215,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.move.title')] class extends Me
         @endif
     @endif
 
-    <x-hata::confirm-modal wire:model.self="showStopModal" :heading="__('media.move.stop_heading')" :confirm-label="__('media.batch.stop')" confirm-action="stop">
-        {{ __('media.move.stop_body') }}
+    <x-hata::confirm-modal wire:model.self="showStopModal" :heading="__('hata::media.move.stop_heading')" :confirm-label="__('hata::media.batch.stop')" confirm-action="stop">
+        {{ __('hata::media.move.stop_body') }}
     </x-hata::confirm-modal>
 </div>

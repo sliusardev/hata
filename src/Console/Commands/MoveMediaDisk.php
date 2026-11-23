@@ -33,7 +33,7 @@ class MoveMediaDisk extends MediaBatchCommand
                 return self::FAILURE;
             }
 
-            $storage = __("site_settings.media.storage.{$target}", locale: 'en');
+            $storage = __("hata::site_settings.media.storage.{$target}", locale: 'en');
             $this->components->info("Starting a new move to {$storage} ({$target}): {$run->total} file(s) to move.");
         }
 

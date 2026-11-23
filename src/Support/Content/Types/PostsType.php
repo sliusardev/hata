@@ -8,6 +8,11 @@ use Hata\Support\Content\Fields\Gallery;
 
 class PostsType extends ContentType
 {
+    public function translationPrefix(): string
+    {
+        return 'hata::';
+    }
+
     public function key(): string
     {
         return 'posts';

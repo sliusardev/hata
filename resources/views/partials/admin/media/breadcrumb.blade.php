@@ -5,13 +5,13 @@
     library page, "''" in the media picker).
 --}}
 @php $atRoot = $folder === null || $folder === ''; @endphp
-<flux:breadcrumbs :aria-label="__('media.index.folders.path')">
+<flux:breadcrumbs :aria-label="__('hata::media.index.folders.path')">
     @if ($atRoot)
-        <flux:breadcrumbs.item>{{ __('media.index.folders.all') }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>{{ __('hata::media.index.folders.all') }}</flux:breadcrumbs.item>
     @else
-        <flux:breadcrumbs.item href="#" wire:click.prevent="$set('folder', {{ $rootValue }})" data-test="media-breadcrumb-root">{{ __('media.index.folders.all') }}</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item href="#" wire:click.prevent="$set('folder', {{ $rootValue }})" data-test="media-breadcrumb-root">{{ __('hata::media.index.folders.all') }}</flux:breadcrumbs.item>
         @if ($folder === 'none')
-            <flux:breadcrumbs.item>{{ __('media.index.folders.none') }}</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item>{{ __('hata::media.index.folders.none') }}</flux:breadcrumbs.item>
         @endif
         @foreach ($crumbs as $crumb)
             @if ($loop->last)

@@ -73,7 +73,7 @@ class AccessRules
     public function userUpdateDenial(User $actor, User $user): ?string
     {
         return $user->isSuperAdmin() && ! $actor->isSuperAdmin()
-            ? 'users.errors.cannot_manage_super_admin'
+            ? 'hata::users.errors.cannot_manage_super_admin'
             : null;
     }
 
@@ -90,9 +90,9 @@ class AccessRules
             : $user->isSuperAdmin() && $superAdminCount <= 1;
 
         return match (true) {
-            $actor->is($user) => 'users.errors.cannot_delete_self',
-            $isLastSuperAdmin => 'users.errors.cannot_delete_last_super_admin',
-            $user->isSuperAdmin() && ! $actor->isSuperAdmin() => 'users.errors.cannot_manage_super_admin',
+            $actor->is($user) => 'hata::users.errors.cannot_delete_self',
+            $isLastSuperAdmin => 'hata::users.errors.cannot_delete_last_super_admin',
+            $user->isSuperAdmin() && ! $actor->isSuperAdmin() => 'hata::users.errors.cannot_manage_super_admin',
             default => null,
         };
     }
@@ -103,7 +103,7 @@ class AccessRules
      */
     public function roleUpdateDenial(Role $role): ?string
     {
-        return $role->isSuperAdmin() ? 'roles.errors.super_admin_locked' : null;
+        return $role->isSuperAdmin() ? 'hata::roles.errors.super_admin_locked' : null;
     }
 
     /**
@@ -114,9 +114,9 @@ class AccessRules
     public function roleDeletionDenial(Role $role): ?string
     {
         return match (true) {
-            $role->isSuperAdmin() => 'roles.errors.super_admin_locked',
-            $role->is_system => 'roles.errors.cannot_delete_system',
-            $role->users()->exists() => 'roles.errors.cannot_delete_in_use',
+            $role->isSuperAdmin() => 'hata::roles.errors.super_admin_locked',
+            $role->is_system => 'hata::roles.errors.cannot_delete_system',
+            $role->users()->exists() => 'hata::roles.errors.cannot_delete_in_use',
             default => null,
         };
     }

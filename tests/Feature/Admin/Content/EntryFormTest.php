@@ -69,7 +69,7 @@ test('a page is created through the form', function () {
         ->and($entry->author_id)->toBe($editor->id)
         ->and($entry->status)->toBe(EntryStatus::Published)
         ->and($entry->isPublic())->toBeTrue()
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('content.form.created'));
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::content.form.created'));
 });
 
 test('the new form opens in the requested language and refuses a language that is not on the site', function () {
@@ -77,7 +77,7 @@ test('the new form opens in the requested language and refuses a language that i
 
     $html = $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'uk']))
         ->assertOk()
-        ->assertSee(__('content.form.language.choose'))
+        ->assertSee(__('hata::content.form.language.choose'))
         ->getContent();
 
     expect($html)->toMatch('/<option(?=[^>]*value="uk")[^>]*\sselected/')
@@ -95,10 +95,10 @@ test('the page title names the type and the record', function () {
 
     $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))
         ->assertOk()
-        ->assertSeeInOrder(['<title>', __('content.form.page_title', ['type' => 'Page', 'title' => 'Contacts']), '</title>'], false);
+        ->assertSeeInOrder(['<title>', __('hata::content.form.page_title', ['type' => 'Page', 'title' => 'Contacts']), '</title>'], false);
 
     $this->get(route('admin.content.create', ['type' => 'pages', 'locale' => 'en']))
-        ->assertSee(__('content.types.pages.new'));
+        ->assertSee(__('hata::content.types.pages.new'));
 });
 
 test('suggestSlug returns a free slug, a suffixed one when it is taken, and follows the parent', function () {
@@ -208,7 +208,7 @@ test('a tampered parent is a field error, and so is a language removed before sa
     $form->call('save')
         ->assertHasErrors('form.locale')
         ->assertSeeHtml('data-test="form-error-callout"')
-        ->assertSee(__('content.entry.locale_invalid'));
+        ->assertSee(__('hata::content.entry.locale_invalid'));
     expect(Entry::query()->where('locale', 'pl')->exists())->toBeFalse();
 });
 
@@ -251,7 +251,7 @@ test('opening a translation the group already has goes to its edit page, also wh
 
     $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $trashed->id]))
         ->assertOk()
-        ->assertSee(__('content.form.trashed.title'))
+        ->assertSee(__('hata::content.form.trashed.title'))
         ->assertSeeHtml('data-test="restore-entry"');
 
     $this->get(route('admin.content.create', ['type' => 'pages', 'from' => 999999, 'locale' => 'uk']))->assertNotFound();
@@ -297,12 +297,12 @@ test('moving to the trash asks first, names the subpages and returns to the list
         ->assertSet('showTrashModal', false)
         ->call('confirmTrash')
         ->assertSet('showTrashModal', true)
-        ->assertSee(trans_choice('content.list.trash.confirm_children', 2, ['title' => 'About']))
+        ->assertSee(trans_choice('hata::content.list.trash.confirm_children', 2, ['title' => 'About']))
         ->call('trash')
         ->assertRedirect(route('admin.content.index', ['type' => 'pages']));
 
     expect(Entry::onlyTrashed()->count())->toBe(3)
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(trans_choice('content.list.trash.done_with_children', 3));
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(trans_choice('hata::content.list.trash.done_with_children', 3));
 });
 
 test('a trashed record opens read-only with the removal date and can be restored with edit', function () {
@@ -312,7 +312,7 @@ test('a trashed record opens read-only with the removal date and can be restored
 
     $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))
         ->assertOk()
-        ->assertSee(__('content.form.trashed.removal', ['date' => $removal]))
+        ->assertSee(__('hata::content.form.trashed.removal', ['date' => $removal]))
         ->assertDontSeeHtml('data-test="save-entry"')
         ->assertDontSeeHtml('data-test="trash-entry"');
 
@@ -327,7 +327,7 @@ test('a trashed record opens read-only with the removal date and can be restored
     $page->delete();
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
     $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))
-        ->assertSee(__('content.form.trashed.title'))
+        ->assertSee(__('hata::content.form.trashed.title'))
         ->assertDontSeeHtml('data-test="restore-entry"');
     editForm($page)->call('restore')->assertForbidden();
 });
@@ -373,8 +373,8 @@ test('the header links to the site: View on site for a public record, Preview fo
     $public = Entry::factory()->published()->create();
     $draft = Entry::factory()->create();
 
-    editForm($public)->assertSee(__('content.form.view'))->assertSeeHtml('href="'.$public->url().'"');
-    editForm($draft)->assertSee(__('content.form.preview'))->assertDontSee(__('content.form.view'));
+    editForm($public)->assertSee(__('hata::content.form.view'))->assertSeeHtml('href="'.$public->url().'"');
+    editForm($draft)->assertSee(__('hata::content.form.preview'))->assertDontSee(__('hata::content.form.view'));
     createForm()->assertDontSeeHtml('data-test="view-entry"');
 });
 
@@ -385,16 +385,16 @@ test('Preview shows only to those who may preview, and a record in a switched-of
     $off = Entry::factory()->published()->inLocale('de')->create();
 
     editForm($public)->assertSeeHtml('data-test="view-entry"');
-    editForm($draft)->assertDontSeeHtml('data-test="view-entry"')->assertDontSee(__('content.form.preview'));
+    editForm($draft)->assertDontSeeHtml('data-test="view-entry"')->assertDontSee(__('hata::content.form.preview'));
 
     $this->actingAs(formEditor());
 
     // In a switched-off language an editor gets the note and a preview; a view-only user the note alone.
     editForm($off)
         ->assertSeeHtml('data-test="view-entry"')
-        ->assertSee(__('content.form.preview'))
+        ->assertSee(__('hata::content.form.preview'))
         ->assertSeeHtml('data-test="language-off-note"')
-        ->assertSee(__('content.form.language_off'));
+        ->assertSee(__('hata::content.form.language_off'));
 
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'pages.view'])->create());
     editForm($off)->assertDontSeeHtml('data-test="view-entry"')->assertSeeHtml('data-test="language-off-note"');
@@ -419,7 +419,7 @@ test('a type with fields renders one control per field and stores local and shar
         $form->assertSeeHtml('data-test="field-'.$field->name.'"');
     }
 
-    $form->assertSee(__('content.form.shared.title'))
+    $form->assertSee(__('hata::content.form.shared.title'))
         ->set('form.title', 'Chair')
         ->set('form.slug', 'chair')
         ->set('form.fields.subtitle', 'Oak')
@@ -460,7 +460,7 @@ test('a creator without edit sees the shared values locked in a translation, and
 
     $form = createForm(['locale' => 'en', 'from' => (string) $source->id], 'products')
         ->assertSeeHtml('data-test="shared-locked"')
-        ->assertSee(__('content.form.shared.locked'));
+        ->assertSee(__('hata::content.form.shared.locked'));
 
     expect($priceDisabled($form))->toBeTrue();
 
@@ -475,7 +475,7 @@ test('a creator without edit sees the shared values locked in a translation, and
 test('the pages type has no field cards', function () {
     $this->actingAs(formEditor());
 
-    createForm()->assertDontSee(__('content.form.shared.title'))->assertDontSee(__('content.form.fields_card'));
+    createForm()->assertDontSee(__('hata::content.form.shared.title'))->assertDontSee(__('hata::content.form.fields_card'));
 });
 
 test('the language card lists a row per other language: the translation, the trashed one, or the ways to get one', function () {
@@ -614,7 +614,7 @@ test('the media library links a record using a file to its edit page, also from 
     $page->delete();
     expect($usage->fresh()->url($editor))->toBe($edit);
 
-    $this->actingAs($editor)->get($edit)->assertOk()->assertSee(__('content.form.trashed.title'));
+    $this->actingAs($editor)->get($edit)->assertOk()->assertSee(__('hata::content.form.trashed.title'));
 });
 
 test('a translation whose copied author can no longer be one is the actor\'s', function () {
@@ -647,7 +647,7 @@ test('a translation whose source went to the trash meanwhile is not saved on its
 
     $form->call('save')
         ->assertHasErrors('form.source')
-        ->assertSee(__('content.form.source_gone'))
+        ->assertSee(__('hata::content.form.source_gone'))
         ->assertNoRedirect();
 
     expect(Entry::query()->where('locale', 'uk')->exists())->toBeFalse();
@@ -684,7 +684,7 @@ test('a new record offers the languages of the site, and a saved one those its g
         ->assertSeeHtml('data-test="entry-locale"')
         ->assertSeeHtml(['data-test="locale-choice-en" data-taken="false"', 'data-test="locale-choice-de" data-taken="false"'])
         ->assertSeeHtml(['data-test="locale-choice-uk" data-taken="true"', 'data-test="locale-choice-pl" data-taken="true"'])
-        ->assertSee(__('content.form.language.taken'));
+        ->assertSee(__('hata::content.form.language.taken'));
 });
 
 test('a new record starts as published for those who may publish', function () {
@@ -802,6 +802,6 @@ test('the header lists the languages of the page as links, and a translation say
 
     createForm(['from' => (string) $page->id, 'locale' => 'pl'])
         ->assertSeeHtml('data-test="translation-callout"')
-        ->assertSee(__('content.form.translation.title', ['title' => 'Home', 'language' => 'EN']))
+        ->assertSee(__('hata::content.form.translation.title', ['title' => 'Home', 'language' => 'EN']))
         ->assertSeeHtml('data-test="chip-en" data-state="published"');
 });

@@ -3,7 +3,7 @@
     Receives $records, a simple paginator of records with their image loaded; makes no query.
 --}}
 @if ($records->isEmpty())
-    <p class="mt-8 text-zinc-500 dark:text-zinc-400" data-test="list-empty">{{ __('content.public.list_empty') }}</p>
+    <p class="mt-8 text-zinc-500 dark:text-zinc-400" data-test="list-empty">{{ __('hata::content.public.list_empty') }}</p>
 @else
     <ul class="mt-8 grid gap-8 sm:grid-cols-2" data-test="record-cards">
         @foreach ($records as $record)
@@ -25,15 +25,15 @@
     </ul>
 
     @if ($records->previousPageUrl() !== null || $records->hasMorePages())
-        <nav class="mt-10 flex items-center justify-between gap-4 text-sm" aria-label="{{ __('content.public.pages') }}" data-test="list-pages">
+        <nav class="mt-10 flex items-center justify-between gap-4 text-sm" aria-label="{{ __('hata::content.public.pages') }}" data-test="list-pages">
             <span>
                 @if ($records->previousPageUrl() !== null)
-                    <a href="{{ $records->previousPageUrl() }}" rel="prev" class="rounded-lg border border-zinc-200 px-3 py-1.5 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">← {{ __('content.public.newer') }}</a>
+                    <a href="{{ $records->previousPageUrl() }}" rel="prev" class="rounded-lg border border-zinc-200 px-3 py-1.5 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">← {{ __('hata::content.public.newer') }}</a>
                 @endif
             </span>
             <span>
                 @if ($records->hasMorePages())
-                    <a href="{{ $records->nextPageUrl() }}" rel="next" class="rounded-lg border border-zinc-200 px-3 py-1.5 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">{{ __('content.public.older') }} →</a>
+                    <a href="{{ $records->nextPageUrl() }}" rel="next" class="rounded-lg border border-zinc-200 px-3 py-1.5 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">{{ __('hata::content.public.older') }} →</a>
                 @endif
             </span>
         </nav>

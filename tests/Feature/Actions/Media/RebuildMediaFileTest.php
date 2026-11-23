@@ -228,7 +228,7 @@ it('refuses heic the optimizer could not convert', function () {
         ->andReturn(new OptimizedImage('heic', 'image/heic', 'heic', 640, 480, optimized: false, failure: 'unreadable'));
 
     expect(fn () => app(RebuildMediaFile::class)->handle($media, 'heic', 'image/heic', null))
-        ->toThrow(MediaUploadException::class, __('media.errors.heic_unsupported'));
+        ->toThrow(MediaUploadException::class, __('hata::media.errors.heic_unsupported'));
 
     expect(Storage::disk('local')->get($media->path))->toBe('old-file')
         ->and($media->fresh()->version)->toBe(1);

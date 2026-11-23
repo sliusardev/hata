@@ -17,7 +17,7 @@ describe('create', function () {
     test('it is displayed with the roles.create permission', function () {
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'roles.create'])->create());
 
-        $this->get(route('admin.roles.create'))->assertOk()->assertSee(__('permissions.groups.users'));
+        $this->get(route('admin.roles.create'))->assertOk()->assertSee(__('hata::permissions.groups.users'));
     });
 
     test('it generates the technical name from the label until it is edited', function () {
@@ -44,7 +44,7 @@ describe('create', function () {
         $role = Role::findByName('moderator');
         expect($role->label)->toBe('Moderator')
             ->and($role->permissions->pluck('name')->sort()->values()->all())->toBe(['admin.access', 'users.view'])
-            ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('roles.messages.created'));
+            ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::roles.messages.created'));
     });
 
     test('it validates the label and technical name', function (string $name) {
@@ -74,7 +74,7 @@ describe('create', function () {
             ->assertSet('form.permissions', ['users.view'])
             ->call('clearGroup', 'users')
             ->assertSet('form.permissions', [])
-            ->assertSee(__('roles.form.permission_unavailable'));
+            ->assertSee(__('hata::roles.form.permission_unavailable'));
     });
 });
 
@@ -89,7 +89,7 @@ describe('edit', function () {
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'roles.view'])->create());
 
         Livewire::test('hata::admin.roles.edit', ['role' => Role::findByName('editor')])
-            ->assertSee(__('roles.edit.read_only'))
+            ->assertSee(__('hata::roles.edit.read_only'))
             ->assertDontSeeHtml('data-test="save-role-button"')
             ->call('save')
             ->assertForbidden();
@@ -113,10 +113,10 @@ describe('edit', function () {
         $this->actingAs(User::factory()->withRole('super-admin')->create());
 
         Livewire::test('hata::admin.roles.edit', ['role' => Role::findByName('super-admin')])
-            ->assertSee(__('roles.form.super_admin_heading'))
+            ->assertSee(__('hata::roles.form.super_admin_heading'))
             ->assertDontSeeHtml('data-test="save-role-button"')
             ->call('save')
-            ->assertHasErrors(['form.permissions' => __('roles.errors.super_admin_locked')]);
+            ->assertHasErrors(['form.permissions' => __('hata::roles.errors.super_admin_locked')]);
     });
 
     test('it deletes an unused custom role from the edit page', function () {

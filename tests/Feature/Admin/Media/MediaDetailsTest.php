@@ -38,10 +38,10 @@ it('opens the details of a file', function () {
         ->call('select', $media->id)
         ->assertSet('selectedId', $media->id)
         ->assertSeeHtml('data-test="media-details"')
-        ->assertSee(__('media.details.type_converted', ['type' => 'WEBP', 'original' => 'JPG']))
+        ->assertSee(__('hata::media.details.type_converted', ['type' => 'WEBP', 'original' => 'JPG']))
         ->assertSee('164 KB · 2560 × 1707')
         ->assertSee('Olena Koval')
-        ->assertSee(__('media.index.nowhere'))
+        ->assertSee(__('hata::media.index.nowhere'))
         ->assertSee($media->appUrl());
 });
 
@@ -96,7 +96,7 @@ it('shows the primary alt text and folds the other languages into translations',
         ->assertSet('details.alt.de', '')
         ->assertSeeHtml('id="alt-uk"')
         ->assertSeeHtml('data-test="alt-translations"')
-        ->assertSee(__('media.details.translations_filled', ['filled' => 1, 'total' => 3]))
+        ->assertSee(__('hata::media.details.translations_filled', ['filled' => 1, 'total' => 3]))
         ->assertSeeHtml('placeholder="Каша в мисці"');
 });
 
@@ -109,7 +109,7 @@ it('opens the full file in a new tab from the preview and the open button', func
         ->call('select', $media->id)
         ->assertSeeHtmlInOrder(['href="'.$url.'"', 'target="_blank"', 'data-test="media-details-preview"'])
         ->assertSeeHtmlInOrder(['data-test="media-details-preview"', 'href="'.$url.'"', 'target="_blank"', 'data-test="media-details-open"'])
-        ->assertSee(__('media.details.open'));
+        ->assertSee(__('hata::media.details.open'));
 });
 
 it('shows no translations block with a single language', function () {
@@ -177,8 +177,8 @@ it('asks before deleting and deletes after confirming', function () {
         ->call('confirmDelete', $media->id)
         ->assertSet('showDeleteModal', true)
         ->assertSet('deletingIds', [$media->id])
-        ->assertSee(__('media.delete.body_one', ['name' => 'price-list.pdf']))
-        ->assertSee(trans_choice('media.delete.used', 1));
+        ->assertSee(__('hata::media.delete.body_one', ['name' => 'price-list.pdf']))
+        ->assertSee(trans_choice('hata::media.delete.used', 1));
 
     $this->assertModelExists($media);
 
@@ -216,7 +216,7 @@ it('shows the optimization result', function () {
     Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSee('18.4 MB → 164 KB (−99%)')
-        ->assertDontSee(__('media.details.not_optimized'));
+        ->assertDontSee(__('hata::media.details.not_optimized'));
 
     app()->setLocale('uk');
 
@@ -233,14 +233,14 @@ it('says why an image was not optimized', function () {
 
     Livewire::test('hata::admin.media.index')
         ->call('select', $tooLarge->id)
-        ->assertSee(__('media.details.not_optimized'))
-        ->assertDontSee(__('media.details.unreadable'))
+        ->assertSee(__('hata::media.details.not_optimized'))
+        ->assertDontSee(__('hata::media.details.unreadable'))
         ->call('select', $unreadable->id)
-        ->assertSee(__('media.details.unreadable'))
-        ->assertDontSee(__('media.details.not_optimized'))
+        ->assertSee(__('hata::media.details.unreadable'))
+        ->assertDontSee(__('hata::media.details.not_optimized'))
         ->call('select', $animated->id)
-        ->assertDontSee(__('media.details.not_optimized'))
-        ->assertDontSee(__('media.details.unreadable'));
+        ->assertDontSee(__('hata::media.details.not_optimized'))
+        ->assertDontSee(__('hata::media.details.unreadable'));
 });
 
 it('shows the panel line for an upload the server was too short of memory to optimize', function () {
@@ -252,7 +252,7 @@ it('shows the panel line for an upload the server was too short of memory to opt
 
     Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
-        ->assertSee(__('media.details.not_optimized'));
+        ->assertSee(__('hata::media.details.not_optimized'));
 });
 
 it('says which format a file was uploaded as without a kept original', function () {
@@ -265,7 +265,7 @@ it('says which format a file was uploaded as without a kept original', function 
 
     Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
-        ->assertSee(__('media.details.type_converted', ['type' => 'WEBP', 'original' => 'JPG']));
+        ->assertSee(__('hata::media.details.type_converted', ['type' => 'WEBP', 'original' => 'JPG']));
 });
 
 it('clears a pending confirmation when the dialog is cancelled', function () {
@@ -296,8 +296,8 @@ it('shows the file url in a selectable field with a copy fallback for plain http
         ->call('select', $media->id)
         ->assertSeeHtml('value="'.e($media->appUrl()).'"')
         ->assertSeeHtml('data-test="media-details-copy"')
-        ->assertSeeHtml((string) Js::from(__('media.details.copied')))
-        ->assertSeeHtml((string) Js::from(__('media.details.copy_failed')));
+        ->assertSeeHtml((string) Js::from(__('hata::media.details.copied')))
+        ->assertSeeHtml((string) Js::from(__('hata::media.details.copy_failed')));
 });
 
 it('points Download at the app route with the download flag', function () {

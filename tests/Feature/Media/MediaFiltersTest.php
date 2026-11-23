@@ -94,7 +94,7 @@ it('refuses a file outside the allowed extensions and stores nothing', function 
 
     $result = app(StoreUploadedMedia::class)->handle($actor, $upload, null, null, null, ['pdf', 'zip']);
 
-    expect($result)->toBe(['ok' => false, 'error' => __('media.picker.not_allowed')])
+    expect($result)->toBe(['ok' => false, 'error' => __('hata::media.picker.not_allowed')])
         ->and(Media::query()->count())->toBe(0)
         ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
@@ -115,5 +115,5 @@ it('still returns the refusal when removing the refused file fails', function ()
 
     $result = app(StoreUploadedMedia::class)->handle($actor, $upload, null, null, null, ['pdf']);
 
-    expect($result)->toBe(['ok' => false, 'error' => __('media.picker.not_allowed')]);
+    expect($result)->toBe(['ok' => false, 'error' => __('hata::media.picker.not_allowed')]);
 });

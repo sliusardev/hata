@@ -100,7 +100,7 @@ class RestoreEntry
             }
         }
 
-        throw ProtectedActionException::because('content.entry.restore_conflict');
+        throw ProtectedActionException::because('hata::content.entry.restore_conflict');
     }
 
     /**

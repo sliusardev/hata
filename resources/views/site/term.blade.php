@@ -19,7 +19,7 @@
         </div>
 
         @if ($editUrl !== null)
-            <a href="{{ $editUrl }}" class="mt-2 shrink-0 rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ __('content.public.edit') }}</a>
+            <a href="{{ $editUrl }}" class="mt-2 shrink-0 rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">{{ __('hata::content.public.edit') }}</a>
         @endif
     </header>
 

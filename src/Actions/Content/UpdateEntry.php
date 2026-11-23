@@ -41,7 +41,7 @@ class UpdateEntry
         Gate::forUser($actor)->authorize('update', $entry);
 
         if ($entry->trashed()) {
-            throw ProtectedActionException::because('content.entry.trashed');
+            throw ProtectedActionException::because('hata::content.entry.trashed');
         }
 
         $type = $entry->type();
@@ -76,10 +76,10 @@ class UpdateEntry
         } catch (UniqueConstraintViolationException) {
             // Another request took the language or the path between the check and the write.
             if ($moves && in_array($locale, EntryGroup::takenLocales($entry->entry_group_id), true)) {
-                throw ValidationException::withMessages(['locale' => __('content.entry.locale_taken')]);
+                throw ValidationException::withMessages(['locale' => __('hata::content.entry.locale_taken')]);
             }
 
-            throw ValidationException::withMessages(['slug' => __('content.slug.taken')]);
+            throw ValidationException::withMessages(['slug' => __('hata::content.slug.taken')]);
         }
     }
 
@@ -89,11 +89,11 @@ class UpdateEntry
     private function assertMayBecome(Entry $entry, string $locale): void
     {
         $problem = match (true) {
-            ! $this->locales->has($locale) => 'content.entry.locale_invalid',
-            in_array($locale, EntryGroup::takenLocales($entry->entry_group_id), true) => 'content.entry.locale_taken',
-            $entry->descendants()->withTrashed()->exists() => 'content.entry.locale_has_children',
+            ! $this->locales->has($locale) => 'hata::content.entry.locale_invalid',
+            in_array($locale, EntryGroup::takenLocales($entry->entry_group_id), true) => 'hata::content.entry.locale_taken',
+            $entry->descendants()->withTrashed()->exists() => 'hata::content.entry.locale_has_children',
             // Records are filed under terms of their own language: a term in use stays in its language.
-            $entry->type()->isTaxonomy() && $entry->termRecords()->withTrashed()->exists() => 'content.entry.locale_has_records',
+            $entry->type()->isTaxonomy() && $entry->termRecords()->withTrashed()->exists() => 'hata::content.entry.locale_has_records',
             default => null,
         };
 

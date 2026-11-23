@@ -23,9 +23,9 @@ test('it lists roles with translated names, user and permission counts', functio
     Role::create(['name' => 'moderator', 'label' => 'Moderator', 'guard_name' => 'web']);
 
     Livewire::test('hata::admin.roles.index')
-        ->assertSee(__('roles.names.editor'))
+        ->assertSee(__('hata::roles.names.editor'))
         ->assertSee('Moderator')
-        ->assertSee(__('roles.all_permissions'))
+        ->assertSee(__('hata::roles.all_permissions'))
         ->tap(function ($component): void {
             $roles = $component->instance()->roles->keyBy('name');
 
@@ -80,7 +80,7 @@ test('it deletes an unused custom role from the list', function () {
 
     Livewire::test('hata::admin.roles.index')
         ->call('confirmDelete', $custom->id)
-        ->assertSee(__('roles.delete.confirm', ['name' => 'Moderator']))
+        ->assertSee(__('hata::roles.delete.confirm', ['name' => 'Moderator']))
         ->call('deleteRole')
         ->assertDispatched('toast-show');
 
@@ -94,6 +94,6 @@ test('the delete dialog explains how many users have the role', function () {
 
     Livewire::test('hata::admin.roles.index')
         ->call('confirmDelete', $custom->id)
-        ->assertSee(__('roles.delete.in_use', ['name' => 'Moderator', 'users' => trans_choice('users.count', 3)]))
+        ->assertSee(__('hata::roles.delete.in_use', ['name' => 'Moderator', 'users' => trans_choice('hata::users.count', 3)]))
         ->assertDontSeeHtml('data-test="confirm-modal-button"');
 });

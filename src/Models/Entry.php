@@ -396,7 +396,7 @@ class Entry extends Model implements UsesMedia
      */
     public function mediaUsageLabel(string $field): string
     {
-        return __('content.usage.entry', ['type' => $this->typeLabel(), 'title' => $this->title]);
+        return __('hata::content.usage.entry', ['type' => $this->typeLabel(), 'title' => $this->title]);
     }
 
     /**

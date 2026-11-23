@@ -38,7 +38,7 @@ class StoreUploadedMedia
         if ($folderId !== null && $folder === null) {
             $file->delete();
 
-            return ['ok' => false, 'error' => __('media.errors.folder_missing')];
+            return ['ok' => false, 'error' => __('hata::media.errors.folder_missing')];
         }
 
         try {
@@ -50,7 +50,7 @@ class StoreUploadedMedia
         } catch (Throwable $exception) {
             report($exception);
 
-            return ['ok' => false, 'error' => __('media.upload.failed')];
+            return ['ok' => false, 'error' => __('hata::media.upload.failed')];
         } finally {
             $file->delete();
         }
@@ -59,7 +59,7 @@ class StoreUploadedMedia
         if ($allowedExtensions !== null && ! in_array(strtolower($media->extension()), $allowedExtensions, true)) {
             $this->discard($media);
 
-            return ['ok' => false, 'error' => __('media.picker.not_allowed')];
+            return ['ok' => false, 'error' => __('hata::media.picker.not_allowed')];
         }
 
         return [
@@ -67,8 +67,8 @@ class StoreUploadedMedia
             'id' => $media->id,
             'name' => $media->name,
             'meta' => $media->savedBytes() === null
-                ? __('media.upload.done', ['size' => $media->humanSize()])
-                : __('media.upload.done_compressed', [
+                ? __('hata::media.upload.done', ['size' => $media->humanSize()])
+                : __('hata::media.upload.done_compressed', [
                     'before' => Media::formatBytes((int) $media->original_size),
                     'after' => $media->humanSize(),
                 ]),

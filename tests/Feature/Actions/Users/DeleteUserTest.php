@@ -31,7 +31,7 @@ test('rule 4: users cannot delete themselves', function () {
     User::factory()->withRole('super-admin')->create();
 
     expect(fn () => app(DeleteUser::class)->handle($actor, $actor))
-        ->toThrow(ProtectedActionException::class, __('users.errors.cannot_delete_self'));
+        ->toThrow(ProtectedActionException::class, __('hata::users.errors.cannot_delete_self'));
 
     $this->assertModelExists($actor);
 });
@@ -41,7 +41,7 @@ test('rule 3: the last super admin cannot be deleted', function () {
     $actor = User::factory()->withRole('admin')->create();
 
     expect(fn () => app(DeleteUser::class)->handle($actor, $lastSuperAdmin))
-        ->toThrow(ProtectedActionException::class, __('users.errors.cannot_delete_last_super_admin'));
+        ->toThrow(ProtectedActionException::class, __('hata::users.errors.cannot_delete_last_super_admin'));
 
     $this->assertModelExists($lastSuperAdmin);
 });
@@ -52,7 +52,7 @@ test('only super admins can delete super admins', function () {
     $actor = User::factory()->withRole('admin')->create();
 
     expect(fn () => app(DeleteUser::class)->handle($actor, $superAdmin))
-        ->toThrow(ProtectedActionException::class, __('users.errors.cannot_manage_super_admin'));
+        ->toThrow(ProtectedActionException::class, __('hata::users.errors.cannot_manage_super_admin'));
 
     $this->assertModelExists($superAdmin);
 });

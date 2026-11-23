@@ -130,7 +130,7 @@ describe('access', function () {
     it('opens for a super admin and for a role that was given the permission, with the sidebar item', function () {
         $this->actingAs(maintainer())->get(route('admin.maintenance'))
             ->assertOk()
-            ->assertSee(__('maintenance.title'))
+            ->assertSee(__('hata::maintenance.title'))
             ->assertSee(route('admin.maintenance'));
 
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'maintenance.run'])->create())
@@ -171,7 +171,7 @@ describe('migrations', function () {
             ->assertSeeHtml('data-test="maintenance-pending-count"')
             ->call('confirm', 'migrate')
             ->assertSet('showConfirmModal', true)
-            ->assertSee(trans_choice('maintenance.actions.migrate.confirm', 1, ['count' => 1]))
+            ->assertSee(trans_choice('hata::maintenance.actions.migrate.confirm', 1, ['count' => 1]))
             ->assertSeeHtml('action="'.route('admin.maintenance.run').'"')
             ->assertSeeHtml('name="action" value="migrate"');
 
@@ -219,7 +219,7 @@ describe('migrations', function () {
 
         runMaintenance('clear_caches', as: $actor)
             ->assertRedirect(route('admin.maintenance'))
-            ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('maintenance.errors.migrate_first'));
+            ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('hata::maintenance.errors.migrate_first'));
 
         $run = app(RunMaintenanceAction::class)->handle($actor, MaintenanceAction::Migrate);
 
@@ -246,7 +246,7 @@ describe('seeders', function () {
             ->assertSet('seeder', 'DatabaseSeeder')
             ->set('seeder', 'DemoSeeder')
             ->call('confirm', 'seed')
-            ->assertSee(__('maintenance.actions.seed.confirm', ['seeder' => 'DemoSeeder']))
+            ->assertSee(__('hata::maintenance.actions.seed.confirm', ['seeder' => 'DemoSeeder']))
             ->assertSeeHtml('name="seeder" value="DemoSeeder"')
             // The dialog keeps posting the seeder it named, whatever the select is changed to behind it.
             ->set('seeder', 'DatabaseSeeder')
@@ -255,7 +255,7 @@ describe('seeders', function () {
         runMaintenance('seed', 'DemoSeeder')->assertRedirect(route('admin.maintenance'));
 
         expect($fake->calls)->toBe([['db:seed', ['--class' => 'Database\Seeders\DemoSeeder', '--force' => true]]])
-            ->and(MaintenanceRun::query()->sole()->title())->toBe(__('maintenance.actions.seed.title').': DemoSeeder');
+            ->and(MaintenanceRun::query()->sole()->title())->toBe(__('hata::maintenance.actions.seed.title').': DemoSeeder');
     });
 
     it('never runs a class that is not a listed seeder', function (string $tampered) {
@@ -269,7 +269,7 @@ describe('seeders', function () {
 
         runMaintenance('seed', $tampered, $actor)
             ->assertRedirect(route('admin.maintenance'))
-            ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('maintenance.errors.unknown_seeder'));
+            ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('hata::maintenance.errors.unknown_seeder'));
 
         expect($fake->calls)->toBe([])->and(MaintenanceRun::count())->toBe(0);
     })->with(['App\Models\User', 'Database\Seeders\DemoSeeder', '../DemoSeeder', '', 'DemoSeeder --database=other']);
@@ -291,7 +291,7 @@ describe('caches', function () {
 
         runMaintenance('clear_caches')
             ->assertRedirect(route('admin.maintenance'))
-            ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('maintenance.errors.media_batch_running'))
+            ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('hata::maintenance.errors.media_batch_running'))
             ->assertSessionMissing('maintenance.last_run');
 
         $lock->release();
@@ -449,7 +449,7 @@ describe('running and the journal', function () {
         $stuck = MaintenanceRun::factory()->running()->create();
 
         runMaintenance('clear_caches', as: $actor)
-            ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('maintenance.errors.busy'));
+            ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('hata::maintenance.errors.busy'));
         expect($fake->calls)->toBe([])->and(MaintenanceRun::count())->toBe(1);
 
         $this->travel(MaintenanceRun::STALE_MINUTES + 1)->minutes();
@@ -500,7 +500,7 @@ describe('running and the journal', function () {
             ->assertSeeHtml('data-test="maintenance-journal-tab"')
             ->assertDontSeeHtml('data-test="maintenance-migrate"')
             ->assertSee('Olena')
-            ->assertSee(__('maintenance.actions.seed.title').': RoleSeeder')
+            ->assertSee(__('hata::maintenance.actions.seed.title').': RoleSeeder')
             ->assertSee(MaintenanceStatus::Failed->label())
             ->assertDontSee('Seeder exploded')
             ->call('showOutput', $run->id)

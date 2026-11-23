@@ -115,8 +115,8 @@ test('every translation key used in the code exists', function () {
 
     $missing = $files
         ->flatMap(function (SplFileInfo $file): array {
-            preg_match_all("/(?:__|trans|trans_choice)\\(\\s*'([a-z0-9_]+(?:\\.[a-z0-9_]+)+)'/", File::get($file->getPathname()), $matches);
-            preg_match_all("/#\\[Title\\('([a-z0-9_]+(?:\\.[a-z0-9_]+)+)'\\)\\]/", File::get($file->getPathname()), $titles);
+            preg_match_all("/(?:__|trans|trans_choice)\\(\\s*'hata::([a-z0-9_]+(?:\\.[a-z0-9_]+)+)'/", File::get($file->getPathname()), $matches);
+            preg_match_all("/#\\[Title\\('hata::([a-z0-9_]+(?:\\.[a-z0-9_]+)+)'\\)\\]/", File::get($file->getPathname()), $titles);
 
             return array_merge($matches[1], $titles[1]);
         })
@@ -134,8 +134,25 @@ test('every vendor literal is mapped to an existing translation key', function (
 
     $missing = array_values(array_filter(
         VendorTranslations::KEYS,
-        fn (string $key): bool => ! array_key_exists($key, $english),
+        fn (string $key): bool => ! array_key_exists(preg_replace('/^hata::/', '', $key), $english),
     ));
 
     expect($missing)->toBe([]);
+});
+
+test('no Hata translation key is used without the hata:: namespace', function () {
+    $groups = collect(translationFiles('en'))->map(fn (string $file): string => basename($file, '.php'))->implode('|');
+
+    $files = collect(File::allFiles(Hata::path('resources/views')))
+        ->merge(File::allFiles(Hata::path('src')))
+        ->filter(fn (SplFileInfo $file): bool => str_ends_with($file->getFilename(), '.php'));
+
+    $bare = $files
+        ->filter(fn (SplFileInfo $file): bool => preg_match("/(?:__|trans|trans_choice)\\(\\s*['\"](?:{$groups})\\.[a-z0-9_]/", File::get($file->getPathname())) === 1
+            || preg_match("/#\\[Title\\('(?:{$groups})\\./", File::get($file->getPathname())) === 1)
+        ->map(fn (SplFileInfo $file): string => $file->getFilename())
+        ->values()
+        ->all();
+
+    expect($bare)->toBe([]);
 });

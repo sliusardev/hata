@@ -359,13 +359,13 @@ new class extends Component {
                 'alt' => [...($media->alt ?? []), Media::primaryAltLocale() => $this->alt],
             ]);
         } catch (ValidationException $exception) {
-            $this->addError('alt', collect($exception->errors())->flatten()->first() ?? __('media.picker.invalid'));
+            $this->addError('alt', collect($exception->errors())->flatten()->first() ?? __('hata::media.picker.invalid'));
 
             return;
         }
 
         unset($this->focused);
-        Flux::toast(variant: 'success', text: __('media.picker.alt_saved'));
+        Flux::toast(variant: 'success', text: __('hata::media.picker.alt_saved'));
     }
 
     /**
@@ -400,7 +400,7 @@ new class extends Component {
         $this->reset('upload', 'uploadPickedSize', 'uploadPickedExtension', 'uploadFolderId');
 
         if (! $file instanceof TemporaryUploadedFile) {
-            return ['ok' => false, 'error' => __('media.upload.failed')];
+            return ['ok' => false, 'error' => __('hata::media.upload.failed')];
         }
 
         $result = $storeUploadedMedia->handle(
@@ -687,7 +687,7 @@ new class extends Component {
     @endif
 
     @if ($chosen->isEmpty())
-        <flux:text size="sm" variant="subtle">{{ __('media.picker.none') }}</flux:text>
+        <flux:text size="sm" variant="subtle">{{ __('hata::media.picker.none') }}</flux:text>
     @else
         <ul class="space-y-2">
             @foreach ($chosen as $item)
@@ -704,16 +704,16 @@ new class extends Component {
                     </div>
                     <div class="flex shrink-0 items-center gap-1">
                     @if (! $multiple && $canView)
-                        <flux:button size="sm" wire:click="openPicker" data-test="media-picker-open">{{ __('media.picker.change') }}</flux:button>
+                        <flux:button size="sm" wire:click="openPicker" data-test="media-picker-open">{{ __('hata::media.picker.change') }}</flux:button>
                     @endif
                     <flux:button
                         size="sm"
                         variant="ghost"
                         :icon="$multiple ? 'x-mark' : null"
                         wire:click="remove({{ $multiple ? $item->id : '' }})"
-                        :aria-label="__('media.picker.remove_file', ['name' => $item->name])"
+                        :aria-label="__('hata::media.picker.remove_file', ['name' => $item->name])"
                         data-test="media-picker-remove"
-                    >{{ $multiple ? '' : __('media.picker.remove') }}</flux:button>
+                    >{{ $multiple ? '' : __('hata::media.picker.remove') }}</flux:button>
                     </div>
                 </li>
             @endforeach
@@ -721,10 +721,10 @@ new class extends Component {
     @endif
 
     @if (! $canView)
-        <flux:text size="sm" variant="subtle" data-test="media-picker-needs-access">{{ __('media.picker.needs_access') }}</flux:text>
+        <flux:text size="sm" variant="subtle" data-test="media-picker-needs-access">{{ __('hata::media.picker.needs_access') }}</flux:text>
     @elseif ($multiple || $chosen->isEmpty())
         <flux:button size="sm" icon="photo" wire:click="openPicker" data-test="media-picker-open">
-            {{ $multiple && $chosen->isNotEmpty() ? __('media.picker.add') : __('media.picker.choose') }}
+            {{ $multiple && $chosen->isNotEmpty() ? __('hata::media.picker.add') : __('hata::media.picker.choose') }}
         </flux:button>
     @endif
     @endunless
@@ -744,11 +744,11 @@ new class extends Component {
 
                 <div class="flex max-h-[85vh] flex-col" x-data="mediaUploader(@js($uploaderConfig))">
                     <div class="px-6 pt-5 pe-12">
-                        <flux:heading size="lg">{{ $label ?? __('media.picker.title') }}</flux:heading>
+                        <flux:heading size="lg">{{ $label ?? __('hata::media.picker.title') }}</flux:heading>
                     </div>
 
-                    <div role="tablist" aria-label="{{ __('media.picker.tabs.label') }}" class="flex gap-5 border-b border-zinc-200 px-6 pt-2 dark:border-white/10">
-                        @foreach (['library' => __('media.picker.tabs.library'), 'upload' => __('media.picker.tabs.upload')] as $key => $text)
+                    <div role="tablist" aria-label="{{ __('hata::media.picker.tabs.label') }}" class="flex gap-5 border-b border-zinc-200 px-6 pt-2 dark:border-white/10">
+                        @foreach (['library' => __('hata::media.picker.tabs.library'), 'upload' => __('hata::media.picker.tabs.upload')] as $key => $text)
                             @continue($key === 'upload' && ! $canUpload)
                             <button
                                 type="button"
@@ -777,9 +777,9 @@ new class extends Component {
                                 data-test="media-picker-dropzone"
                             >
                                 <flux:icon name="arrow-up-tray" variant="outline" class="size-8 text-zinc-500 dark:text-zinc-400" />
-                                <div class="text-base font-semibold text-zinc-900 dark:text-white">{{ __('media.picker.upload_title') }}</div>
-                                <flux:text size="sm" class="max-w-md">{{ __('media.picker.upload_hint') }}</flux:text>
-                                <flux:button size="sm" x-on:click="$refs.pickerUploadInput.click()">{{ __('media.picker.upload_browse') }}</flux:button>
+                                <div class="text-base font-semibold text-zinc-900 dark:text-white">{{ __('hata::media.picker.upload_title') }}</div>
+                                <flux:text size="sm" class="max-w-md">{{ __('hata::media.picker.upload_hint') }}</flux:text>
+                                <flux:button size="sm" x-on:click="$refs.pickerUploadInput.click()">{{ __('hata::media.picker.upload_browse') }}</flux:button>
                                 <input
                                     type="file"
                                     @if ($multiple) multiple @endif
@@ -799,19 +799,19 @@ new class extends Component {
                                 wire:model.live.debounce.300ms="search"
                                 x-on:keydown.enter.prevent
                                 icon="magnifying-glass"
-                                :placeholder="__('media.picker.search')"
-                                :aria-label="__('media.picker.search')"
+                                :placeholder="__('hata::media.picker.search')"
+                                :aria-label="__('hata::media.picker.search')"
                                 clearable
                                 class="sm:max-w-xs"
                             />
-                            <flux:select wire:model.live="month" :aria-label="__('media.index.filters.month')" class="sm:w-48">
-                                <flux:select.option value="">{{ __('media.index.filters.any_date') }}</flux:select.option>
+                            <flux:select wire:model.live="month" :aria-label="__('hata::media.index.filters.month')" class="sm:w-48">
+                                <flux:select.option value="">{{ __('hata::media.index.filters.any_date') }}</flux:select.option>
                                 @foreach ($this->months as $monthValue => $monthLabel)
                                     <flux:select.option :value="$monthValue">{{ $monthLabel }}</flux:select.option>
                                 @endforeach
                             </flux:select>
                             @if ($acceptance->kind() !== null)
-                                <flux:text size="sm">{{ __('media.picker.only.'.$acceptance->accept) }}</flux:text>
+                                <flux:text size="sm">{{ __('hata::media.picker.only.'.$acceptance->accept) }}</flux:text>
                             @endif
                         </div>
 
@@ -831,9 +831,9 @@ new class extends Component {
                                 @endif
 
                                 @if ($this->files->isEmpty() && $subfolders->isNotEmpty())
-                                    <flux:text size="sm" variant="subtle">{{ __('media.index.subfolders.no_files') }}</flux:text>
+                                    <flux:text size="sm" variant="subtle">{{ __('hata::media.index.subfolders.no_files') }}</flux:text>
                                 @elseif ($this->files->isEmpty())
-                                    <flux:text class="py-10 text-center">{{ __('media.picker.empty') }}</flux:text>
+                                    <flux:text class="py-10 text-center">{{ __('hata::media.picker.empty') }}</flux:text>
                                 @else
                                     <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5" data-test="media-picker-grid">
                                         @foreach ($this->files as $item)
@@ -852,7 +852,7 @@ new class extends Component {
                                                     data-test="media-picker-tile-{{ $item->id }}"
                                                 @else
                                                     disabled
-                                                    title="{{ __('media.picker.not_allowed') }}"
+                                                    title="{{ __('hata::media.picker.not_allowed') }}"
                                                     data-test="media-picker-tile-disabled-{{ $item->id }}"
                                                 @endif
                                                 aria-label="{{ $item->name }}"
@@ -878,7 +878,7 @@ new class extends Component {
                                                 </div>
                                                 <div class="mt-1.5 truncate px-0.5 text-xs font-medium text-zinc-800 dark:text-white">{{ $item->name }}</div>
                                                 @unless ($usable)
-                                                    <div class="truncate px-0.5 text-xs text-zinc-500 dark:text-zinc-400">{{ __('media.picker.not_allowed') }}</div>
+                                                    <div class="truncate px-0.5 text-xs text-zinc-500 dark:text-zinc-400">{{ __('hata::media.picker.not_allowed') }}</div>
                                                 @endunless
                                             </button>
                                         @endforeach
@@ -886,14 +886,14 @@ new class extends Component {
 
                                     @if ($this->hasMore && $limit < Hata\Support\Media\MediaIds::MAX)
                                         <div class="flex justify-center">
-                                            <flux:button size="sm" wire:click="loadMore" data-test="media-picker-load-more">{{ __('media.picker.load_more') }}</flux:button>
+                                            <flux:button size="sm" wire:click="loadMore" data-test="media-picker-load-more">{{ __('hata::media.picker.load_more') }}</flux:button>
                                         </div>
                                     @endif
                                 @endif
                             </div>
 
                             @if ($focused)
-                                <aside aria-label="{{ __('media.picker.selected') }}" class="w-full shrink-0 space-y-4 overflow-y-auto border-t border-zinc-200 bg-zinc-50 p-4 md:w-80 md:border-t-0 md:border-s dark:border-white/10 dark:bg-white/5" data-test="media-picker-details">
+                                <aside aria-label="{{ __('hata::media.picker.selected') }}" class="w-full shrink-0 space-y-4 overflow-y-auto border-t border-zinc-200 bg-zinc-50 p-4 md:w-80 md:border-t-0 md:border-s dark:border-white/10 dark:bg-white/5" data-test="media-picker-details">
                                     <div class="flex aspect-[3/2] items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-white/5">
                                         @if ($thumbUrl = $focused->thumbUrl())
                                             <img src="{{ $thumbUrl }}" alt="{{ $focused->altFor(app()->getLocale()) }}" class="size-full object-contain" />
@@ -911,21 +911,21 @@ new class extends Component {
                                     @if ($focused->kind === Hata\Enums\MediaKind::Image)
                                         <div class="space-y-2">
                                             <flux:label for="picker-alt-{{ $this->getId() }}">
-                                                {{ __('media.details.alt') }}@if (count($locales) > 1) ({{ $locales[$primaryLocale] ?? $primaryLocale }})@endif
+                                                {{ __('hata::media.details.alt') }}@if (count($locales) > 1) ({{ $locales[$primaryLocale] ?? $primaryLocale }})@endif
                                             </flux:label>
                                             @if ($canEdit)
                                                 <flux:textarea id="picker-alt-{{ $this->getId() }}" wire:model="alt" rows="3" />
                                                 <flux:error name="alt" />
-                                                <flux:text size="sm">{{ __('media.picker.alt_note') }}</flux:text>
-                                                <flux:button size="sm" wire:click="saveAlt" data-test="media-picker-save-alt">{{ __('media.picker.save_alt') }}</flux:button>
+                                                <flux:text size="sm">{{ __('hata::media.picker.alt_note') }}</flux:text>
+                                                <flux:button size="sm" wire:click="saveAlt" data-test="media-picker-save-alt">{{ __('hata::media.picker.save_alt') }}</flux:button>
                                             @else
-                                                <flux:text size="sm" id="picker-alt-{{ $this->getId() }}">{{ $alt !== '' ? $alt : __('media.picker.no_alt') }}</flux:text>
+                                                <flux:text size="sm" id="picker-alt-{{ $this->getId() }}">{{ $alt !== '' ? $alt : __('hata::media.picker.no_alt') }}</flux:text>
                                             @endif
                                         </div>
                                     @endif
 
                                     <flux:link :href="route('admin.media.index', ['folder' => $focused->folder_id ?? 'none'])" target="_blank" class="text-sm">
-                                        {{ __('media.picker.open_in_library') }}
+                                        {{ __('hata::media.picker.open_in_library') }}
                                     </flux:link>
                                 </aside>
                             @endif
@@ -934,14 +934,14 @@ new class extends Component {
 
                     <div class="flex flex-wrap items-center gap-3 border-t border-zinc-200 px-6 py-3.5 dark:border-white/10">
                         <flux:text size="sm">
-                            {{ $multiple && $picked !== [] ? trans_choice('media.picker.selected_count', count($picked)) : __('media.picker.double_click') }}
+                            {{ $multiple && $picked !== [] ? trans_choice('hata::media.picker.selected_count', count($picked)) : __('hata::media.picker.double_click') }}
                         </flux:text>
                         <flux:spacer />
                         <flux:modal.close>
-                            <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
+                            <flux:button variant="outline">{{ __('hata::common.actions.cancel') }}</flux:button>
                         </flux:modal.close>
                         <flux:button variant="primary" wire:click="choose" :disabled="$picked === [] && ! $multiple" data-test="media-picker-select">
-                            {{ __('media.picker.select') }}
+                            {{ __('hata::media.picker.select') }}
                         </flux:button>
                     </div>
                 </div>

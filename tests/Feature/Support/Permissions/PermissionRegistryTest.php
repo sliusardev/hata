@@ -2,6 +2,7 @@
 
 use Hata\Enums\SystemRole;
 use Hata\Support\Permissions\PermissionRegistry;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Lang;
 
 test('it loads the permissions from the configuration', function () {
@@ -28,11 +29,11 @@ test('it rejects permission names outside the resource.action format', function 
 
 test('every registered permission and group has a label in every language', function () {
     foreach (array_keys(config('app.available_locales')) as $locale) {
-        foreach (app(PermissionRegistry::class)->groups() as $group => $permissions) {
-            expect(Lang::hasForLocale("permissions.groups.{$group}", $locale))->toBeTrue("permissions.groups.{$group} missing in {$locale}");
+        foreach (Arr::except(app(PermissionRegistry::class)->groups(), ['products']) as $group => $permissions) {
+            expect(Lang::hasForLocale("hata::permissions.groups.{$group}", $locale))->toBeTrue("hata::permissions.groups.{$group} missing in {$locale}");
 
             foreach ($permissions as $permission) {
-                expect(Lang::hasForLocale("permissions.items.{$permission}", $locale))->toBeTrue("permissions.items.{$permission} missing in {$locale}");
+                expect(Lang::hasForLocale("hata::permissions.items.{$permission}", $locale))->toBeTrue("hata::permissions.items.{$permission} missing in {$locale}");
             }
         }
     }
@@ -41,7 +42,23 @@ test('every registered permission and group has a label in every language', func
 test('every system role has a translated name in every language', function () {
     foreach (array_keys(config('app.available_locales')) as $locale) {
         foreach (SystemRole::cases() as $role) {
-            expect(Lang::hasForLocale("roles.names.{$role->value}", $locale))->toBeTrue("roles.names.{$role->value} missing in {$locale}");
+            expect(Lang::hasForLocale("hata::roles.names.{$role->value}", $locale))->toBeTrue("hata::roles.names.{$role->value} missing in {$locale}");
         }
     }
+});
+
+it('labels a permission from its registering owner', function () {
+    trans()->addLines([
+        'permissions.groups.shop' => 'Shop',
+        'permissions.items.shop.view' => 'View orders',
+    ], 'en', 'shop');
+
+    $registry = (new PermissionRegistry)
+        ->registerMany(['users' => ['view']], 'hata::permissions')
+        ->register('shop', ['view'], 'shop::permissions');
+
+    expect($registry->groupLabel('shop'))->toBe('Shop')
+        ->and($registry->permissionLabel('shop.view'))->toBe('View orders')
+        ->and($registry->permissionLabel('users.view'))->toBe(__('hata::permissions.items.users.view'))
+        ->and($registry->permissionLabel('users.view'))->not->toBe('hata::permissions.items.users.view');
 });

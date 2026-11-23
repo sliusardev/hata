@@ -28,22 +28,22 @@ new class extends Component {
 <flux:modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg">
     <form method="POST" wire:submit="deleteUser" class="space-y-6">
         <div>
-            <flux:heading size="lg">{{ __('settings.delete_account.confirm_title') }}</flux:heading>
+            <flux:heading size="lg">{{ __('hata::settings.delete_account.confirm_title') }}</flux:heading>
 
             <flux:subheading>
-                {{ __('settings.delete_account.confirm_description') }}
+                {{ __('hata::settings.delete_account.confirm_description') }}
             </flux:subheading>
         </div>
 
-        <flux:input wire:model="password" :label="__('common.fields.password')" type="password" viewable />
+        <flux:input wire:model="password" :label="__('hata::common.fields.password')" type="password" viewable />
 
         <div class="flex justify-end space-x-2 rtl:space-x-reverse">
             <flux:modal.close>
-                <flux:button variant="filled">{{ __('common.actions.cancel') }}</flux:button>
+                <flux:button variant="filled">{{ __('hata::common.actions.cancel') }}</flux:button>
             </flux:modal.close>
 
             <flux:button variant="danger" type="submit" data-test="confirm-delete-user-button">
-                {{ __('settings.delete_account.button') }}
+                {{ __('hata::settings.delete_account.button') }}
             </flux:button>
         </div>
     </form>

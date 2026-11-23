@@ -1,9 +1,9 @@
 @props([
     'optionsRoute' => 'passkey.login-options',
     'submitRoute' => 'passkey.login',
-    'label' => __('auth.passkeys.sign_in'),
-    'loadingLabel' => __('auth.passkeys.authenticating'),
-    'separator' => __('auth.passkeys.separator'),
+    'label' => __('hata::auth.passkeys.sign_in'),
+    'loadingLabel' => __('hata::auth.passkeys.authenticating'),
+    'separator' => __('hata::auth.passkeys.separator'),
 ])
 
 @assets

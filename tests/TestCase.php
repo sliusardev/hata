@@ -56,6 +56,10 @@ abstract class TestCase extends BaseTestCase
     {
         $app->useDatabasePath(dirname(__DIR__).'/workbench/database');
 
+        // A real host has no `lang/` of its own for the framework groups (Hata answers them); Testbench's skeleton
+        // ships English ones, which would shadow Hata's lines for every other language.
+        $app->useLangPath(dirname(__DIR__).'/workbench/lang');
+
         $app['config']->set('auth.providers.users.model', User::class);
 
         // Laravel 13's skeleton hardens these and Testbench's does not: sessions hold JSON only and the cache

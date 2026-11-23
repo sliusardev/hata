@@ -10,7 +10,7 @@
 <div
     class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]"
     role="group"
-    aria-label="{{ __('media.index.subfolders.label') }}"
+    aria-label="{{ __('hata::media.index.subfolders.label') }}"
     data-test="media-subfolders"
     @if ($canMove)
         x-data="mediaFolderTiles"
@@ -30,8 +30,8 @@
             >
                 <flux:icon name="folder-minus" variant="outline" class="size-6 shrink-0 text-zinc-400" />
                 <div class="min-w-0 flex-1">
-                    <div class="truncate text-sm font-medium text-zinc-800 dark:text-white">{{ __('media.index.folders.none') }}</div>
-                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ trans_choice('media.index.subfolders.files', $noFolderCount) }}</div>
+                    <div class="truncate text-sm font-medium text-zinc-800 dark:text-white">{{ __('hata::media.index.folders.none') }}</div>
+                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ trans_choice('hata::media.index.subfolders.files', $noFolderCount) }}</div>
                 </div>
             </div>
         </div>
@@ -72,7 +72,7 @@
                 <div class="min-w-0 flex-1">
                     <div class="truncate text-sm font-medium text-zinc-800 dark:text-white" title="{{ $subfolder->name }}">{{ $subfolder->name }}</div>
                     <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                        {{ trans_choice('media.index.subfolders.files', $subfolder->media_count) }} · {{ trans_choice('media.index.subfolders.folders', $subfolder->children_count) }}
+                        {{ trans_choice('hata::media.index.subfolders.files', $subfolder->media_count) }} · {{ trans_choice('hata::media.index.subfolders.folders', $subfolder->children_count) }}
                     </div>
                 </div>
             </div>

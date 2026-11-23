@@ -24,7 +24,7 @@ class UnlinkTranslation
         Gate::forUser($actor)->authorize('update', $entry);
 
         if ($entry->trashed()) {
-            throw ProtectedActionException::because('content.entry.trashed');
+            throw ProtectedActionException::because('hata::content.entry.trashed');
         }
 
         DB::transaction(function () use ($entry): void {
@@ -35,7 +35,7 @@ class UnlinkTranslation
                 ->exists();
 
             if (! $others) {
-                throw ProtectedActionException::because('content.link.alone');
+                throw ProtectedActionException::because('hata::content.link.alone');
             }
 
             // Read under a lock, not from the group the caller loaded: another translation may have just saved.

@@ -16,7 +16,7 @@ it('renders an admin page through the hata livewire namespace', function () {
     // The page is `hata::admin.users.index`, in the layout `hata::layouts.app` (the sidebar's logout button).
     $this->get(route('admin.users.index'))
         ->assertOk()
-        ->assertSee(__('users.index.title'))
+        ->assertSee(__('hata::users.index.title'))
         ->assertSee('data-test="logout-button"', escape: false);
 
     expect(app('livewire.finder')->resolveSingleFileComponentPath('hata::admin.users.index'))

@@ -46,7 +46,7 @@ class CreateEntry
         }
 
         if (! $this->locales->has($locale)) {
-            throw ValidationException::withMessages(['locale' => __('content.entry.locale_invalid')]);
+            throw ValidationException::withMessages(['locale' => __('hata::content.entry.locale_invalid')]);
         }
 
         if ($existing = $this->existing($source, $locale)) {
@@ -73,7 +73,7 @@ class CreateEntry
             $input['new_terms'] = array_filter($input['new_terms'], fn (string $taxonomy): bool => $actor->can("{$taxonomy}.create"), ARRAY_FILTER_USE_KEY);
 
             if ($input['status'] === EntryStatus::Published && ! $mayEdit && $type->supports('publication')) {
-                throw ValidationException::withMessages(['status' => __('content.entry.publish_forbidden')]);
+                throw ValidationException::withMessages(['status' => __('hata::content.entry.publish_forbidden')]);
             }
 
             return DB::transaction(function () use ($type, $locale, $source, $input): Entry {
@@ -93,7 +93,7 @@ class CreateEntry
             return $this->existing($source, $locale) ?? throw $exception;
         } catch (UniqueConstraintViolationException) {
             return $this->existing($source, $locale)
-                ?? throw ValidationException::withMessages(['slug' => __('content.slug.taken')]);
+                ?? throw ValidationException::withMessages(['slug' => __('hata::content.slug.taken')]);
         }
     }
 

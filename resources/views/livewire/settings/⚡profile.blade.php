@@ -7,7 +7,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('hata::layouts.app')] #[Title('settings.profile.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::settings.profile.title')] class extends Component {
     use ProfileValidationRules;
 
     public string $name = '';
@@ -39,25 +39,25 @@ new #[Layout('hata::layouts.app')] #[Title('settings.profile.title')] class exte
 
         $user->save();
 
-        Flux::toast(variant: 'success', text: __('settings.profile.saved'));
+        Flux::toast(variant: 'success', text: __('hata::settings.profile.saved'));
     }
 }; ?>
 
 <section class="w-full">
     @include('hata::partials.settings-heading')
 
-    <flux:heading level="2" class="sr-only">{{ __('settings.profile.title') }}</flux:heading>
+    <flux:heading level="2" class="sr-only">{{ __('hata::settings.profile.title') }}</flux:heading>
 
-    <x-hata::settings.layout :heading="__('settings.profile.heading')" :subheading="__('settings.profile.description')">
+    <x-hata::settings.layout :heading="__('hata::settings.profile.heading')" :subheading="__('hata::settings.profile.description')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
-            <flux:input wire:model="name" :label="__('common.fields.name')" type="text" required autofocus autocomplete="name" />
+            <flux:input wire:model="name" :label="__('hata::common.fields.name')" type="text" required autofocus autocomplete="name" />
 
-            <flux:input wire:model="email" :label="__('common.fields.email')" type="email" required autocomplete="email" />
+            <flux:input wire:model="email" :label="__('hata::common.fields.email')" type="email" required autocomplete="email" />
 
             <div class="flex items-center gap-4">
                 <div class="flex items-center justify-end">
                     <flux:button variant="primary" type="submit" class="w-full" data-test="update-profile-button">
-                        {{ __('common.actions.save') }}
+                        {{ __('hata::common.actions.save') }}
                     </flux:button>
                 </div>
 

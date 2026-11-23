@@ -11,12 +11,12 @@
 <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900" data-test="site-languages">
     <div class="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 p-5 dark:border-white/10">
         <div class="min-w-0 flex-1">
-            <flux:heading level="2">{{ __('site_settings.languages.list_heading') }}</flux:heading>
-            <flux:text size="sm" class="mt-1 max-w-prose">{{ __('site_settings.languages.list_description') }}</flux:text>
+            <flux:heading level="2">{{ __('hata::site_settings.languages.list_heading') }}</flux:heading>
+            <flux:text size="sm" class="mt-1 max-w-prose">{{ __('hata::site_settings.languages.list_description') }}</flux:text>
         </div>
 
         <flux:modal.trigger name="add-language">
-            <flux:button size="sm" variant="primary" icon="plus" data-test="add-language-button">{{ __('site_settings.languages.add') }}</flux:button>
+            <flux:button size="sm" variant="primary" icon="plus" data-test="add-language-button">{{ __('hata::site_settings.languages.add') }}</flux:button>
         </flux:modal.trigger>
     </div>
 
@@ -28,10 +28,10 @@
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="truncate font-medium text-zinc-800 dark:text-white" lang="{{ $language->hreflang() }}" dir="{{ $language->direction() }}">{{ $language->native }}</span>
                         @if ($row['default'])
-                            <flux:badge size="sm" color="amber">{{ __('site_settings.languages.badges.default') }}</flux:badge>
+                            <flux:badge size="sm" color="amber">{{ __('hata::site_settings.languages.badges.default') }}</flux:badge>
                         @endif
                         @if ($language->hasInterface())
-                            <flux:badge size="sm" title="{{ __('site_settings.languages.badges.interface_hint') }}">{{ __('site_settings.languages.badges.interface') }}</flux:badge>
+                            <flux:badge size="sm" title="{{ __('hata::site_settings.languages.badges.interface_hint') }}">{{ __('hata::site_settings.languages.badges.interface') }}</flux:badge>
                         @endif
                     </div>
                     <flux:text size="sm">{{ $language->name }}</flux:text>
@@ -43,14 +43,14 @@
 
                 <div class="flex w-32 items-center justify-end gap-2">
                     @if ($row['default'])
-                        <flux:text size="sm">{{ __('site_settings.languages.always_on') }}</flux:text>
+                        <flux:text size="sm">{{ __('hata::site_settings.languages.always_on') }}</flux:text>
                     @else
-                        <flux:text size="sm">{{ $row['active'] ? __('site_settings.languages.on') : __('site_settings.languages.off') }}</flux:text>
+                        <flux:text size="sm">{{ $row['active'] ? __('hata::site_settings.languages.on') : __('hata::site_settings.languages.off') }}</flux:text>
                         <button
                             type="button"
                             role="switch"
                             aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
-                            aria-label="{{ __($row['active'] ? 'site_settings.languages.turn_off' : 'site_settings.languages.turn_on', ['language' => $language->name]) }}"
+                            aria-label="{{ __($row['active'] ? 'hata::site_settings.languages.turn_off' : 'hata::site_settings.languages.turn_on', ['language' => $language->name]) }}"
                             wire:click="toggleLanguage('{{ $language->code }}')"
                             class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent {{ $row['active'] ? 'bg-accent' : 'bg-zinc-300 dark:bg-zinc-600' }}"
                             data-test="language-switch-{{ $language->code }}"
@@ -64,9 +64,9 @@
                     @unless ($row['default'])
                         <x-hata::admin.row-actions data-test="language-actions-{{ $language->code }}">
                             @if ($row['active'])
-                                <flux:menu.item icon="star" wire:click="confirmLanguage('default', '{{ $language->code }}')">{{ __('site_settings.languages.make_default') }}</flux:menu.item>
+                                <flux:menu.item icon="star" wire:click="confirmLanguage('default', '{{ $language->code }}')">{{ __('hata::site_settings.languages.make_default') }}</flux:menu.item>
                             @endif
-                            <flux:menu.item icon="trash" variant="danger" wire:click="confirmLanguage('remove', '{{ $language->code }}')">{{ __('site_settings.languages.remove') }}</flux:menu.item>
+                            <flux:menu.item icon="trash" variant="danger" wire:click="confirmLanguage('remove', '{{ $language->code }}')">{{ __('hata::site_settings.languages.remove') }}</flux:menu.item>
                         </x-hata::admin.row-actions>
                     @endunless
                 </div>
@@ -77,12 +77,12 @@
 
 <div class="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-zinc-900">
     <div>
-        <flux:heading level="2">{{ __('site_settings.languages.interface_heading') }}</flux:heading>
-        <flux:text size="sm" class="mt-1 max-w-prose">{{ __('site_settings.languages.interface_description') }}</flux:text>
+        <flux:heading level="2">{{ __('hata::site_settings.languages.interface_heading') }}</flux:heading>
+        <flux:text size="sm" class="mt-1 max-w-prose">{{ __('hata::site_settings.languages.interface_description') }}</flux:text>
     </div>
 
     <div class="max-w-sm">
-        <flux:select wire:model="form.default_locale" :label="__('site_settings.languages.default_locale')">
+        <flux:select wire:model="form.default_locale" :label="__('hata::site_settings.languages.default_locale')">
             @foreach (config('app.available_locales') as $code => $languageName)
                 <flux:select.option :value="$code" wire:key="locale-{{ $code }}">{{ $languageName }}</flux:select.option>
             @endforeach
@@ -90,6 +90,6 @@
     </div>
 
     @unless ($defaultLanguage->hasInterface())
-        <flux:text size="sm" variant="subtle">{{ __('site_settings.languages.interface_missing', ['language' => $defaultLanguage->name]) }}</flux:text>
+        <flux:text size="sm" variant="subtle">{{ __('hata::site_settings.languages.interface_missing', ['language' => $defaultLanguage->name]) }}</flux:text>
     @endunless
 </div>

@@ -35,22 +35,22 @@ class SyncUserRoles
         }
 
         if ($actor->is($user)) {
-            throw ProtectedActionException::because('users.errors.cannot_change_own_roles');
+            throw ProtectedActionException::because('hata::users.errors.cannot_change_own_roles');
         }
 
         $changedRoles = Role::with('permissions')->whereKey([...$addedIds, ...$removedIds])->get();
 
         foreach ($changedRoles as $role) {
             if (in_array($role->id, $removedIds, true) && $role->isSuperAdmin() && $this->rules->isLastSuperAdmin($user)) {
-                throw ProtectedActionException::because('users.errors.cannot_remove_last_super_admin');
+                throw ProtectedActionException::because('hata::users.errors.cannot_remove_last_super_admin');
             }
 
             if ($role->isSuperAdmin() && ! $actor->isSuperAdmin()) {
-                throw ProtectedActionException::because('users.errors.cannot_manage_super_admin');
+                throw ProtectedActionException::because('hata::users.errors.cannot_manage_super_admin');
             }
 
             if (in_array($role->id, $addedIds, true) && ! $this->rules->canAssignRole($actor, $role)) {
-                throw ProtectedActionException::because('users.errors.cannot_assign_role', ['role' => $role->displayName()]);
+                throw ProtectedActionException::because('hata::users.errors.cannot_assign_role', ['role' => $role->displayName()]);
             }
         }
 

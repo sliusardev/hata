@@ -54,7 +54,7 @@ test('choosing a logo through the picker binding stores the id, records the usag
     expect($setting->value)->toBe($media->id)
         ->and(config('admin.logo.light'))->toBe($media->id)
         ->and(MediaUsage::query()->where('media_id', $media->id)->where('field', 'logo_light')->where('usable_id', $setting->id)->count())->toBe(1)
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('site_settings.logo.chosen'));
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.logo.chosen'));
 });
 
 test('the page hands the picker the current logo and accepts the picker clearing it', function () {
@@ -170,7 +170,7 @@ test('a logo whose file is gone shows a note with Remove in its slot, and Remove
     SiteLogo::flush();
 
     $page = Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->assertSee(__('site_settings.logo.missing'))
+        ->assertSee(__('hata::site_settings.logo.missing'))
         ->assertSeeHtml('data-test="logo-missing-dark"')
         ->assertDontSeeHtml('data-test="logo-missing-light"');
 
@@ -293,12 +293,12 @@ test('the library details panel names the logo usage and links it only to users 
 
     $this->actingAs(User::factory()->withRole('admin')->create());
     Livewire::test('hata::admin.media.index')->call('select', $media->id)
-        ->assertSee(__('site_settings.logo.usage_dark'))
+        ->assertSee(__('hata::site_settings.logo.usage_dark'))
         ->assertSeeHtml('href="'.$url.'"');
 
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
     Livewire::test('hata::admin.media.index')->call('select', $media->id)
-        ->assertSee(__('site_settings.logo.usage_dark'))
+        ->assertSee(__('hata::site_settings.logo.usage_dark'))
         ->assertDontSeeHtml('href="'.$url.'"');
 });
 

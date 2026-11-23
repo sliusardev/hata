@@ -12,7 +12,7 @@
             <flux:navbar class="-mb-px max-lg:hidden">
                 @can('admin.access')
                     <flux:navbar.item icon="layout-grid" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>
-                        {{ __('navigation.dashboard') }}
+                        {{ __('hata::navigation.dashboard') }}
                     </flux:navbar.item>
                 @endcan
             </flux:navbar>
@@ -20,25 +20,25 @@
             <flux:spacer />
 
             <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
-                <flux:tooltip :content="__('navigation.search')" position="bottom">
-                    <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('navigation.search')" />
+                <flux:tooltip :content="__('hata::navigation.search')" position="bottom">
+                    <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('hata::navigation.search')" />
                 </flux:tooltip>
-                <flux:tooltip :content="__('navigation.repository')" position="bottom">
+                <flux:tooltip :content="__('hata::navigation.repository')" position="bottom">
                     <flux:navbar.item
                         class="h-10 max-lg:hidden [&>div>svg]:size-5"
                         icon="folder-git-2"
                         href="https://github.com/laravel/livewire-starter-kit"
                         target="_blank"
-                        :label="__('navigation.repository')"
+                        :label="__('hata::navigation.repository')"
                     />
                 </flux:tooltip>
-                <flux:tooltip :content="__('navigation.documentation')" position="bottom">
+                <flux:tooltip :content="__('hata::navigation.documentation')" position="bottom">
                     <flux:navbar.item
                         class="h-10 max-lg:hidden [&>div>svg]:size-5"
                         icon="book-open-text"
                         href="https://laravel.com/docs/starter-kits#livewire"
                         target="_blank"
-                        :label="__('navigation.documentation')"
+                        :label="__('hata::navigation.documentation')"
                     />
                 </flux:tooltip>
             </flux:navbar>
@@ -55,9 +55,9 @@
 
             <flux:sidebar.nav>
                 @can('admin.access')
-                    <flux:sidebar.group :heading="__('navigation.platform')">
+                    <flux:sidebar.group :heading="__('hata::navigation.platform')">
                         <flux:sidebar.item icon="layout-grid" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>
-                            {{ __('navigation.dashboard') }}
+                            {{ __('hata::navigation.dashboard') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 @endcan
@@ -67,10 +67,10 @@
 
             <flux:sidebar.nav>
                 <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('navigation.repository') }}
+                    {{ __('hata::navigation.repository') }}
                 </flux:sidebar.item>
                 <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('navigation.documentation') }}
+                    {{ __('hata::navigation.documentation') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
         </flux:sidebar>

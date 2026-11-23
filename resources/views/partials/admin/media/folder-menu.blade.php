@@ -13,11 +13,11 @@
     @endif
     @class(['inline-flex shrink-0', $class ?? null])
 >
-    <x-hata::admin.row-actions :label="__('media.folders.actions')" :data-test="$testId">
-        <flux:menu.item icon="pencil-square" wire:click="openRenameFolder({{ $folderId }})">{{ __('media.folders.rename') }}</flux:menu.item>
-        <flux:menu.item icon="folder-arrow-down" wire:click="openMoveFolder({{ $folderId }})">{{ __('media.folders.move') }}</flux:menu.item>
+    <x-hata::admin.row-actions :label="__('hata::media.folders.actions')" :data-test="$testId">
+        <flux:menu.item icon="pencil-square" wire:click="openRenameFolder({{ $folderId }})">{{ __('hata::media.folders.rename') }}</flux:menu.item>
+        <flux:menu.item icon="folder-arrow-down" wire:click="openMoveFolder({{ $folderId }})">{{ __('hata::media.folders.move') }}</flux:menu.item>
         @can('deleteFolders', Hata\Models\Media::class)
-            <flux:menu.item icon="trash" variant="danger" wire:click="confirmFolderDelete({{ $folderId }})">{{ __('common.actions.delete') }}</flux:menu.item>
+            <flux:menu.item icon="trash" variant="danger" wire:click="confirmFolderDelete({{ $folderId }})">{{ __('hata::common.actions.delete') }}</flux:menu.item>
         @endcan
     </x-hata::admin.row-actions>
 </span>

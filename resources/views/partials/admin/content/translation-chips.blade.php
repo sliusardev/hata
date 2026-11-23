@@ -33,13 +33,13 @@
         @endphp
 
         @if ($code === $current)
-            <span class="{{ $chip }} {{ $dim }} bg-zinc-800 text-white dark:bg-white dark:text-zinc-900" title="{{ __('content.grid.this', ['language' => $language->native]) }}" aria-current="true" data-test="chip-{{ $code }}" data-state="this">{{ $code }}</span>
+            <span class="{{ $chip }} {{ $dim }} bg-zinc-800 text-white dark:bg-white dark:text-zinc-900" title="{{ __('hata::content.grid.this', ['language' => $language->native]) }}" aria-current="true" data-test="chip-{{ $code }}" data-state="this">{{ $code }}</span>
         @elseif ($record !== null)
             @php $published = $state === Hata\Enums\EntryState::Published; @endphp
             <a
                 href="{{ route('admin.content.edit', ['type' => $type, 'entry' => $record->id]) }}"
                 wire:navigate
-                title="{{ __('content.grid.'.strtolower($state->name), ['language' => $language->native]) }} — {{ $record->title }}"
+                title="{{ __('hata::content.grid.'.strtolower($state->name), ['language' => $language->native]) }} — {{ $record->title }}"
                 @class([$chip, $dim, 'bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-500/15 dark:text-green-300 dark:hover:bg-green-500/25' => $published, 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25' => ! $published])
                 data-test="chip-{{ $code }}" data-state="{{ $published ? 'published' : 'draft' }}"
             >{{ $code }}</a>
@@ -47,7 +47,7 @@
             <a
                 href="{{ route('admin.content.edit', ['type' => $type, 'entry' => $binned->id]) }}"
                 wire:navigate
-                title="{{ __('content.grid.trashed', ['language' => $language->native]) }} — {{ $binned->title }}"
+                title="{{ __('hata::content.grid.trashed', ['language' => $language->native]) }} — {{ $binned->title }}"
                 class="{{ $chip }} {{ $dim }} bg-zinc-100 text-zinc-400 line-through hover:bg-zinc-200 dark:bg-white/5 dark:text-zinc-500 dark:hover:bg-white/10"
                 data-test="chip-{{ $code }}" data-state="trashed"
             >{{ $code }}</a>
@@ -55,12 +55,12 @@
             <a
                 href="{{ route('admin.content.create', ['type' => $type, 'from' => $fromId, 'locale' => $code]) }}"
                 wire:navigate
-                title="{{ __('content.grid.missing', ['language' => $language->native]) }}"
+                title="{{ __('hata::content.grid.missing', ['language' => $language->native]) }}"
                 class="{{ $chip }} {{ $dim }} border border-dashed border-zinc-300 text-zinc-400 hover:border-zinc-500 hover:text-zinc-700 dark:border-zinc-600 dark:text-zinc-500 dark:hover:border-zinc-400 dark:hover:text-zinc-200"
                 data-test="chip-{{ $code }}" data-state="missing"
             >+{{ $code }}</a>
         @else
-            <span class="{{ $chip }} {{ $dim }} border border-dashed border-zinc-300 text-zinc-400 dark:border-zinc-600 dark:text-zinc-500" title="{{ __('content.grid.none', ['language' => $language->native]) }}" data-test="chip-{{ $code }}" data-state="missing">{{ $code }}</span>
+            <span class="{{ $chip }} {{ $dim }} border border-dashed border-zinc-300 text-zinc-400 dark:border-zinc-600 dark:text-zinc-500" title="{{ __('hata::content.grid.none', ['language' => $language->native]) }}" data-test="chip-{{ $code }}" data-state="missing">{{ $code }}</span>
         @endif
     @endforeach
 </span>

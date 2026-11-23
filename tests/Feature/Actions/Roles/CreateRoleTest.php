@@ -39,7 +39,7 @@ test('rule 5: it creates nothing when a permission is not held by the actor', fu
         'label' => 'Sneaky',
         'name' => 'sneaky',
         'permissions' => ['admin.access', 'users.delete'],
-    ]))->toThrow(ProtectedActionException::class, __('roles.errors.cannot_grant_permission', ['permission' => __('permissions.items.users.delete')]));
+    ]))->toThrow(ProtectedActionException::class, __('hata::roles.errors.cannot_grant_permission', ['permission' => __('hata::permissions.items.users.delete')]));
 
     expect(Role::where('name', 'sneaky')->exists())->toBeFalse();
 });

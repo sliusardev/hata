@@ -28,7 +28,7 @@ class MoveFolder
             $target = $target === null ? null : MediaFolder::query()->lockForUpdate()->findOrFail($target->id);
 
             if ($target !== null && ($target->id === $folder->id || in_array($target->id, $folder->descendantIds(), true))) {
-                throw ValidationException::withMessages(['folder' => __('media.errors.folder_into_itself')]);
+                throw ValidationException::withMessages(['folder' => __('hata::media.errors.folder_into_itself')]);
             }
 
             if ($folder->parent_id === $target?->id) {
@@ -41,7 +41,7 @@ class MoveFolder
                 $folder->parent_id = $target?->id;
                 $folder->save();
             } catch (UniqueConstraintViolationException) {
-                throw ValidationException::withMessages(['name' => __('media.errors.folder_exists')]);
+                throw ValidationException::withMessages(['name' => __('hata::media.errors.folder_exists')]);
             }
 
             return $folder;

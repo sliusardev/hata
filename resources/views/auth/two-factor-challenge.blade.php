@@ -1,4 +1,4 @@
-<x-hata::layouts.auth :title="__('auth.two_factor.title')">
+<x-hata::layouts.auth :title="__('hata::auth.two_factor.title')">
     <div class="flex flex-col gap-6">
         <div
             class="relative w-full h-auto"
@@ -31,15 +31,15 @@
         >
             <div x-show="!showRecoveryInput">
                 <x-hata::auth-header
-                    :title="__('auth.two_factor.code_heading')"
-                    :description="__('auth.two_factor.code_description')"
+                    :title="__('hata::auth.two_factor.code_heading')"
+                    :description="__('hata::auth.two_factor.code_description')"
                 />
             </div>
 
             <div x-show="showRecoveryInput">
                 <x-hata::auth-header
-                    :title="__('auth.two_factor.recovery_heading')"
-                    :description="__('auth.two_factor.recovery_description')"
+                    :title="__('hata::auth.two_factor.recovery_heading')"
+                    :description="__('hata::auth.two_factor.recovery_description')"
                 />
             </div>
 
@@ -53,7 +53,7 @@
                                 x-model="code"
                                 length="6"
                                 name="code"
-                                :label="__('auth.two_factor.code_label')"
+                                :label="__('hata::auth.two_factor.code_label')"
                                 label:sr-only
                                 class="mx-auto"
                              />
@@ -84,15 +84,15 @@
                         type="submit"
                         class="w-full"
                     >
-                        {{ __('common.actions.continue') }}
+                        {{ __('hata::common.actions.continue') }}
                     </flux:button>
                 </div>
 
                 <div class="mt-5 space-x-0.5 text-sm leading-5 text-center">
-                    <span class="opacity-50">{{ __('auth.two_factor.or_you_can') }}</span>
+                    <span class="opacity-50">{{ __('hata::auth.two_factor.or_you_can') }}</span>
                     <div class="inline font-medium underline cursor-pointer opacity-80">
-                        <span x-show="!showRecoveryInput" @click="toggleInput()">{{ __('auth.two_factor.use_recovery_code') }}</span>
-                        <span x-show="showRecoveryInput" @click="toggleInput()">{{ __('auth.two_factor.use_authentication_code') }}</span>
+                        <span x-show="!showRecoveryInput" @click="toggleInput()">{{ __('hata::auth.two_factor.use_recovery_code') }}</span>
+                        <span x-show="showRecoveryInput" @click="toggleInput()">{{ __('hata::auth.two_factor.use_authentication_code') }}</span>
                     </div>
                 </div>
             </form>

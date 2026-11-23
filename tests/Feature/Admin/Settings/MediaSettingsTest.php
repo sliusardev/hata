@@ -168,7 +168,7 @@ describe('optimize existing card', function () {
     it('says all images match when there are no candidates', function () {
         Livewire::withQueryParams(['tab' => 'media'])
             ->test('hata::admin.settings.edit')
-            ->assertSee(__('site_settings.media.existing_none'))
+            ->assertSee(__('hata::site_settings.media.existing_none'))
             ->assertDontSeeHtml('data-test="optimize-existing-count"');
     });
 
@@ -189,7 +189,7 @@ describe('optimize existing card', function () {
         Livewire::withQueryParams(['tab' => 'media'])
             ->test('hata::admin.settings.edit')
             ->assertSeeHtml('data-test="optimize-existing-progress"')
-            ->assertSee(trans_choice('media.batch.progress', 5, ['processed' => 2, 'total' => 5]))
+            ->assertSee(trans_choice('hata::media.batch.progress', 5, ['processed' => 2, 'total' => 5]))
             ->assertDontSeeHtml('data-test="optimize-existing-count"');
     });
 
@@ -222,8 +222,8 @@ describe('optimize existing card', function () {
         Livewire::withQueryParams(['tab' => 'media'])
             ->test('hata::admin.settings.edit')
             ->assertSeeHtml('data-test="optimize-existing-progress"')
-            ->assertSee(__('media.optimize.status.paused'))
-            ->assertSee(trans_choice('media.batch.progress', 4, ['processed' => 1, 'total' => 4]))
+            ->assertSee(__('hata::media.optimize.status.paused'))
+            ->assertSee(trans_choice('hata::media.batch.progress', 4, ['processed' => 1, 'total' => 4]))
             ->assertSeeHtml(route('admin.media.optimize'));
     });
 

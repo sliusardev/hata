@@ -116,13 +116,13 @@ test('the slug rule accepts a reserved name below a parent', function () {
 test('the slug rule refuses a taken sibling, trashed or not, and lets the record keep its own', function () {
     $page = Entry::factory()->page()->create(['slug' => 'about', 'path' => 'about']);
 
-    expect(slugErrors('about'))->toBe([__('content.slug.taken')])
+    expect(slugErrors('about'))->toBe([__('hata::content.slug.taken')])
         ->and(slugErrors('about', null, $page))->toBe([])
         ->and(slugErrors('about', null, null, 'uk'))->toBe([]);
 
     $page->delete();
 
-    expect(slugErrors('about'))->toBe([__('content.slug.taken_trashed')]);
+    expect(slugErrors('about'))->toBe([__('hata::content.slug.taken_trashed')]);
 });
 
 test('the slug rule refuses a path over 255 characters', function () {
@@ -134,8 +134,8 @@ test('the slug rule refuses a path over 255 characters', function () {
 });
 
 test('the slug rule messages are translated', function () {
-    expect(slugErrors('About')[0])->toBe(__('content.slug.format'))
-        ->and(slugErrors('admin')[0])->toBe(__('content.slug.reserved'));
+    expect(slugErrors('About')[0])->toBe(__('hata::content.slug.format'))
+        ->and(slugErrors('admin')[0])->toBe(__('hata::content.slug.reserved'));
 });
 
 test('moving a page rewrites every descendant and keeps the old paths as redirects', function () {

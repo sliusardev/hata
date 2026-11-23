@@ -43,7 +43,7 @@ test('rule 1: the super-admin role cannot be renamed or given permissions, even 
     $superAdminRole = Role::findByName('super-admin');
 
     expect(fn () => app(UpdateRole::class)->handle($actor, $superAdminRole, ['label' => 'Boss', 'permissions' => ['users.view']]))
-        ->toThrow(ProtectedActionException::class, __('roles.errors.super_admin_locked'));
+        ->toThrow(ProtectedActionException::class, __('hata::roles.errors.super_admin_locked'));
 
     $superAdminRole->refresh();
     expect($superAdminRole->label)->toBeNull()
@@ -77,7 +77,7 @@ test('rule 6: system roles keep their name but their permissions can change', fu
 
     $editor->refresh();
     expect($editor->label)->toBeNull()
-        ->and($editor->displayName())->toBe(__('roles.names.editor'))
+        ->and($editor->displayName())->toBe(__('hata::roles.names.editor'))
         ->and($editor->permissions->pluck('name')->sort()->values()->all())->toBe(['admin.access', 'users.view']);
 });
 

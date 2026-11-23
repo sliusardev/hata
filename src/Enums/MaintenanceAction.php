@@ -29,6 +29,6 @@ enum MaintenanceAction: string
 
     public function label(): string
     {
-        return __('maintenance.actions.'.$this->value.'.title');
+        return __('hata::maintenance.actions.'.$this->value.'.title');
     }
 }

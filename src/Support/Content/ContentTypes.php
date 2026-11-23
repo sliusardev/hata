@@ -47,7 +47,7 @@ class ContentTypes
         }
 
         $this->types[$type->key()] = $type;
-        $this->permissions->register($type->key(), self::ACTIONS);
+        $this->permissions->register($type->key(), self::ACTIONS, "{$type->translationPrefix()}permissions");
 
         return $this;
     }

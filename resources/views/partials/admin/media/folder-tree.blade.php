@@ -19,7 +19,7 @@
 @endphp
 
 <nav
-    aria-label="{{ __('media.index.folders.label') }}"
+    aria-label="{{ __('hata::media.index.folders.label') }}"
     class="shrink-0 space-y-0.5 md:w-56"
     wire:key="media-folder-tree-{{ md5(json_encode($treeData)) }}"
     x-data="{
@@ -147,7 +147,7 @@
         @endif
     >
         <flux:icon name="squares-2x2" variant="outline" class="size-4 shrink-0 text-zinc-400" />
-        <span class="flex-1 truncate">{{ __('media.index.folders.all') }}</span>
+        <span class="flex-1 truncate">{{ __('hata::media.index.folders.all') }}</span>
         <span class="text-xs text-zinc-400 tabular-nums">{{ $totals['all'] }}</span>
     </button>
 
@@ -164,22 +164,22 @@
         @endif
     >
         <flux:icon name="inbox" variant="outline" class="size-4 shrink-0 text-zinc-400" />
-        <span class="flex-1 truncate">{{ __('media.index.folders.none') }}</span>
+        <span class="flex-1 truncate">{{ __('hata::media.index.folders.none') }}</span>
         <span class="text-xs text-zinc-400 tabular-nums">{{ $totals['none'] }}</span>
     </button>
 
     @if ($folders !== [] || $canManageFolders)
         <div class="flex h-9 items-center justify-between ps-2.5 pt-3">
-            <span class="text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">{{ __('media.index.folders.heading') }}</span>
+            <span class="text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">{{ __('hata::media.index.folders.heading') }}</span>
             @if ($canManageFolders)
-                <flux:button size="xs" variant="ghost" icon="plus" wire:click="openNewFolder" :aria-label="__('media.folders.new')" :tooltip="__('media.folders.new')" data-test="media-new-folder" />
+                <flux:button size="xs" variant="ghost" icon="plus" wire:click="openNewFolder" :aria-label="__('hata::media.folders.new')" :tooltip="__('hata::media.folders.new')" data-test="media-new-folder" />
             @endif
         </div>
     @endif
 
     @if (count($folders) > 15)
-        <flux:input size="sm" icon="magnifying-glass" clearable x-model="query" :placeholder="__('media.index.folders.search')" :aria-label="__('media.index.folders.search')" data-test="media-folder-search" />
-        <p x-show="searching && matchSet.size === 0" x-cloak class="px-2.5 py-2 text-xs text-zinc-500 dark:text-zinc-400">{{ __('media.index.folders.no_match') }}</p>
+        <flux:input size="sm" icon="magnifying-glass" clearable x-model="query" :placeholder="__('hata::media.index.folders.search')" :aria-label="__('hata::media.index.folders.search')" data-test="media-folder-search" />
+        <p x-show="searching && matchSet.size === 0" x-cloak class="px-2.5 py-2 text-xs text-zinc-500 dark:text-zinc-400">{{ __('hata::media.index.folders.no_match') }}</p>
     @endif
 
     @foreach ($folders as $row)
@@ -206,7 +206,7 @@
                     class="flex size-5 shrink-0 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800/10 dark:hover:bg-white/10"
                     x-on:click.stop="toggle({{ $id }})"
                     x-bind:aria-expanded="isOpen({{ $id }}).toString()"
-                    x-bind:aria-label="isOpen({{ $id }}) ? @js(__('media.index.folders.collapse')) : @js(__('media.index.folders.expand'))"
+                    x-bind:aria-label="isOpen({{ $id }}) ? @js(__('hata::media.index.folders.collapse')) : @js(__('hata::media.index.folders.expand'))"
                     data-test="media-folder-toggle-{{ $id }}"
                 >
                     <flux:icon name="chevron-right" variant="micro" class="size-3.5 transition-transform rtl:rotate-180" x-bind:class="isOpen({{ $id }}) && 'rotate-90 rtl:-rotate-90'" />
@@ -245,6 +245,6 @@
     @endforeach
 
     @if ($canManageFolders && $folders !== [])
-        <flux:text size="sm" class="px-2.5 pt-3 text-xs">{{ __('media.folders.move_hint') }}</flux:text>
+        <flux:text size="sm" class="px-2.5 pt-3 text-xs">{{ __('hata::media.folders.move_hint') }}</flux:text>
     @endif
 </nav>

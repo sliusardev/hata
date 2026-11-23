@@ -37,7 +37,7 @@ new class extends Component {
             try {
                 $this->recoveryCodes = json_decode(decrypt($user->two_factor_recovery_codes), true);
             } catch (Exception) {
-                $this->addError('recoveryCodes', __('settings.recovery_codes.load_failed'));
+                $this->addError('recoveryCodes', __('hata::settings.recovery_codes.load_failed'));
 
                 $this->recoveryCodes = [];
             }
@@ -53,10 +53,10 @@ new class extends Component {
     <div class="px-6 space-y-2">
         <div class="flex items-center gap-2">
             <flux:icon.lock-closed variant="outline" class="size-4"/>
-            <flux:heading size="lg" level="3">{{ __('settings.recovery_codes.heading') }}</flux:heading>
+            <flux:heading size="lg" level="3">{{ __('hata::settings.recovery_codes.heading') }}</flux:heading>
         </div>
         <flux:text variant="subtle">
-            {{ __('settings.recovery_codes.description') }}
+            {{ __('hata::settings.recovery_codes.description') }}
         </flux:text>
     </div>
 
@@ -71,7 +71,7 @@ new class extends Component {
                 aria-expanded="false"
                 aria-controls="recovery-codes-section"
             >
-                {{ __('settings.recovery_codes.view') }}
+                {{ __('hata::settings.recovery_codes.view') }}
             </flux:button>
 
             <flux:button
@@ -83,7 +83,7 @@ new class extends Component {
                 aria-expanded="true"
                 aria-controls="recovery-codes-section"
             >
-                {{ __('settings.recovery_codes.hide') }}
+                {{ __('hata::settings.recovery_codes.hide') }}
             </flux:button>
 
             @if (filled($recoveryCodes))
@@ -93,7 +93,7 @@ new class extends Component {
                     variant="filled"
                     wire:click="regenerateRecoveryCodes"
                 >
-                    {{ __('settings.recovery_codes.regenerate') }}
+                    {{ __('hata::settings.recovery_codes.regenerate') }}
                 </flux:button>
             @endif
         </div>
@@ -114,7 +114,7 @@ new class extends Component {
                     <div
                         class="grid gap-1 p-4 font-mono text-sm rounded-lg bg-zinc-100 dark:bg-white/5"
                         role="list"
-                        aria-label="{{ __('settings.recovery_codes.list_label') }}"
+                        aria-label="{{ __('hata::settings.recovery_codes.list_label') }}"
                     >
                         @foreach($recoveryCodes as $code)
                             <div
@@ -127,7 +127,7 @@ new class extends Component {
                         @endforeach
                     </div>
                     <flux:text variant="subtle" class="text-xs">
-                        {{ __('settings.recovery_codes.usage_note') }}
+                        {{ __('hata::settings.recovery_codes.usage_note') }}
                     </flux:text>
                 @endif
             </div>

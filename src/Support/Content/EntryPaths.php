@@ -217,7 +217,7 @@ class EntryPaths
             $own = $rows->get($entry->id);
 
             if ($own === null || $own->locale !== $entry->getOriginal('locale') || $own->path !== $entry->getOriginal('path')) {
-                throw ValidationException::withMessages(['slug' => __('content.entry.changed_meanwhile')]);
+                throw ValidationException::withMessages(['slug' => __('hata::content.entry.changed_meanwhile')]);
             }
 
             // In another language the record's old path means nothing (it has no descendants there).
@@ -234,7 +234,7 @@ class EntryPaths
             || $fresh->locale !== $locale
             || $fresh->path !== $parent->path
             || ($ownPath !== null && ($fresh->path === $ownPath || str_starts_with($fresh->path, $ownPath.'/')))) {
-            throw ValidationException::withMessages(['parent_id' => __('content.entry.parent_invalid')]);
+            throw ValidationException::withMessages(['parent_id' => __('hata::content.entry.parent_invalid')]);
         }
     }
 }

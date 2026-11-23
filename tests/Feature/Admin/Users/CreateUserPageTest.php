@@ -39,7 +39,7 @@ test('it creates a user and redirects to the list with a message', function () {
     expect($user->locale)->toBe('uk')
         ->and($user->email_verified_at)->not->toBeNull()
         ->and($user->roles->pluck('name')->all())->toBe(['editor'])
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('users.messages.created'));
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::users.messages.created'));
 });
 
 test('it validates the form with translated messages', function () {
@@ -68,7 +68,7 @@ test('roles the actor cannot assign are disabled with an explanation', function 
     $this->actingAs(User::factory()->withRole('admin')->create());
 
     Livewire::test('hata::admin.users.create')
-        ->assertSee(__('users.form.role_unavailable'))
+        ->assertSee(__('hata::users.form.role_unavailable'))
         ->tap(function ($component): void {
             $options = collect($component->instance()->roleOptions)->mapWithKeys(fn (array $option): array => [$option['role']->name => $option['assignable']]);
 
@@ -86,7 +86,7 @@ test('assigning a forbidden role shows the protection error', function () {
         ->set('form.password_confirmation', 'secret-password')
         ->set('form.roles', [(string) Role::findByName('super-admin')->id])
         ->call('save')
-        ->assertHasErrors(['form.roles' => __('users.errors.cannot_manage_super_admin')]);
+        ->assertHasErrors(['form.roles' => __('hata::users.errors.cannot_manage_super_admin')]);
 
     expect(User::where('email', 'someone@example.com')->exists())->toBeFalse();
 });

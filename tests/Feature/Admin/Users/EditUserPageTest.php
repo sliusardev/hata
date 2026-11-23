@@ -64,7 +64,7 @@ test('the roles block is locked on the own account and roles stay unchanged', fu
     $this->actingAs($actor);
 
     Livewire::test('hata::admin.users.edit', ['user' => $actor])
-        ->assertSee(__('users.form.own_roles_locked'))
+        ->assertSee(__('hata::users.form.own_roles_locked'))
         ->set('form.roles', [(string) Role::findByName('author')->id])
         ->set('form.name', 'Self Renamed')
         ->call('save')

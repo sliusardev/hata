@@ -19,7 +19,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends Component {
+new #[Layout('hata::layouts.focus')] #[Title('hata::media.crop.title')] class extends Component {
     /**
      * Aspect ratios of the crop box (null = free). "Social" is a 1200 × 630 cover and also sets that output size.
      */
@@ -193,7 +193,7 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
             return;
         }
 
-        Toast::success(__('media.crop.messages.applied'));
+        Toast::success(__('hata::media.crop.messages.applied'));
         $this->redirectToLibrary($media);
     }
 
@@ -205,7 +205,7 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
             return;
         }
 
-        Toast::success(__('media.crop.messages.copied', ['name' => $copy->name]));
+        Toast::success(__('hata::media.crop.messages.copied', ['name' => $copy->name]));
         $this->redirectToLibrary($copy);
     }
 
@@ -215,8 +215,8 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
             'width' => ['nullable', 'integer', 'min:1', 'max:20000'],
             'height' => ['nullable', 'integer', 'min:1', 'max:20000'],
         ], attributes: [
-            'width' => __('media.crop.width'),
-            'height' => __('media.crop.height'),
+            'width' => __('hata::media.crop.width'),
+            'height' => __('hata::media.crop.height'),
         ]);
 
         try {
@@ -236,9 +236,9 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
         } catch (MediaWriteException $exception) {
             // Rolled back by RebuildMediaFile: the file is as it was.
             report($exception);
-            $this->addError('crop', __('media.errors.storage_failed'));
+            $this->addError('crop', __('hata::media.errors.storage_failed'));
         } catch (AuthorizationException) {
-            Flux::toast(variant: 'danger', text: __('media.errors.forbidden'));
+            Flux::toast(variant: 'danger', text: __('hata::media.errors.forbidden'));
         }
 
         return null;
@@ -381,32 +381,32 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
     data-test="media-crop"
 >
     <header class="flex flex-wrap items-center gap-3 border-b border-zinc-200 px-4 py-3 sm:px-5 dark:border-white/10">
-        <flux:button variant="ghost" icon="arrow-left" :href="$libraryUrl" wire:navigate :aria-label="__('media.crop.back')" :tooltip="__('media.crop.back')" />
+        <flux:button variant="ghost" icon="arrow-left" :href="$libraryUrl" wire:navigate :aria-label="__('hata::media.crop.back')" :tooltip="__('hata::media.crop.back')" />
         <div class="min-w-0">
-            <flux:heading size="lg" level="1">{{ __('media.crop.title') }}</flux:heading>
+            <flux:heading size="lg" level="1">{{ __('hata::media.crop.title') }}</flux:heading>
             <flux:text class="truncate">
                 {{ $media->name }}@unless ($unavailable) · {{ $sourceWidth }} × {{ $sourceHeight }}@endunless
             </flux:text>
         </div>
         <flux:spacer />
         <div class="flex flex-wrap gap-2">
-            <flux:button :href="$libraryUrl" wire:navigate>{{ __('common.actions.cancel') }}</flux:button>
+            <flux:button :href="$libraryUrl" wire:navigate>{{ __('hata::common.actions.cancel') }}</flux:button>
             @unless ($unavailable)
                 @if ($canCopy)
-                    <flux:button wire:click="saveCopy" x-bind:disabled="! ready" data-test="media-crop-copy">{{ __('media.crop.save_copy') }}</flux:button>
+                    <flux:button wire:click="saveCopy" x-bind:disabled="! ready" data-test="media-crop-copy">{{ __('hata::media.crop.save_copy') }}</flux:button>
                 @endif
-                <flux:button variant="primary" wire:click="confirmApply" x-bind:disabled="! ready" data-test="media-crop-apply">{{ __('media.crop.apply') }}</flux:button>
+                <flux:button variant="primary" wire:click="confirmApply" x-bind:disabled="! ready" data-test="media-crop-apply">{{ __('hata::media.crop.apply') }}</flux:button>
             @endunless
         </div>
     </header>
 
     @if ($unavailable)
         <div class="p-6">
-            <flux:callout variant="danger" icon="exclamation-triangle" :heading="__('media.errors.too_large_to_edit')" />
+            <flux:callout variant="danger" icon="exclamation-triangle" :heading="__('hata::media.errors.too_large_to_edit')" />
         </div>
     @else
         <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
-            <div class="relative min-h-[60vh] flex-1 bg-zinc-800 lg:min-h-0 dark:bg-zinc-950" aria-label="{{ __('media.crop.canvas') }}" role="group">
+            <div class="relative min-h-[60vh] flex-1 bg-zinc-800 lg:min-h-0 dark:bg-zinc-950" aria-label="{{ __('hata::media.crop.canvas') }}" role="group">
                 <div class="absolute inset-4 sm:inset-8" wire:ignore>
                     <img
                         x-ref="image"
@@ -418,17 +418,17 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
                         <flux:icon.loading class="text-zinc-300" />
                     </div>
                     <div x-show="failed" x-cloak class="absolute inset-0 flex items-center justify-center p-6">
-                        <flux:callout variant="danger" icon="exclamation-triangle" :heading="__('media.crop.load_failed')" />
+                        <flux:callout variant="danger" icon="exclamation-triangle" :heading="__('hata::media.crop.load_failed')" />
                     </div>
                 </div>
             </div>
 
             <aside
-                aria-label="{{ __('media.crop.options') }}"
+                aria-label="{{ __('hata::media.crop.options') }}"
                 class="flex w-full shrink-0 flex-col gap-6 overflow-y-auto border-t border-zinc-200 p-5 lg:w-80 lg:border-s lg:border-t-0 dark:border-white/10"
             >
                 <div class="space-y-2.5">
-                    <flux:heading size="sm" level="2">{{ __('media.crop.ratio') }}</flux:heading>
+                    <flux:heading size="sm" level="2">{{ __('hata::media.crop.ratio') }}</flux:heading>
                     <div class="grid grid-cols-3 gap-2">
                         {{-- Js::from(), not @js(): Blade compiles no directives inside a component's attribute, only echoes. --}}
                         @foreach (array_keys($this::RATIOS) as $key)
@@ -439,42 +439,42 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
                                 x-on:click="setRatio({{ Illuminate\Support\Js::from($key) }})"
                                 wire:key="ratio-{{ $key }}"
                             >
-                                {{ match ($key) { 'free' => __('media.crop.ratios.free'), 'social' => __('media.crop.ratios.social'), default => $key } }}
+                                {{ match ($key) { 'free' => __('hata::media.crop.ratios.free'), 'social' => __('hata::media.crop.ratios.social'), default => $key } }}
                             </flux:button>
                         @endforeach
                     </div>
-                    <flux:text size="sm">{{ __('media.crop.social_hint') }}</flux:text>
+                    <flux:text size="sm">{{ __('hata::media.crop.social_hint') }}</flux:text>
                 </div>
 
                 <div class="space-y-2.5">
-                    <flux:heading size="sm" level="2">{{ __('media.crop.size') }}</flux:heading>
+                    <flux:heading size="sm" level="2">{{ __('hata::media.crop.size') }}</flux:heading>
                     <div class="flex items-center gap-2">
-                        <flux:input type="number" min="1" wire:model.live.debounce.400ms="width" :aria-label="__('media.crop.width')" :placeholder="__('media.crop.width')" />
+                        <flux:input type="number" min="1" wire:model.live.debounce.400ms="width" :aria-label="__('hata::media.crop.width')" :placeholder="__('hata::media.crop.width')" />
                         <span aria-hidden="true" class="text-zinc-500 dark:text-zinc-400">×</span>
-                        <flux:input type="number" min="1" wire:model.live.debounce.400ms="height" :aria-label="__('media.crop.height')" :placeholder="__('media.crop.height')" />
+                        <flux:input type="number" min="1" wire:model.live.debounce.400ms="height" :aria-label="__('hata::media.crop.height')" :placeholder="__('hata::media.crop.height')" />
                     </div>
                     <flux:error name="width" />
                     <flux:error name="height" />
                     <flux:error name="size" />
-                    <flux:text size="sm">{{ __('media.crop.size_hint') }}</flux:text>
+                    <flux:text size="sm">{{ __('hata::media.crop.size_hint') }}</flux:text>
                     @if ($this->sizeExceedsMaxSide)
-                        <flux:text size="sm" data-test="media-crop-max-side-hint">{{ __('media.crop.max_side_hint', ['max' => $this->maxSide]) }}</flux:text>
+                        <flux:text size="sm" data-test="media-crop-max-side-hint">{{ __('hata::media.crop.max_side_hint', ['max' => $this->maxSide]) }}</flux:text>
                     @endif
                 </div>
 
                 <div class="space-y-2.5">
-                    <flux:heading size="sm" level="2">{{ __('media.crop.transform') }}</flux:heading>
+                    <flux:heading size="sm" level="2">{{ __('hata::media.crop.transform') }}</flux:heading>
                     <div class="flex gap-2">
-                        <flux:button icon="arrow-uturn-left" x-on:click="rotate(-90)" :aria-label="__('media.crop.rotate_left')" :tooltip="__('media.crop.rotate_left')" />
-                        <flux:button icon="arrow-uturn-right" x-on:click="rotate(90)" :aria-label="__('media.crop.rotate_right')" :tooltip="__('media.crop.rotate_right')" />
-                        <flux:button icon="arrows-right-left" x-on:click="flip('h')" :aria-label="__('media.crop.flip_h')" :tooltip="__('media.crop.flip_h')" />
-                        <flux:button icon="arrows-up-down" x-on:click="flip('v')" :aria-label="__('media.crop.flip_v')" :tooltip="__('media.crop.flip_v')" />
+                        <flux:button icon="arrow-uturn-left" x-on:click="rotate(-90)" :aria-label="__('hata::media.crop.rotate_left')" :tooltip="__('hata::media.crop.rotate_left')" />
+                        <flux:button icon="arrow-uturn-right" x-on:click="rotate(90)" :aria-label="__('hata::media.crop.rotate_right')" :tooltip="__('hata::media.crop.rotate_right')" />
+                        <flux:button icon="arrows-right-left" x-on:click="flip('h')" :aria-label="__('hata::media.crop.flip_h')" :tooltip="__('hata::media.crop.flip_h')" />
+                        <flux:button icon="arrows-up-down" x-on:click="flip('v')" :aria-label="__('hata::media.crop.flip_v')" :tooltip="__('hata::media.crop.flip_v')" />
                     </div>
                 </div>
 
                 <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-[13px] dark:border-white/10 dark:bg-white/5" data-test="media-crop-result">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('media.crop.result') }}</dt>
-                    <dd class="text-zinc-800 dark:text-white">{{ $result ? __('media.crop.result_size', ['width' => $result[0], 'height' => $result[1]]) : '—' }}</dd>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('hata::media.crop.result') }}</dt>
+                    <dd class="text-zinc-800 dark:text-white">{{ $result ? __('hata::media.crop.result_size', ['width' => $result[0], 'height' => $result[1]]) : '—' }}</dd>
                 </dl>
 
                 <flux:error name="crop" />
@@ -483,12 +483,12 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
                     <flux:icon name="information-circle" variant="micro" class="mt-0.5 shrink-0" />
                     <span>
                         @if ($media->usages_count > 0)
-                            {{ trans_choice('media.crop.used_in', $media->usages_count) }}
+                            {{ trans_choice('hata::media.crop.used_in', $media->usages_count) }}
                         @endif
                         @if ($canCopy)
-                            {{ __('media.crop.copy_hint') }}
+                            {{ __('hata::media.crop.copy_hint') }}
                         @endif
-                        {{ $hasOriginal ? __('media.crop.original_kept') : __('media.crop.no_original') }}
+                        {{ $hasOriginal ? __('hata::media.crop.original_kept') : __('hata::media.crop.no_original') }}
                     </span>
                 </div>
             </aside>
@@ -496,11 +496,11 @@ new #[Layout('hata::layouts.focus')] #[Title('media.crop.title')] class extends 
 
         <x-hata::confirm-modal
             wire:model.self="showApplyModal"
-            :heading="__('media.crop.confirm.heading', ['name' => $media->name])"
-            :confirm-label="__('media.crop.apply')"
+            :heading="__('hata::media.crop.confirm.heading', ['name' => $media->name])"
+            :confirm-label="__('hata::media.crop.apply')"
             confirm-action="apply"
         >
-            {{ trans_choice('media.crop.confirm.body', $media->usages_count) }}
+            {{ trans_choice('hata::media.crop.confirm.body', $media->usages_count) }}
         </x-hata::confirm-modal>
     @endif
 </div>

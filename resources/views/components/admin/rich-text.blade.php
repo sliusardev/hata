@@ -35,15 +35,15 @@
     $activeClass = 'bg-zinc-200 text-zinc-900 dark:bg-white/15 dark:text-white';
     $groups = [
         [
-            ['command' => 'bold', 'label' => __('content.editor.bold'), 'icon' => 'bold'],
-            ['command' => 'italic', 'label' => __('content.editor.italic'), 'icon' => 'italic'],
-            ['command' => 'underline', 'label' => __('content.editor.underline'), 'icon' => 'underline'],
-            ['command' => 'strike', 'label' => __('content.editor.strike'), 'icon' => 'strikethrough'],
+            ['command' => 'bold', 'label' => __('hata::content.editor.bold'), 'icon' => 'bold'],
+            ['command' => 'italic', 'label' => __('hata::content.editor.italic'), 'icon' => 'italic'],
+            ['command' => 'underline', 'label' => __('hata::content.editor.underline'), 'icon' => 'underline'],
+            ['command' => 'strike', 'label' => __('hata::content.editor.strike'), 'icon' => 'strikethrough'],
         ],
         [
-            ['command' => 'bulletList', 'label' => __('content.editor.bullet_list'), 'icon' => 'list-bullet'],
-            ['command' => 'orderedList', 'label' => __('content.editor.ordered_list'), 'icon' => 'numbered-list'],
-            ['command' => 'blockquote', 'label' => __('content.editor.blockquote'), 'text' => '❝'],
+            ['command' => 'bulletList', 'label' => __('hata::content.editor.bullet_list'), 'icon' => 'list-bullet'],
+            ['command' => 'orderedList', 'label' => __('hata::content.editor.ordered_list'), 'icon' => 'numbered-list'],
+            ['command' => 'blockquote', 'label' => __('hata::content.editor.blockquote'), 'text' => '❝'],
         ],
     ];
 @endphp
@@ -63,19 +63,19 @@
         ])
     >
         @unless ($readonly)
-            <div role="toolbar" aria-label="{{ __('content.editor.toolbar') }}" aria-controls="{{ $key }}" class="flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-white/10 dark:bg-white/5">
+            <div role="toolbar" aria-label="{{ __('hata::content.editor.toolbar') }}" aria-controls="{{ $key }}" class="flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-white/10 dark:bg-white/5">
                 <select
                     x-model="block"
                     x-on:change="setBlock($event.target.value)"
                     x-bind:disabled="!ready"
-                    aria-label="{{ __('content.editor.block') }}"
+                    aria-label="{{ __('hata::content.editor.block') }}"
                     class="h-8 rounded-md border-0 bg-transparent ps-2 pe-7 text-sm text-zinc-700 hover:bg-zinc-200/70 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40 dark:text-zinc-200 dark:hover:bg-white/10 [&>option]:text-zinc-800"
                     data-test="rich-text-block"
                 >
-                    <option value="paragraph">{{ __('content.editor.paragraph') }}</option>
-                    <option value="h2">{{ __('content.editor.heading_2') }}</option>
-                    <option value="h3">{{ __('content.editor.heading_3') }}</option>
-                    <option value="h4">{{ __('content.editor.heading_4') }}</option>
+                    <option value="paragraph">{{ __('hata::content.editor.paragraph') }}</option>
+                    <option value="h2">{{ __('hata::content.editor.heading_2') }}</option>
+                    <option value="h3">{{ __('hata::content.editor.heading_3') }}</option>
+                    <option value="h4">{{ __('hata::content.editor.heading_4') }}</option>
                 </select>
 
                 @foreach ($groups as $group)
@@ -107,7 +107,7 @@
 
                 <span class="mx-1 h-5 w-px bg-zinc-200 dark:bg-white/10" aria-hidden="true"></span>
                 <div class="flex items-center gap-0.5">
-                    <flux:tooltip :content="__('content.editor.link')">
+                    <flux:tooltip :content="__('hata::content.editor.link')">
                         <button
                             type="button"
                             x-on:mousedown.prevent
@@ -116,7 +116,7 @@
                             x-bind:aria-pressed="active.link ? 'true' : 'false'"
                             x-bind:aria-expanded="linkOpen ? 'true' : 'false'"
                             x-bind:disabled="!ready"
-                            aria-label="{{ __('content.editor.link') }}"
+                            aria-label="{{ __('hata::content.editor.link') }}"
                             class="{{ $buttonClass }}"
                             data-test="rich-text-link"
                         >
@@ -124,12 +124,12 @@
                         </button>
                     </flux:tooltip>
                     @if ($canPickImages)
-                        <flux:tooltip :content="__('content.editor.image')">
+                        <flux:tooltip :content="__('hata::content.editor.image')">
                             <button
                                 type="button"
                                 x-on:click="openImagePicker()"
                                 x-bind:disabled="!ready"
-                                aria-label="{{ __('content.editor.image') }}"
+                                aria-label="{{ __('hata::content.editor.image') }}"
                                 class="{{ $buttonClass }}"
                                 data-test="rich-text-image"
                             >
@@ -141,13 +141,13 @@
 
                 <div class="ms-auto flex items-center gap-0.5">
                     @foreach (['undo' => 'arrow-uturn-left', 'redo' => 'arrow-uturn-right'] as $command => $icon)
-                        <flux:tooltip :content="__('content.editor.'.$command)">
+                        <flux:tooltip :content="__('hata::content.editor.'.$command)">
                             <button
                                 type="button"
                                 x-on:mousedown.prevent
                                 x-on:click="command('{{ $command }}')"
                                 x-bind:disabled="!ready || !{{ $command === 'undo' ? 'canUndo' : 'canRedo' }}"
-                                aria-label="{{ __('content.editor.'.$command) }}"
+                                aria-label="{{ __('hata::content.editor.'.$command) }}"
                                 class="{{ $buttonClass }}"
                                 data-test="rich-text-{{ $command }}"
                             >
@@ -163,13 +163,13 @@
                 x-show="linkOpen"
                 x-cloak
                 role="group"
-                aria-label="{{ __('content.editor.link') }}"
+                aria-label="{{ __('hata::content.editor.link') }}"
                 x-on:keydown.escape.prevent.stop="closeLink()"
                 class="flex flex-wrap items-end gap-3 border-b border-zinc-200 bg-zinc-50/60 px-3 py-3 dark:border-white/10 dark:bg-white/[0.03]"
                 data-test="rich-text-link-form"
             >
                 <div class="grid min-w-0 flex-1 basis-64 gap-1.5">
-                    <flux:label for="{{ $key }}-href">{{ __('content.editor.link_form.address') }}</flux:label>
+                    <flux:label for="{{ $key }}-href">{{ __('hata::content.editor.link_form.address') }}</flux:label>
                     <flux:input
                         id="{{ $key }}-href"
                         x-ref="linkInput"
@@ -177,24 +177,24 @@
                         x-on:input="linkInvalid = false"
                         x-on:keydown.enter.prevent="applyLink()"
                         size="sm"
-                        :placeholder="__('content.editor.link_form.placeholder')"
+                        :placeholder="__('hata::content.editor.link_form.placeholder')"
                         autocomplete="off"
                     />
-                    <p x-show="linkInvalid" x-cloak class="text-sm text-red-600 dark:text-red-400" role="alert">{{ __('content.editor.link_form.invalid') }}</p>
+                    <p x-show="linkInvalid" x-cloak class="text-sm text-red-600 dark:text-red-400" role="alert">{{ __('hata::content.editor.link_form.invalid') }}</p>
                 </div>
                 <label class="inline-flex h-8 items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
                     <input type="checkbox" x-model="linkNewTab" x-on:keydown.enter.prevent="applyLink()" class="size-4 rounded border-zinc-300 accent-zinc-800 dark:accent-white" />
-                    {{ __('content.editor.link_form.new_tab') }}
+                    {{ __('hata::content.editor.link_form.new_tab') }}
                 </label>
                 <div class="flex items-center gap-2">
-                    <flux:button type="button" size="sm" variant="ghost" x-on:click="closeLink()">{{ __('content.editor.link_form.cancel') }}</flux:button>
-                    <flux:button type="button" size="sm" variant="ghost" x-show="active.link" x-on:click="removeLink()">{{ __('content.editor.link_form.remove') }}</flux:button>
-                    <flux:button type="button" size="sm" variant="primary" x-on:click="applyLink()">{{ __('content.editor.link_form.apply') }}</flux:button>
+                    <flux:button type="button" size="sm" variant="ghost" x-on:click="closeLink()">{{ __('hata::content.editor.link_form.cancel') }}</flux:button>
+                    <flux:button type="button" size="sm" variant="ghost" x-show="active.link" x-on:click="removeLink()">{{ __('hata::content.editor.link_form.remove') }}</flux:button>
+                    <flux:button type="button" size="sm" variant="primary" x-on:click="applyLink()">{{ __('hata::content.editor.link_form.apply') }}</flux:button>
                 </div>
             </div>
 
             <div x-show="imageSelected" x-cloak class="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-zinc-200 bg-zinc-50/60 px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]" data-test="rich-text-alt">
-                <flux:label for="{{ $key }}-alt" class="shrink-0">{{ __('content.editor.image_alt.label') }}</flux:label>
+                <flux:label for="{{ $key }}-alt" class="shrink-0">{{ __('hata::content.editor.image_alt.label') }}</flux:label>
                 <div class="min-w-0 flex-1 basis-56">
                     <flux:input
                         id="{{ $key }}-alt"
@@ -202,14 +202,14 @@
                         x-on:input="updateAlt()"
                         x-on:keydown.enter.prevent
                         size="sm"
-                        :placeholder="__('content.editor.image_alt.placeholder')"
+                        :placeholder="__('hata::content.editor.image_alt.placeholder')"
                     />
                 </div>
             </div>
         @endunless
 
         <div x-show="!ready && !failed" class="min-h-64 px-4 py-3" aria-busy="true">
-            <span class="sr-only">{{ __('content.editor.loading') }}</span>
+            <span class="sr-only">{{ __('hata::content.editor.loading') }}</span>
             <flux:skeleton.group animate="shimmer" class="space-y-3">
                 <flux:skeleton.line class="w-3/4" />
                 <flux:skeleton.line />
@@ -218,7 +218,7 @@
             </flux:skeleton.group>
         </div>
 
-        <p x-show="failed" x-cloak class="min-h-64 px-4 py-3 text-sm text-red-600 dark:text-red-400" role="alert">{{ __('content.editor.failed') }}</p>
+        <p x-show="failed" x-cloak class="min-h-64 px-4 py-3 text-sm text-red-600 dark:text-red-400" role="alert">{{ __('hata::content.editor.failed') }}</p>
 
         <div x-ref="content" x-show="ready" x-cloak></div>
     </div>

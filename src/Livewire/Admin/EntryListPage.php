@@ -404,8 +404,8 @@ abstract class EntryListPage extends Component
         $count = $trashEntry->handle(Auth::user(), $entry);
 
         Flux::toast(variant: 'success', text: $count > 1
-            ? trans_choice('content.list.trash.done_with_children', $count)
-            : __('content.list.trash.done'));
+            ? trans_choice('hata::content.list.trash.done_with_children', $count)
+            : __('hata::content.list.trash.done'));
 
         $this->showTrashModal = false;
         $this->trashingId = null;
@@ -421,7 +421,7 @@ abstract class EntryListPage extends Component
         try {
             $restored = $restoreEntry->handle(Auth::user(), $entry);
 
-            Flux::toast(variant: 'success', text: __('content.list.restored', ['title' => $restored->title]));
+            Flux::toast(variant: 'success', text: __('hata::content.list.restored', ['title' => $restored->title]));
         } catch (ProtectedActionException $exception) {
             Flux::toast(variant: 'danger', text: $exception->getMessage());
         }
@@ -447,7 +447,7 @@ abstract class EntryListPage extends Component
         try {
             $deleteEntry->handle(Auth::user(), $entry);
 
-            Flux::toast(variant: 'success', text: __('content.list.delete.done'));
+            Flux::toast(variant: 'success', text: __('hata::content.list.delete.done'));
         } catch (ProtectedActionException $exception) {
             Flux::toast(variant: 'danger', text: $exception->getMessage());
         }
@@ -497,8 +497,8 @@ abstract class EntryListPage extends Component
         };
 
         Flux::toast(variant: 'success', text: $this->bulkAction === 'trash'
-            ? trans_choice('content.list.trash.done_with_children', $count)
-            : trans_choice('content.list.bulk.deleted', $count));
+            ? trans_choice('hata::content.list.trash.done_with_children', $count)
+            : trans_choice('hata::content.list.bulk.deleted', $count));
 
         $this->showBulkModal = false;
         $this->bulkAction = '';
@@ -516,7 +516,7 @@ abstract class EntryListPage extends Component
 
         $setStatus->handle($this->actor(), $entry, $status);
 
-        Flux::toast(variant: 'success', text: __($status === EntryStatus::Published ? 'content.list.status.published' : 'content.list.status.unpublished', ['title' => $entry->title]));
+        Flux::toast(variant: 'success', text: __($status === EntryStatus::Published ? 'hata::content.list.status.published' : 'hata::content.list.status.unpublished', ['title' => $entry->title]));
 
         $this->forgetList();
     }
@@ -529,7 +529,7 @@ abstract class EntryListPage extends Component
         $count = $bulk->setStatus($this->actor(), $this->contentType, $this->selectedIds(), $status);
 
         if ($count > 0) {
-            Flux::toast(variant: 'success', text: trans_choice($status === EntryStatus::Published ? 'content.list.bulk.published' : 'content.list.bulk.unpublished', $count));
+            Flux::toast(variant: 'success', text: trans_choice($status === EntryStatus::Published ? 'hata::content.list.bulk.published' : 'hata::content.list.bulk.unpublished', $count));
         }
 
         $this->selected = [];
@@ -547,7 +547,7 @@ abstract class EntryListPage extends Component
         }
 
         if ($result['restored'] > 0) {
-            Flux::toast(variant: 'success', text: trans_choice('content.list.bulk.restored', $result['restored']));
+            Flux::toast(variant: 'success', text: trans_choice('hata::content.list.bulk.restored', $result['restored']));
         }
 
         $this->selected = [];

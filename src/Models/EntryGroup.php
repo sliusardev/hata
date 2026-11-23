@@ -96,7 +96,7 @@ class EntryGroup extends Model implements UsesMedia
     {
         $entry = $this->representative();
 
-        return __('content.usage.shared', [
+        return __('hata::content.usage.shared', [
             'type' => $entry?->typeLabel() ?? app(ContentTypes::class)->find($this->type)?->label() ?? $this->type,
             'title' => $entry->title ?? '#'.$this->id,
         ]);

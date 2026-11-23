@@ -20,7 +20,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::maintenance.title')] class extends Component {
     use WithPagination;
 
     /**
@@ -128,7 +128,7 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
 
         if ($this->openedLog === null) {
             $this->file = '';
-            Flux::toast(variant: 'danger', text: __('maintenance.logs.errors.missing'));
+            Flux::toast(variant: 'danger', text: __('hata::maintenance.logs.errors.missing'));
         }
     }
 
@@ -164,13 +164,13 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
         }
 
         if ($action === MaintenanceAction::Migrate && $this->pendingMigrations === []) {
-            Flux::toast(variant: 'danger', text: __('maintenance.errors.nothing_pending'));
+            Flux::toast(variant: 'danger', text: __('hata::maintenance.errors.nothing_pending'));
 
             return;
         }
 
         if ($action === MaintenanceAction::Seed && ! in_array($this->seeder, $this->seeders, true)) {
-            Flux::toast(variant: 'danger', text: __('maintenance.errors.unknown_seeder'));
+            Flux::toast(variant: 'danger', text: __('hata::maintenance.errors.unknown_seeder'));
 
             return;
         }
@@ -254,7 +254,7 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
 
         try {
             app(DeleteLogFile::class)->handle(auth()->user(), $name);
-            Flux::toast(variant: 'success', text: __('maintenance.logs.messages.deleted', ['name' => $name]));
+            Flux::toast(variant: 'success', text: __('hata::maintenance.logs.messages.deleted', ['name' => $name]));
         } catch (MaintenanceException $exception) {
             Flux::toast(variant: 'danger', text: $exception->getMessage());
         }
@@ -264,7 +264,7 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
 
     private function logFileGone(): void
     {
-        Flux::toast(variant: 'danger', text: __('maintenance.logs.errors.missing'));
+        Flux::toast(variant: 'danger', text: __('hata::maintenance.logs.errors.missing'));
 
         $this->closeMissingLog();
     }
@@ -361,10 +361,10 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
     public function confirmText(): string
     {
         return match (MaintenanceAction::tryFrom((string) $this->confirming)) {
-            MaintenanceAction::Migrate => trans_choice('maintenance.actions.migrate.confirm', count($this->pendingMigrations), ['count' => count($this->pendingMigrations)]),
-            MaintenanceAction::Seed => __('maintenance.actions.seed.confirm', ['seeder' => (string) $this->confirmedSeeder]),
-            MaintenanceAction::ClearCaches => __('maintenance.actions.clear_caches.confirm'),
-            MaintenanceAction::RebuildCaches => __('maintenance.actions.rebuild_caches.confirm'),
+            MaintenanceAction::Migrate => trans_choice('hata::maintenance.actions.migrate.confirm', count($this->pendingMigrations), ['count' => count($this->pendingMigrations)]),
+            MaintenanceAction::Seed => __('hata::maintenance.actions.seed.confirm', ['seeder' => (string) $this->confirmedSeeder]),
+            MaintenanceAction::ClearCaches => __('hata::maintenance.actions.clear_caches.confirm'),
+            MaintenanceAction::RebuildCaches => __('hata::maintenance.actions.rebuild_caches.confirm'),
             null => '',
         };
     }
@@ -384,8 +384,8 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
 
 <section class="w-full space-y-8 {{ $openedLog ? 'max-w-7xl' : 'max-w-5xl' }}">
     <div>
-        <flux:heading size="xl" level="1">{{ __('maintenance.title') }}</flux:heading>
-        <flux:subheading>{{ __('maintenance.description') }}</flux:subheading>
+        <flux:heading size="xl" level="1">{{ __('hata::maintenance.title') }}</flux:heading>
+        <flux:subheading>{{ __('hata::maintenance.description') }}</flux:subheading>
     </div>
 
     <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 dark:border-zinc-700" data-test="maintenance-tabs">
@@ -398,7 +398,7 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
                 class="cursor-pointer"
                 data-test="maintenance-tab-{{ $name }}"
             >
-                {{ __("maintenance.tabs.{$name}") }}
+                {{ __("hata::maintenance.tabs.{$name}") }}
             </flux:navbar.item>
         @endforeach
     </flux:navbar>
@@ -411,23 +411,23 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
                 <div class="{{ $iconClasses }}"><flux:icon name="circle-stack" variant="outline" class="size-5" /></div>
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
-                        <flux:heading level="2">{{ __('maintenance.actions.migrate.title') }}</flux:heading>
+                        <flux:heading level="2">{{ __('hata::maintenance.actions.migrate.title') }}</flux:heading>
                         @if ($pending !== [])
                             <flux:badge size="sm" color="amber" data-test="maintenance-pending-count">{{ count($pending) }}</flux:badge>
                         @endif
                     </div>
-                    <flux:text size="sm" class="mt-1">{{ __('maintenance.actions.migrate.description') }}</flux:text>
+                    <flux:text size="sm" class="mt-1">{{ __('hata::maintenance.actions.migrate.description') }}</flux:text>
                 </div>
             </div>
 
             @if ($pending === [])
                 <div class="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-400/10 dark:text-green-300" data-test="maintenance-nothing-pending">
                     <flux:icon name="check-circle" variant="mini" class="size-5 shrink-0" />
-                    {{ __('maintenance.actions.migrate.none') }}
+                    {{ __('hata::maintenance.actions.migrate.none') }}
                 </div>
             @else
                 <div>
-                    <flux:text size="sm" class="mb-2 font-medium">{{ __('maintenance.actions.migrate.pending') }}</flux:text>
+                    <flux:text size="sm" class="mb-2 font-medium">{{ __('hata::maintenance.actions.migrate.pending') }}</flux:text>
                     <ul class="max-h-40 space-y-1 overflow-y-auto rounded-lg bg-zinc-50 p-3 font-mono text-xs text-zinc-700 dark:bg-white/5 dark:text-zinc-300" data-test="maintenance-pending-list">
                         @foreach ($pending as $migration)
                             <li class="truncate" wire:key="pending-{{ $migration }}" title="{{ $migration }}">{{ $migration }}</li>
@@ -437,7 +437,7 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
 
                 <div class="mt-auto flex justify-end">
                     <flux:button variant="primary" icon="play" wire:click="confirm('migrate')" data-test="maintenance-run-migrate">
-                        {{ __('maintenance.actions.migrate.button') }}
+                        {{ __('hata::maintenance.actions.migrate.button') }}
                     </flux:button>
                 </div>
             @endif
@@ -448,24 +448,24 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
             <div class="flex items-start gap-4">
                 <div class="{{ $iconClasses }}"><flux:icon name="table-cells" variant="outline" class="size-5" /></div>
                 <div class="min-w-0 flex-1">
-                    <flux:heading level="2">{{ __('maintenance.actions.seed.title') }}</flux:heading>
-                    <flux:text size="sm" class="mt-1">{{ __('maintenance.actions.seed.description') }}</flux:text>
+                    <flux:heading level="2">{{ __('hata::maintenance.actions.seed.title') }}</flux:heading>
+                    <flux:text size="sm" class="mt-1">{{ __('hata::maintenance.actions.seed.description') }}</flux:text>
                 </div>
             </div>
 
             @if ($seeders === [])
-                <flux:text size="sm" variant="subtle">{{ __('maintenance.actions.seed.none') }}</flux:text>
+                <flux:text size="sm" variant="subtle">{{ __('hata::maintenance.actions.seed.none') }}</flux:text>
             @else
                 <div class="mt-auto flex flex-wrap items-end gap-3">
                     <div class="min-w-48 flex-1">
-                        <flux:select wire:model="seeder" :label="__('maintenance.actions.seed.select')" data-test="maintenance-seeder">
+                        <flux:select wire:model="seeder" :label="__('hata::maintenance.actions.seed.select')" data-test="maintenance-seeder">
                             @foreach ($seeders as $name)
                                 <flux:select.option :value="$name" wire:key="seeder-{{ $name }}">{{ $name }}</flux:select.option>
                             @endforeach
                         </flux:select>
                     </div>
                     <flux:button variant="primary" icon="play" wire:click="confirm('seed')" data-test="maintenance-run-seed">
-                        {{ __('maintenance.actions.seed.button') }}
+                        {{ __('hata::maintenance.actions.seed.button') }}
                     </flux:button>
                 </div>
             @endif
@@ -477,14 +477,14 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
                 <div class="flex items-start gap-4">
                     <div class="{{ $iconClasses }}"><flux:icon :name="$icon" variant="outline" class="size-5" /></div>
                     <div class="min-w-0 flex-1">
-                        <flux:heading level="2">{{ __("maintenance.actions.{$key}.title") }}</flux:heading>
-                        <flux:text size="sm" class="mt-1">{{ __("maintenance.actions.{$key}.description") }}</flux:text>
+                        <flux:heading level="2">{{ __("hata::maintenance.actions.{$key}.title") }}</flux:heading>
+                        <flux:text size="sm" class="mt-1">{{ __("hata::maintenance.actions.{$key}.description") }}</flux:text>
                     </div>
                 </div>
 
                 <div class="mt-auto flex justify-end">
                     <flux:button icon="play" wire:click="confirm('{{ $key }}')" data-test="maintenance-run-{{ $key }}">
-                        {{ __("maintenance.actions.{$key}.button") }}
+                        {{ __("hata::maintenance.actions.{$key}.button") }}
                     </flux:button>
                 </div>
             </div>
@@ -495,21 +495,21 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
         @php $status = $lastRun->shownStatus(); @endphp
         <div class="space-y-3 rounded-xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-zinc-900" data-test="maintenance-last-result">
             <div class="flex flex-wrap items-center gap-3">
-                <flux:heading level="2">{{ __('maintenance.result.heading') }}</flux:heading>
+                <flux:heading level="2">{{ __('hata::maintenance.result.heading') }}</flux:heading>
                 <flux:badge size="sm" :color="$status->color()" data-test="maintenance-last-status">{{ $status->label() }}</flux:badge>
                 <flux:text size="sm">{{ $lastRun->title() }}</flux:text>
                 @if ($lastRun->seconds() !== null)
-                    <flux:text size="sm" variant="subtle">· {{ __('maintenance.result.duration', ['seconds' => $lastRun->seconds()]) }}</flux:text>
+                    <flux:text size="sm" variant="subtle">· {{ __('hata::maintenance.result.duration', ['seconds' => $lastRun->seconds()]) }}</flux:text>
                 @endif
             </div>
 
             @if ($lastRun->output_truncated)
-                <flux:text size="sm" variant="subtle">{{ __('maintenance.result.truncated') }}</flux:text>
+                <flux:text size="sm" variant="subtle">{{ __('hata::maintenance.result.truncated') }}</flux:text>
             @endif
 
-            <pre class="{{ $outputClasses }}" data-test="maintenance-last-output">{{ $lastRun->output !== null && $lastRun->output !== '' ? $lastRun->output : __('maintenance.result.no_output') }}</pre>
+            <pre class="{{ $outputClasses }}" data-test="maintenance-last-output">{{ $lastRun->output !== null && $lastRun->output !== '' ? $lastRun->output : __('hata::maintenance.result.no_output') }}</pre>
 
-            <flux:link href="#" wire:click.prevent="$set('tab', 'journal')" class="text-sm">{{ __('maintenance.result.all_runs') }}</flux:link>
+            <flux:link href="#" wire:click.prevent="$set('tab', 'journal')" class="text-sm">{{ __('hata::maintenance.result.all_runs') }}</flux:link>
         </div>
     @endif
 
@@ -517,23 +517,23 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
 
     @if ($tab === 'journal')
     <div class="space-y-4" data-test="maintenance-journal-tab">
-        <flux:text>{{ __('maintenance.journal.description', ['count' => RunMaintenanceAction::KEEP]) }}</flux:text>
+        <flux:text>{{ __('hata::maintenance.journal.description', ['count' => RunMaintenanceAction::KEEP]) }}</flux:text>
 
         @if ($this->runs->isEmpty())
             <x-hata::admin.empty-state
                 icon="clipboard-document-list"
-                :heading="__('maintenance.journal.empty_title')"
-                :description="__('maintenance.journal.empty_description')"
+                :heading="__('hata::maintenance.journal.empty_title')"
+                :description="__('hata::maintenance.journal.empty_description')"
             />
         @else
             <flux:table :paginate="$this->runs" data-test="maintenance-journal">
                 <flux:table.columns>
-                    <flux:table.column>{{ __('maintenance.journal.when') }}</flux:table.column>
-                    <flux:table.column class="max-md:hidden">{{ __('maintenance.journal.who') }}</flux:table.column>
-                    <flux:table.column>{{ __('maintenance.journal.action') }}</flux:table.column>
-                    <flux:table.column>{{ __('maintenance.journal.status') }}</flux:table.column>
-                    <flux:table.column align="end" class="max-sm:hidden">{{ __('maintenance.journal.duration') }}</flux:table.column>
-                    <flux:table.column align="end"><span class="sr-only">{{ __('maintenance.journal.actions') }}</span></flux:table.column>
+                    <flux:table.column>{{ __('hata::maintenance.journal.when') }}</flux:table.column>
+                    <flux:table.column class="max-md:hidden">{{ __('hata::maintenance.journal.who') }}</flux:table.column>
+                    <flux:table.column>{{ __('hata::maintenance.journal.action') }}</flux:table.column>
+                    <flux:table.column>{{ __('hata::maintenance.journal.status') }}</flux:table.column>
+                    <flux:table.column align="end" class="max-sm:hidden">{{ __('hata::maintenance.journal.duration') }}</flux:table.column>
+                    <flux:table.column align="end"><span class="sr-only">{{ __('hata::maintenance.journal.actions') }}</span></flux:table.column>
                 </flux:table.columns>
 
                 <flux:table.rows>
@@ -547,11 +547,11 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
                             </flux:table.cell>
                             <flux:table.cell><flux:badge size="sm" :color="$runStatus->color()">{{ $runStatus->label() }}</flux:badge></flux:table.cell>
                             <flux:table.cell align="end" class="max-sm:hidden">
-                                {{ $run->seconds() === null ? '—' : __('maintenance.result.duration', ['seconds' => $run->seconds()]) }}
+                                {{ $run->seconds() === null ? '—' : __('hata::maintenance.result.duration', ['seconds' => $run->seconds()]) }}
                             </flux:table.cell>
                             <flux:table.cell align="end">
                                 <x-hata::admin.row-actions data-test="maintenance-run-actions-{{ $run->id }}">
-                                    <flux:menu.item icon="command-line" wire:click="showOutput({{ $run->id }})">{{ __('maintenance.journal.view_output') }}</flux:menu.item>
+                                    <flux:menu.item icon="command-line" wire:click="showOutput({{ $run->id }})">{{ __('hata::maintenance.journal.view_output') }}</flux:menu.item>
                                 </x-hata::admin.row-actions>
                             </flux:table.cell>
                         </flux:table.row>
@@ -564,21 +564,21 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
 
     @if ($tab === 'logs' && $openedLog === null)
     <div class="space-y-4" data-test="maintenance-logs-tab">
-        <flux:text>{{ __('maintenance.logs.description') }}</flux:text>
+        <flux:text>{{ __('hata::maintenance.logs.description') }}</flux:text>
 
         @if ($logFiles === [])
             <x-hata::admin.empty-state
                 icon="document-text"
-                :heading="__('maintenance.logs.empty_title')"
-                :description="__('maintenance.logs.empty_description')"
+                :heading="__('hata::maintenance.logs.empty_title')"
+                :description="__('hata::maintenance.logs.empty_description')"
             />
         @else
             <flux:table data-test="maintenance-logs">
                 <flux:table.columns>
-                    <flux:table.column>{{ __('maintenance.logs.file') }}</flux:table.column>
-                    <flux:table.column align="end">{{ __('maintenance.logs.size') }}</flux:table.column>
-                    <flux:table.column class="max-sm:hidden">{{ __('maintenance.logs.changed') }}</flux:table.column>
-                    <flux:table.column align="end"><span class="sr-only">{{ __('maintenance.journal.actions') }}</span></flux:table.column>
+                    <flux:table.column>{{ __('hata::maintenance.logs.file') }}</flux:table.column>
+                    <flux:table.column align="end">{{ __('hata::maintenance.logs.size') }}</flux:table.column>
+                    <flux:table.column class="max-sm:hidden">{{ __('hata::maintenance.logs.changed') }}</flux:table.column>
+                    <flux:table.column align="end"><span class="sr-only">{{ __('hata::maintenance.journal.actions') }}</span></flux:table.column>
                 </flux:table.columns>
 
                 <flux:table.rows>
@@ -594,8 +594,8 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
                             <flux:table.cell class="whitespace-nowrap max-sm:hidden">{{ $logDate($logFile['modified']) }}</flux:table.cell>
                             <flux:table.cell align="end">
                                 <x-hata::admin.row-actions data-test="maintenance-log-actions-{{ $logFile['key'] }}">
-                                    <flux:menu.item icon="eye" wire:click="openLog('{{ $logFile['key'] }}')">{{ __('maintenance.logs.open') }}</flux:menu.item>
-                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDeleteLog('{{ $logFile['key'] }}')">{{ __('common.actions.delete') }}</flux:menu.item>
+                                    <flux:menu.item icon="eye" wire:click="openLog('{{ $logFile['key'] }}')">{{ __('hata::maintenance.logs.open') }}</flux:menu.item>
+                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDeleteLog('{{ $logFile['key'] }}')">{{ __('hata::common.actions.delete') }}</flux:menu.item>
                                 </x-hata::admin.row-actions>
                             </flux:table.cell>
                         </flux:table.row>
@@ -610,7 +610,7 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
     <div class="space-y-4" data-test="maintenance-log-viewer">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
             <flux:button size="sm" variant="ghost" icon="arrow-left" wire:click="closeLog" data-test="maintenance-log-back">
-                {{ __('maintenance.logs.back') }}
+                {{ __('hata::maintenance.logs.back') }}
             </flux:button>
 
             <div class="min-w-0 flex-1">
@@ -619,7 +619,7 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
             </div>
 
             <flux:button size="sm" variant="danger" icon="trash" wire:click="confirmDeleteLog('{{ $openedLog['key'] }}')" data-test="maintenance-log-delete">
-                {{ __('common.actions.delete') }}
+                {{ __('hata::common.actions.delete') }}
             </flux:button>
         </div>
 
@@ -689,16 +689,16 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
                         x-bind:disabled="loading"
                         data-test="maintenance-log-earlier"
                     >
-                        {{ __('maintenance.logs.load_earlier') }} · <span x-text="remaining"></span>
+                        {{ __('hata::maintenance.logs.load_earlier') }} · <span x-text="remaining"></span>
                     </button>
                 </div>
 
-                <p class="font-sans text-sm text-zinc-400" x-show="loading && before === null" role="status">{{ __('maintenance.logs.loading') }}</p>
-                <p class="font-sans text-sm text-zinc-400" x-show="empty" x-cloak>{{ __('maintenance.logs.empty_file') }}</p>
+                <p class="font-sans text-sm text-zinc-400" x-show="loading && before === null" role="status">{{ __('hata::maintenance.logs.loading') }}</p>
+                <p class="font-sans text-sm text-zinc-400" x-show="empty" x-cloak>{{ __('hata::maintenance.logs.empty_file') }}</p>
                 <div class="flex flex-wrap items-center gap-3 font-sans text-sm text-red-300" x-show="failed" x-cloak role="alert">
-                    <span>{{ __('maintenance.logs.failed') }}</span>
+                    <span>{{ __('hata::maintenance.logs.failed') }}</span>
                     <button type="button" class="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-white/20" x-on:click="load()" data-test="maintenance-log-retry">
-                        {{ __('maintenance.logs.retry') }}
+                        {{ __('hata::maintenance.logs.retry') }}
                     </button>
                 </div>
 
@@ -710,11 +710,11 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
 
     <x-hata::confirm-modal
         wire:model.self="showDeleteLogModal"
-        :heading="__('maintenance.logs.delete.title')"
-        :confirm-label="__('maintenance.logs.delete.submit')"
+        :heading="__('hata::maintenance.logs.delete.title')"
+        :confirm-label="__('hata::maintenance.logs.delete.submit')"
         confirm-action="deleteLog"
     >
-        {{ __('maintenance.logs.delete.confirm', ['name' => (string) $deletingLog]) }}
+        {{ __('hata::maintenance.logs.delete.confirm', ['name' => (string) $deletingLog]) }}
     </x-hata::confirm-modal>
 
     {{-- Not <x-hata::confirm-modal>: its button calls a Livewire action, and these commands must run in a plain request. --}}
@@ -732,23 +732,23 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
             <input type="hidden" name="seeder" value="{{ $confirmedSeeder }}" />
 
             <div class="space-y-2">
-                <flux:heading size="lg">{{ __('maintenance.confirm.heading') }}</flux:heading>
+                <flux:heading size="lg">{{ __('hata::maintenance.confirm.heading') }}</flux:heading>
                 <flux:text>{{ $this->confirmText }}</flux:text>
             </div>
 
             @if ($confirming === 'rebuild_caches' && app()->isLocal())
                 <flux:callout icon="exclamation-triangle" color="amber" data-test="maintenance-local-warning">
-                    <flux:callout.text>{{ __('maintenance.actions.rebuild_caches.confirm_local') }}</flux:callout.text>
+                    <flux:callout.text>{{ __('hata::maintenance.actions.rebuild_caches.confirm_local') }}</flux:callout.text>
                 </flux:callout>
             @endif
 
             <div class="flex items-center justify-end gap-3">
-                <flux:text size="sm" x-show="running" x-cloak role="status">{{ __('maintenance.confirm.running') }}</flux:text>
+                <flux:text size="sm" x-show="running" x-cloak role="status">{{ __('hata::maintenance.confirm.running') }}</flux:text>
                 <flux:modal.close>
-                    <flux:button variant="outline" x-bind:disabled="running">{{ __('common.actions.cancel') }}</flux:button>
+                    <flux:button variant="outline" x-bind:disabled="running">{{ __('hata::common.actions.cancel') }}</flux:button>
                 </flux:modal.close>
                 <flux:button type="submit" variant="danger" x-bind:disabled="running" data-test="confirm-modal-button">
-                    {{ __('maintenance.confirm.button') }}
+                    {{ __('hata::maintenance.confirm.button') }}
                 </flux:button>
             </div>
         </form>
@@ -767,10 +767,10 @@ new #[Layout('hata::layouts.app')] #[Title('maintenance.title')] class extends C
                 </div>
 
                 @if ($viewing->output_truncated)
-                    <flux:text size="sm" variant="subtle">{{ __('maintenance.result.truncated') }}</flux:text>
+                    <flux:text size="sm" variant="subtle">{{ __('hata::maintenance.result.truncated') }}</flux:text>
                 @endif
 
-                <pre class="{{ $outputClasses }}">{{ $viewing->output !== null && $viewing->output !== '' ? $viewing->output : __('maintenance.result.no_output') }}</pre>
+                <pre class="{{ $outputClasses }}">{{ $viewing->output !== null && $viewing->output !== '' ? $viewing->output : __('hata::maintenance.result.no_output') }}</pre>
             </div>
         @endif
     </flux:modal>

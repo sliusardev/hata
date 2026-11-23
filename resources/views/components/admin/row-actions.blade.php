@@ -9,7 +9,7 @@
 
 @if ($slot->hasActualContent())
     <flux:dropdown position="bottom" align="end" {{ $attributes }}>
-        <flux:button size="sm" variant="ghost" icon="ellipsis-vertical" :aria-label="$label ?? __('common.actions.more')" />
+        <flux:button size="sm" variant="ghost" icon="ellipsis-vertical" :aria-label="$label ?? __('hata::common.actions.more')" />
 
         <flux:menu>
             {{ $slot }}

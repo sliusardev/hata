@@ -50,8 +50,8 @@ it('shows the candidate count and a start button', function () {
 
     $this->get(route('admin.media.optimize'))
         ->assertOk()
-        ->assertSee(trans_choice('media.optimize.candidates', 2, ['count' => 2]))
-        ->assertSee(__('media.optimize.start'));
+        ->assertSee(trans_choice('hata::media.optimize.candidates', 2, ['count' => 2]))
+        ->assertSee(__('hata::media.optimize.start'));
 });
 
 it('links to the media settings when optimization is off', function () {
@@ -59,7 +59,7 @@ it('links to the media settings when optimization is off', function () {
 
     $this->get(route('admin.media.optimize'))
         ->assertOk()
-        ->assertSee(__('media.optimize.disabled'))
+        ->assertSee(__('hata::media.optimize.disabled'))
         ->assertSee(route('admin.settings.edit', ['tab' => 'media']), escape: false);
 });
 
@@ -68,9 +68,9 @@ it('processes files in the browser when there is no queue', function () {
 
     Livewire::test('hata::admin.media.optimize')
         ->call('start')
-        ->assertSee(__('media.optimize.status.running'))
+        ->assertSee(__('hata::media.optimize.status.running'))
         ->call('tick')
-        ->assertSee(__('media.optimize.status.done'));
+        ->assertSee(__('hata::media.optimize.status.done'));
 
     expect(app(OptimizationRunStore::class)->get()->driver)->toBe('browser')
         ->and($media->refresh()->optimized_with)->not->toBeNull();
@@ -85,8 +85,8 @@ it('dispatches the job and leaves processing to the queue', function () {
         ->call('start')
         ->call('tick')
         ->assertSet('browserFallback', false)
-        ->assertDontSee(__('media.batch.fallback'))
-        ->assertSee(__('media.batch.tab_open_queue'));
+        ->assertDontSee(__('hata::media.batch.fallback'))
+        ->assertSee(__('hata::media.batch.tab_open_queue'));
 
     Queue::assertPushed(OptimizeExistingMediaBatch::class, 1);
     Queue::assertPushed(OptimizeExistingMediaBatch::class, fn (OptimizeExistingMediaBatch $job) => $job->runId === app(OptimizationRunStore::class)->get()->id);
@@ -104,7 +104,7 @@ it('continues in the browser when the queue does not pick the run up', function 
 
     $component->call('tick')
         ->assertSet('browserFallback', true)
-        ->assertSee(__('media.optimize.status.done'));
+        ->assertSee(__('hata::media.optimize.status.done'));
 
     expect($media->refresh()->optimized_with)->not->toBeNull();
 });
@@ -121,7 +121,7 @@ it('does not fall back while a queue batch holds the lock', function () {
 
     $component->call('tick')
         ->assertSet('browserFallback', false)
-        ->assertDontSee(__('media.batch.fallback'));
+        ->assertDontSee(__('hata::media.batch.fallback'));
 
     $lock->release();
     expect($media->refresh()->optimized_with)->toBeNull();
@@ -146,17 +146,17 @@ it('explains the fallback while the run is still going', function () {
     $component = Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->call('tick')
-        ->assertDontSee(__('media.batch.fallback'))
-        ->assertSee(__('media.batch.tab_open_queue'));
+        ->assertDontSee(__('hata::media.batch.fallback'))
+        ->assertSee(__('hata::media.batch.tab_open_queue'));
 
     $this->travel(31)->seconds();
 
     $component->call('tick')
         ->assertSet('browserFallback', true)
-        ->assertSee(__('media.optimize.status.running'))
-        ->assertSee(__('media.batch.fallback'))
-        ->assertSee(__('media.batch.tab_open_browser'))
-        ->assertDontSee(__('media.batch.tab_open_queue'));
+        ->assertSee(__('hata::media.optimize.status.running'))
+        ->assertSee(__('hata::media.batch.fallback'))
+        ->assertSee(__('hata::media.batch.tab_open_browser'))
+        ->assertDontSee(__('hata::media.batch.tab_open_queue'));
 
     expect(app(OptimizationRunStore::class)->get()->driver)->toBe('browser')
         ->and(app(OptimizationRunStore::class)->get()->processed())->toBe(1);
@@ -206,14 +206,14 @@ it('pauses and resumes', function () {
     Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->call('pause')
-        ->assertSee(__('media.batch.resume'))
+        ->assertSee(__('hata::media.batch.resume'))
         ->call('tick');
 
     expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
 
     Livewire::test('hata::admin.media.optimize')
         ->call('resume')
-        ->assertSee(__('media.optimize.status.running'));
+        ->assertSee(__('hata::media.optimize.status.running'));
 });
 
 it('offers to start over when the settings changed', function () {
@@ -223,10 +223,10 @@ it('offers to start over when the settings changed', function () {
     config(['media.optimize.quality' => 61]);
 
     Livewire::test('hata::admin.media.optimize')
-        ->assertSee(__('media.optimize.stale_heading'))
-        ->assertSee(__('media.optimize.start_over'))
+        ->assertSee(__('hata::media.optimize.stale_heading'))
+        ->assertSee(__('hata::media.optimize.start_over'))
         ->call('startOver')
-        ->assertDontSee(__('media.optimize.stale_heading'));
+        ->assertDontSee(__('hata::media.optimize.stale_heading'));
 });
 
 it('stops the run and clears its progress', function () {
@@ -244,8 +244,8 @@ it('offers a new run after one is done when files were skipped', function () {
     Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->call('tick')
-        ->assertSee(__('media.optimize.done_heading'))
-        ->assertSee(__('media.optimize.start_new'));
+        ->assertSee(__('hata::media.optimize.done_heading'))
+        ->assertSee(__('hata::media.optimize.start_new'));
 });
 
 it('does not start without media.edit', function () {
@@ -261,7 +261,7 @@ it('asks before stopping', function () {
     Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->set('showStopModal', true)
-        ->assertSee(__('media.optimize.stop_heading'));
+        ->assertSee(__('hata::media.optimize.stop_heading'));
 });
 
 it('polls with keep-alive while running, so a background tab keeps the run going', function () {
@@ -280,8 +280,8 @@ it('does not show a candidate count while optimization is off', function () {
 
     $this->get(route('admin.media.optimize'))
         ->assertOk()
-        ->assertDontSee(trans_choice('media.optimize.candidates', 1, ['count' => 1]))
-        ->assertDontSee(__('media.optimize.none'));
+        ->assertDontSee(trans_choice('hata::media.optimize.candidates', 1, ['count' => 1]))
+        ->assertDontSee(__('hata::media.optimize.none'));
 });
 
 it('pauses a running run once optimization is turned off', function (string $queue) {
@@ -292,7 +292,7 @@ it('pauses a running run once optimization is turned off', function (string $que
 
     config(['media.optimize.enabled' => false]);
 
-    $component->call('tick')->assertSee(__('media.optimize.status.paused'));
+    $component->call('tick')->assertSee(__('hata::media.optimize.status.paused'));
 
     expect(app(OptimizationRunStore::class)->get()->status)->toBe('paused');
 })->with(['sync', 'database']);
@@ -305,9 +305,9 @@ it('pluralizes the progress by the total', function (string $locale) {
 
     Livewire::test('hata::admin.media.optimize')
         ->call('start')
-        ->assertSee(trans_choice('media.batch.progress', 1, ['processed' => 0, 'total' => 1]));
+        ->assertSee(trans_choice('hata::media.batch.progress', 1, ['processed' => 0, 'total' => 1]));
 
-    expect(trans_choice('media.batch.progress', 1, ['processed' => 0, 'total' => 1]))
+    expect(trans_choice('hata::media.batch.progress', 1, ['processed' => 0, 'total' => 1]))
         ->toBe($locale === 'uk' ? '0 з 1 файлу' : '0 of 1 file');
 })->with(['en', 'uk']);
 
@@ -315,10 +315,10 @@ it('has a label for every outcome and a skipped reason for every outcome but opt
     app()->setLocale($locale);
 
     foreach (OptimizeOutcome::cases() as $outcome) {
-        expect(__("media.optimize.outcomes.{$outcome->value}"))->not->toBe("media.optimize.outcomes.{$outcome->value}");
+        expect(__("hata::media.optimize.outcomes.{$outcome->value}"))->not->toBe("media.optimize.outcomes.{$outcome->value}");
 
         if ($outcome !== OptimizeOutcome::Optimized) {
-            expect(trans_choice("media.optimize.skipped_reasons.{$outcome->value}", 2, ['count' => 2]))->not->toContain('skipped_reasons');
+            expect(trans_choice("hata::media.optimize.skipped_reasons.{$outcome->value}", 2, ['count' => 2]))->not->toContain('skipped_reasons');
         }
     }
 })->with(['en', 'uk']);
@@ -330,6 +330,6 @@ it('lists a file changed during the run as skipped', function () {
     app(OptimizationRunStore::class)->save($run);
 
     Livewire::test('hata::admin.media.optimize')
-        ->assertSee(trans_choice('media.optimize.skipped_reasons.changed', 1, ['count' => 1]))
-        ->assertSee(__('media.optimize.outcomes.changed'));
+        ->assertSee(trans_choice('hata::media.optimize.skipped_reasons.changed', 1, ['count' => 1]))
+        ->assertSee(__('hata::media.optimize.outcomes.changed'));
 });

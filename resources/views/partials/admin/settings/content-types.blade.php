@@ -5,8 +5,8 @@
 --}}
 <div class="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900" data-test="content-types">
     <div class="border-b border-zinc-200 p-5 dark:border-white/10">
-        <flux:heading level="2">{{ __('site_settings.content.list_heading') }}</flux:heading>
-        <flux:text size="sm" class="mt-1 max-w-prose">{{ __('site_settings.content.list_description') }}</flux:text>
+        <flux:heading level="2">{{ __('hata::site_settings.content.list_heading') }}</flux:heading>
+        <flux:text size="sm" class="mt-1 max-w-prose">{{ __('hata::site_settings.content.list_description') }}</flux:text>
     </div>
 
     <ul class="divide-y divide-zinc-200 dark:divide-white/10">
@@ -21,18 +21,18 @@
                     <div class="flex flex-wrap items-center gap-2">
                         <span @class(['truncate font-medium', 'text-zinc-800 dark:text-white' => $row['active'], 'text-zinc-500 dark:text-zinc-400' => ! $row['active']])>{{ $type->pluralLabel() }}</span>
                         @if ($type->required())
-                            <flux:badge size="sm" color="amber">{{ __('site_settings.content.badges.required') }}</flux:badge>
+                            <flux:badge size="sm" color="amber">{{ __('hata::site_settings.content.badges.required') }}</flux:badge>
                         @elseif (! $row['active'])
-                            <flux:badge size="sm" color="zinc">{{ __('site_settings.content.badges.off') }}</flux:badge>
+                            <flux:badge size="sm" color="zinc">{{ __('hata::site_settings.content.badges.off') }}</flux:badge>
                         @endif
                     </div>
                     <flux:text size="sm">{{ $type->description() }}</flux:text>
                     @if ($row['taxonomies'] !== [])
-                        <flux:text size="sm" class="mt-0.5" data-test="content-type-taxonomies-{{ $type->key() }}">{{ __('site_settings.content.with', ['names' => implode(', ', $row['taxonomies'])]) }}</flux:text>
+                        <flux:text size="sm" class="mt-0.5" data-test="content-type-taxonomies-{{ $type->key() }}">{{ __('hata::site_settings.content.with', ['names' => implode(', ', $row['taxonomies'])]) }}</flux:text>
                     @endif
                 </div>
 
-                <div class="w-32 text-sm text-zinc-500 tabular-nums max-sm:hidden dark:text-zinc-400">{{ trans_choice('site_settings.content.records', $row['count']) }}</div>
+                <div class="w-32 text-sm text-zinc-500 tabular-nums max-sm:hidden dark:text-zinc-400">{{ trans_choice('hata::site_settings.content.records', $row['count']) }}</div>
 
                 <div class="shrink-0">
                     {{-- A plain button, not flux:switch: it shows the stored state and asks the server to change it
@@ -41,10 +41,10 @@
                         type="button"
                         role="switch"
                         aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
-                        aria-label="{{ __('site_settings.content.switch', ['type' => $type->pluralLabel()]) }}"
+                        aria-label="{{ __('hata::site_settings.content.switch', ['type' => $type->pluralLabel()]) }}"
                         @if ($type->required())
                             disabled
-                            title="{{ __('site_settings.content.badges.required') }}"
+                            title="{{ __('hata::site_settings.content.badges.required') }}"
                         @else
                             wire:click="toggleContentType('{{ $type->key() }}')"
                             wire:loading.attr="disabled"

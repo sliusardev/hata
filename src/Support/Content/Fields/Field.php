@@ -2,6 +2,8 @@
 
 namespace Hata\Support\Content\Fields;
 
+use Illuminate\Support\Facades\Lang;
+
 /**
  * An extra field of a content type. Converts between the form value and the stored value.
  */
@@ -32,7 +34,13 @@ abstract class Field
 
     public function labelText(): string
     {
-        return __($this->labelKey ?? "content.fields.{$this->name}");
+        if ($this->labelKey !== null) {
+            return __($this->labelKey);
+        }
+
+        $siteKey = "content.fields.{$this->name}";
+
+        return Lang::has($siteKey) ? __($siteKey) : __("hata::content.fields.{$this->name}");
     }
 
     /**

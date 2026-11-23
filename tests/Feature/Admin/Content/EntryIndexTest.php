@@ -69,12 +69,12 @@ test('the sidebar shows the pages item only with pages.view', function () {
     $this->actingAs(contentViewer());
     $this->get(route('admin.dashboard'))
         ->assertSee(route('admin.content.index', 'pages'))
-        ->assertSee(__('navigation.content'));
+        ->assertSee(__('hata::navigation.content'));
 
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
     $this->get(route('admin.dashboard'))
         ->assertDontSee(route('admin.content.index', 'pages'))
-        ->assertDontSee(__('navigation.content'));
+        ->assertDontSee(__('hata::navigation.content'));
 });
 
 test('edit or create without view opens the list, the sidebar item and a record', function (string $permission) {
@@ -102,7 +102,7 @@ test('the content group shows with media.view alone, without the pages item', fu
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
 
     $this->get(route('admin.dashboard'))
-        ->assertSee(__('navigation.content'))
+        ->assertSee(__('hata::navigation.content'))
         ->assertSee(route('admin.media.index'))
         ->assertDontSee(route('admin.content.index', 'pages'));
 });
@@ -277,7 +277,7 @@ test('one language site hides the language controls and the translations column'
     entryList()
         ->assertDontSeeHtml('data-test="list-locale"')
         ->assertDontSeeHtml('data-test="translations-'.$page->id.'"')
-        ->assertDontSee(__('content.list.columns.translations'));
+        ->assertDontSee(__('hata::content.list.columns.translations'));
 });
 
 test('two language site shows the language controls', function () {
@@ -310,7 +310,7 @@ test('trashing from the row needs pages.delete and takes the subpages along', fu
     entryList()
         ->call('confirmTrash', $parent->id)
         ->assertSet('showTrashModal', true)
-        ->assertSee(trans_choice('content.list.trash.confirm_children', 1, ['title' => 'Parent']))
+        ->assertSee(trans_choice('hata::content.list.trash.confirm_children', 1, ['title' => 'Parent']))
         ->call('trash')
         ->assertSet('showTrashModal', false);
 
@@ -330,7 +330,7 @@ test('restoring from the trash tab needs pages.edit', function () {
     $this->actingAs(contentViewer(['pages.edit']));
     entryList(['tab' => 'trash'])
         ->assertSee('Binned page')
-        ->assertSee(__('content.list.removed_on', ['date' => $removal]))
+        ->assertSee(__('hata::content.list.removed_on', ['date' => $removal]))
         ->call('restore', $entry->id)
         ->assertDontSee('Binned page');
 
@@ -349,7 +349,7 @@ test('deleting for good is confirmed, states the subpages and needs pages.delete
     entryList(['tab' => 'trash'])
         ->call('confirmDelete', $parent->id)
         ->assertSet('showDeleteModal', true)
-        ->assertSee(trans_choice('content.list.delete.confirm_children', 2, ['title' => 'Old parent']))
+        ->assertSee(trans_choice('hata::content.list.delete.confirm_children', 2, ['title' => 'Old parent']))
         ->call('deleteForGood');
 
     expect(Entry::withTrashed()->count())->toBe(0);
@@ -385,17 +385,17 @@ test('the title links to the edit page', function () {
 test('empty states: first record, nothing matches, empty trash', function () {
     $this->actingAs(contentViewer());
 
-    entryList()->assertSee(__('content.list.empty.title'));
+    entryList()->assertSee(__('hata::content.list.empty.title'));
 
     Entry::factory()->create(['title' => 'Something']);
 
     entryList()->set('search', 'nothing-like-this')
-        ->assertSee(__('content.list.no_results.title'))
+        ->assertSee(__('hata::content.list.no_results.title'))
         ->call('clearFilters')
         ->assertSet('search', '')
         ->assertSee('Something');
 
-    entryList(['tab' => 'trash'])->assertSee(__('content.list.empty_trash.title'));
+    entryList(['tab' => 'trash'])->assertSee(__('hata::content.list.empty_trash.title'));
 });
 
 test('the search term is cut at 200 characters, from the URL and from the input', function () {
@@ -512,7 +512,7 @@ test('picked rows go to the trash together, with their subpages, after a confirm
         ->set('selected', [(string) $parent->id, (string) $child->id, (string) $other->id])
         ->call('confirmBulk', 'trash')
         ->assertSet('showBulkModal', true)
-        ->assertSee(trans_choice('content.list.bulk.trash_confirm', 3, ['days' => 30]))
+        ->assertSee(trans_choice('hata::content.list.bulk.trash_confirm', 3, ['days' => 30]))
         ->call('runBulk')
         ->assertSet('showBulkModal', false)
         ->assertSet('selected', []);
@@ -564,7 +564,7 @@ test('picked rows of the trash are deleted for good after a confirmation, live o
     entryList(['tab' => 'trash'])
         ->set('selected', [(string) $binned->id, (string) $live->id])
         ->call('confirmBulk', 'delete')
-        ->assertSee(trans_choice('content.list.bulk.delete_confirm', 1))
+        ->assertSee(trans_choice('hata::content.list.bulk.delete_confirm', 1))
         ->call('runBulk');
 
     expect(Entry::withTrashed()->pluck('id')->sort()->values()->all())->toBe([$kept->id, $live->id]);
@@ -585,7 +585,7 @@ test('emptying the trash deletes what the language filter shows and needs pages.
     entryList(['tab' => 'trash', 'locale' => 'uk'])
         ->assertSeeHtml('data-test="empty-trash"')
         ->call('confirmBulk', 'empty')
-        ->assertSee(trans_choice('content.list.bulk.empty_confirm', 1))
+        ->assertSee(trans_choice('hata::content.list.bulk.empty_confirm', 1))
         ->call('runBulk')
         ->assertDontSeeHtml('data-test="empty-trash"');
 
@@ -616,7 +616,7 @@ test('an action that empties the last page shows the page before it', function (
         ->call('confirmBulk', 'trash')
         ->call('runBulk')
         ->assertSee('Page 0')
-        ->assertDontSee(__('content.list.empty_tab.title'));
+        ->assertDontSee(__('hata::content.list.empty_tab.title'));
 });
 
 test('the bulk dialog counts the picked rows that exist, not the picks', function () {
@@ -701,7 +701,7 @@ test('every row shows its publication status', function () {
 
     entryList()
         ->assertSeeHtml([$state($live, 'published'), $state($draft, 'draft'), $state($planned, 'scheduled')])
-        ->assertSee([__('content.list.state.published'), __('content.list.columns.status')]);
+        ->assertSee([__('hata::content.list.state.published'), __('hata::content.list.columns.status')]);
 
     $draft->delete();
     entryList(['tab' => 'trash'])->assertDontSeeHtml('data-test="entry-state-'.$draft->id.'"');

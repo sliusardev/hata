@@ -8,16 +8,16 @@
             <p>
                 <span class="font-semibold">
                     @if ($languageOff && $entry->isPublic())
-                        {{ __('content.public.language_off') }}
+                        {{ __('hata::content.public.language_off') }}
                     @elseif ($entry->state() === Hata\Enums\EntryState::Scheduled)
-                        {{ __('content.public.scheduled', ['date' => $entry->published_at->tz(config('admin.timezone'))->isoFormat('LLL')]) }}
+                        {{ __('hata::content.public.scheduled', ['date' => $entry->published_at->tz(config('admin.timezone'))->isoFormat('LLL')]) }}
                     @else
-                        {{ __('content.public.draft') }}
+                        {{ __('hata::content.public.draft') }}
                     @endif
                 </span>
-                <span class="text-amber-800 dark:text-amber-300">· {{ __('content.public.preview_note') }}</span>
+                <span class="text-amber-800 dark:text-amber-300">· {{ __('hata::content.public.preview_note') }}</span>
             </p>
-            <a href="{{ $editUrl }}" class="font-medium underline underline-offset-2">{{ __('content.public.edit') }}</a>
+            <a href="{{ $editUrl }}" class="font-medium underline underline-offset-2">{{ __('hata::content.public.edit') }}</a>
         </div>
     </div>
 @endif

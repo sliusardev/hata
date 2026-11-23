@@ -45,11 +45,11 @@ it('shows how many files are on the other disk and where they go', function () {
 
     $this->get(route('admin.media.move'))
         ->assertOk()
-        ->assertSee(__('media.move.title'))
-        ->assertSee(__('media.move.target', ['storage' => __('site_settings.media.storage.s3')]))
-        ->assertSee(trans_choice('media.move.candidates', 2, ['count' => 2]))
-        ->assertSee(__('media.move.start'))
-        ->assertSee(__('media.move.large_files_note'));
+        ->assertSee(__('hata::media.move.title'))
+        ->assertSee(__('hata::media.move.target', ['storage' => __('hata::site_settings.media.storage.s3')]))
+        ->assertSee(trans_choice('hata::media.move.candidates', 2, ['count' => 2]))
+        ->assertSee(__('hata::media.move.start'))
+        ->assertSee(__('hata::media.move.large_files_note'));
 });
 
 it('counts only the files this server would place elsewhere and calls it this server', function () {
@@ -62,12 +62,12 @@ it('counts only the files this server would place elsewhere and calls it this se
 
     $this->get(route('admin.media.move'))
         ->assertOk()
-        ->assertSee(__('media.move.target', ['storage' => __('site_settings.media.storage.public')]))
-        ->assertSee(trans_choice('media.move.candidates', 2, ['count' => 2]));
+        ->assertSee(__('hata::media.move.target', ['storage' => __('hata::site_settings.media.storage.public')]))
+        ->assertSee(trans_choice('hata::media.move.candidates', 2, ['count' => 2]));
 });
 
 it('says when nothing is left to move', function () {
-    $this->get(route('admin.media.move'))->assertOk()->assertSee(__('media.move.none'));
+    $this->get(route('admin.media.move'))->assertOk()->assertSee(__('hata::media.move.none'));
 });
 
 it('moves files in the browser when there is no queue', function () {
@@ -75,10 +75,10 @@ it('moves files in the browser when there is no queue', function () {
 
     Livewire::test('hata::admin.media.move')
         ->call('start')
-        ->assertSee(__('media.move.status.running'))
+        ->assertSee(__('hata::media.move.status.running'))
         ->call('tick')
-        ->assertSee(__('media.move.status.done'))
-        ->assertSee(__('media.move.outcomes.moved'));
+        ->assertSee(__('hata::media.move.status.done'))
+        ->assertSee(__('hata::media.move.outcomes.moved'));
 
     expect(app(DiskMoveRunStore::class)->get()->driver)->toBe('browser')
         ->and($media->fresh()->disk)->toBe('s3');
@@ -93,7 +93,7 @@ it('dispatches the job and leaves the move to the queue', function () {
         ->call('start')
         ->call('tick')
         ->assertSet('browserFallback', false)
-        ->assertSee(__('media.batch.tab_open_queue'));
+        ->assertSee(__('hata::media.batch.tab_open_queue'));
 
     Queue::assertPushed(MoveMediaBatch::class, fn (MoveMediaBatch $job) => $job->runId === app(DiskMoveRunStore::class)->get()->id);
     expect($media->fresh()->disk)->toBe('local');
@@ -114,7 +114,7 @@ it('continues in the browser when the queue does not pick the move up, unless a 
 
     $component->call('tick')
         ->assertSet('browserFallback', true)
-        ->assertSee(__('media.move.status.done'));
+        ->assertSee(__('hata::media.move.status.done'));
 
     expect($media->fresh()->disk)->toBe('s3');
 });
@@ -125,7 +125,7 @@ it('pauses, resumes and stops the move', function () {
     $component = Livewire::test('hata::admin.media.move')
         ->call('start')
         ->call('pause')
-        ->assertSee(__('media.batch.resume'));
+        ->assertSee(__('hata::media.batch.resume'));
 
     expect(app(DiskMoveRunStore::class)->get()->status)->toBe('paused');
 
@@ -141,8 +141,8 @@ it('lists failed files after the run', function () {
     Livewire::test('hata::admin.media.move')
         ->call('start')
         ->call('tick')
-        ->assertSee(__('media.move.outcomes.missing'))
-        ->assertSee(trans_choice('media.move.done_left', 1, ['count' => 1]));
+        ->assertSee(__('hata::media.move.outcomes.missing'))
+        ->assertSee(trans_choice('hata::media.move.done_left', 1, ['count' => 1]));
 });
 
 it('offers a new move to the configured storage after a finished move to the other one', function () {
@@ -151,14 +151,14 @@ it('offers a new move to the configured storage after a finished move to the oth
     Storage::disk('s3')->put($media->path, 'data');
 
     $component = Livewire::test('hata::admin.media.move')->call('start')->call('tick')
-        ->assertSee(__('media.move.status.done'));
+        ->assertSee(__('hata::media.move.status.done'));
     expect($media->fresh()->disk)->toBe('public');
 
     // The admin switched the storage back afterwards: what is left and a new move both concern that storage.
     config(['media.disk' => 's3']);
 
     $component->call('$refresh')
-        ->assertSee(trans_choice('media.move.done_left', 1, ['count' => 1]))
+        ->assertSee(trans_choice('hata::media.move.done_left', 1, ['count' => 1]))
         ->assertSeeHtml('data-test="move-start-new"')
         ->call('start');
 
@@ -172,7 +172,7 @@ it('offers no move while the private local mode from .env is in effect', functio
 
     $this->get(route('admin.media.move'))
         ->assertOk()
-        ->assertSee(__('media.move.none'));
+        ->assertSee(__('hata::media.move.none'));
 
     Livewire::test('hata::admin.media.move')
         ->assertSet('candidateCount', 0)

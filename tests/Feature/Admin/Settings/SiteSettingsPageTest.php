@@ -41,7 +41,7 @@ test('it is displayed with the settings.edit permission', function () {
 
     $this->get(route('admin.settings.edit'))
         ->assertOk()
-        ->assertSee(__('site_settings.mail.heading'));
+        ->assertSee(__('hata::site_settings.mail.heading'));
 });
 
 test('the sidebar links to the page only with the settings.edit permission', function () {
@@ -63,7 +63,7 @@ test('each tab saves only its own settings and redirects back to it with a messa
         ->assertRedirect(route('admin.settings.edit', ['tab' => $tab]));
 
     expect(Setting::query()->pluck('value', 'key')->sortKeys()->all())->toBe($expected)
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('site_settings.messages.saved'));
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.messages.saved'));
 })->with([
     'general' => ['general', ['site_name' => 'Hata', 'timezone' => 'Europe/Kyiv']],
     'languages' => ['languages', ['default_locale' => 'uk']],
@@ -90,11 +90,11 @@ test('the tab comes from the query string and falls back to general', function (
 
     Livewire::withQueryParams(['tab' => 'mail'])->test('hata::admin.settings.edit')
         ->assertSet('tab', 'mail')
-        ->assertSee(__('site_settings.mail.send_test'));
+        ->assertSee(__('hata::site_settings.mail.send_test'));
 
     Livewire::withQueryParams(['tab' => 'nonsense'])->test('hata::admin.settings.edit')
         ->assertSet('tab', 'general')
-        ->assertDontSee(__('site_settings.mail.send_test'));
+        ->assertDontSee(__('hata::site_settings.mail.send_test'));
 });
 
 test('it stores the SMTP password encrypted and keeps it when the field is left empty', function () {
@@ -202,7 +202,7 @@ test('the role of new users must be one the actor may assign', function () {
         ->set(siteSettingsInput(['form.default_role' => 'manager']))
         ->call('save')
         ->assertHasErrors(['form.default_role'])
-        ->assertSee(__('site_settings.messages.role_unavailable'));
+        ->assertSee(__('hata::site_settings.messages.role_unavailable'));
 
     expect(Setting::count())->toBe(0);
 });
@@ -213,9 +213,9 @@ test('it warns when the role of new users opens the admin panel', function () {
     Livewire::test('hata::admin.settings.edit')
         ->set('tab', 'access')
         ->set('form.default_role', 'editor')
-        ->assertSee(__('site_settings.access.admin_access_warning'))
+        ->assertSee(__('hata::site_settings.access.admin_access_warning'))
         ->set('form.default_role', '')
-        ->assertDontSee(__('site_settings.access.admin_access_warning'));
+        ->assertDontSee(__('hata::site_settings.access.admin_access_warning'));
 });
 
 test('it sends a test email to the current user', function () {
@@ -258,7 +258,7 @@ test('switching tabs with unsaved changes asks first and can discard them', func
         ->call('switchTab', 'mail')
         ->assertSet('tab', 'general')
         ->assertSet('showUnsavedModal', true)
-        ->assertSee(__('site_settings.unsaved.body', ['tab' => __('site_settings.general.heading')]))
+        ->assertSee(__('hata::site_settings.unsaved.body', ['tab' => __('hata::site_settings.general.heading')]))
         ->call('discardChangesAndSwitch')
         ->assertSet('tab', 'mail')
         ->assertSet('showUnsavedModal', false)

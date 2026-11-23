@@ -14,7 +14,7 @@ use Laravel\Passkeys\Actions\DeletePasskey;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 
-new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::settings.security.title')] class extends Component {
     use PasswordValidationRules;
 
     public string $current_password = '';
@@ -86,7 +86,7 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
-        Flux::toast(variant: 'success', text: __('settings.security.password_updated'));
+        Flux::toast(variant: 'success', text: __('hata::settings.security.password_updated'));
     }
 
     /**
@@ -170,13 +170,13 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
 <section class="w-full">
     @include('hata::partials.settings-heading')
 
-    <flux:heading level="2" class="sr-only">{{ __('settings.security.title') }}</flux:heading>
+    <flux:heading level="2" class="sr-only">{{ __('hata::settings.security.title') }}</flux:heading>
 
-    <x-hata::settings.layout :heading="__('settings.security.password_heading')" :subheading="__('settings.security.password_description')">
+    <x-hata::settings.layout :heading="__('hata::settings.security.password_heading')" :subheading="__('hata::settings.security.password_description')">
         <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
             <flux:input
                 wire:model="current_password"
-                :label="__('common.fields.current_password')"
+                :label="__('hata::common.fields.current_password')"
                 type="password"
                 required
                 autocomplete="current-password"
@@ -184,7 +184,7 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
             />
             <flux:input
                 wire:model="password"
-                :label="__('common.fields.new_password')"
+                :label="__('hata::common.fields.new_password')"
                 type="password"
                 required
                 autocomplete="new-password"
@@ -193,7 +193,7 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
             />
             <flux:input
                 wire:model="password_confirmation"
-                :label="__('common.fields.confirm_password')"
+                :label="__('hata::common.fields.confirm_password')"
                 type="password"
                 required
                 autocomplete="new-password"
@@ -203,21 +203,21 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
 
             <div class="flex items-center gap-4">
                 <flux:button variant="primary" type="submit" data-test="update-password-button">
-                    {{ __('common.actions.save') }}
+                    {{ __('hata::common.actions.save') }}
                 </flux:button>
             </div>
         </form>
 
         @if ($canManageTwoFactor)
             <section class="mt-12">
-                <flux:heading>{{ __('settings.two_factor.heading') }}</flux:heading>
-                <flux:subheading>{{ __('settings.two_factor.description') }}</flux:subheading>
+                <flux:heading>{{ __('hata::settings.two_factor.heading') }}</flux:heading>
+                <flux:subheading>{{ __('hata::settings.two_factor.description') }}</flux:subheading>
 
                 <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     @if ($twoFactorEnabled)
                         <div class="space-y-4">
                             <flux:text>
-                                {{ __('settings.two_factor.enabled_text') }}
+                                {{ __('hata::settings.two_factor.enabled_text') }}
                             </flux:text>
 
                             <div class="flex justify-start">
@@ -225,7 +225,7 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
                                     variant="danger"
                                     wire:click="disable"
                                 >
-                                    {{ __('settings.two_factor.disable') }}
+                                    {{ __('hata::settings.two_factor.disable') }}
                                 </flux:button>
                             </div>
 
@@ -234,7 +234,7 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
                     @else
                         <div class="space-y-4">
                             <flux:text variant="subtle">
-                                {{ __('settings.two_factor.disabled_text') }}
+                                {{ __('hata::settings.two_factor.disabled_text') }}
                             </flux:text>
 
                             <flux:modal.trigger name="two-factor-setup-modal">
@@ -242,7 +242,7 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
                                     variant="primary"
                                     wire:click="$dispatch('start-two-factor-setup')"
                                 >
-                                    {{ __('settings.two_factor.enable') }}
+                                    {{ __('hata::settings.two_factor.enable') }}
                                 </flux:button>
                             </flux:modal.trigger>
 
@@ -255,8 +255,8 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
 
         @if ($canManagePasskeys)
             <section class="mt-12">
-                <flux:heading>{{ __('settings.passkeys.heading') }}</flux:heading>
-                <flux:subheading>{{ __('settings.passkeys.description') }}</flux:subheading>
+                <flux:heading>{{ __('hata::settings.passkeys.heading') }}</flux:heading>
+                <flux:subheading>{{ __('hata::settings.passkeys.description') }}</flux:subheading>
 
                 <div class="mt-6 flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     <div class="border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
@@ -274,10 +274,10 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
                                             @endif
                                         </div>
                                         <p class="text-zinc-500 dark:text-zinc-400 text-xs">
-                                            {{ __('settings.passkeys.added', ['time' => $passkey['created_at_diff']]) }}
+                                            {{ __('hata::settings.passkeys.added', ['time' => $passkey['created_at_diff']]) }}
                                             @if ($passkey['last_used_at_diff'])
                                                 <span class="opacity-50 mx-1">/</span>
-                                                {{ __('settings.passkeys.last_used', ['time' => $passkey['last_used_at_diff']]) }}
+                                                {{ __('hata::settings.passkeys.last_used', ['time' => $passkey['last_used_at_diff']]) }}
                                             @endif
                                         </p>
                                     </div>
@@ -297,8 +297,8 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
                                 <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
                                     <flux:icon.key class="size-7 text-zinc-400 dark:text-zinc-500" />
                                 </div>
-                                <p class="font-medium">{{ __('settings.passkeys.empty_title') }}</p>
-                                <flux:text class="mt-1">{{ __('settings.passkeys.empty_description') }}</flux:text>
+                                <p class="font-medium">{{ __('hata::settings.passkeys.empty_title') }}</p>
+                                <flux:text class="mt-1">{{ __('hata::settings.passkeys.empty_description') }}</flux:text>
                             </div>
                         @endforelse
                     </div>
@@ -317,9 +317,9 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
     >
         <div class="space-y-6">
             <div class="space-y-2">
-                <flux:heading size="lg">{{ __('settings.passkeys.remove') }}</flux:heading>
+                <flux:heading size="lg">{{ __('hata::settings.passkeys.remove') }}</flux:heading>
                 <flux:text>
-                    {{ __('settings.passkeys.remove_confirm', ['name' => $deletingPasskeyName]) }}
+                    {{ __('hata::settings.passkeys.remove_confirm', ['name' => $deletingPasskeyName]) }}
                 </flux:text>
             </div>
 
@@ -328,13 +328,13 @@ new #[Layout('hata::layouts.app')] #[Title('settings.security.title')] class ext
                     variant="outline"
                     wire:click="closeDeleteModal"
                 >
-                    {{ __('common.actions.cancel') }}
+                    {{ __('hata::common.actions.cancel') }}
                 </flux:button>
                 <flux:button
                     variant="danger"
                     wire:click="deletePasskey"
                 >
-                    {{ __('settings.passkeys.remove') }}
+                    {{ __('hata::settings.passkeys.remove') }}
                 </flux:button>
             </div>
         </div>

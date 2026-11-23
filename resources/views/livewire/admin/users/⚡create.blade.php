@@ -12,7 +12,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('hata::layouts.app')] #[Title('users.create.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::users.create.title')] class extends Component {
     public UserForm $form;
 
     public function mount(): void
@@ -48,7 +48,7 @@ new #[Layout('hata::layouts.app')] #[Title('users.create.title')] class extends 
             return;
         }
 
-        Toast::success(__('users.messages.created'));
+        Toast::success(__('hata::users.messages.created'));
 
         $this->redirectRoute('admin.users.index', navigate: true);
     }
@@ -57,10 +57,10 @@ new #[Layout('hata::layouts.app')] #[Title('users.create.title')] class extends 
 <section class="w-full max-w-2xl space-y-6">
     <div>
         <flux:button variant="ghost" size="sm" icon="arrow-left" :href="route('admin.users.index')" wire:navigate class="-ms-2 mb-2">
-            {{ __('users.index.title') }}
+            {{ __('hata::users.index.title') }}
         </flux:button>
-        <flux:heading size="xl" level="1">{{ __('users.create.title') }}</flux:heading>
-        <flux:subheading>{{ __('users.create.description') }}</flux:subheading>
+        <flux:heading size="xl" level="1">{{ __('hata::users.create.title') }}</flux:heading>
+        <flux:subheading>{{ __('hata::users.create.description') }}</flux:subheading>
     </div>
 
     <form wire:submit="save" class="space-y-6">
@@ -72,8 +72,8 @@ new #[Layout('hata::layouts.app')] #[Title('users.create.title')] class extends 
         ])
 
         <div class="flex justify-end gap-3">
-            <flux:button variant="ghost" :href="route('admin.users.index')" wire:navigate>{{ __('common.actions.cancel') }}</flux:button>
-            <flux:button variant="primary" type="submit" data-test="save-user-button">{{ __('users.create.submit') }}</flux:button>
+            <flux:button variant="ghost" :href="route('admin.users.index')" wire:navigate>{{ __('hata::common.actions.cancel') }}</flux:button>
+            <flux:button variant="primary" type="submit" data-test="save-user-button">{{ __('hata::users.create.submit') }}</flux:button>
         </div>
     </form>
 </section>

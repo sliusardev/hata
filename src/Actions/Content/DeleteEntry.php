@@ -28,7 +28,7 @@ class DeleteEntry
         Gate::forUser($actor)->authorize('forceDelete', $entry);
 
         if (! $entry->trashed()) {
-            throw ProtectedActionException::because('content.entry.not_trashed');
+            throw ProtectedActionException::because('hata::content.entry.not_trashed');
         }
 
         DB::transaction(fn (): int => $this->purge($entry->newCollection([$entry])));

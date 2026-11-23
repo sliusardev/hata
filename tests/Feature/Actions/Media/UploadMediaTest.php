@@ -59,7 +59,7 @@ it('rejects a php file renamed to jpg', function () {
     $file = uploadedImage('x.jpg', '<?php echo "hi";');
 
     expect(fn () => app(UploadMedia::class)->handle($this->actor, $file))
-        ->toThrow(MediaUploadException::class, __('media.errors.unsupported', ['name' => 'x.jpg']));
+        ->toThrow(MediaUploadException::class, __('hata::media.errors.unsupported', ['name' => 'x.jpg']));
 
     expect(Media::count())->toBe(0)
         ->and(Storage::disk('local')->allFiles())->toBe([]);
@@ -73,7 +73,7 @@ it('enforces the size limit using the picked size', function () {
         app(UploadMedia::class)->handle($this->actor, $file, pickedSize: 2 * 1024 * 1024);
         $this->fail('Expected MediaUploadException.');
     } catch (MediaUploadException $e) {
-        expect($e->getMessage())->toBe(__('media.errors.too_large', ['size' => '2.0', 'limit' => '1.0']));
+        expect($e->getMessage())->toBe(__('hata::media.errors.too_large', ['size' => '2.0', 'limit' => '1.0']));
     }
 
     expect(Media::count())->toBe(0)
@@ -154,7 +154,7 @@ it('rejects heic the server cannot read', function () {
         ->andReturn(new OptimizedImage($bytes, 'image/heic', 'heic', null, null, optimized: false, failure: 'unreadable'));
 
     expect(fn () => app(UploadMedia::class)->handle($this->actor, uploadedImage('IMG_1.heic', $bytes)))
-        ->toThrow(MediaUploadException::class, __('media.errors.heic_unsupported'));
+        ->toThrow(MediaUploadException::class, __('hata::media.errors.heic_unsupported'));
 
     expect(Media::count())->toBe(0)
         ->and(Storage::disk('local')->allFiles())->toBe([]);
@@ -183,7 +183,7 @@ it('rejects heic whenever the optimizer could not convert it', function (Optimiz
     $this->mock(OptimizeImage::class)->shouldReceive('handle')->andReturn($result);
 
     expect(fn () => app(UploadMedia::class)->handle($this->actor, uploadedImage('IMG_1.heic', $bytes)))
-        ->toThrow(MediaUploadException::class, __('media.errors.heic_unsupported'));
+        ->toThrow(MediaUploadException::class, __('hata::media.errors.heic_unsupported'));
 
     expect(Media::count())->toBe(0)
         ->and(Storage::disk('local')->allFiles())->toBe([]);

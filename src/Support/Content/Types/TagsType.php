@@ -10,6 +10,11 @@ use Hata\Support\Content\ContentType;
  */
 class TagsType extends ContentType
 {
+    public function translationPrefix(): string
+    {
+        return 'hata::';
+    }
+
     public function key(): string
     {
         return 'tags';

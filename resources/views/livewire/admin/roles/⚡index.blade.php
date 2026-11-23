@@ -12,7 +12,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('hata::layouts.app')] #[Title('roles.index.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::roles.index.title')] class extends Component {
     #[Locked]
     public ?int $deletingRoleId = null;
 
@@ -69,7 +69,7 @@ new #[Layout('hata::layouts.app')] #[Title('roles.index.title')] class extends C
         try {
             $deleteRole->handle(Auth::user(), $role);
 
-            Flux::toast(variant: 'success', text: __('roles.messages.deleted'));
+            Flux::toast(variant: 'success', text: __('hata::roles.messages.deleted'));
         } catch (ProtectedActionException $exception) {
             Flux::toast(variant: 'danger', text: $exception->getMessage());
         }
@@ -83,27 +83,27 @@ new #[Layout('hata::layouts.app')] #[Title('roles.index.title')] class extends C
 <section class="w-full space-y-6">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <flux:heading size="xl" level="1">{{ __('roles.index.title') }}</flux:heading>
-            <flux:subheading>{{ __('roles.index.description') }}</flux:subheading>
+            <flux:heading size="xl" level="1">{{ __('hata::roles.index.title') }}</flux:heading>
+            <flux:subheading>{{ __('hata::roles.index.description') }}</flux:subheading>
         </div>
 
         @can('create', Hata\Models\Role::class)
             <flux:button variant="primary" icon="plus" :href="route('admin.roles.create')" wire:navigate>
-                {{ __('roles.index.create') }}
+                {{ __('hata::roles.index.create') }}
             </flux:button>
         @endcan
     </div>
 
     @if ($this->roles->isEmpty())
-        <x-hata::admin.empty-state icon="shield-check" :heading="__('roles.index.empty.title')" :description="__('roles.index.empty.description')" />
+        <x-hata::admin.empty-state icon="shield-check" :heading="__('hata::roles.index.empty.title')" :description="__('hata::roles.index.empty.description')" />
     @else
         <flux:table>
             <flux:table.columns>
-                <flux:table.column>{{ __('roles.index.columns.name') }}</flux:table.column>
-                <flux:table.column class="max-md:hidden">{{ __('roles.index.columns.technical_name') }}</flux:table.column>
-                <flux:table.column align="end">{{ __('roles.index.columns.users') }}</flux:table.column>
-                <flux:table.column align="end" class="max-sm:hidden">{{ __('roles.index.columns.permissions') }}</flux:table.column>
-                <flux:table.column align="end"><span class="sr-only">{{ __('roles.index.columns.actions') }}</span></flux:table.column>
+                <flux:table.column>{{ __('hata::roles.index.columns.name') }}</flux:table.column>
+                <flux:table.column class="max-md:hidden">{{ __('hata::roles.index.columns.technical_name') }}</flux:table.column>
+                <flux:table.column align="end">{{ __('hata::roles.index.columns.users') }}</flux:table.column>
+                <flux:table.column align="end" class="max-sm:hidden">{{ __('hata::roles.index.columns.permissions') }}</flux:table.column>
+                <flux:table.column align="end"><span class="sr-only">{{ __('hata::roles.index.columns.actions') }}</span></flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>
@@ -117,26 +117,26 @@ new #[Layout('hata::layouts.app')] #[Title('roles.index.title')] class extends C
                                     <span>{{ $role->displayName() }}</span>
                                 @endcan
                                 @if ($role->is_system)
-                                    <flux:badge size="sm" color="zinc">{{ __('roles.system') }}</flux:badge>
+                                    <flux:badge size="sm" color="zinc">{{ __('hata::roles.system') }}</flux:badge>
                                 @endif
                             </div>
                         </flux:table.cell>
                         <flux:table.cell class="max-md:hidden"><code class="text-xs">{{ $role->name }}</code></flux:table.cell>
                         <flux:table.cell align="end">{{ $role->users_count }}</flux:table.cell>
                         <flux:table.cell align="end" class="max-sm:hidden">
-                            {{ $role->isSuperAdmin() ? __('roles.all_permissions') : $role->permissions_count }}
+                            {{ $role->isSuperAdmin() ? __('hata::roles.all_permissions') : $role->permissions_count }}
                         </flux:table.cell>
                         <flux:table.cell align="end">
                             <x-hata::admin.row-actions data-test="role-actions-{{ $role->id }}">
                                 @can('view', $role)
                                     @if (auth()->user()->can('update', $role) && ! $role->isSuperAdmin())
-                                        <flux:menu.item icon="pencil-square" :href="route('admin.roles.edit', $role)" wire:navigate>{{ __('common.actions.edit') }}</flux:menu.item>
+                                        <flux:menu.item icon="pencil-square" :href="route('admin.roles.edit', $role)" wire:navigate>{{ __('hata::common.actions.edit') }}</flux:menu.item>
                                     @else
-                                        <flux:menu.item icon="eye" :href="route('admin.roles.edit', $role)" wire:navigate>{{ __('common.actions.view') }}</flux:menu.item>
+                                        <flux:menu.item icon="eye" :href="route('admin.roles.edit', $role)" wire:navigate>{{ __('hata::common.actions.view') }}</flux:menu.item>
                                     @endif
                                 @endcan
                                 @if ($this->canDelete($role))
-                                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $role->id }})" data-test="delete-role-{{ $role->id }}">{{ __('common.actions.delete') }}</flux:menu.item>
+                                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $role->id }})" data-test="delete-role-{{ $role->id }}">{{ __('hata::common.actions.delete') }}</flux:menu.item>
                                 @endif
                             </x-hata::admin.row-actions>
                         </flux:table.cell>
@@ -149,15 +149,15 @@ new #[Layout('hata::layouts.app')] #[Title('roles.index.title')] class extends C
     @php($deletingRole = $this->deletingRole)
     <x-hata::confirm-modal
         wire:model.self="showDeleteModal"
-        :heading="__('roles.delete.title')"
-        :confirm-label="__('roles.delete.submit')"
+        :heading="__('hata::roles.delete.title')"
+        :confirm-label="__('hata::roles.delete.submit')"
         confirm-action="deleteRole"
         :confirmable="($deletingRole?->users_count ?? 0) === 0"
     >
         @if (($deletingRole?->users_count ?? 0) > 0)
-            {{ __('roles.delete.in_use', ['name' => $deletingRole->displayName(), 'users' => trans_choice('users.count', $deletingRole->users_count)]) }}
+            {{ __('hata::roles.delete.in_use', ['name' => $deletingRole->displayName(), 'users' => trans_choice('hata::users.count', $deletingRole->users_count)]) }}
         @else
-            {{ __('roles.delete.confirm', ['name' => $deletingRole?->displayName()]) }}
+            {{ __('hata::roles.delete.confirm', ['name' => $deletingRole?->displayName()]) }}
         @endif
     </x-hata::confirm-modal>
 </section>

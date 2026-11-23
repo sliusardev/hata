@@ -77,7 +77,7 @@
                     @endif
 
                     @if ($item->usages_count === 0)
-                        <flux:badge size="sm" color="amber" class="absolute start-2 bottom-2">{{ __('media.index.unused') }}</flux:badge>
+                        <flux:badge size="sm" color="amber" class="absolute start-2 bottom-2">{{ __('hata::media.index.unused') }}</flux:badge>
                     @endif
                 </div>
                 <div class="mt-2 min-w-0 px-0.5">
@@ -92,11 +92,11 @@
         <div class="flex justify-center">
             @if ($canShowMore)
                 <flux:button x-on:click="$wire.showMore(true)" data-test="media-show-more">
-                    {{ __('media.index.show_more', ['count' => min($gridStep, $media->total() - $media->count())]) }}
+                    {{ __('hata::media.index.show_more', ['count' => min($gridStep, $media->total() - $media->count())]) }}
                 </flux:button>
             @else
                 <flux:text data-test="media-grid-capped">
-                    {{ __('media.index.grid_capped', ['shown' => $media->count(), 'total' => $media->total()]) }}
+                    {{ __('hata::media.index.grid_capped', ['shown' => $media->count(), 'total' => $media->total()]) }}
                 </flux:text>
             @endif
         </div>

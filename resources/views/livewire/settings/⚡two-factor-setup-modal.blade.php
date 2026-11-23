@@ -57,7 +57,7 @@ new class extends Component {
             $this->qrCodeSvg = $user->twoFactorQrCodeSvg();
             $this->manualSetupKey = decrypt($user->two_factor_secret);
         } catch (Exception) {
-            $this->addError('setupData', __('settings.two_factor.setup.failed'));
+            $this->addError('setupData', __('hata::settings.two_factor.setup.failed'));
 
             $this->reset('qrCodeSvg', 'manualSetupKey');
         }
@@ -130,24 +130,24 @@ new class extends Component {
     {
         if ($this->setupComplete) {
             return [
-                'title' => __('settings.two_factor.setup.enabled_title'),
-                'description' => __('settings.two_factor.setup.enabled_description'),
-                'buttonText' => __('common.actions.close'),
+                'title' => __('hata::settings.two_factor.setup.enabled_title'),
+                'description' => __('hata::settings.two_factor.setup.enabled_description'),
+                'buttonText' => __('hata::common.actions.close'),
             ];
         }
 
         if ($this->showVerificationStep) {
             return [
-                'title' => __('settings.two_factor.setup.verify_title'),
-                'description' => __('settings.two_factor.setup.verify_description'),
-                'buttonText' => __('common.actions.continue'),
+                'title' => __('hata::settings.two_factor.setup.verify_title'),
+                'description' => __('hata::settings.two_factor.setup.verify_description'),
+                'buttonText' => __('hata::common.actions.continue'),
             ];
         }
 
         return [
-            'title' => __('settings.two_factor.setup.enable_title'),
-            'description' => __('settings.two_factor.setup.enable_description'),
-            'buttonText' => __('common.actions.continue'),
+            'title' => __('hata::settings.two_factor.setup.enable_title'),
+            'description' => __('hata::settings.two_factor.setup.enable_description'),
+            'buttonText' => __('hata::common.actions.continue'),
         ];
     }
 }; ?>
@@ -194,7 +194,7 @@ new class extends Component {
                             name="code"
                             wire:model="code"
                             length="6"
-                            :label="__('settings.two_factor.setup.code_label')"
+                            :label="__('hata::settings.two_factor.setup.code_label')"
                             label:sr-only
                             class="mx-auto"
                         />
@@ -206,7 +206,7 @@ new class extends Component {
                             class="flex-1"
                             wire:click="resetVerification"
                         >
-                            {{ __('common.actions.back') }}
+                            {{ __('hata::common.actions.back') }}
                         </flux:button>
 
                         <flux:button
@@ -215,7 +215,7 @@ new class extends Component {
                             wire:click="confirmTwoFactor"
                             x-bind:disabled="$wire.code.length < 6"
                         >
-                            {{ __('common.actions.confirm') }}
+                            {{ __('hata::common.actions.confirm') }}
                         </flux:button>
                     </div>
                 </div>
@@ -258,7 +258,7 @@ new class extends Component {
                     <div class="relative flex items-center justify-center w-full">
                         <div class="absolute inset-0 w-full h-px top-1/2 bg-stone-200 dark:bg-stone-600"></div>
                         <span class="relative px-2 text-sm bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400">
-                            {{ __('settings.two_factor.setup.manual_code') }}
+                            {{ __('hata::settings.two_factor.setup.manual_code') }}
                         </span>
                     </div>
 

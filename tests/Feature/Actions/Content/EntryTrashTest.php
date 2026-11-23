@@ -248,7 +248,7 @@ test('a restore whose new path is taken twice is refused and changes nothing', f
     $taken = takePathsAfterSuggestion(['team', 'team-2']);
 
     expect(fn () => app(RestoreEntry::class)->handle($this->editor, trashedEntry($child->id)))
-        ->toThrow(ProtectedActionException::class, __('content.entry.restore_conflict'))
+        ->toThrow(ProtectedActionException::class, __('hata::content.entry.restore_conflict'))
         ->and($taken())->toBe(['team', 'team-2'])
         ->and(trashedEntry($child->id))
         ->trashed()->toBeTrue()
@@ -331,7 +331,7 @@ test('only a record in the trash is deleted for good', function () {
     $page = Entry::factory()->page()->create();
 
     expect(fn () => app(DeleteEntry::class)->handle($this->editor, $page))
-        ->toThrow(ProtectedActionException::class, __('content.entry.not_trashed'))
+        ->toThrow(ProtectedActionException::class, __('hata::content.entry.not_trashed'))
         ->and($page->fresh())->not->toBeNull();
 });
 

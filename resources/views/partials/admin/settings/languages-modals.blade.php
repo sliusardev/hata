@@ -18,11 +18,11 @@
         }"
     >
         <div class="space-y-2">
-            <flux:heading size="lg">{{ __('site_settings.languages.add_heading') }}</flux:heading>
-            <flux:text>{{ __('site_settings.languages.add_description') }}</flux:text>
+            <flux:heading size="lg">{{ __('hata::site_settings.languages.add_heading') }}</flux:heading>
+            <flux:text>{{ __('hata::site_settings.languages.add_description') }}</flux:text>
         </div>
 
-        <flux:input x-model="search" icon="magnifying-glass" :placeholder="__('site_settings.languages.search')" :aria-label="__('site_settings.languages.search')" autofocus data-test="language-search" />
+        <flux:input x-model="search" icon="magnifying-glass" :placeholder="__('hata::site_settings.languages.search')" :aria-label="__('hata::site_settings.languages.search')" autofocus data-test="language-search" />
 
         <ul x-ref="list" class="max-h-80 divide-y divide-zinc-200 overflow-y-auto rounded-lg border border-zinc-200 dark:divide-white/10 dark:border-white/10" data-test="language-catalog">
             @foreach ($this->catalogLanguages as $language)
@@ -43,11 +43,11 @@
             @endforeach
         </ul>
 
-        <flux:text size="sm" x-show="nothing" x-cloak>{{ __('site_settings.languages.search_empty') }}</flux:text>
+        <flux:text size="sm" x-show="nothing" x-cloak>{{ __('hata::site_settings.languages.search_empty') }}</flux:text>
 
         <div class="flex justify-end">
             <flux:modal.close>
-                <flux:button variant="outline">{{ __('common.actions.close') }}</flux:button>
+                <flux:button variant="outline">{{ __('hata::common.actions.close') }}</flux:button>
             </flux:modal.close>
         </div>
     </div>
@@ -55,12 +55,12 @@
 
 <x-hata::confirm-modal
     wire:model.self="showLanguageModal"
-    :heading="$confirmLanguage ? __('site_settings.languages.confirm.'.$languageAction.'.heading', ['language' => $confirmLanguage->name]) : ''"
-    :confirm-label="$confirmLanguage ? __('site_settings.languages.confirm.'.$languageAction.'.submit') : ''"
+    :heading="$confirmLanguage ? __('hata::site_settings.languages.confirm.'.$languageAction.'.heading', ['language' => $confirmLanguage->name]) : ''"
+    :confirm-label="$confirmLanguage ? __('hata::site_settings.languages.confirm.'.$languageAction.'.submit') : ''"
     confirm-action="runLanguageAction"
 >
     @if ($confirmLanguage)
-        {{ __('site_settings.languages.confirm.'.$languageAction.'.body', [
+        {{ __('hata::site_settings.languages.confirm.'.$languageAction.'.body', [
             'language' => $confirmLanguage->name,
             'code' => $confirmLanguage->code,
             'old' => $defaultLanguage->name,
@@ -72,8 +72,8 @@
         <x-slot:extra>
             <flux:checkbox
                 wire:model="languageAlsoInterface"
-                :label="__('site_settings.languages.confirm.default.also_interface')"
-                :description="__('site_settings.languages.confirm.default.also_interface_description')"
+                :label="__('hata::site_settings.languages.confirm.default.also_interface')"
+                :description="__('hata::site_settings.languages.confirm.default.also_interface_description')"
                 data-test="language-also-interface"
             />
         </x-slot:extra>

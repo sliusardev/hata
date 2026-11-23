@@ -39,7 +39,7 @@
                     <div
                         class="text-xs"
                         x-bind:class="item.status === 'failed' ? 'text-red-700 dark:text-red-400' : 'text-zinc-500 dark:text-zinc-400'"
-                        x-text="item.status === 'failed' ? @js(__('media.upload.not_uploaded')) : statusText(item)"
+                        x-text="item.status === 'failed' ? @js(__('hata::media.upload.not_uploaded')) : statusText(item)"
                     ></div>
                 </div>
             </div>

@@ -52,7 +52,7 @@ use Livewire\Component;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
-new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class extends Component {
     public SiteSettingsForm $form;
 
     /**
@@ -157,7 +157,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
     {
         $this->changeLanguages(
             fn () => $addContentLocale->handle(Auth::user(), $code),
-            'site_settings.languages.messages.added',
+            'hata::site_settings.languages.messages.added',
             $code,
         );
     }
@@ -175,7 +175,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
 
         $this->changeLanguages(
             fn () => $setContentLocaleActive->handle(Auth::user(), $code, true),
-            'site_settings.languages.messages.turned_on',
+            'hata::site_settings.languages.messages.turned_on',
             $code,
         );
     }
@@ -212,9 +212,9 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
         $actor = Auth::user();
 
         match ($action) {
-            'off' => $this->changeLanguages(fn () => $setContentLocaleActive->handle($actor, $code, false), 'site_settings.languages.messages.turned_off', $code),
-            'default' => $this->changeLanguages(fn () => $setDefaultContentLocale->handle($actor, $code, $this->languageAlsoInterface), 'site_settings.languages.messages.default_changed', $code),
-            'remove' => $this->changeLanguages(fn () => $removeContentLocale->handle($actor, $code), 'site_settings.languages.messages.removed', $code),
+            'off' => $this->changeLanguages(fn () => $setContentLocaleActive->handle($actor, $code, false), 'hata::site_settings.languages.messages.turned_off', $code),
+            'default' => $this->changeLanguages(fn () => $setDefaultContentLocale->handle($actor, $code, $this->languageAlsoInterface), 'hata::site_settings.languages.messages.default_changed', $code),
+            'remove' => $this->changeLanguages(fn () => $removeContentLocale->handle($actor, $code), 'hata::site_settings.languages.messages.removed', $code),
             default => null,
         };
     }
@@ -311,7 +311,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
             return;
         }
 
-        Toast::success(__($active ? 'site_settings.content.messages.turned_on' : 'site_settings.content.messages.turned_off', [
+        Toast::success(__($active ? 'hata::site_settings.content.messages.turned_on' : 'hata::site_settings.content.messages.turned_off', [
             'type' => app(ContentTypes::class)->get($key)->pluralLabel(),
         ]));
 
@@ -408,7 +408,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
 
         $removeLogo->handle(Auth::user(), $variant);
 
-        Toast::success(__('site_settings.logo.removed'));
+        Toast::success(__('hata::site_settings.logo.removed'));
 
         $this->redirectRoute('admin.settings.edit', ['tab' => 'logo']);
     }
@@ -522,12 +522,12 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
             $setLogo->handle(Auth::user(), $variant, $value);
         } catch (ValidationException|AuthorizationException) {
             $this->{$property} = SiteLogo::own($variant)?->id;
-            $this->addError($property, __('media.picker.invalid'));
+            $this->addError($property, __('hata::media.picker.invalid'));
 
             return;
         }
 
-        Toast::success(__('site_settings.logo.chosen'));
+        Toast::success(__('hata::site_settings.logo.chosen'));
 
         $this->redirectRoute('admin.settings.edit', ['tab' => 'logo']);
     }
@@ -701,7 +701,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
         $this->form->media_s3_secret = '';
         $this->savedValues = $this->form->all();
 
-        Toast::success(__('site_settings.messages.saved'));
+        Toast::success(__('hata::site_settings.messages.saved'));
 
         // A full reload, so the layout picks up the new site name.
         $this->redirectRoute('admin.settings.edit', ['tab' => $this->tab]);
@@ -786,7 +786,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
         }
 
         unset($this->directState);
-        Flux::toast(variant: 'success', text: __('site_settings.media.storage.direct.link_created'));
+        Flux::toast(variant: 'success', text: __('hata::site_settings.media.storage.direct.link_created'));
         // The status line refreshes itself on the `media-direct-checked` event once the result is recorded.
         $this->js('window.checkMediaDirect?.(true)');
     }
@@ -803,7 +803,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
         if (RateLimiter::tooManyAttempts($limiterKey, 10)) {
             $this->storageTest = [
                 'ok' => false,
-                'message' => __('site_settings.media.storage.errors.rate_limited', ['seconds' => RateLimiter::availableIn($limiterKey)]),
+                'message' => __('hata::site_settings.media.storage.errors.rate_limited', ['seconds' => RateLimiter::availableIn($limiterKey)]),
             ];
 
             return;
@@ -823,7 +823,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
 
         $this->storageTest = [
             'ok' => $result['ok'],
-            'message' => $result['ok'] ? __('site_settings.media.storage.test_ok') : ($result['message'] ?? ''),
+            'message' => $result['ok'] ? __('hata::site_settings.media.storage.test_ok') : ($result['message'] ?? ''),
         ];
     }
 
@@ -838,16 +838,16 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
 
         try {
             Mail::raw(
-                __('site_settings.mail.test_body', ['site' => config('app.name')]),
-                fn (Message $message): Message => $message->to($user->email)->subject(__('site_settings.mail.test_subject', ['site' => config('app.name')])),
+                __('hata::site_settings.mail.test_body', ['site' => config('app.name')]),
+                fn (Message $message): Message => $message->to($user->email)->subject(__('hata::site_settings.mail.test_subject', ['site' => config('app.name')])),
             );
         } catch (TransportExceptionInterface $exception) {
-            Flux::toast(variant: 'danger', text: __('site_settings.mail.test_failed', ['error' => $exception->getMessage()]));
+            Flux::toast(variant: 'danger', text: __('hata::site_settings.mail.test_failed', ['error' => $exception->getMessage()]));
 
             return;
         }
 
-        Flux::toast(variant: 'success', text: __('site_settings.mail.test_sent', ['email' => $user->email]));
+        Flux::toast(variant: 'success', text: __('hata::site_settings.mail.test_sent', ['email' => $user->email]));
     }
 }; ?>
 
@@ -875,8 +875,8 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
     x-on:beforeunload.window="if (! leaving && isDirty()) { $event.preventDefault(); $event.returnValue = ''; }"
 >
     <div>
-        <flux:heading size="xl" level="1">{{ __('site_settings.title') }}</flux:heading>
-        <flux:subheading>{{ __('site_settings.description') }}</flux:subheading>
+        <flux:heading size="xl" level="1">{{ __('hata::site_settings.title') }}</flux:heading>
+        <flux:subheading>{{ __('hata::site_settings.description') }}</flux:subheading>
     </div>
 
     @php
@@ -887,17 +887,17 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
     <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 md:hidden dark:border-zinc-700" data-test="site-settings-tabs-row">
         @foreach ($sections as $section => $icon)
             <flux:navbar.item :icon="$icon" :current="$tab === $section" wire:click="switchTab('{{ $section }}')" wire:key="tab-row-{{ $section }}" class="cursor-pointer">
-                {{ __("site_settings.{$section}.heading") }}
+                {{ __("hata::site_settings.{$section}.heading") }}
             </flux:navbar.item>
         @endforeach
     </flux:navbar>
 
     <div class="flex items-start gap-8 lg:gap-10">
     <div class="sticky top-4 w-52 shrink-0 max-md:hidden">
-        <flux:navlist aria-label="{{ __('site_settings.title') }}" data-test="site-settings-tabs">
+        <flux:navlist aria-label="{{ __('hata::site_settings.title') }}" data-test="site-settings-tabs">
             @foreach ($sections as $section => $icon)
                 <flux:navlist.item :icon="$icon" :current="$tab === $section" wire:click="switchTab('{{ $section }}')" wire:key="tab-{{ $section }}" class="cursor-pointer" data-test="site-settings-tab-{{ $section }}">
-                    {{ __("site_settings.{$section}.heading") }}
+                    {{ __("hata::site_settings.{$section}.heading") }}
                 </flux:navlist.item>
             @endforeach
         </flux:navlist>
@@ -906,10 +906,10 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
     <div class="min-w-0 max-w-3xl flex-1 space-y-6">
     <form wire:submit="save" class="space-y-6">
         @if ($tab === 'general')
-            <flux:input wire:model="form.site_name" :label="__('site_settings.general.site_name')" :description="__('site_settings.general.site_name_description')" required />
+            <flux:input wire:model="form.site_name" :label="__('hata::site_settings.general.site_name')" :description="__('hata::site_settings.general.site_name_description')" required />
 
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:select wire:model="form.timezone" :label="__('site_settings.general.timezone')" :description="__('site_settings.general.timezone_description')">
+                <flux:select wire:model="form.timezone" :label="__('hata::site_settings.general.timezone')" :description="__('hata::site_settings.general.timezone_description')">
                     @foreach ($this->timezones as $timezone)
                         <flux:select.option :value="$timezone" wire:key="tz-{{ $timezone }}">{{ str_replace('_', ' ', $timezone) }}</flux:select.option>
                     @endforeach
@@ -920,27 +920,27 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
         @elseif ($tab === 'content')
             @include('hata::partials.admin.settings.content-types')
         @elseif ($tab === 'access')
-            <flux:switch wire:model="form.registration_enabled" :label="__('site_settings.access.registration')" :description="__('site_settings.access.registration_description')" align="left" />
+            <flux:switch wire:model="form.registration_enabled" :label="__('hata::site_settings.access.registration')" :description="__('hata::site_settings.access.registration_description')" align="left" />
 
-            <flux:select wire:model.live="form.default_role" :label="__('site_settings.access.default_role')" :description="__('site_settings.access.default_role_description')">
-                <flux:select.option value="">{{ __('site_settings.access.no_role') }}</flux:select.option>
+            <flux:select wire:model.live="form.default_role" :label="__('hata::site_settings.access.default_role')" :description="__('hata::site_settings.access.default_role_description')">
+                <flux:select.option value="">{{ __('hata::site_settings.access.no_role') }}</flux:select.option>
                 @foreach ($this->roleOptions as $option)
                     <flux:select.option :value="$option['role']->name" :disabled="! $option['assignable']" wire:key="role-{{ $option['role']->id }}">
-                        {{ $option['role']->displayName() }}{{ $option['assignable'] ? '' : ' — '.__('site_settings.access.role_unavailable') }}
+                        {{ $option['role']->displayName() }}{{ $option['assignable'] ? '' : ' — '.__('hata::site_settings.access.role_unavailable') }}
                     </flux:select.option>
                 @endforeach
             </flux:select>
 
             @if ($this->defaultRoleGrantsAdminAccess)
-                <flux:callout icon="exclamation-triangle" color="amber" :heading="__('site_settings.access.admin_access_warning')" />
+                <flux:callout icon="exclamation-triangle" color="amber" :heading="__('hata::site_settings.access.admin_access_warning')" />
             @endif
         @elseif ($tab === 'colors')
             {{-- Live preview: overrides the saved scheme from <head> while this tab is open. --}}
             <style>{!! $this->previewCss !!}</style>
 
-            <flux:text>{{ __('site_settings.colors.description') }}</flux:text>
+            <flux:text>{{ __('hata::site_settings.colors.description') }}</flux:text>
 
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label="{{ __('site_settings.colors.heading') }}">
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" role="radiogroup" aria-label="{{ __('hata::site_settings.colors.heading') }}">
                 @foreach ($this->schemeSwatches as $key => $swatch)
                     <button
                         type="button"
@@ -960,7 +960,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
                             <span class="size-5 rounded-full border border-black/10" style="background: {{ $swatch['sidebar'] }}"></span>
                             <span class="size-5 rounded-full border border-white/10" style="background: {{ $swatch['dark'] }}"></span>
                         </span>
-                        <span class="text-sm font-medium text-zinc-800 dark:text-white">{{ __("site_settings.colors.schemes.{$key}") }}</span>
+                        <span class="text-sm font-medium text-zinc-800 dark:text-white">{{ __("hata::site_settings.colors.schemes.{$key}") }}</span>
                     </button>
                 @endforeach
             </div>
@@ -969,13 +969,13 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
             @if ($form->color_scheme === Hata\Support\ColorScheme\ColorScheme::CUSTOM)
                 <div class="grid gap-6 sm:grid-cols-2">
                     <flux:field>
-                        <flux:label>{{ __('site_settings.colors.accent') }}</flux:label>
-                        <flux:description>{{ __('site_settings.colors.accent_description') }}</flux:description>
+                        <flux:label>{{ __('hata::site_settings.colors.accent') }}</flux:label>
+                        <flux:description>{{ __('hata::site_settings.colors.accent_description') }}</flux:description>
                         <div class="flex items-center gap-2">
                             <input
                                 type="color"
                                 wire:model.live.debounce.200ms="form.color_accent"
-                                aria-label="{{ __('site_settings.colors.accent') }}"
+                                aria-label="{{ __('hata::site_settings.colors.accent') }}"
                                 class="h-10 w-14 shrink-0 cursor-pointer rounded-lg border border-zinc-200 bg-white p-1 dark:border-zinc-600 dark:bg-zinc-700"
                             />
                             <flux:input wire:model.live.blur="form.color_accent" placeholder="#2563eb" maxlength="7" class="font-mono" />
@@ -983,26 +983,26 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
                         <flux:error name="form.color_accent" />
                     </flux:field>
 
-                    <flux:select wire:model.live="form.color_gray" :label="__('site_settings.colors.gray')" :description="__('site_settings.colors.gray_description')">
+                    <flux:select wire:model.live="form.color_gray" :label="__('hata::site_settings.colors.gray')" :description="__('hata::site_settings.colors.gray_description')">
                         @foreach (array_keys(Hata\Support\ColorScheme\ColorScheme::GRAYS) as $gray)
-                            <flux:select.option :value="$gray" wire:key="gray-{{ $gray }}">{{ __("site_settings.colors.grays.{$gray}") }}</flux:select.option>
+                            <flux:select.option :value="$gray" wire:key="gray-{{ $gray }}">{{ __("hata::site_settings.colors.grays.{$gray}") }}</flux:select.option>
                         @endforeach
                     </flux:select>
                 </div>
             @endif
 
             @unless ($form->color_scheme === 'neutral')
-                <flux:switch wire:model.live="form.color_tint_sidebar" :label="__('site_settings.colors.tint_sidebar')" :description="__('site_settings.colors.tint_sidebar_description')" align="left" />
+                <flux:switch wire:model.live="form.color_tint_sidebar" :label="__('hata::site_settings.colors.tint_sidebar')" :description="__('hata::site_settings.colors.tint_sidebar_description')" align="left" />
             @endunless
 
-            <flux:callout icon="eye" variant="secondary" :heading="__('site_settings.colors.preview_hint')" />
+            <flux:callout icon="eye" variant="secondary" :heading="__('hata::site_settings.colors.preview_hint')" />
         @elseif ($tab === 'logo')
-            <flux:text>{{ __('site_settings.logo.description') }}</flux:text>
+            <flux:text>{{ __('hata::site_settings.logo.description') }}</flux:text>
 
             <div class="grid gap-6 sm:grid-cols-2">
                 @foreach (['light' => 'logoLight', 'dark' => 'logoDark'] as $variant => $property)
                     <div class="space-y-3" wire:key="logo-{{ $variant }}">
-                        <flux:heading>{{ __("site_settings.logo.{$variant}") }}</flux:heading>
+                        <flux:heading>{{ __("hata::site_settings.logo.{$variant}") }}</flux:heading>
 
                         <div @class([
                             'flex h-24 items-center justify-center rounded-lg border px-4',
@@ -1025,7 +1025,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
                                         </span>
                                     @endif
                                     <flux:text class="mt-1 text-xs {{ $variant === 'dark' ? 'text-zinc-400!' : '' }}">
-                                        {{ SiteLogo::isCustom() ? __('site_settings.logo.uses_other') : __('site_settings.logo.default') }}
+                                        {{ SiteLogo::isCustom() ? __('hata::site_settings.logo.uses_other') : __('hata::site_settings.logo.default') }}
                                     </flux:text>
                                 </div>
                             @endif
@@ -1033,8 +1033,8 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
 
                         @if ($this->logoIsMissing($variant))
                             <div class="flex items-center gap-3" data-test="logo-missing-{{ $variant }}">
-                                <flux:text size="sm" class="flex-1">{{ __('site_settings.logo.missing') }}</flux:text>
-                                <flux:button size="sm" variant="ghost" wire:click="removeLogo('{{ $variant }}')">{{ __('site_settings.logo.remove_missing') }}</flux:button>
+                                <flux:text size="sm" class="flex-1">{{ __('hata::site_settings.logo.missing') }}</flux:text>
+                                <flux:button size="sm" variant="ghost" wire:click="removeLogo('{{ $variant }}')">{{ __('hata::site_settings.logo.remove_missing') }}</flux:button>
                             </div>
                         @endif
 
@@ -1042,7 +1042,7 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
                             wire:model.live="{{ $property }}"
                             accept="image"
                             :extensions="SiteLogo::EXTENSIONS"
-                            :label="__('site_settings.logo.'.$variant)"
+                            :label="__('hata::site_settings.logo.'.$variant)"
                             :key="'logo-picker-'.$variant"
                         />
                         <flux:error :name="$property" />
@@ -1050,65 +1050,65 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
                 @endforeach
             </div>
 
-            <flux:text class="text-xs">{{ __('site_settings.logo.requirements') }}</flux:text>
+            <flux:text class="text-xs">{{ __('hata::site_settings.logo.requirements') }}</flux:text>
         @elseif ($tab === 'media')
-            <flux:heading level="2">{{ __('site_settings.media.optimize_section') }}</flux:heading>
+            <flux:heading level="2">{{ __('hata::site_settings.media.optimize_section') }}</flux:heading>
 
-            <flux:switch wire:model.live="form.media_optimize" :label="__('site_settings.media.optimize')" :description="__('site_settings.media.optimize_description')" align="left" />
+            <flux:switch wire:model.live="form.media_optimize" :label="__('hata::site_settings.media.optimize')" :description="__('hata::site_settings.media.optimize_description')" align="left" />
 
             @if ($form->media_optimize)
-                <flux:select wire:model="form.media_max_side" :label="__('site_settings.media.max_side')" :description="__('site_settings.media.max_side_description')" class="max-w-xs">
+                <flux:select wire:model="form.media_max_side" :label="__('hata::site_settings.media.max_side')" :description="__('hata::site_settings.media.max_side_description')" class="max-w-xs">
                     @foreach (Hata\Livewire\Forms\SiteSettingsForm::MEDIA_MAX_SIDES as $side)
-                        <flux:select.option :value="$side" wire:key="max-side-{{ $side }}">{{ __("site_settings.media.max_side_{$side}") }}</flux:select.option>
+                        <flux:select.option :value="$side" wire:key="max-side-{{ $side }}">{{ __("hata::site_settings.media.max_side_{$side}") }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
                 <flux:field x-data="{ quality: $wire.form.media_quality }">
                     <div class="flex items-center justify-between">
-                        <label for="media-quality" class="text-sm font-medium text-zinc-800 dark:text-white">{{ __('site_settings.media.quality') }}</label>
+                        <label for="media-quality" class="text-sm font-medium text-zinc-800 dark:text-white">{{ __('hata::site_settings.media.quality') }}</label>
                         <span class="text-sm font-medium tabular-nums text-zinc-800 dark:text-white" data-test="media-quality-value" x-text="quality">{{ $form->media_quality }}</span>
                     </div>
                     <input id="media-quality" type="range" min="50" max="100" step="1" wire:model="form.media_quality" x-model="quality" class="w-full accent-accent" />
                     <div class="flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                        <span>{{ __('site_settings.media.quality_smaller') }}</span>
-                        <span>{{ __('site_settings.media.quality_better') }}</span>
+                        <span>{{ __('hata::site_settings.media.quality_smaller') }}</span>
+                        <span>{{ __('hata::site_settings.media.quality_better') }}</span>
                     </div>
                     <flux:error name="form.media_quality" />
                 </flux:field>
 
-                <flux:radio.group wire:model="form.media_format" :label="__('site_settings.media.format')">
-                    <flux:radio value="webp" :label="__('site_settings.media.format_webp')" :description="__('site_settings.media.format_webp_description')" />
-                    <flux:radio value="original" :label="__('site_settings.media.format_original')" />
+                <flux:radio.group wire:model="form.media_format" :label="__('hata::site_settings.media.format')">
+                    <flux:radio value="webp" :label="__('hata::site_settings.media.format_webp')" :description="__('hata::site_settings.media.format_webp_description')" />
+                    <flux:radio value="original" :label="__('hata::site_settings.media.format_original')" />
                     {{-- AVIF is display-only for now: OptimizeImage accepts webp and original. --}}
                     <flux:radio
                         value="avif"
                         disabled
-                        :label="__('site_settings.media.format_avif')"
-                        :description="$this->avifSupported ? __('site_settings.media.format_avif_later') : __('site_settings.media.format_avif_unsupported')"
+                        :label="__('hata::site_settings.media.format_avif')"
+                        :description="$this->avifSupported ? __('hata::site_settings.media.format_avif_later') : __('hata::site_settings.media.format_avif_unsupported')"
                     />
                 </flux:radio.group>
 
-                <flux:switch wire:model="form.media_strip_exif" :label="__('site_settings.media.strip_exif')" :description="__('site_settings.media.strip_exif_description')" align="left" />
-                <flux:switch wire:model="form.media_client_resize" :label="__('site_settings.media.client_resize')" :description="__('site_settings.media.client_resize_description')" align="left" />
-                <flux:switch wire:model="form.media_keep_originals" :label="__('site_settings.media.keep_originals')" :description="__('site_settings.media.keep_originals_description')" align="left" />
+                <flux:switch wire:model="form.media_strip_exif" :label="__('hata::site_settings.media.strip_exif')" :description="__('hata::site_settings.media.strip_exif_description')" align="left" />
+                <flux:switch wire:model="form.media_client_resize" :label="__('hata::site_settings.media.client_resize')" :description="__('hata::site_settings.media.client_resize_description')" align="left" />
+                <flux:switch wire:model="form.media_keep_originals" :label="__('hata::site_settings.media.keep_originals')" :description="__('hata::site_settings.media.keep_originals_description')" align="left" />
                 @can('media.edit')
                     @php($card = $this->optimizationCard)
                     <flux:callout icon="arrow-path" class="max-w-xl" data-test="optimize-existing-card">
-                        <flux:callout.heading>{{ __('site_settings.media.existing_heading') }}</flux:callout.heading>
+                        <flux:callout.heading>{{ __('hata::site_settings.media.existing_heading') }}</flux:callout.heading>
                         <flux:callout.text>
                             @if (! $card['enabled'])
-                                <span data-test="optimize-existing-unsaved">{{ __('site_settings.media.existing_save_first') }}</span>
+                                <span data-test="optimize-existing-unsaved">{{ __('hata::site_settings.media.existing_save_first') }}</span>
                             @elseif ($card['run'] !== null)
-                                <span data-test="optimize-existing-progress">{{ __("media.optimize.status.{$card['run']->status}") }}: {{ trans_choice('media.batch.progress', $card['run']->total, ['processed' => $card['run']->processed(), 'total' => $card['run']->total]) }}</span>
+                                <span data-test="optimize-existing-progress">{{ __("hata::media.optimize.status.{$card['run']->status}") }}: {{ trans_choice('hata::media.batch.progress', $card['run']->total, ['processed' => $card['run']->processed(), 'total' => $card['run']->total]) }}</span>
                             @elseif ($card['count'] > 0)
-                                <span><span data-test="optimize-existing-count">{{ $card['count'] }}</span> {{ trans_choice('site_settings.media.existing_candidates', $card['count']) }}</span>
-                                <span data-test="optimize-existing-saving">{{ __('site_settings.media.existing_saving', ['size' => $card['saving']]) }}</span>
+                                <span><span data-test="optimize-existing-count">{{ $card['count'] }}</span> {{ trans_choice('hata::site_settings.media.existing_candidates', $card['count']) }}</span>
+                                <span data-test="optimize-existing-saving">{{ __('hata::site_settings.media.existing_saving', ['size' => $card['saving']]) }}</span>
                             @else
-                                {{ __('site_settings.media.existing_none') }}
+                                {{ __('hata::site_settings.media.existing_none') }}
                             @endif
                         </flux:callout.text>
                         <x-slot name="actions">
-                            @if ($card['enabled'])<flux:button size="sm" :href="route('admin.media.optimize')" wire:navigate>{{ __('site_settings.media.existing_button') }}</flux:button>@endif
+                            @if ($card['enabled'])<flux:button size="sm" :href="route('admin.media.optimize')" wire:navigate>{{ __('hata::site_settings.media.existing_button') }}</flux:button>@endif
                         </x-slot>
                     </flux:callout>
                 @endcan
@@ -1116,36 +1116,36 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
 
             <flux:separator />
 
-            <flux:heading level="2">{{ __('site_settings.media.limits_section') }}</flux:heading>
+            <flux:heading level="2">{{ __('hata::site_settings.media.limits_section') }}</flux:heading>
 
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:input wire:model="form.media_max_image_mb" type="number" min="1" max="512" :label="__('site_settings.media.max_image_mb')" required />
-                <flux:input wire:model="form.media_max_document_mb" type="number" min="1" max="512" :label="__('site_settings.media.max_document_mb')" required />
+                <flux:input wire:model="form.media_max_image_mb" type="number" min="1" max="512" :label="__('hata::site_settings.media.max_image_mb')" required />
+                <flux:input wire:model="form.media_max_document_mb" type="number" min="1" max="512" :label="__('hata::site_settings.media.max_document_mb')" required />
             </div>
 
             @if ($this->serverCap !== null)
-                <flux:text class="text-xs" data-test="media-server-cap">{{ __('site_settings.media.server_cap', ['size' => $this->serverCap]) }}</flux:text>
+                <flux:text class="text-xs" data-test="media-server-cap">{{ __('hata::site_settings.media.server_cap', ['size' => $this->serverCap]) }}</flux:text>
             @endif
 
             <flux:separator />
 
-            <flux:heading level="2">{{ __('site_settings.media.storage.section') }}</flux:heading>
+            <flux:heading level="2">{{ __('hata::site_settings.media.storage.section') }}</flux:heading>
 
-            <flux:radio.group wire:model.live="form.media_storage" :label="__('site_settings.media.storage.where')" :description="__('site_settings.media.storage.where_description')">
-                <flux:radio value="public" :label="__('site_settings.media.storage.public')" :description="__('site_settings.media.storage.public_description')" />
-                <flux:radio value="s3" :label="__('site_settings.media.storage.s3')" :description="__('site_settings.media.storage.s3_description')" />
+            <flux:radio.group wire:model.live="form.media_storage" :label="__('hata::site_settings.media.storage.where')" :description="__('hata::site_settings.media.storage.where_description')">
+                <flux:radio value="public" :label="__('hata::site_settings.media.storage.public')" :description="__('hata::site_settings.media.storage.public_description')" />
+                <flux:radio value="s3" :label="__('hata::site_settings.media.storage.s3')" :description="__('hata::site_settings.media.storage.s3_description')" />
             </flux:radio.group>
             <flux:error name="form.media_storage" />
 
             @if (MediaDisks::publishes((string) config('media.disk')))
                 @php($directState = $this->directState)
                 <div class="flex flex-wrap items-center gap-3" x-data="{ checking: false }" x-on:media-direct-checked.window="$wire.$refresh()" data-test="direct-status-{{ $directState }}">
-                    <flux:text @class(['max-w-prose', 'text-amber-600 dark:text-amber-400' => in_array($directState, ['link_missing', 'unreachable'], true)])>{{ __('site_settings.media.storage.direct.'.$directState, ['url' => app(DirectServing::class)->probeUrl()]) }}</flux:text>
+                    <flux:text @class(['max-w-prose', 'text-amber-600 dark:text-amber-400' => in_array($directState, ['link_missing', 'unreachable'], true)])>{{ __('hata::site_settings.media.storage.direct.'.$directState, ['url' => app(DirectServing::class)->probeUrl()]) }}</flux:text>
 
                     @if ($directState === 'link_missing')
-                        <flux:button size="sm" wire:click="createStorageLink" data-test="create-storage-link">{{ __('site_settings.media.storage.direct.create_link') }}</flux:button>
+                        <flux:button size="sm" wire:click="createStorageLink" data-test="create-storage-link">{{ __('hata::site_settings.media.storage.direct.create_link') }}</flux:button>
                     @elseif ($directState !== 'direct')
-                        <flux:button size="sm" x-bind:disabled="checking" x-on:click="checking = true; Promise.resolve(window.checkMediaDirect?.(true)).finally(() => checking = false)" data-test="check-direct">{{ __('site_settings.media.storage.direct.check_again') }}</flux:button>
+                        <flux:button size="sm" x-bind:disabled="checking" x-on:click="checking = true; Promise.resolve(window.checkMediaDirect?.(true)).finally(() => checking = false)" data-test="check-direct">{{ __('hata::site_settings.media.storage.direct.check_again') }}</flux:button>
                     @endif
                 </div>
             @endif
@@ -1153,9 +1153,9 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
             @if ($this->filesOnOtherDisk > 0)
                 <flux:callout icon="information-circle" variant="secondary" data-test="files-on-other-disk">
                     <flux:callout.text>
-                        {{ trans_choice('site_settings.media.storage.other_disk', $this->filesOnOtherDisk, ['count' => $this->filesOnOtherDisk]) }}
+                        {{ trans_choice('hata::site_settings.media.storage.other_disk', $this->filesOnOtherDisk, ['count' => $this->filesOnOtherDisk]) }}
                         @can('moveToDisk', Media::class)
-                            <flux:link :href="route('admin.media.move')" wire:navigate data-test="move-files-link">{{ __('site_settings.media.storage.move_link', ['storage' => __('site_settings.media.storage.'.config('media.disk'))]) }}</flux:link>
+                            <flux:link :href="route('admin.media.move')" wire:navigate data-test="move-files-link">{{ __('hata::site_settings.media.storage.move_link', ['storage' => __('hata::site_settings.media.storage.'.config('media.disk'))]) }}</flux:link>
                         @endcan
                     </flux:callout.text>
                 </flux:callout>
@@ -1164,41 +1164,41 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
             @if ($form->media_storage === 's3' || $this->hasS3Files)
             <div class="space-y-6" data-test="s3-fields">
                 <div class="grid items-start gap-6 sm:grid-cols-2">
-                    <flux:input wire:model="form.media_s3_endpoint" :label="__('site_settings.media.storage.endpoint')" :description:trailing="__('site_settings.media.storage.endpoint_description')" placeholder="https://s3.example.com" autocomplete="off" />
-                    <flux:input wire:model="form.media_s3_region" :label="__('site_settings.media.storage.region')" placeholder="us-east-1" autocomplete="off" />
+                    <flux:input wire:model="form.media_s3_endpoint" :label="__('hata::site_settings.media.storage.endpoint')" :description:trailing="__('hata::site_settings.media.storage.endpoint_description')" placeholder="https://s3.example.com" autocomplete="off" />
+                    <flux:input wire:model="form.media_s3_region" :label="__('hata::site_settings.media.storage.region')" placeholder="us-east-1" autocomplete="off" />
                 </div>
 
                 <div class="grid items-start gap-6 sm:grid-cols-2">
-                    <flux:input wire:model="form.media_s3_bucket" :label="__('site_settings.media.storage.bucket')" autocomplete="off" />
-                    <flux:input wire:model="form.media_s3_prefix" :label="__('site_settings.media.storage.prefix')" :description:trailing="__('site_settings.media.storage.prefix_description')" placeholder="prod" autocomplete="off" />
+                    <flux:input wire:model="form.media_s3_bucket" :label="__('hata::site_settings.media.storage.bucket')" autocomplete="off" />
+                    <flux:input wire:model="form.media_s3_prefix" :label="__('hata::site_settings.media.storage.prefix')" :description:trailing="__('hata::site_settings.media.storage.prefix_description')" placeholder="prod" autocomplete="off" />
                 </div>
 
                 <div class="grid items-start gap-6 sm:grid-cols-2">
-                    <flux:input wire:model="form.media_s3_key" :label="__('site_settings.media.storage.key')" autocomplete="off" />
+                    <flux:input wire:model="form.media_s3_key" :label="__('hata::site_settings.media.storage.key')" autocomplete="off" />
                     <flux:input
                         wire:model="form.media_s3_secret"
                         type="password"
                         viewable
-                        :label="__('site_settings.media.storage.secret')"
-                        :description:trailing="$this->hasStoredS3Secret ? __('site_settings.media.storage.secret_keep') : ($this->hasEnvS3Secret ? __('site_settings.media.storage.secret_env') : null)"
+                        :label="__('hata::site_settings.media.storage.secret')"
+                        :description:trailing="$this->hasStoredS3Secret ? __('hata::site_settings.media.storage.secret_keep') : ($this->hasEnvS3Secret ? __('hata::site_settings.media.storage.secret_env') : null)"
                         autocomplete="new-password"
                     />
                 </div>
 
-                <flux:switch wire:model="form.media_s3_path_style" :label="__('site_settings.media.storage.path_style')" :description="__('site_settings.media.storage.path_style_description')" align="left" />
+                <flux:switch wire:model="form.media_s3_path_style" :label="__('hata::site_settings.media.storage.path_style')" :description="__('hata::site_settings.media.storage.path_style_description')" align="left" />
 
-                <flux:input wire:model="form.media_s3_public_url" :label="__('site_settings.media.storage.public_url')" :description:trailing="__('site_settings.media.storage.public_url_description')" placeholder="https://cdn.example.com" autocomplete="off" />
+                <flux:input wire:model="form.media_s3_public_url" :label="__('hata::site_settings.media.storage.public_url')" :description:trailing="__('hata::site_settings.media.storage.public_url_description')" placeholder="https://cdn.example.com" autocomplete="off" />
             </div>
             @endif
         @else
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:input wire:model="form.mail_from_address" type="email" :label="__('site_settings.mail.from_address')" required />
-                <flux:input wire:model="form.mail_from_name" :label="__('site_settings.mail.from_name')" required />
+                <flux:input wire:model="form.mail_from_address" type="email" :label="__('hata::site_settings.mail.from_address')" required />
+                <flux:input wire:model="form.mail_from_name" :label="__('hata::site_settings.mail.from_name')" required />
             </div>
 
-            <flux:select wire:model.live="form.mail_mailer" :label="__('site_settings.mail.mailer')">
-                <flux:select.option value="server">{{ __('site_settings.mail.mailer_server') }}</flux:select.option>
-                <flux:select.option value="smtp">{{ __('site_settings.mail.mailer_smtp') }}</flux:select.option>
+            <flux:select wire:model.live="form.mail_mailer" :label="__('hata::site_settings.mail.mailer')">
+                <flux:select.option value="server">{{ __('hata::site_settings.mail.mailer_server') }}</flux:select.option>
+                <flux:select.option value="smtp">{{ __('hata::site_settings.mail.mailer_smtp') }}</flux:select.option>
             </flux:select>
 
             @if ($form->mail_mailer === 'smtp')
@@ -1206,27 +1206,27 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
                 <div class="space-y-6 rounded-xl border border-zinc-200 p-5 dark:border-white/10" data-test="smtp-fields">
                     <div class="grid gap-6 sm:grid-cols-6">
                         <div class="sm:col-span-3">
-                            <flux:input wire:model="form.mail_host" :label="__('site_settings.mail.host')" placeholder="smtp.example.com" required />
+                            <flux:input wire:model="form.mail_host" :label="__('hata::site_settings.mail.host')" placeholder="smtp.example.com" required />
                         </div>
                         <div class="sm:col-span-1">
-                            <flux:input wire:model="form.mail_port" type="number" min="1" max="65535" :label="__('site_settings.mail.port')" placeholder="587" required />
+                            <flux:input wire:model="form.mail_port" type="number" min="1" max="65535" :label="__('hata::site_settings.mail.port')" placeholder="587" required />
                         </div>
                         <div class="sm:col-span-2">
-                            <flux:select wire:model="form.mail_scheme" :label="__('site_settings.mail.scheme')">
-                                <flux:select.option value="smtp">{{ __('site_settings.mail.scheme_starttls') }}</flux:select.option>
-                                <flux:select.option value="smtps">{{ __('site_settings.mail.scheme_ssl') }}</flux:select.option>
+                            <flux:select wire:model="form.mail_scheme" :label="__('hata::site_settings.mail.scheme')">
+                                <flux:select.option value="smtp">{{ __('hata::site_settings.mail.scheme_starttls') }}</flux:select.option>
+                                <flux:select.option value="smtps">{{ __('hata::site_settings.mail.scheme_ssl') }}</flux:select.option>
                             </flux:select>
                         </div>
                     </div>
 
                     <div class="grid gap-6 sm:grid-cols-2">
-                        <flux:input wire:model="form.mail_username" :label="__('site_settings.mail.username')" autocomplete="off" />
+                        <flux:input wire:model="form.mail_username" :label="__('hata::site_settings.mail.username')" autocomplete="off" />
                         <flux:input
                             wire:model="form.mail_password"
                             type="password"
                             viewable
-                            :label="__('site_settings.mail.password')"
-                            :description="$this->hasStoredMailPassword ? __('site_settings.mail.password_keep') : null"
+                            :label="__('hata::site_settings.mail.password')"
+                            :description="$this->hasStoredMailPassword ? __('hata::site_settings.mail.password_keep') : null"
                             autocomplete="new-password"
                         />
                     </div>
@@ -1248,23 +1248,23 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
             <div>
                 @if ($tab === 'media' && ($form->media_storage === 's3' || $this->hasS3Files))
                     <flux:button variant="ghost" icon="signal" wire:click="testStorageConnection" data-test="test-storage-button">
-                        {{ __('site_settings.media.storage.test') }}
+                        {{ __('hata::site_settings.media.storage.test') }}
                     </flux:button>
                 @endif
             </div>
 
             @unless (in_array($tab, ['logo', 'content'], true))
                 <flux:button variant="primary" type="submit" data-test="save-site-settings-button">
-                    {{ __('common.actions.save') }}
+                    {{ __('hata::common.actions.save') }}
                 </flux:button>
             @endunless
         </div>
 
         @if ($tab === 'mail')
             <div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/5">
-                <flux:text size="sm" class="max-w-prose flex-1">{{ __('site_settings.mail.send_test_hint') }}</flux:text>
+                <flux:text size="sm" class="max-w-prose flex-1">{{ __('hata::site_settings.mail.send_test_hint') }}</flux:text>
                 <flux:button size="sm" icon="paper-airplane" wire:click="sendTestEmail" data-test="send-test-email-button">
-                    {{ __('site_settings.mail.send_test') }}
+                    {{ __('hata::site_settings.mail.send_test') }}
                 </flux:button>
             </div>
         @endif
@@ -1280,47 +1280,47 @@ new #[Layout('hata::layouts.app')] #[Title('site_settings.title')] class extends
         @php($typeOff = $contentTypeOff === '' ? null : app(ContentTypes::class)->find($contentTypeOff))
         <x-hata::confirm-modal
             wire:model.self="showContentTypeModal"
-            :heading="__('site_settings.content.off.title', ['type' => $typeOff?->pluralLabel() ?? ''])"
-            :confirm-label="__('site_settings.content.off.submit')"
+            :heading="__('hata::site_settings.content.off.title', ['type' => $typeOff?->pluralLabel() ?? ''])"
+            :confirm-label="__('hata::site_settings.content.off.submit')"
             confirm-action="turnOffContentType"
             data-test="content-type-off-modal"
         >
-            {{ __('site_settings.content.off.body') }}
+            {{ __('hata::site_settings.content.off.body') }}
         </x-hata::confirm-modal>
     @endif
 
     <x-hata::confirm-modal
         wire:model.self="showUnsavedModal"
-        :heading="__('site_settings.unsaved.heading')"
-        :confirm-label="__('site_settings.unsaved.discard')"
+        :heading="__('hata::site_settings.unsaved.heading')"
+        :confirm-label="__('hata::site_settings.unsaved.discard')"
         confirm-action="discardChangesAndSwitch"
     >
-        {{ __('site_settings.unsaved.body', ['tab' => __("site_settings.{$tab}.heading")]) }}
+        {{ __('hata::site_settings.unsaved.body', ['tab' => __("hata::site_settings.{$tab}.heading")]) }}
     </x-hata::confirm-modal>
 
     <x-hata::confirm-modal
         wire:model.self="showS3ChangeModal"
-        :heading="__('site_settings.media.storage.change_heading')"
-        :confirm-label="__('site_settings.media.storage.change_confirm')"
+        :heading="__('hata::site_settings.media.storage.change_heading')"
+        :confirm-label="__('hata::site_settings.media.storage.change_confirm')"
         confirm-action="confirmS3Change"
     >
-        {{ __('site_settings.media.storage.change_body') }}
+        {{ __('hata::site_settings.media.storage.change_body') }}
     </x-hata::confirm-modal>
 
     <flux:modal name="leave-site-settings" class="max-w-md md:min-w-md">
         <div class="space-y-6">
             <div class="space-y-2">
-                <flux:heading size="lg">{{ __('site_settings.unsaved.heading') }}</flux:heading>
-                <flux:text>{{ __('site_settings.unsaved.leave_body') }}</flux:text>
+                <flux:heading size="lg">{{ __('hata::site_settings.unsaved.heading') }}</flux:heading>
+                <flux:text>{{ __('hata::site_settings.unsaved.leave_body') }}</flux:text>
             </div>
 
             <div class="flex justify-end gap-3">
                 <flux:modal.close>
-                    <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
+                    <flux:button variant="outline">{{ __('hata::common.actions.cancel') }}</flux:button>
                 </flux:modal.close>
 
                 <flux:button variant="danger" x-on:click="leave()" data-test="leave-without-saving-button">
-                    {{ __('site_settings.unsaved.leave') }}
+                    {{ __('hata::site_settings.unsaved.leave') }}
                 </flux:button>
             </div>
         </div>

@@ -271,7 +271,7 @@ describe('deleting', function () {
         test()->beforeApplicationDestroyed(fn () => File::delete($outside));
 
         expect(fn () => app(DeleteLogFile::class)->handle(logReader(), str_replace('{outside}', $outside, $name)))
-            ->toThrow(MaintenanceException::class, __('maintenance.logs.errors.missing'))
+            ->toThrow(MaintenanceException::class, __('hata::maintenance.logs.errors.missing'))
             ->and(File::exists($path))->toBeTrue()
             ->and(File::exists($outside))->toBeTrue();
     })->with(['missing.log', '../'.'laravel.log', '{outside}', '.gitignore']);
@@ -292,7 +292,7 @@ describe('page', function () {
 
     it('shows an empty state without files', function () {
         Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('hata::admin.maintenance.index')
-            ->assertSee(__('maintenance.logs.empty_title'))
+            ->assertSee(__('hata::maintenance.logs.empty_title'))
             ->assertDontSeeHtml('data-test="maintenance-logs"');
     });
 
@@ -344,7 +344,7 @@ describe('page', function () {
         Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->call('confirmDeleteLog', $key)
             ->assertSet('showDeleteLogModal', true)
-            ->assertSee(__('maintenance.logs.delete.confirm', ['name' => 'laravel.log']))
+            ->assertSee(__('hata::maintenance.logs.delete.confirm', ['name' => 'laravel.log']))
             ->call('deleteLog')
             ->assertSet('showDeleteLogModal', false)
             ->assertSet('file', '')

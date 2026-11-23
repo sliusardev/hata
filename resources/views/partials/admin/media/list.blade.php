@@ -22,16 +22,16 @@
                 x-on:click="$wire.togglePageSelection(true)"
                 @checked($allOnPage)
                 class="{{ $checkboxClasses }}"
-                aria-label="{{ __('media.bulk.select_page') }}"
+                aria-label="{{ __('hata::media.bulk.select_page') }}"
                 data-test="media-select-page"
             />
         </flux:table.column>
-        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" x-on:click="$wire.sort('name', true)">{{ __('media.index.columns.file') }}</flux:table.column>
-        <flux:table.column class="max-md:hidden">{{ __('media.index.columns.type') }}</flux:table.column>
-        <flux:table.column sortable :sorted="$sortBy === 'size'" :direction="$sortDirection" x-on:click="$wire.sort('size', true)">{{ __('media.index.columns.size') }}</flux:table.column>
-        <flux:table.column class="max-lg:hidden">{{ __('media.index.columns.usage') }}</flux:table.column>
-        <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" x-on:click="$wire.sort('created_at', true)" class="max-lg:hidden">{{ __('media.index.columns.uploaded') }}</flux:table.column>
-        <flux:table.column align="end"><span class="sr-only">{{ __('media.index.columns.actions') }}</span></flux:table.column>
+        <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" x-on:click="$wire.sort('name', true)">{{ __('hata::media.index.columns.file') }}</flux:table.column>
+        <flux:table.column class="max-md:hidden">{{ __('hata::media.index.columns.type') }}</flux:table.column>
+        <flux:table.column sortable :sorted="$sortBy === 'size'" :direction="$sortDirection" x-on:click="$wire.sort('size', true)">{{ __('hata::media.index.columns.size') }}</flux:table.column>
+        <flux:table.column class="max-lg:hidden">{{ __('hata::media.index.columns.usage') }}</flux:table.column>
+        <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" x-on:click="$wire.sort('created_at', true)" class="max-lg:hidden">{{ __('hata::media.index.columns.uploaded') }}</flux:table.column>
+        <flux:table.column align="end"><span class="sr-only">{{ __('hata::media.index.columns.actions') }}</span></flux:table.column>
     </flux:table.columns>
 
     <flux:table.rows>
@@ -54,7 +54,7 @@
                         @checked(in_array($item->id, $selected, true))
                         x-on:click="if ($event.shiftKey) { $event.preventDefault(); $wire.pick({{ $item->id }}, 'range', true) } else { $wire.toggleSelected({{ $item->id }}, true) }"
                         class="{{ $checkboxClasses }}"
-                        aria-label="{{ __('media.bulk.select_file', ['name' => $item->name]) }}"
+                        aria-label="{{ __('hata::media.bulk.select_file', ['name' => $item->name]) }}"
                     />
                 </flux:table.cell>
                 <flux:table.cell>
@@ -71,7 +71,7 @@
                             @if ($alt !== '')
                                 <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $alt }}</div>
                             @elseif ($item->isImage())
-                                <div class="text-xs text-amber-600 dark:text-amber-400">{{ __('media.index.no_alt') }}</div>
+                                <div class="text-xs text-amber-600 dark:text-amber-400">{{ __('hata::media.index.no_alt') }}</div>
                             @endif
                         </div>
                     </div>
@@ -80,19 +80,19 @@
                 <flux:table.cell class="whitespace-nowrap">{{ $item->humanSize() }}</flux:table.cell>
                 <flux:table.cell class="max-lg:hidden">
                     @if ($item->usages_count === 0)
-                        <flux:badge size="sm" color="amber">{{ __('media.index.nowhere') }}</flux:badge>
+                        <flux:badge size="sm" color="amber">{{ __('hata::media.index.nowhere') }}</flux:badge>
                     @else
-                        <flux:badge size="sm" color="zinc">{{ trans_choice('media.index.used_count', $item->usages_count) }}</flux:badge>
+                        <flux:badge size="sm" color="zinc">{{ trans_choice('hata::media.index.used_count', $item->usages_count) }}</flux:badge>
                     @endif
                 </flux:table.cell>
                 <flux:table.cell class="whitespace-nowrap max-lg:hidden">{{ $item->created_at?->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
                 <flux:table.cell align="end">
                     <x-hata::admin.row-actions data-test="media-actions-{{ $item->id }}">
-                        <flux:menu.item icon="information-circle" x-on:click="$wire.select({{ $item->id }}, true)">{{ __('media.details.heading') }}</flux:menu.item>
-                        <flux:menu.item icon="arrow-top-right-on-square" :href="$item->url()" target="_blank">{{ __('media.index.open') }}</flux:menu.item>
-                        <flux:menu.item icon="arrow-down-tray" :href="$item->appUrl().'?download=1'">{{ __('media.details.download') }}</flux:menu.item>
+                        <flux:menu.item icon="information-circle" x-on:click="$wire.select({{ $item->id }}, true)">{{ __('hata::media.details.heading') }}</flux:menu.item>
+                        <flux:menu.item icon="arrow-top-right-on-square" :href="$item->url()" target="_blank">{{ __('hata::media.index.open') }}</flux:menu.item>
+                        <flux:menu.item icon="arrow-down-tray" :href="$item->appUrl().'?download=1'">{{ __('hata::media.details.download') }}</flux:menu.item>
                         @can('delete', $item)
-                            <flux:menu.item icon="trash" variant="danger" x-on:click="$wire.confirmDelete({{ $item->id }})">{{ __('common.actions.delete') }}</flux:menu.item>
+                            <flux:menu.item icon="trash" variant="danger" x-on:click="$wire.confirmDelete({{ $item->id }})">{{ __('hata::common.actions.delete') }}</flux:menu.item>
                         @endcan
                     </x-hata::admin.row-actions>
                 </flux:table.cell>

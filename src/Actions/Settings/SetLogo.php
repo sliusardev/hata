@@ -40,7 +40,7 @@ class SetLogo
         Validator::make(
             ['media' => $mediaId],
             ['media' => [new MediaSelection(accept: 'image', multiple: false, extensions: SiteLogo::EXTENSIONS)]],
-            attributes: ['media' => __("site_settings.logo.{$variant}")],
+            attributes: ['media' => __("hata::site_settings.logo.{$variant}")],
         )->validate();
 
         $this->assign($variant, $mediaId);

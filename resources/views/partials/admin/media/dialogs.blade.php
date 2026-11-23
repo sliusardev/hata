@@ -4,11 +4,11 @@
 --}}
 <x-hata::confirm-modal
     wire:model.self="showDiscardModal"
-    :heading="__('media.details.unsaved.heading')"
-    :confirm-label="__('media.details.unsaved.discard')"
+    :heading="__('hata::media.details.unsaved.heading')"
+    :confirm-label="__('hata::media.details.unsaved.discard')"
     confirm-action="discardChanges"
 >
-    {{ __('media.details.unsaved.body', ['name' => $this->selectedMedia?->name]) }}
+    {{ __('hata::media.details.unsaved.body', ['name' => $this->selectedMedia?->name]) }}
 </x-hata::confirm-modal>
 
 @php
@@ -20,14 +20,14 @@
 <x-hata::confirm-modal
     wire:model.self="showDeleteModal"
     wire:close="cancelPending"
-    :heading="$deleting->count() > 1 ? __('media.delete.heading_many') : __('media.delete.heading')"
-    :confirm-label="__('media.delete.confirm')"
+    :heading="$deleting->count() > 1 ? __('hata::media.delete.heading_many') : __('hata::media.delete.heading')"
+    :confirm-label="__('hata::media.delete.confirm')"
     confirm-action="deleteConfirmed"
 >
     @if ($deleting->count() === 1)
-        {{ __('media.delete.body_one', ['name' => $deleting->first()->name]) }}
+        {{ __('hata::media.delete.body_one', ['name' => $deleting->first()->name]) }}
     @else
-        {{ __('media.delete.body_many', ['files' => trans_choice('media.index.file_count', $deleting->count())]) }}
+        {{ __('hata::media.delete.body_many', ['files' => trans_choice('hata::media.index.file_count', $deleting->count())]) }}
     @endif
 
     @if ($deletingUsages->isNotEmpty())
@@ -35,9 +35,9 @@
             <div class="space-y-1.5 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">
                 @if ($deleting->count() > 1)
                     {{-- A bulk selection states how many files are used; their places are listed in each file's details. --}}
-                    <div class="font-medium">{{ trans_choice('media.delete.used_files', $deletingUsedFiles, ['total' => $deleting->count()]) }}</div>
+                    <div class="font-medium">{{ trans_choice('hata::media.delete.used_files', $deletingUsedFiles, ['total' => $deleting->count()]) }}</div>
                 @else
-                    <div class="font-medium">{{ trans_choice('media.delete.used', $deletingUsages->count()) }}</div>
+                    <div class="font-medium">{{ trans_choice('hata::media.delete.used', $deletingUsages->count()) }}</div>
                     <ul class="list-disc space-y-0.5 ps-5">
                         @foreach ($deletingUsages as $usage)
                             <li wire:key="deleting-usage-{{ $usage->id }}">
@@ -50,7 +50,7 @@
                         @endforeach
                     </ul>
                 @endif
-                <div>{{ __('media.delete.used_warning') }}</div>
+                <div>{{ __('hata::media.delete.used_warning') }}</div>
             </div>
         </x-slot:extra>
     @endif
@@ -58,16 +58,16 @@
 
 <flux:modal wire:model.self="showFolderModal" class="max-w-md md:min-w-md">
     <form wire:submit="saveFolder" class="space-y-6">
-        <flux:heading size="lg">{{ $renamingFolderId === null ? __('media.folders.new') : __('media.folders.rename_heading') }}</flux:heading>
+        <flux:heading size="lg">{{ $renamingFolderId === null ? __('hata::media.folders.new') : __('hata::media.folders.rename_heading') }}</flux:heading>
 
-        <flux:input wire:model="folderName" :label="__('media.folders.name')" maxlength="100" required autofocus data-test="media-folder-name" />
+        <flux:input wire:model="folderName" :label="__('hata::media.folders.name')" maxlength="100" required autofocus data-test="media-folder-name" />
 
         <div class="flex justify-end gap-3">
             <flux:modal.close>
-                <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
+                <flux:button variant="outline">{{ __('hata::common.actions.cancel') }}</flux:button>
             </flux:modal.close>
             <flux:button type="submit" variant="primary">
-                {{ $renamingFolderId === null ? __('media.folders.create') : __('common.actions.save') }}
+                {{ $renamingFolderId === null ? __('hata::media.folders.create') : __('hata::common.actions.save') }}
             </flux:button>
         </div>
     </form>
@@ -119,26 +119,26 @@
         }"
     >
         <div class="space-y-1">
-            <flux:heading size="lg">{{ __('media.folders.move_heading', ['name' => $movingFolder?->name]) }}</flux:heading>
-            <flux:text>{{ __('media.folders.move_current', ['name' => $currentParentName ?? __('media.folders.top_level')]) }}</flux:text>
+            <flux:heading size="lg">{{ __('hata::media.folders.move_heading', ['name' => $movingFolder?->name]) }}</flux:heading>
+            <flux:text>{{ __('hata::media.folders.move_current', ['name' => $currentParentName ?? __('hata::media.folders.top_level')]) }}</flux:text>
         </div>
 
         @if (count($moveTargets) > 8)
-            <flux:input icon="magnifying-glass" clearable x-model="query" x-on:keydown.enter.prevent :placeholder="__('media.folders.move_search')" :aria-label="__('media.folders.move_search')" data-test="media-folder-move-search" />
+            <flux:input icon="magnifying-glass" clearable x-model="query" x-on:keydown.enter.prevent :placeholder="__('hata::media.folders.move_search')" :aria-label="__('hata::media.folders.move_search')" data-test="media-folder-move-search" />
         @endif
 
         <div
             role="radiogroup"
-            aria-label="{{ __('media.folders.move_target') }}"
+            aria-label="{{ __('hata::media.folders.move_target') }}"
             class="max-h-80 space-y-0.5 overflow-y-auto rounded-lg border border-zinc-200 p-1 dark:border-white/10"
             data-test="media-folder-move-list"
         >
             <label x-show="topShown" class="{{ $pickerRowClasses }}" x-on:dblclick="@if ($currentParentId !== null) choose('top') @endif" data-test="media-folder-move-top">
                 <input type="radio" name="move-folder-target" class="sr-only" wire:model="moveFolderTarget" value="top" @disabled($currentParentId === null) />
                 <flux:icon name="home" variant="outline" class="size-4 shrink-0 text-zinc-400" />
-                <span class="flex-1 truncate">{{ __('media.folders.top_level') }}</span>
+                <span class="flex-1 truncate">{{ __('hata::media.folders.top_level') }}</span>
                 @if ($currentParentId === null)
-                    <span class="text-xs text-zinc-400">{{ __('media.folders.move_is_current') }}</span>
+                    <span class="text-xs text-zinc-400">{{ __('hata::media.folders.move_is_current') }}</span>
                 @endif
                 <flux:icon name="check" variant="micro" class="hidden size-4 shrink-0 text-accent-content in-[label:has(:checked)]:block" />
             </label>
@@ -159,20 +159,20 @@
                     <flux:icon name="folder" variant="outline" class="size-4 shrink-0 text-zinc-400" />
                     <span class="flex-1 truncate" title="{{ $target['name'] }}">{{ $target['name'] }}</span>
                     @if ($isCurrentParent)
-                        <span class="text-xs text-zinc-400">{{ __('media.folders.move_is_current') }}</span>
+                        <span class="text-xs text-zinc-400">{{ __('hata::media.folders.move_is_current') }}</span>
                     @endif
                     <flux:icon name="check" variant="micro" class="hidden size-4 shrink-0 text-accent-content in-[label:has(:checked)]:block" />
                 </label>
             @endforeach
 
-            <p x-show="noMatches" x-cloak class="px-2.5 py-3 text-sm text-zinc-500">{{ __('media.folders.move_no_match') }}</p>
+            <p x-show="noMatches" x-cloak class="px-2.5 py-3 text-sm text-zinc-500">{{ __('hata::media.folders.move_no_match') }}</p>
         </div>
 
         <div class="flex justify-end gap-3">
             <flux:modal.close>
-                <flux:button variant="ghost">{{ __('common.actions.cancel') }}</flux:button>
+                <flux:button variant="ghost">{{ __('hata::common.actions.cancel') }}</flux:button>
             </flux:modal.close>
-            <flux:button type="submit" variant="primary" x-bind:disabled="$wire.moveFolderTarget === ''" data-test="media-folder-move-confirm">{{ __('media.folders.move_confirm') }}</flux:button>
+            <flux:button type="submit" variant="primary" x-bind:disabled="$wire.moveFolderTarget === ''" data-test="media-folder-move-confirm">{{ __('hata::media.folders.move_confirm') }}</flux:button>
         </div>
     </form>
 </flux:modal>
@@ -186,15 +186,15 @@
 <x-hata::confirm-modal
     wire:model.self="showFolderDeleteModal"
     wire:close="cancelPending"
-    :heading="__('media.folders.delete.heading', ['name' => $deletingFolder?->name])"
-    :confirm-label="__('media.folders.delete.confirm')"
+    :heading="__('hata::media.folders.delete.heading', ['name' => $deletingFolder?->name])"
+    :confirm-label="__('hata::media.folders.delete.confirm')"
     confirm-action="deleteFolder"
     :confirm-disabled="$needsName ? '$wire.confirmName.trim() !== '.Js::from($deletingFolder?->name) : null"
 >
     @if ($summary !== null)
-        {{ __('media.folders.delete.summary', [
-            'files' => trans_choice('media.index.file_count', $summary['files']),
-            'folders' => trans_choice('media.folders.delete.subfolders', $summary['folders'] - 1),
+        {{ __('hata::media.folders.delete.summary', [
+            'files' => trans_choice('hata::media.index.file_count', $summary['files']),
+            'folders' => trans_choice('hata::media.folders.delete.subfolders', $summary['folders'] - 1),
         ]) }}
     @endif
 
@@ -202,13 +202,13 @@
         <x-slot:extra>
             <div class="space-y-4">
                 @if ($summary['used'] > 0)
-                    <flux:callout variant="warning" icon="exclamation-triangle" :text="trans_choice('media.folders.delete.used', $summary['used'])" />
+                    <flux:callout variant="warning" icon="exclamation-triangle" :text="trans_choice('hata::media.folders.delete.used', $summary['used'])" />
                 @endif
 
                 @if ($needsName)
                     <flux:input
                         wire:model="confirmName"
-                        :label="__('media.folders.delete.type_name', ['name' => $deletingFolder?->name])"
+                        :label="__('hata::media.folders.delete.type_name', ['name' => $deletingFolder?->name])"
                         autocomplete="off"
                         data-test="media-folder-confirm-name"
                     />
@@ -226,25 +226,25 @@
 <x-hata::confirm-modal
     wire:model.self="showReplaceModal"
     wire:close="cancelPending"
-    :heading="__('media.replace.heading', ['name' => $replaceTarget?->name])"
-    :confirm-label="__('media.replace.confirm')"
+    :heading="__('hata::media.replace.heading', ['name' => $replaceTarget?->name])"
+    :confirm-label="__('hata::media.replace.confirm')"
     confirm-action="replaceConfirmed"
 >
-    {{ __('media.replace.body', ['new' => $this->replacement?->getClientOriginalName()]) }}
+    {{ __('hata::media.replace.body', ['new' => $this->replacement?->getClientOriginalName()]) }}
     @if ($replaceTarget)
-        {{ trans_choice('media.crop.confirm.body', $replaceTarget->usages_count) }}
+        {{ trans_choice('hata::media.crop.confirm.body', $replaceTarget->usages_count) }}
     @endif
 </x-hata::confirm-modal>
 
 <x-hata::confirm-modal
     wire:model.self="showRestoreModal"
     wire:close="cancelPending"
-    :heading="__('media.restore.heading', ['name' => $restoreTarget?->name])"
-    :confirm-label="__('media.restore.confirm')"
+    :heading="__('hata::media.restore.heading', ['name' => $restoreTarget?->name])"
+    :confirm-label="__('hata::media.restore.confirm')"
     confirm-action="restoreConfirmed"
 >
-    {{ __('media.restore.body') }}
+    {{ __('hata::media.restore.body') }}
     @if ($restoreTarget)
-        {{ trans_choice('media.crop.confirm.body', $restoreTarget->usages_count) }}
+        {{ trans_choice('hata::media.crop.confirm.body', $restoreTarget->usages_count) }}
     @endif
 </x-hata::confirm-modal>

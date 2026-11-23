@@ -26,13 +26,13 @@ class LinkTranslations
         Gate::forUser($actor)->authorize('update', $other);
 
         if ($entry->type !== $other->type || $entry->entry_group_id === $other->entry_group_id || $entry->trashed() || $other->trashed()) {
-            throw ProtectedActionException::because('content.link.invalid');
+            throw ProtectedActionException::because('hata::content.link.invalid');
         }
 
         try {
             DB::transaction(fn () => $this->link($entry, $other));
         } catch (UniqueConstraintViolationException) {
-            throw ProtectedActionException::because('content.link.overlap');
+            throw ProtectedActionException::because('hata::content.link.overlap');
         }
     }
 
@@ -54,11 +54,11 @@ class LinkTranslations
         // Either was linked, unlinked, moved to another language or trashed meanwhile.
         if ($mine === null || $theirs === null || $mine->trashed() || $theirs->trashed()
             || $mine->entry_group_id !== $entry->entry_group_id || $theirs->entry_group_id !== $other->entry_group_id) {
-            throw ProtectedActionException::because('content.link.invalid');
+            throw ProtectedActionException::because('hata::content.link.invalid');
         }
 
         if ($rows->where('entry_group_id', $mine->entry_group_id)->contains('locale', $theirs->locale)) {
-            throw ProtectedActionException::because('content.link.overlap');
+            throw ProtectedActionException::because('hata::content.link.overlap');
         }
 
         $left = $theirs->entry_group_id;

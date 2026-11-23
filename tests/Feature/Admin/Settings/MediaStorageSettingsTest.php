@@ -194,7 +194,7 @@ it('tests the connection with the unsaved form and shows the result', function (
     storageTab()
         ->set(s3FormInput())
         ->call('testStorageConnection')
-        ->assertSee(__('site_settings.media.storage.test_ok'));
+        ->assertSee(__('hata::site_settings.media.storage.test_ok'));
 });
 
 it('warns before changing the bucket, endpoint, prefix or public url while files are on s3', function (string $field, string $value) {
@@ -210,7 +210,7 @@ it('warns before changing the bucket, endpoint, prefix or public url while files
         ->set(s3FormInput([$field => $value, 'form.media_s3_secret' => '']))
         ->call('save')
         ->assertSet('showS3ChangeModal', true)
-        ->assertSee(__('site_settings.media.storage.change_heading'));
+        ->assertSee(__('hata::site_settings.media.storage.change_heading'));
 
     expect(config('filesystems.disks.s3.bucket'))->toBe('media-bucket');
 
@@ -258,7 +258,7 @@ it('says how many files are on the other disk', function () {
     config(['media.disk' => 'public']);
     Media::factory()->count(2)->create(['disk' => 's3']);
 
-    storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
+    storageTab()->assertSee(trans_choice('hata::site_settings.media.storage.other_disk', 2, ['count' => 2]));
 });
 
 it('does not count files that belong on the private disk as being on the other disk', function () {
@@ -275,7 +275,7 @@ it('counts rasters on the private disk and anything on s3 as being on the other 
     Media::factory()->create(['disk' => 'local']);
     Media::factory()->document()->create(['disk' => 's3']);
 
-    storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
+    storageTab()->assertSee(trans_choice('hata::site_settings.media.storage.other_disk', 2, ['count' => 2]));
 });
 
 it('links the files on the other disk to the move page for users who may move them', function () {
@@ -284,7 +284,7 @@ it('links the files on the other disk to the move page for users who may move th
 
     storageTab()
         ->assertSee(route('admin.media.move'), escape: false)
-        ->assertSee(__('site_settings.media.storage.move_link', ['storage' => __('site_settings.media.storage.public')]));
+        ->assertSee(__('hata::site_settings.media.storage.move_link', ['storage' => __('hata::site_settings.media.storage.public')]));
 
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.edit'])->create());
 
@@ -304,7 +304,7 @@ it('advertises no move while the private local mode from .env is in effect', fun
 it('counts the files on the other disk once, not on every update of the tab', function () {
     config(['media.disk' => 'public']);
     Media::factory()->count(2)->create(['disk' => 's3']);
-    $component = storageTab()->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
+    $component = storageTab()->assertSee(trans_choice('hata::site_settings.media.storage.other_disk', 2, ['count' => 2]));
 
     $counts = 0;
     DB::listen(function ($query) use (&$counts) {
@@ -313,7 +313,7 @@ it('counts the files on the other disk once, not on every update of the tab', fu
     });
 
     $component->set('form.media_quality', 70)->set('form.media_max_image_mb', 12)
-        ->assertSee(trans_choice('site_settings.media.storage.other_disk', 2, ['count' => 2]));
+        ->assertSee(trans_choice('hata::site_settings.media.storage.other_disk', 2, ['count' => 2]));
 
     expect($counts)->toBe(0);
 });
@@ -416,21 +416,21 @@ it('limits how often the connection can be tested', function () {
         $page->call('testStorageConnection');
     }
 
-    $page->assertSee(__('site_settings.media.storage.test_ok'))->call('testStorageConnection');
+    $page->assertSee(__('hata::site_settings.media.storage.test_ok'))->call('testStorageConnection');
 
     expect($page->get('storageTest')['ok'])->toBeFalse()
-        ->and($page->get('storageTest')['message'])->not->toBe(__('site_settings.media.storage.test_ok'))
-        ->and($page->get('storageTest')['message'])->toStartWith(Str::before(__('site_settings.media.storage.errors.rate_limited'), ':seconds'));
+        ->and($page->get('storageTest')['message'])->not->toBe(__('hata::site_settings.media.storage.test_ok'))
+        ->and($page->get('storageTest')['message'])->toStartWith(Str::before(__('hata::site_settings.media.storage.errors.rate_limited'), ':seconds'));
 });
 
 it('says whether the stored secret or only the server configuration provides the key', function () {
     config(['filesystems.disks.s3.secret' => 'from-env']);
     storageTab()->set('form.media_storage', 's3')
-        ->assertDontSee(__('site_settings.media.storage.secret_keep'))
-        ->assertSee(__('site_settings.media.storage.secret_env'));
+        ->assertDontSee(__('hata::site_settings.media.storage.secret_keep'))
+        ->assertSee(__('hata::site_settings.media.storage.secret_env'));
 
     app(SiteSettings::class)->put(['media_s3_secret' => 'stored']);
-    storageTab()->set('form.media_storage', 's3')->assertSee(__('site_settings.media.storage.secret_keep'));
+    storageTab()->set('form.media_storage', 's3')->assertSee(__('hata::site_settings.media.storage.secret_keep'));
 });
 
 it('shows the connection fields only for s3 or while files are on s3', function () {
@@ -493,7 +493,7 @@ describe('direct serving status', function () {
     it('names the probed address when the files are unreachable', function () {
         DirectServing::fake(state: 'unreachable');
 
-        storageTab()->assertSee(__('site_settings.media.storage.direct.unreachable', ['url' => app(DirectServing::class)->probeUrl()]));
+        storageTab()->assertSee(__('hata::site_settings.media.storage.direct.unreachable', ['url' => app(DirectServing::class)->probeUrl()]));
     });
 
     it('hides the status while the saved storage is not this server', function () {

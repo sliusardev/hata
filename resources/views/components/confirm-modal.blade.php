@@ -30,7 +30,7 @@
 
         <div class="flex justify-end gap-3">
             <flux:modal.close>
-                <flux:button variant="outline">{{ __('common.actions.cancel') }}</flux:button>
+                <flux:button variant="outline">{{ __('hata::common.actions.cancel') }}</flux:button>
             </flux:modal.close>
 
             @if ($confirmable)

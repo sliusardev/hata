@@ -51,7 +51,7 @@ it('lists only files of the accepted kind and marks other extensions as unusable
         ->assertDontSee('terms.pdf')
         ->assertSeeHtml('data-test="media-picker-tile-'.$photo->id.'"')
         ->assertSeeHtml('data-test="media-picker-tile-disabled-'.$gif->id.'"')
-        ->assertSee(__('media.picker.not_allowed'));
+        ->assertSee(__('hata::media.picker.not_allowed'));
 });
 
 it('keeps Enter in the search box from submitting a form around the picker', function () {
@@ -59,7 +59,7 @@ it('keeps Enter in the search box from submitting a form around the picker', fun
 
     $html = testPicker()->call('openPicker')->html();
 
-    expect(preg_match('/<input[^>]*x-on:keydown\.enter\.prevent[^>]*placeholder="'.preg_quote(__('media.picker.search'), '/').'"|<input[^>]*placeholder="'.preg_quote(__('media.picker.search'), '/').'"[^>]*x-on:keydown\.enter\.prevent/', $html))->toBe(1);
+    expect(preg_match('/<input[^>]*x-on:keydown\.enter\.prevent[^>]*placeholder="'.preg_quote(__('hata::media.picker.search'), '/').'"|<input[^>]*placeholder="'.preg_quote(__('hata::media.picker.search'), '/').'"[^>]*x-on:keydown\.enter\.prevent/', $html))->toBe(1);
 });
 
 it('narrows the library by search, month and folder and loads 30 files at a time', function () {
@@ -250,7 +250,7 @@ it('uploads into the open folder, selects the new file and switches to the libra
     $picker = testPicker()
         ->call('openPicker')
         ->set('folder', (string) $folder->id)
-        ->assertSee(__('media.picker.tabs.upload'))
+        ->assertSee(__('hata::media.picker.tabs.upload'))
         ->set('tab', 'upload')
         ->set('upload', UploadedFile::fake()->createWithContent('Logo.png', makeImage('png', 300, 120)))
         ->set('uploadFolderId', $folder->id)
@@ -276,7 +276,7 @@ it('refuses an upload outside the accepted kind or extensions', function (string
         ->set('upload', UploadedFile::fake()->createWithContent($name, $bytes()))
         ->call('storeUpload');
 
-    expect($picker->effects['returns'][0])->toBe(['ok' => false, 'error' => __('media.picker.not_allowed')])
+    expect($picker->effects['returns'][0])->toBe(['ok' => false, 'error' => __('hata::media.picker.not_allowed')])
         ->and(Media::query()->count())->toBe(0);
 
     $picker->assertSet('picked', []);
@@ -290,7 +290,7 @@ it('hides the upload tab and refuses uploads without media.upload', function () 
 
     testPicker()
         ->call('openPicker')
-        ->assertDontSee(__('media.picker.tabs.upload'))
+        ->assertDontSee(__('hata::media.picker.tabs.upload'))
         ->call('storeUpload')
         ->assertForbidden();
 
@@ -305,7 +305,7 @@ it('saves the primary alt text through the library and keeps other languages', f
         ->call('openPicker')
         ->call('pick', $image->id)
         ->assertSet('alt', 'Old')
-        ->assertSee(__('media.picker.alt_note'))
+        ->assertSee(__('hata::media.picker.alt_note'))
         ->set('alt', 'Company logo')
         ->call('saveAlt')
         ->assertHasNoErrors();
@@ -333,7 +333,7 @@ it('shows only the current choice and Remove without media.view', function () {
 
     testPicker(['value' => $image->id])
         ->assertSee($image->name)
-        ->assertSee(__('media.picker.needs_access'))
+        ->assertSee(__('hata::media.picker.needs_access'))
         ->assertDontSeeHtml('data-test="media-picker-open"')
         ->call('remove')
         ->assertSet('value', null);
@@ -492,7 +492,7 @@ it('renders only the modal in detached mode, listening for the open event', func
         ->assertSeeHtml('x-on:media-picker:open.window')
         ->assertDontSeeHtml('data-test="media-picker-open"')
         ->assertDontSeeHtml('data-test="media-picker-chosen"')
-        ->assertDontSee(__('media.picker.none'))
+        ->assertDontSee(__('hata::media.picker.none'))
         ->assertDontSee($image->name);
 });
 

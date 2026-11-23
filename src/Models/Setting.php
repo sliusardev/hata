@@ -36,7 +36,7 @@ class Setting extends Model implements UsesMedia
 
     public function mediaUsageLabel(string $field): string
     {
-        return $field === 'logo_dark' ? __('site_settings.logo.usage_dark') : __('site_settings.logo.usage_light');
+        return $field === 'logo_dark' ? __('hata::site_settings.logo.usage_dark') : __('hata::site_settings.logo.usage_light');
     }
 
     public function mediaUsageUrl(string $field, ?User $viewer): ?string

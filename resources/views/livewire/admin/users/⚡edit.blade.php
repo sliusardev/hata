@@ -16,7 +16,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('hata::layouts.app')] #[Title('users.edit.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::users.edit.title')] class extends Component {
     #[Locked]
     public User $user;
 
@@ -73,7 +73,7 @@ new #[Layout('hata::layouts.app')] #[Title('users.edit.title')] class extends Co
             return;
         }
 
-        Toast::success(__('users.messages.updated'));
+        Toast::success(__('hata::users.messages.updated'));
 
         $this->redirectRoute('admin.users.index', navigate: true);
     }
@@ -91,7 +91,7 @@ new #[Layout('hata::layouts.app')] #[Title('users.edit.title')] class extends Co
             return;
         }
 
-        Toast::success(__('users.messages.deleted'));
+        Toast::success(__('hata::users.messages.deleted'));
 
         $this->redirectRoute('admin.users.index', navigate: true);
     }
@@ -100,9 +100,9 @@ new #[Layout('hata::layouts.app')] #[Title('users.edit.title')] class extends Co
 <section class="w-full max-w-2xl space-y-6">
     <div>
         <flux:button variant="ghost" size="sm" icon="arrow-left" :href="route('admin.users.index')" wire:navigate class="-ms-2 mb-2">
-            {{ __('users.index.title') }}
+            {{ __('hata::users.index.title') }}
         </flux:button>
-        <flux:heading size="xl" level="1">{{ __('users.edit.title') }}</flux:heading>
+        <flux:heading size="xl" level="1">{{ __('hata::users.edit.title') }}</flux:heading>
         <flux:subheading>{{ $user->name }} · {{ $user->email }}</flux:subheading>
     </div>
 
@@ -118,14 +118,14 @@ new #[Layout('hata::layouts.app')] #[Title('users.edit.title')] class extends Co
             <div>
                 @if ($this->canDelete)
                     <flux:button variant="danger" icon="trash" wire:click="$set('showDeleteModal', true)" data-test="delete-user-button">
-                        {{ __('users.delete.submit') }}
+                        {{ __('hata::users.delete.submit') }}
                     </flux:button>
                 @endif
             </div>
 
             <div class="flex gap-3">
-                <flux:button variant="ghost" :href="route('admin.users.index')" wire:navigate>{{ __('common.actions.cancel') }}</flux:button>
-                <flux:button variant="primary" type="submit" data-test="save-user-button">{{ __('users.edit.submit') }}</flux:button>
+                <flux:button variant="ghost" :href="route('admin.users.index')" wire:navigate>{{ __('hata::common.actions.cancel') }}</flux:button>
+                <flux:button variant="primary" type="submit" data-test="save-user-button">{{ __('hata::users.edit.submit') }}</flux:button>
             </div>
         </div>
     </form>
@@ -133,11 +133,11 @@ new #[Layout('hata::layouts.app')] #[Title('users.edit.title')] class extends Co
     @if ($this->canDelete)
         <x-hata::confirm-modal
             wire:model.self="showDeleteModal"
-            :heading="__('users.delete.title')"
-            :confirm-label="__('users.delete.submit')"
+            :heading="__('hata::users.delete.title')"
+            :confirm-label="__('hata::users.delete.submit')"
             confirm-action="deleteUser"
         >
-            {{ __('users.delete.confirm', ['name' => $user->name]) }}
+            {{ __('hata::users.delete.confirm', ['name' => $user->name]) }}
         </x-hata::confirm-modal>
     @endif
 </section>

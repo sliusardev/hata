@@ -31,14 +31,14 @@ final class UploaderConfig
             'uploadCap' => app(ServerCapabilities::class)->uploadCapBytes(),
             'locale' => str_replace('_', '-', app()->getLocale()),
             'texts' => [
-                'too_large' => __('media.errors.too_large'),
-                'unsupported' => __('media.errors.unsupported'),
-                'failed' => __('media.upload.failed'),
-                'title' => __('media.upload.title'),
-                'waiting' => __('media.upload.waiting'),
-                'preparing' => __('media.upload.preparing'),
-                'progress' => __('media.upload.progress'),
-                'compressing' => __('media.upload.compressing'),
+                'too_large' => __('hata::media.errors.too_large'),
+                'unsupported' => __('hata::media.errors.unsupported'),
+                'failed' => __('hata::media.upload.failed'),
+                'title' => __('hata::media.upload.title'),
+                'waiting' => __('hata::media.upload.waiting'),
+                'preparing' => __('hata::media.upload.preparing'),
+                'progress' => __('hata::media.upload.progress'),
+                'compressing' => __('hata::media.upload.compressing'),
             ],
         ];
     }

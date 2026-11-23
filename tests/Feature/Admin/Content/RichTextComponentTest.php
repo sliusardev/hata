@@ -28,7 +28,7 @@ it('binds to the wire:model property without putting wire:model on the page', fu
         ->assertSee('wire:ignore', false)
         ->assertSee('data-test="rich-text-image"', false)
         ->assertSee('role="toolbar"', false)
-        ->assertSee(__('content.editor.bold'));
+        ->assertSee(__('hata::content.editor.bold'));
 
     expect(richTextConfig((string) $view))->toBe([
         'model' => 'form.body',

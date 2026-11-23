@@ -31,8 +31,8 @@ it('bulk deletes after confirmation', function () {
         ->call('confirmBulkDelete')
         ->assertSet('showDeleteModal', true)
         ->assertSet('deletingIds', [$first->id, $second->id])
-        ->assertSee(__('media.delete.body_many', ['files' => trans_choice('media.index.file_count', 2)]))
-        ->assertSee(trans_choice('media.delete.used_files', 1, ['total' => 2]));
+        ->assertSee(__('hata::media.delete.body_many', ['files' => trans_choice('hata::media.index.file_count', 2)]))
+        ->assertSee(trans_choice('hata::media.delete.used_files', 1, ['total' => 2]));
 
     $this->assertModelExists($first);
 
@@ -163,7 +163,7 @@ it('lets the browser pick the dragged ids, with the "N files" forms rendered onc
     $dragging = fn (int $id): string => 'mediaDragStart($event, '.$id.', $wire)';
     $labels = e(json_encode([
         'locale' => app()->getLocale(),
-        'forms' => collect([1, 2, 5])->mapWithKeys(fn (int $count) => [$count => trans_choice('media.bulk.dragging', $count, ['count' => ':count'])])->all(),
+        'forms' => collect([1, 2, 5])->mapWithKeys(fn (int $count) => [$count => trans_choice('hata::media.bulk.dragging', $count, ['count' => ':count'])])->all(),
     ]));
 
     foreach (['grid', 'list'] as $view) {
@@ -290,7 +290,7 @@ it('moves nothing from the bulk bar without media.edit', function () {
         ->set('selected', [$media->id])
         ->call('moveSelected', $folder->id)
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
-            && ($params['slots']['text'] ?? null) === __('media.errors.forbidden'))
+            && ($params['slots']['text'] ?? null) === __('hata::media.errors.forbidden'))
         ->assertSet('selected', [$media->id]);
 
     expect($media->refresh()->folder_id)->toBeNull();

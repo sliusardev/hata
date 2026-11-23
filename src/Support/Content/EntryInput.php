@@ -138,7 +138,7 @@ final class EntryInput
                     $newParent = $parent($value);
 
                     if ($newParent === null) {
-                        $fail('content.entry.parent_invalid')->translate();
+                        $fail('hata::content.entry.parent_invalid')->translate();
 
                         return;
                     }
@@ -148,7 +148,7 @@ final class EntryInput
 
                     if ($entry?->exists && is_string($slug) && $slug === $entry->getOriginal('slug')
                         && self::descendantsTooLong($type, $entry, $newParent, $slug)) {
-                        $fail('content.entry.descendants_too_long')->translate(['max' => EntrySlug::MAX_PATH]);
+                        $fail('hata::content.entry.descendants_too_long')->translate(['max' => EntrySlug::MAX_PATH]);
                     }
                 })]
                 : ['prohibited'],
@@ -157,7 +157,7 @@ final class EntryInput
                 $isCurrent = $entry?->author_id !== null && $entry->author_id === $id;
 
                 if (! $isCurrent && ! EntryAuthors::query($type)->whereKey($id)->exists()) {
-                    $fail('content.entry.author_invalid')->translate();
+                    $fail('hata::content.entry.author_invalid')->translate();
                 }
             }],
             'image_id' => ['nullable', new MediaSelection('image')],
@@ -168,7 +168,7 @@ final class EntryInput
             'seo_description' => ['nullable', 'string', 'max:500'],
             'body' => ['nullable', 'string', function (string $attribute, mixed $value, Closure $fail): void {
                 if (is_string($value) && strlen($value) > self::BODY_MAX_BYTES) {
-                    $fail('content.entry.body_too_long')->translate();
+                    $fail('hata::content.entry.body_too_long')->translate();
                 }
             }],
             'fields' => ['nullable', 'array'],
@@ -187,7 +187,7 @@ final class EntryInput
                     ->count();
 
                 if ($found !== count($ids)) {
-                    $fail('content.entry.terms_invalid')->translate();
+                    $fail('hata::content.entry.terms_invalid')->translate();
                 }
             }],
             'terms.*' => ['integer'],
@@ -265,7 +265,7 @@ final class EntryInput
 
             if (! $failed && $entry?->exists && is_string($value) && $value !== $entry->getOriginal('slug')
                 && self::descendantsTooLong($type, $entry, $newParent, $value)) {
-                $fail('content.slug.descendants_too_long')->translate(['max' => EntrySlug::MAX_PATH]);
+                $fail('hata::content.slug.descendants_too_long')->translate(['max' => EntrySlug::MAX_PATH]);
             }
         });
     }

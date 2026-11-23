@@ -55,7 +55,7 @@ it('refuses to restore without an original', function (?string $original) {
         app(RestoreOriginal::class)->handle($this->actor, $media);
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
-        expect($e->errors()['original'])->toBe([__('media.errors.no_original')]);
+        expect($e->errors()['original'])->toBe([__('hata::media.errors.no_original')]);
     }
 })->with([null]);
 

@@ -72,7 +72,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                 @if ($tabKey === 'trash')
                     <flux:icon.trash variant="micro" class="text-zinc-400" />
                 @endif
-                {{ __('content.list.tabs.'.$tabKey) }}
+                {{ __('hata::content.list.tabs.'.$tabKey) }}
                 <span class="text-zinc-400 tabular-nums dark:text-zinc-500">{{ $counts[$tabKey] }}</span>
             </button>
         @endforeach
@@ -83,19 +83,19 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
         <flux:input
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
-            :placeholder="__('content.list.search')"
-            :aria-label="__('content.list.search')"
+            :placeholder="__('hata::content.list.search')"
+            :aria-label="__('hata::content.list.search')"
             :maxlength="$this::SEARCH_MAX"
             clearable
             class="sm:max-w-xs"
         />
 
         @if ($this->multilingual)
-            <flux:select wire:model.live="locale" :aria-label="__('content.list.locale')" class="sm:max-w-52" data-test="list-locale">
-                <flux:select.option value="">{{ __('content.list.locale_all') }}</flux:select.option>
+            <flux:select wire:model.live="locale" :aria-label="__('hata::content.list.locale')" class="sm:max-w-52" data-test="list-locale">
+                <flux:select.option value="">{{ __('hata::content.list.locale_all') }}</flux:select.option>
                 @foreach ($this->languages as $language)
                     <flux:select.option :value="$language->code" wire:key="locale-{{ $language->code }}">
-                        {{ __('content.list.locale_option', ['name' => $language->native]) }}{{ in_array($language->code, $activeCodes, true) ? '' : ' ('.__('content.list.off').')' }}
+                        {{ __('hata::content.list.locale_option', ['name' => $language->native]) }}{{ in_array($language->code, $activeCodes, true) ? '' : ' ('.__('hata::content.list.off').')' }}
                     </flux:select.option>
                 @endforeach
             </flux:select>
@@ -104,7 +104,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
         {{-- A filter per taxonomy of the type; chosen together they narrow the list to records under all of them. --}}
         @foreach ($this->termFilterOptions as $taxonomyKey => $options)
             <flux:select wire:model.live="termFilter.{{ $taxonomyKey }}" :aria-label="$taxonomies[$taxonomyKey]->pluralLabel()" class="sm:max-w-52" wire:key="term-filter-{{ $taxonomyKey }}" data-test="list-term-{{ $taxonomyKey }}">
-                <flux:select.option value="">{{ __('content.list.term_all', ['taxonomy' => $taxonomies[$taxonomyKey]->pluralLabel()]) }}</flux:select.option>
+                <flux:select.option value="">{{ __('hata::content.list.term_all', ['taxonomy' => $taxonomies[$taxonomyKey]->pluralLabel()]) }}</flux:select.option>
                 @foreach ($options as $option)
                     <flux:select.option :value="(string) $option['id']" wire:key="term-option-{{ $option['id'] }}">{{ $option['label'] }}</flux:select.option>
                 @endforeach
@@ -113,26 +113,26 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
 
         @if ($inTrash && $abilities['delete'] && $counts['trash'] > 0)
             <flux:button variant="danger" size="sm" icon="trash" x-on:click="$wire.confirmBulk('empty')" class="sm:ms-auto" data-test="empty-trash">
-                {{ __('content.list.bulk.empty_trash') }}
+                {{ __('hata::content.list.bulk.empty_trash') }}
             </flux:button>
         @endif
 
         @if ($contentType->hierarchical() && $sort !== '' && ! $inTrash)
             <flux:button variant="ghost" size="sm" icon="bars-3-bottom-left" wire:click="resetSort" class="sm:ms-auto">
-                {{ __('content.list.tree_order') }}
+                {{ __('hata::content.list.tree_order') }}
             </flux:button>
         @endif
     </div>
 
     @if ($this->entries->isEmpty())
         @if ($this->isFiltered())
-            <x-hata::admin.empty-state icon="magnifying-glass" :heading="__('content.list.no_results.title')" :description="__('content.list.no_results.description')">
-                <flux:button size="sm" class="mt-4" wire:click="clearFilters">{{ __('content.list.no_results.clear') }}</flux:button>
+            <x-hata::admin.empty-state icon="magnifying-glass" :heading="__('hata::content.list.no_results.title')" :description="__('hata::content.list.no_results.description')">
+                <flux:button size="sm" class="mt-4" wire:click="clearFilters">{{ __('hata::content.list.no_results.clear') }}</flux:button>
             </x-hata::admin.empty-state>
         @elseif ($inTrash)
-            <x-hata::admin.empty-state icon="trash" :heading="__('content.list.empty_trash.title')" :description="trans_choice('content.list.empty_trash.description', $trashDays)" />
+            <x-hata::admin.empty-state icon="trash" :heading="__('hata::content.list.empty_trash.title')" :description="trans_choice('hata::content.list.empty_trash.description', $trashDays)" />
         @elseif ($tab === 'all' && $counts['all'] === 0)
-            <x-hata::admin.empty-state :icon="$contentType->icon()" :heading="__('content.list.empty.title')" :description="__('content.list.empty.description')">
+            <x-hata::admin.empty-state :icon="$contentType->icon()" :heading="__('hata::content.list.empty.title')" :description="__('hata::content.list.empty.description')">
                 @if ($abilities['create'])
                     <flux:button variant="primary" size="sm" icon="plus" class="mt-4" :href="route('admin.content.create', ['type' => $type])" wire:navigate>
                         {{ $contentType->createLabel() }}
@@ -140,7 +140,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                 @endif
             </x-hata::admin.empty-state>
         @else
-            <x-hata::admin.empty-state icon="funnel" :heading="__('content.list.empty_tab.title')" :description="__('content.list.empty_tab.description')" />
+            <x-hata::admin.empty-state icon="funnel" :heading="__('hata::content.list.empty_tab.title')" :description="__('hata::content.list.empty_tab.description')" />
         @endif
     @else
         <div class="rounded-xl border border-zinc-200 bg-white px-4 shadow-xs dark:border-zinc-700 dark:bg-zinc-900/40">
@@ -148,32 +148,32 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                 <flux:table.columns>
                     @if ($selectable)
                         <flux:table.column class="w-8">
-                            <input type="checkbox" class="{{ $checkbox }}" x-bind:checked="allPicked()" x-on:change="pickAll($event.target.checked)" aria-label="{{ __('content.list.bulk.select_all') }}" data-test="select-all" />
+                            <input type="checkbox" class="{{ $checkbox }}" x-bind:checked="allPicked()" x-on:change="pickAll($event.target.checked)" aria-label="{{ __('hata::content.list.bulk.select_all') }}" data-test="select-all" />
                         </flux:table.column>
                     @endif
                     @if ($inTrash)
-                        <flux:table.column>{{ __('content.list.columns.title') }}</flux:table.column>
+                        <flux:table.column>{{ __('hata::content.list.columns.title') }}</flux:table.column>
                     @else
-                        <flux:table.column sortable :sorted="$this->sortColumn() === 'title'" :direction="$this->sortDirection()" wire:click="sort('title')">{{ __('content.list.columns.title') }}</flux:table.column>
+                        <flux:table.column sortable :sorted="$this->sortColumn() === 'title'" :direction="$this->sortDirection()" wire:click="sort('title')">{{ __('hata::content.list.columns.title') }}</flux:table.column>
                     @endif
                     @if ($taxonomies !== [])
                         <flux:table.column class="max-lg:hidden">{{ implode(' / ', array_map(fn ($taxonomy) => $taxonomy->pluralLabel(), $taxonomies)) }}</flux:table.column>
                     @endif
                     @if ($contentType->isTaxonomy())
-                        <flux:table.column class="max-md:hidden">{{ __('content.list.columns.records') }}</flux:table.column>
+                        <flux:table.column class="max-md:hidden">{{ __('hata::content.list.columns.records') }}</flux:table.column>
                     @endif
                     @if (! $inTrash && $publishes)
-                        <flux:table.column class="max-md:hidden">{{ __('content.list.columns.status') }}</flux:table.column>
+                        <flux:table.column class="max-md:hidden">{{ __('hata::content.list.columns.status') }}</flux:table.column>
                     @endif
                     @if ($contentType->supports('author'))
-                        <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.author') }}</flux:table.column>
+                        <flux:table.column class="max-lg:hidden">{{ __('hata::content.list.columns.author') }}</flux:table.column>
                     @endif
                     @if ($inTrash)
-                        <flux:table.column class="max-lg:hidden">{{ __('content.list.columns.removal') }}</flux:table.column>
+                        <flux:table.column class="max-lg:hidden">{{ __('hata::content.list.columns.removal') }}</flux:table.column>
                     @else
-                        <flux:table.column sortable :sorted="$this->sortColumn() === 'date'" :direction="$this->sortDirection()" wire:click="sort('date')" class="max-lg:hidden">{{ __('content.list.columns.date') }}</flux:table.column>
+                        <flux:table.column sortable :sorted="$this->sortColumn() === 'date'" :direction="$this->sortDirection()" wire:click="sort('date')" class="max-lg:hidden">{{ __('hata::content.list.columns.date') }}</flux:table.column>
                     @endif
-                    <flux:table.column align="end"><span class="sr-only">{{ __('content.list.columns.actions') }}</span></flux:table.column>
+                    <flux:table.column align="end"><span class="sr-only">{{ __('hata::content.list.columns.actions') }}</span></flux:table.column>
                 </flux:table.columns>
 
                 <flux:table.rows>
@@ -188,12 +188,12 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                                 Hata\Enums\EntryState::Scheduled => 'sky',
                                 default => 'zinc',
                             };
-                            $stateLabel = __('content.list.state.'.strtolower($state->name));
+                            $stateLabel = __('hata::content.list.state.'.strtolower($state->name));
                         @endphp
                         <flux:table.row :key="$entry->id">
                             @if ($selectable)
                                 <flux:table.cell class="w-8">
-                                    <input type="checkbox" class="{{ $checkbox }}" value="{{ $entry->id }}" x-model="$wire.selected" data-row-check aria-label="{{ __('content.list.bulk.select', ['title' => $entry->title]) }}" data-test="select-entry-{{ $entry->id }}" />
+                                    <input type="checkbox" class="{{ $checkbox }}" value="{{ $entry->id }}" x-model="$wire.selected" data-row-check aria-label="{{ __('hata::content.list.bulk.select', ['title' => $entry->title]) }}" data-test="select-entry-{{ $entry->id }}" />
                                 </flux:table.cell>
                             @endif
                             <flux:table.cell>
@@ -204,7 +204,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                                     @if ($thumb)
                                         <img src="{{ $thumb }}" alt="" loading="lazy" decoding="async" class="size-10 shrink-0 rounded-md bg-zinc-100 object-cover dark:bg-zinc-700" />
                                     @else
-                                        <div class="flex size-10 shrink-0 items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-700/60" title="{{ __('content.list.no_image') }}">
+                                        <div class="flex size-10 shrink-0 items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-700/60" title="{{ __('hata::content.list.no_image') }}">
                                             <flux:icon.photo variant="micro" class="text-zinc-300 dark:text-zinc-500" />
                                         </div>
                                     @endif
@@ -234,7 +234,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                                             </div>
                                         @endif
                                         @if ($inTrash)
-                                            <div class="text-xs text-zinc-500 lg:hidden dark:text-zinc-400">{{ __('content.list.removed_on', ['date' => $entry->deleted_at->copy()->addDays($trashDays)->tz($timezone)->isoFormat('LL')]) }}</div>
+                                            <div class="text-xs text-zinc-500 lg:hidden dark:text-zinc-400">{{ __('hata::content.list.removed_on', ['date' => $entry->deleted_at->copy()->addDays($trashDays)->tz($timezone)->isoFormat('LL')]) }}</div>
                                         @endif
                                     </div>
                                 </div>
@@ -268,7 +268,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
 
                             <flux:table.cell class="max-lg:hidden">
                                 @if ($inTrash)
-                                    {{ __('content.list.removed_on', ['date' => $entry->deleted_at->copy()->addDays($trashDays)->tz($timezone)->isoFormat('LL')]) }}
+                                    {{ __('hata::content.list.removed_on', ['date' => $entry->deleted_at->copy()->addDays($trashDays)->tz($timezone)->isoFormat('LL')]) }}
                                 @else
                                     {{ ($entry->published_at ?? $entry->created_at)?->tz($timezone)->isoFormat('LL') }}
                                 @endif
@@ -278,33 +278,33 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                                 <x-hata::admin.row-actions data-test="entry-actions-{{ $entry->id }}">
                                     @if ($inTrash)
                                         @if ($abilities['edit'])
-                                            <flux:menu.item icon="arrow-uturn-left" wire:click="restore({{ $entry->id }})" data-test="restore-entry-{{ $entry->id }}">{{ __('content.list.actions.restore') }}</flux:menu.item>
+                                            <flux:menu.item icon="arrow-uturn-left" wire:click="restore({{ $entry->id }})" data-test="restore-entry-{{ $entry->id }}">{{ __('hata::content.list.actions.restore') }}</flux:menu.item>
                                         @endif
                                         @if ($abilities['delete'])
-                                            <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $entry->id }})" data-test="delete-entry-{{ $entry->id }}">{{ __('content.list.actions.delete') }}</flux:menu.item>
+                                            <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $entry->id }})" data-test="delete-entry-{{ $entry->id }}">{{ __('hata::content.list.actions.delete') }}</flux:menu.item>
                                         @endif
                                     @else
                                         @if ($abilities['edit'])
-                                            <flux:menu.item icon="pencil-square" :href="$editUrl" wire:navigate data-test="edit-entry-menu-{{ $entry->id }}">{{ __('common.actions.edit') }}</flux:menu.item>
+                                            <flux:menu.item icon="pencil-square" :href="$editUrl" wire:navigate data-test="edit-entry-menu-{{ $entry->id }}">{{ __('hata::common.actions.edit') }}</flux:menu.item>
                                         @endif
                                         @if ($abilities['edit'] && $publishes)
                                             @if ($state !== Hata\Enums\EntryState::Published)
-                                                <flux:menu.item icon="eye" wire:click="setStatus({{ $entry->id }}, 'published')" data-test="publish-entry-{{ $entry->id }}">{{ __('content.list.actions.publish') }}</flux:menu.item>
+                                                <flux:menu.item icon="eye" wire:click="setStatus({{ $entry->id }}, 'published')" data-test="publish-entry-{{ $entry->id }}">{{ __('hata::content.list.actions.publish') }}</flux:menu.item>
                                             @endif
                                             @if ($state !== Hata\Enums\EntryState::Draft)
-                                                <flux:menu.item icon="eye-slash" wire:click="setStatus({{ $entry->id }}, 'draft')" data-test="unpublish-entry-{{ $entry->id }}">{{ __('content.list.actions.unpublish') }}</flux:menu.item>
+                                                <flux:menu.item icon="eye-slash" wire:click="setStatus({{ $entry->id }}, 'draft')" data-test="unpublish-entry-{{ $entry->id }}">{{ __('hata::content.list.actions.unpublish') }}</flux:menu.item>
                                             @endif
                                         @endif
                                         @if ($entry->isPublic())
                                             @if (in_array($entry->locale, $activeCodes, true))
-                                                <flux:menu.item icon="arrow-top-right-on-square" :href="$entry->url()" target="_blank" data-test="view-entry-{{ $entry->id }}">{{ __('content.list.actions.view') }}</flux:menu.item>
+                                                <flux:menu.item icon="arrow-top-right-on-square" :href="$entry->url()" target="_blank" data-test="view-entry-{{ $entry->id }}">{{ __('hata::content.list.actions.view') }}</flux:menu.item>
                                             @else
-                                                <p class="max-w-60 px-2 py-1.5 text-xs text-zinc-500 dark:text-zinc-400" data-test="language-off-note-{{ $entry->id }}">{{ __('content.form.language_off') }}</p>
+                                                <p class="max-w-60 px-2 py-1.5 text-xs text-zinc-500 dark:text-zinc-400" data-test="language-off-note-{{ $entry->id }}">{{ __('hata::content.form.language_off') }}</p>
                                             @endif
                                         @endif
                                         @if ($abilities['delete'])
                                             <flux:menu.separator />
-                                            <flux:menu.item variant="danger" icon="trash" wire:click="confirmTrash({{ $entry->id }})" data-test="trash-entry-{{ $entry->id }}">{{ __('content.list.actions.trash') }}</flux:menu.item>
+                                            <flux:menu.item variant="danger" icon="trash" wire:click="confirmTrash({{ $entry->id }})" data-test="trash-entry-{{ $entry->id }}">{{ __('hata::content.list.actions.trash') }}</flux:menu.item>
                                         @endif
                                     @endif
                                 </x-hata::admin.row-actions>
@@ -318,26 +318,26 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
         {{-- Under the table and stuck to the bottom of the window, so showing it never moves the rows. --}}
         @if ($selectable)
             <div x-cloak x-show="$wire.selected.length > 0" class="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" data-test="bulk-bar">
-                <span class="text-sm font-medium text-zinc-900 dark:text-white">{{ __('content.list.bulk.selected') }} <span class="tabular-nums" x-text="$wire.selected.length"></span></span>
+                <span class="text-sm font-medium text-zinc-900 dark:text-white">{{ __('hata::content.list.bulk.selected') }} <span class="tabular-nums" x-text="$wire.selected.length"></span></span>
 
                 <div class="flex flex-wrap items-center gap-2 sm:ms-auto">
                     @if ($inTrash)
                         @if ($abilities['edit'])
-                            <flux:button size="sm" icon="arrow-uturn-left" x-on:click="$wire.restoreSelected()" data-test="bulk-restore">{{ __('content.list.actions.restore') }}</flux:button>
+                            <flux:button size="sm" icon="arrow-uturn-left" x-on:click="$wire.restoreSelected()" data-test="bulk-restore">{{ __('hata::content.list.actions.restore') }}</flux:button>
                         @endif
                         @if ($abilities['delete'])
-                            <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('delete')" data-test="bulk-delete">{{ __('content.list.actions.delete') }}</flux:button>
+                            <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('delete')" data-test="bulk-delete">{{ __('hata::content.list.actions.delete') }}</flux:button>
                         @endif
                     @else
                         @if ($abilities['edit'] && $publishes)
-                            <flux:button size="sm" icon="eye" x-on:click="$wire.setStatusSelected('published')" data-test="bulk-publish">{{ __('content.list.actions.publish') }}</flux:button>
-                            <flux:button size="sm" icon="eye-slash" x-on:click="$wire.setStatusSelected('draft')" data-test="bulk-unpublish">{{ __('content.list.actions.unpublish') }}</flux:button>
+                            <flux:button size="sm" icon="eye" x-on:click="$wire.setStatusSelected('published')" data-test="bulk-publish">{{ __('hata::content.list.actions.publish') }}</flux:button>
+                            <flux:button size="sm" icon="eye-slash" x-on:click="$wire.setStatusSelected('draft')" data-test="bulk-unpublish">{{ __('hata::content.list.actions.unpublish') }}</flux:button>
                         @endif
                         @if ($abilities['delete'])
-                            <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('trash')" data-test="bulk-trash">{{ __('content.list.actions.trash') }}</flux:button>
+                            <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('trash')" data-test="bulk-trash">{{ __('hata::content.list.actions.trash') }}</flux:button>
                         @endif
                     @endif
-                    <flux:button size="sm" variant="ghost" x-on:click="$wire.selected = []">{{ __('content.list.bulk.clear') }}</flux:button>
+                    <flux:button size="sm" variant="ghost" x-on:click="$wire.selected = []">{{ __('hata::content.list.bulk.clear') }}</flux:button>
                 </div>
             </div>
         @endif
@@ -345,43 +345,43 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
 
     <x-hata::confirm-modal
         wire:model.self="showTrashModal"
-        :heading="__('content.list.trash.title')"
-        :confirm-label="__('content.list.trash.submit')"
+        :heading="__('hata::content.list.trash.title')"
+        :confirm-label="__('hata::content.list.trash.submit')"
         confirm-action="trash"
     >
         @if ($trashingChildren > 0)
-            {{ trans_choice('content.list.trash.confirm_children', $trashingChildren, ['title' => $this->trashingEntry?->title]) }}
+            {{ trans_choice('hata::content.list.trash.confirm_children', $trashingChildren, ['title' => $this->trashingEntry?->title]) }}
         @else
-            {{ trans_choice('content.list.trash.confirm', $trashDays, ['title' => $this->trashingEntry?->title]) }}
+            {{ trans_choice('hata::content.list.trash.confirm', $trashDays, ['title' => $this->trashingEntry?->title]) }}
         @endif
     </x-hata::confirm-modal>
 
     <x-hata::confirm-modal
         wire:model.self="showDeleteModal"
-        :heading="__('content.list.delete.title')"
-        :confirm-label="__('content.list.delete.submit')"
+        :heading="__('hata::content.list.delete.title')"
+        :confirm-label="__('hata::content.list.delete.submit')"
         confirm-action="deleteForGood"
     >
         @if ($deletingChildren > 0)
-            {{ trans_choice('content.list.delete.confirm_children', $deletingChildren, ['title' => $this->deletingEntry?->title]) }}
+            {{ trans_choice('hata::content.list.delete.confirm_children', $deletingChildren, ['title' => $this->deletingEntry?->title]) }}
         @else
-            {{ __('content.list.delete.confirm', ['title' => $this->deletingEntry?->title]) }}
+            {{ __('hata::content.list.delete.confirm', ['title' => $this->deletingEntry?->title]) }}
         @endif
     </x-hata::confirm-modal>
 
     <x-hata::confirm-modal
         wire:model.self="showBulkModal"
-        :heading="$bulkAction === 'trash' ? __('content.list.trash.title') : ($bulkAction === 'empty' ? __('content.list.bulk.empty_title') : __('content.list.delete.title'))"
-        :confirm-label="$bulkAction === 'trash' ? __('content.list.trash.submit') : ($bulkAction === 'empty' ? __('content.list.bulk.empty_trash') : __('content.list.delete.submit'))"
+        :heading="$bulkAction === 'trash' ? __('hata::content.list.trash.title') : ($bulkAction === 'empty' ? __('hata::content.list.bulk.empty_title') : __('hata::content.list.delete.title'))"
+        :confirm-label="$bulkAction === 'trash' ? __('hata::content.list.trash.submit') : ($bulkAction === 'empty' ? __('hata::content.list.bulk.empty_trash') : __('hata::content.list.delete.submit'))"
         confirm-action="runBulk"
         data-test="bulk-modal"
     >
         @if ($bulkAction === 'trash')
-            {{ trans_choice('content.list.bulk.trash_confirm', $bulkCount, ['days' => $trashDays]) }}
+            {{ trans_choice('hata::content.list.bulk.trash_confirm', $bulkCount, ['days' => $trashDays]) }}
         @elseif ($bulkAction === 'empty')
-            {{ trans_choice('content.list.bulk.empty_confirm', $bulkCount) }}
+            {{ trans_choice('hata::content.list.bulk.empty_confirm', $bulkCount) }}
         @else
-            {{ trans_choice('content.list.bulk.delete_confirm', $bulkCount) }}
+            {{ trans_choice('hata::content.list.bulk.delete_confirm', $bulkCount) }}
         @endif
     </x-hata::confirm-modal>
 </section>

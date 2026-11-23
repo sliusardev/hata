@@ -41,7 +41,7 @@ it('stores an uploaded file through the component and returns its tile data', fu
     $result = $component->effects['returns'][0];
 
     expect($result)->toMatchArray(['ok' => true, 'id' => $media->id, 'name' => 'hero-photo.webp'])
-        ->and($result['meta'])->toBe(__('media.upload.done_compressed', [
+        ->and($result['meta'])->toBe(__('hata::media.upload.done_compressed', [
             'before' => Media::formatBytes(9_000_000),
             'after' => $media->humanSize(),
         ]))
@@ -63,7 +63,7 @@ it('returns the error text for a rejected file', function () {
 
     expect($component->effects['returns'][0])->toBe([
         'ok' => false,
-        'error' => __('media.errors.unsupported', ['name' => 'x.psd']),
+        'error' => __('hata::media.errors.unsupported', ['name' => 'x.psd']),
     ])->and(Media::query()->count())->toBe(0);
 });
 
@@ -102,7 +102,7 @@ it('refuses an upload into a folder that no longer exists', function () {
         ->set('uploadFolderId', 999_999)
         ->call('storeUpload');
 
-    expect($component->effects['returns'][0])->toBe(['ok' => false, 'error' => __('media.errors.folder_missing')])
+    expect($component->effects['returns'][0])->toBe(['ok' => false, 'error' => __('hata::media.errors.folder_missing')])
         ->and(Media::query()->count())->toBe(0);
 });
 

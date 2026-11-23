@@ -22,7 +22,7 @@ class SetEntryStatus
         Gate::forUser($actor)->authorize('update', $entry);
 
         if ($entry->trashed()) {
-            throw ProtectedActionException::because('content.entry.trashed');
+            throw ProtectedActionException::because('hata::content.entry.trashed');
         }
 
         // A type without a status (a term) is always published: nothing to set.

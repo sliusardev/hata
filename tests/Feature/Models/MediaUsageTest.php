@@ -54,9 +54,9 @@ it('falls back to "Type #id" for a plain model and for a missing row', function 
     $plain = usageOf($media, $user);
     $missing = usageOf($media, new MediaUsingModel(['id' => 999]), 'gone');
 
-    expect($plain->label())->toBe(__('media.details.usage_item', ['type' => 'User', 'id' => $user->id]))
+    expect($plain->label())->toBe(__('hata::media.details.usage_item', ['type' => 'User', 'id' => $user->id]))
         ->and($plain->url($user))->toBeNull()
-        ->and($missing->label())->toBe(__('media.details.usage_item', ['type' => 'MediaUsingModel', 'id' => 999]))
+        ->and($missing->label())->toBe(__('hata::media.details.usage_item', ['type' => 'MediaUsingModel', 'id' => 999]))
         ->and($missing->url($user))->toBeNull();
 });
 
@@ -133,7 +133,7 @@ it('reaches a usable in the trash and keeps reaching usables without soft delete
     usageOf($media, $setting, 'logo_light');
 
     expect(MediaUsage::query()->where('usable_id', $entry->id)->where('usable_type', $entry->getMorphClass())->first()->label())
-        ->toBe(__('content.usage.entry', ['type' => __('content.types.pages.label'), 'title' => 'About']));
+        ->toBe(__('hata::content.usage.entry', ['type' => __('hata::content.types.pages.label'), 'title' => 'About']));
 
     MediaUsage::forgetAll([$media]);
 

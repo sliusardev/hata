@@ -35,7 +35,7 @@ class MediaSourcePreviewController extends Controller
         $size = $this->dimensions($source->contents, $source->mime);
 
         if ($size === null || ! $memory->canDecode(...$size)) {
-            abort(422, __('media.errors.too_large_to_edit'));
+            abort(422, __('hata::media.errors.too_large_to_edit'));
         }
 
         try {
@@ -49,7 +49,7 @@ class MediaSourcePreviewController extends Controller
             $hasAlpha = in_array($source->mime, ['image/png', 'image/webp'], true);
             $bytes = ($hasAlpha ? $image->toPng() : $image->toJpeg())->toBytes();
         } catch (ImageException) {
-            abort(422, __('media.errors.too_large_to_edit'));
+            abort(422, __('hata::media.errors.too_large_to_edit'));
         }
 
         return response($bytes, 200, [

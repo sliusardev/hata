@@ -47,6 +47,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Translation\FileLoader;
+use Illuminate\Translation\Translator;
 use Illuminate\View\Compilers\BladeCompiler;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
@@ -85,7 +87,7 @@ class HataServiceProvider extends ServiceProvider
 
         $this->app->singleton(
             PermissionRegistry::class,
-            fn (): PermissionRegistry => (new PermissionRegistry)->registerMany(config('permissions.groups', [])),
+            fn (): PermissionRegistry => (new PermissionRegistry)->registerMany(config('permissions.groups', []), 'hata::permissions'),
         );
 
         $this->app->singleton(SiteSettings::class);
@@ -323,7 +325,17 @@ class HataServiceProvider extends ServiceProvider
      */
     private function configureTranslations(): void
     {
-        $this->loadTranslationsFrom(Hata::path('resources/lang'));
+        $this->loadTranslationsFrom(Hata::path('resources/lang'), 'hata');
+
+        // Laravel reads its own groups by their global names (`validation.required`, `auth.failed`, the password
+        // broker and pagination lines), so those few files cannot sit under the `hata` namespace.
+        $this->callAfterResolving('translator', function (Translator $translator): void {
+            $loader = $translator->getLoader();
+
+            if ($loader instanceof FileLoader) {
+                $loader->addPath(Hata::path('resources/lang-framework'));
+            }
+        });
 
         Lang::handleMissingKeysUsing(
             fn (string $key, array $replace, ?string $locale): ?string => VendorTranslations::translate($key, $replace, $locale),

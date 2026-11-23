@@ -17,11 +17,22 @@ class PermissionRegistry
     private array $groups = [];
 
     /**
+     * The translation file prefix of each group's labels, e.g. `hata::permissions` or `shop::permissions`.
+     *
+     * @var array<string, string>
+     */
+    private array $prefixes = [];
+
+    /**
      * Register actions for a resource group. Registering the same group again merges the actions.
+     *
+     * The labels are read from `{$translationPrefix}.groups.<group>` and `{$translationPrefix}.items.<permission>`
+     * of the registering owner's translations; a site's or module's own groups use the default `permissions`
+     * (the site's lang files), a package passes its namespace (`shop::permissions`).
      *
      * @param  list<string>  $actions
      */
-    public function register(string $group, array $actions): static
+    public function register(string $group, array $actions, string $translationPrefix = 'permissions'): static
     {
         foreach ([$group, ...$actions] as $segment) {
             if (preg_match('/^[a-z0-9_-]+$/', $segment) !== 1) {
@@ -29,6 +40,7 @@ class PermissionRegistry
             }
         }
 
+        $this->prefixes[$group] = $translationPrefix;
         $this->groups[$group] = array_values(array_unique([...($this->groups[$group] ?? []), ...$actions]));
 
         return $this;
@@ -37,10 +49,10 @@ class PermissionRegistry
     /**
      * @param  array<string, list<string>>  $groups
      */
-    public function registerMany(array $groups): static
+    public function registerMany(array $groups, string $translationPrefix = 'permissions'): static
     {
         foreach ($groups as $group => $actions) {
-            $this->register($group, $actions);
+            $this->register($group, $actions, $translationPrefix);
         }
 
         return $this;
@@ -60,6 +72,18 @@ class PermissionRegistry
         }
 
         return $named;
+    }
+
+    public function groupLabel(string $group): string
+    {
+        return __(($this->prefixes[$group] ?? 'permissions').".groups.{$group}");
+    }
+
+    public function permissionLabel(string $permission): string
+    {
+        $group = strstr($permission, '.', true);
+
+        return __(($this->prefixes[$group] ?? 'permissions').".items.{$permission}");
     }
 
     /**

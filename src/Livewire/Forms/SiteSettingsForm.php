@@ -304,7 +304,7 @@ class SiteSettingsForm extends Form
             $cap = app(ServerCapabilities::class)->uploadCapBytes();
 
             if ($cap !== null && (int) $value * 1024 * 1024 > $cap) {
-                $fail(__('media.errors.limit_above_server', ['size' => Number::fileSize($cap)]));
+                $fail(__('hata::media.errors.limit_above_server', ['size' => Number::fileSize($cap)]));
             }
         };
     }

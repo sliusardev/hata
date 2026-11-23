@@ -38,7 +38,7 @@ class CropMedia
         $data = $this->validate($input);
 
         if (! $media->isEditable()) {
-            throw ValidationException::withMessages(['crop' => __('media.errors.not_editable')]);
+            throw ValidationException::withMessages(['crop' => __('hata::media.errors.not_editable')]);
         }
 
         try {
@@ -47,7 +47,7 @@ class CropMedia
         } catch (Throwable $e) {
             report($e);
 
-            throw ValidationException::withMessages(['crop' => __('media.errors.not_editable')]);
+            throw ValidationException::withMessages(['crop' => __('hata::media.errors.not_editable')]);
         }
 
         $keepEdits = $source->isOriginal;
@@ -60,7 +60,7 @@ class CropMedia
             return $this->rebuilder->handle($media, $source->contents, $source->mime, $edits, keepEdits: $keepEdits);
         } catch (MediaEditException $e) {
             throw ValidationException::withMessages([
-                'crop' => $e->failure === 'too_large' ? __('media.errors.too_large_to_edit') : __('media.errors.not_editable'),
+                'crop' => $e->failure === 'too_large' ? __('hata::media.errors.too_large_to_edit') : __('hata::media.errors.not_editable'),
             ]);
         }
     }
@@ -136,7 +136,7 @@ class CropMedia
                 $span = (float) $crop[$length];
 
                 if ($start < 0 || $start >= 1 || $span <= 0 || $span > 1 - $start + self::TOLERANCE) {
-                    $validator->errors()->add('crop', __('media.errors.invalid_crop'));
+                    $validator->errors()->add('crop', __('hata::media.errors.invalid_crop'));
 
                     return;
                 }

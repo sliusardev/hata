@@ -29,7 +29,7 @@ class MediaSelection implements ValidationRule
         $ids = $this->ids($value);
 
         if ($ids === null || $this->acceptance->filterIds($ids) !== $ids) {
-            $fail('media.picker.invalid')->translate();
+            $fail('hata::media.picker.invalid')->translate();
         }
     }
 

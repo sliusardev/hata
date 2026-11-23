@@ -73,7 +73,7 @@ test('only super admins can edit super admins', function () {
 
     expect(fn () => app(UpdateUser::class)->handle($actor, $superAdmin, [
         'name' => 'Changed', 'email' => 'attacker@example.com', 'locale' => 'en', 'password' => 'taken-over',
-    ]))->toThrow(ProtectedActionException::class, __('users.errors.cannot_manage_super_admin'));
+    ]))->toThrow(ProtectedActionException::class, __('hata::users.errors.cannot_manage_super_admin'));
 
     expect($superAdmin->fresh()->name)->toBe('Original');
 });

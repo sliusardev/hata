@@ -32,7 +32,7 @@ class UpdateSiteSettings
             $role = Role::query()->where('name', $data['default_role'])->first();
 
             if ($role === null || $role->isSuperAdmin() || ! Gate::forUser($actor)->allows('assign', $role)) {
-                throw ProtectedActionException::because('site_settings.messages.role_unavailable');
+                throw ProtectedActionException::because('hata::site_settings.messages.role_unavailable');
             }
         }
 
@@ -69,7 +69,7 @@ class UpdateSiteSettings
         if ($filesOnS3) {
             foreach (['media_s3_bucket', 'media_s3_key'] as $field) {
                 if (array_key_exists($field, $data) && blank($data[$field])) {
-                    throw StorageSettingsException::on($field, __('site_settings.media.storage.errors.cannot_clear'));
+                    throw StorageSettingsException::on($field, __('hata::site_settings.media.storage.errors.cannot_clear'));
                 }
             }
         }
@@ -85,7 +85,7 @@ class UpdateSiteSettings
             $result = $this->connectionTest->handle(MediaDisks::connectionConfig($effective));
 
             if (! $result['ok']) {
-                throw StorageSettingsException::on('media_storage', __('site_settings.media.storage.not_saved', ['reason' => $result['message'] ?? '']));
+                throw StorageSettingsException::on('media_storage', __('hata::site_settings.media.storage.not_saved', ['reason' => $result['message'] ?? '']));
             }
         }
 

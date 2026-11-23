@@ -11,31 +11,31 @@ class MaintenanceException extends RuntimeException
 {
     public static function busy(): self
     {
-        return new self(__('maintenance.errors.busy'));
+        return new self(__('hata::maintenance.errors.busy'));
     }
 
     public static function unknownSeeder(): self
     {
-        return new self(__('maintenance.errors.unknown_seeder'));
+        return new self(__('hata::maintenance.errors.unknown_seeder'));
     }
 
     public static function migrateFirst(): self
     {
-        return new self(__('maintenance.errors.migrate_first'));
+        return new self(__('hata::maintenance.errors.migrate_first'));
     }
 
     public static function mediaBatchRunning(): self
     {
-        return new self(__('maintenance.errors.media_batch_running'));
+        return new self(__('hata::maintenance.errors.media_batch_running'));
     }
 
     public static function logFileMissing(): self
     {
-        return new self(__('maintenance.logs.errors.missing'));
+        return new self(__('hata::maintenance.logs.errors.missing'));
     }
 
     public static function logFileNotDeleted(): self
     {
-        return new self(__('maintenance.logs.errors.not_deleted'));
+        return new self(__('hata::maintenance.logs.errors.not_deleted'));
     }
 }

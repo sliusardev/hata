@@ -112,9 +112,9 @@ test('a language the group already has is not offered, in the trash either, and 
     $data = formDataOf($page);
 
     expect(fn () => app(UpdateEntry::class)->handle($actor, $page, $data, 'pl'))
-        ->toThrow(fn (ValidationException $exception) => expect($exception->errors()['locale'])->toBe([__('content.entry.locale_taken')]))
+        ->toThrow(fn (ValidationException $exception) => expect($exception->errors()['locale'])->toBe([__('hata::content.entry.locale_taken')]))
         ->and(fn () => app(UpdateEntry::class)->handle($actor, $page, $data, 'fr'))
-        ->toThrow(fn (ValidationException $exception) => expect($exception->errors()['locale'])->toBe([__('content.entry.locale_invalid')]))
+        ->toThrow(fn (ValidationException $exception) => expect($exception->errors()['locale'])->toBe([__('hata::content.entry.locale_invalid')]))
         ->and($page->fresh()->locale)->toBe('en');
 });
 
@@ -132,7 +132,7 @@ test('a page with pages under it keeps its language', function () {
     $data = formDataOf($parent);
 
     expect(fn () => app(UpdateEntry::class)->handle($actor, $parent, $data, 'uk'))
-        ->toThrow(fn (ValidationException $exception) => expect($exception->errors()['locale'])->toBe([__('content.entry.locale_has_children')]));
+        ->toThrow(fn (ValidationException $exception) => expect($exception->errors()['locale'])->toBe([__('hata::content.entry.locale_has_children')]));
 });
 
 test('changing the language of a saved record needs edit and a record out of the trash', function () {
@@ -188,11 +188,11 @@ test('a record that is someone\'s translation is linked only after a second clic
 
     $picker = translationPicker($page)
         ->call('choose', 'uk')
-        ->assertSee(__('content.link.linked_to', ['languages' => 'PL']))
+        ->assertSee(__('hata::content.link.linked_to', ['languages' => 'PL']))
         ->call('pick', $ukrainian->id)
         ->assertSet('open', true)
         ->assertSeeHtml('data-test="link-confirm"')
-        ->assertSee(__('content.link.leaves', ['languages' => 'PL']));
+        ->assertSee(__('hata::content.link.leaves', ['languages' => 'PL']));
 
     expect($ukrainian->fresh()->entry_group_id)->not->toBe($page->entry_group_id);
 
@@ -239,10 +239,10 @@ test('records that cannot be linked are refused', function () {
     $trashed = Entry::factory()->inLocale('pl')->create(['deleted_at' => now()]);
     $link = fn (Entry $other) => fn () => app(LinkTranslations::class)->handle($actor, $page, $other);
 
-    expect($link($translation))->toThrow(ProtectedActionException::class, __('content.link.invalid'))
-        ->and($link($trashed))->toThrow(ProtectedActionException::class, __('content.link.invalid'))
-        ->and($link($sameLanguage))->toThrow(ProtectedActionException::class, __('content.link.overlap'))
-        ->and($link($second))->toThrow(ProtectedActionException::class, __('content.link.overlap'))
+    expect($link($translation))->toThrow(ProtectedActionException::class, __('hata::content.link.invalid'))
+        ->and($link($trashed))->toThrow(ProtectedActionException::class, __('hata::content.link.invalid'))
+        ->and($link($sameLanguage))->toThrow(ProtectedActionException::class, __('hata::content.link.overlap'))
+        ->and($link($second))->toThrow(ProtectedActionException::class, __('hata::content.link.overlap'))
         ->and($second->fresh()->entry_group_id)->not->toBe($page->entry_group_id);
 });
 
@@ -271,7 +271,7 @@ test('a translation is unlinked after a confirmation and takes a copy of the sha
     translationForm($page)
         ->call('confirmUnlink', $ukrainian->id)
         ->assertSet('showUnlinkModal', true)
-        ->assertSee(__('content.link.unlink_confirm', ['title' => 'Про нас']))
+        ->assertSee(__('hata::content.link.unlink_confirm', ['title' => 'Про нас']))
         ->call('unlink')
         ->assertSet('showUnlinkModal', false)
         ->assertSeeHtml('data-test="translation-choose-uk"');
@@ -307,8 +307,8 @@ test('unlinking refuses a record without translations, one in the trash and an a
     $page = Entry::factory()->create();
     $trashed = Entry::factory()->translationOf($page, 'uk')->create(['deleted_at' => now()]);
 
-    expect(fn () => app(UnlinkTranslation::class)->handle($actor, $alone))->toThrow(ProtectedActionException::class, __('content.link.alone'))
-        ->and(fn () => app(UnlinkTranslation::class)->handle($actor, $trashed))->toThrow(ProtectedActionException::class, __('content.entry.trashed'));
+    expect(fn () => app(UnlinkTranslation::class)->handle($actor, $alone))->toThrow(ProtectedActionException::class, __('hata::content.link.alone'))
+        ->and(fn () => app(UnlinkTranslation::class)->handle($actor, $trashed))->toThrow(ProtectedActionException::class, __('hata::content.entry.trashed'));
 
     $this->actingAs($actor);
     translationForm($page)->call('confirmUnlink', $trashed->id)->assertNotFound();
@@ -390,7 +390,7 @@ test('linking decides from the stored records, not from the loaded ones', functi
     Entry::query()->whereKey($ukrainian->id)->update(['locale' => 'en']);
 
     expect(fn () => app(LinkTranslations::class)->handle($actor, $page, $ukrainian))
-        ->toThrow(ProtectedActionException::class, __('content.link.overlap'))
+        ->toThrow(ProtectedActionException::class, __('hata::content.link.overlap'))
         ->and($ukrainian->fresh()->entry_group_id)->not->toBe($page->entry_group_id);
 });
 

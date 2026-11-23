@@ -77,7 +77,7 @@ class MediaUsage extends Model
     {
         $usable = $this->usesMedia();
 
-        return $usable?->mediaUsageLabel($this->field) ?? __('media.details.usage_item', [
+        return $usable?->mediaUsageLabel($this->field) ?? __('hata::media.details.usage_item', [
             'type' => class_basename($this->usable_type),
             'id' => $this->usable_id,
         ]);

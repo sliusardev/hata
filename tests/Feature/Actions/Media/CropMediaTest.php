@@ -111,7 +111,7 @@ it('refuses to crop an animated gif or an svg', function (string $kind) {
         app(CropMedia::class)->handle($this->actor, $media, cropInput());
         $this->fail('Expected a validation error.');
     } catch (ValidationException $e) {
-        expect($e->errors()['crop'])->toBe([__('media.errors.not_editable')]);
+        expect($e->errors()['crop'])->toBe([__('hata::media.errors.not_editable')]);
     }
 
     expect($media->fresh()->version)->toBe(1);

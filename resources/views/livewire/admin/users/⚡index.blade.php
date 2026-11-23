@@ -17,7 +17,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class extends Component {
     use WithPagination;
 
     private const array SORTABLE = ['name', 'email', 'created_at'];
@@ -149,7 +149,7 @@ new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends C
         try {
             $deleteUser->handle(Auth::user(), $user);
 
-            Flux::toast(variant: 'success', text: __('users.messages.deleted'));
+            Flux::toast(variant: 'success', text: __('hata::users.messages.deleted'));
         } catch (ProtectedActionException $exception) {
             Flux::toast(variant: 'danger', text: $exception->getMessage());
         }
@@ -163,13 +163,13 @@ new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends C
 <section class="w-full space-y-6">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <flux:heading size="xl" level="1">{{ __('users.index.title') }}</flux:heading>
-            <flux:subheading>{{ __('users.index.description') }}</flux:subheading>
+            <flux:heading size="xl" level="1">{{ __('hata::users.index.title') }}</flux:heading>
+            <flux:subheading>{{ __('hata::users.index.description') }}</flux:subheading>
         </div>
 
         @can('create', App\Models\User::class)
             <flux:button variant="primary" icon="plus" :href="route('admin.users.create')" wire:navigate>
-                {{ __('users.index.create') }}
+                {{ __('hata::users.index.create') }}
             </flux:button>
         @endcan
     </div>
@@ -178,14 +178,14 @@ new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends C
         <flux:input
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
-            :placeholder="__('users.index.search')"
-            :aria-label="__('users.index.search')"
+            :placeholder="__('hata::users.index.search')"
+            :aria-label="__('hata::users.index.search')"
             clearable
             class="sm:max-w-sm"
         />
 
-        <flux:select wire:model.live="role" :aria-label="__('users.index.filter_by_role')" class="sm:max-w-56">
-            <flux:select.option value="">{{ __('users.index.all_roles') }}</flux:select.option>
+        <flux:select wire:model.live="role" :aria-label="__('hata::users.index.filter_by_role')" class="sm:max-w-56">
+            <flux:select.option value="">{{ __('hata::users.index.all_roles') }}</flux:select.option>
             @foreach ($this->roles as $roleOption)
                 <flux:select.option :value="$roleOption->id" wire:key="role-filter-{{ $roleOption->id }}">{{ $roleOption->displayName() }}</flux:select.option>
             @endforeach
@@ -195,18 +195,18 @@ new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends C
     @if ($this->users->isEmpty())
         <x-hata::admin.empty-state
             icon="users"
-            :heading="$this->hasAnyUsers ? __('users.index.no_results.title') : __('users.index.empty.title')"
-            :description="$this->hasAnyUsers ? __('users.index.no_results.description') : __('users.index.empty.description')"
+            :heading="$this->hasAnyUsers ? __('hata::users.index.no_results.title') : __('hata::users.index.empty.title')"
+            :description="$this->hasAnyUsers ? __('hata::users.index.no_results.description') : __('hata::users.index.empty.description')"
         />
     @else
         <flux:table :paginate="$this->users">
             <flux:table.columns>
-                <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">{{ __('users.index.columns.user') }}</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'email'" :direction="$sortDirection" wire:click="sort('email')" class="max-md:hidden">{{ __('users.index.columns.email') }}</flux:table.column>
-                <flux:table.column>{{ __('users.index.columns.roles') }}</flux:table.column>
-                <flux:table.column class="max-lg:hidden">{{ __('users.index.columns.locale') }}</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" wire:click="sort('created_at')" class="max-lg:hidden">{{ __('users.index.columns.created_at') }}</flux:table.column>
-                <flux:table.column align="end"><span class="sr-only">{{ __('users.index.columns.actions') }}</span></flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">{{ __('hata::users.index.columns.user') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'email'" :direction="$sortDirection" wire:click="sort('email')" class="max-md:hidden">{{ __('hata::users.index.columns.email') }}</flux:table.column>
+                <flux:table.column>{{ __('hata::users.index.columns.roles') }}</flux:table.column>
+                <flux:table.column class="max-lg:hidden">{{ __('hata::users.index.columns.locale') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" wire:click="sort('created_at')" class="max-lg:hidden">{{ __('hata::users.index.columns.created_at') }}</flux:table.column>
+                <flux:table.column align="end"><span class="sr-only">{{ __('hata::users.index.columns.actions') }}</span></flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>
@@ -223,7 +223,7 @@ new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends C
                                             <span class="truncate">{{ $user->name }}</span>
                                         @endif
                                         @if ($user->is(auth()->user()))
-                                            <flux:badge size="sm" color="zinc">{{ __('users.index.you') }}</flux:badge>
+                                            <flux:badge size="sm" color="zinc">{{ __('hata::users.index.you') }}</flux:badge>
                                         @endif
                                     </div>
                                     <div class="truncate text-xs text-zinc-500 md:hidden dark:text-zinc-400">{{ $user->email }}</div>
@@ -236,7 +236,7 @@ new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends C
                                 @forelse ($user->roles as $userRole)
                                     <flux:badge size="sm" :color="$userRole->isSuperAdmin() ? 'amber' : 'zinc'" :class="$userRole->isSuperAdmin() ? '' : 'bg-accent/10! text-accent-content! dark:bg-accent/20!'">{{ $userRole->displayName() }}</flux:badge>
                                 @empty
-                                    <flux:text size="sm" variant="subtle">{{ __('users.index.no_roles') }}</flux:text>
+                                    <flux:text size="sm" variant="subtle">{{ __('hata::users.index.no_roles') }}</flux:text>
                                 @endforelse
                             </div>
                         </flux:table.cell>
@@ -245,10 +245,10 @@ new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends C
                         <flux:table.cell align="end">
                             <x-hata::admin.row-actions data-test="user-actions-{{ $user->id }}">
                                 @if ($this->canEdit($user))
-                                    <flux:menu.item icon="pencil-square" :href="route('admin.users.edit', $user)" wire:navigate>{{ __('common.actions.edit') }}</flux:menu.item>
+                                    <flux:menu.item icon="pencil-square" :href="route('admin.users.edit', $user)" wire:navigate>{{ __('hata::common.actions.edit') }}</flux:menu.item>
                                 @endif
                                 @if ($this->canDelete($user))
-                                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $user->id }})" data-test="delete-user-{{ $user->id }}">{{ __('common.actions.delete') }}</flux:menu.item>
+                                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $user->id }})" data-test="delete-user-{{ $user->id }}">{{ __('hata::common.actions.delete') }}</flux:menu.item>
                                 @endif
                             </x-hata::admin.row-actions>
                         </flux:table.cell>
@@ -260,10 +260,10 @@ new #[Layout('hata::layouts.app')] #[Title('users.index.title')] class extends C
 
     <x-hata::confirm-modal
         wire:model.self="showDeleteModal"
-        :heading="__('users.delete.title')"
-        :confirm-label="__('users.delete.submit')"
+        :heading="__('hata::users.delete.title')"
+        :confirm-label="__('hata::users.delete.submit')"
         confirm-action="deleteUser"
     >
-        {{ __('users.delete.confirm', ['name' => $this->deletingUser?->name]) }}
+        {{ __('hata::users.delete.confirm', ['name' => $this->deletingUser?->name]) }}
     </x-hata::confirm-modal>
 </section>

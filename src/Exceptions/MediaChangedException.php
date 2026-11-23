@@ -30,6 +30,6 @@ class MediaChangedException extends RuntimeException
      */
     public function userMessage(): string
     {
-        return $this->gone ? __('media.errors.deleted_meanwhile') : __('media.errors.changed_meanwhile');
+        return $this->gone ? __('hata::media.errors.deleted_meanwhile') : __('hata::media.errors.changed_meanwhile');
     }
 }

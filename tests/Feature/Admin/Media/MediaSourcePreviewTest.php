@@ -104,5 +104,5 @@ it('refuses an image too large for the memory limit', function () {
 
     $this->get(route('admin.media.source', $media))
         ->assertStatus(422)
-        ->assertSee(__('media.errors.too_large_to_edit'));
+        ->assertSee(__('hata::media.errors.too_large_to_edit'));
 });

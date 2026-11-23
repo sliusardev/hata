@@ -97,14 +97,23 @@ abstract class ContentType
         return ! $this->isTaxonomy();
     }
 
+    /**
+     * Where the type's translations live: empty for a site's or a module's type (`content.types.<key>.*` in the
+     * site's own lang files), `hata::` for the types Hata ships.
+     */
+    public function translationPrefix(): string
+    {
+        return '';
+    }
+
     public function label(): string
     {
-        return __("content.types.{$this->key()}.label");
+        return __("{$this->translationPrefix()}content.types.{$this->key()}.label");
     }
 
     public function pluralLabel(): string
     {
-        return __("content.types.{$this->key()}.plural");
+        return __("{$this->translationPrefix()}content.types.{$this->key()}.plural");
     }
 
     /**
@@ -112,7 +121,7 @@ abstract class ContentType
      */
     public function description(): string
     {
-        return __("content.types.{$this->key()}.description");
+        return __("{$this->translationPrefix()}content.types.{$this->key()}.description");
     }
 
     /**
@@ -120,7 +129,7 @@ abstract class ContentType
      */
     public function createLabel(): string
     {
-        return __("content.types.{$this->key()}.create");
+        return __("{$this->translationPrefix()}content.types.{$this->key()}.create");
     }
 
     /**
@@ -129,7 +138,7 @@ abstract class ContentType
      */
     public function newLabel(): string
     {
-        $key = "content.types.{$this->key()}.new";
+        $key = "{$this->translationPrefix()}content.types.{$this->key()}.new";
 
         return Lang::has($key) ? __($key) : $this->createLabel();
     }

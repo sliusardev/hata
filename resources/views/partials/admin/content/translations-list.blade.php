@@ -41,7 +41,7 @@
                 <div class="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
                     <span class="truncate">{{ $language->native }}</span>
                     @if ($off)
-                        <span class="shrink-0">· {{ __('content.grid.off') }}</span>
+                        <span class="shrink-0">· {{ __('hata::content.grid.off') }}</span>
                     @endif
                 </div>
 
@@ -49,20 +49,20 @@
                     <a href="{{ route('admin.content.edit', ['type' => $type, 'entry' => $record->id]) }}" wire:navigate class="block truncate text-sm font-medium text-zinc-900 hover:underline dark:text-white" title="{{ $record->title }}" data-test="translation-edit-{{ $language->code }}">{{ $record->title }}</a>
                     <span class="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
                         <span @class(['size-2 rounded-full', 'bg-green-500' => $state === Hata\Enums\EntryState::Published, 'bg-amber-400' => $state !== Hata\Enums\EntryState::Published])></span>
-                        {{ __('content.list.state.'.strtolower($state->name)) }}
+                        {{ __('hata::content.list.state.'.strtolower($state->name)) }}
                     </span>
                 @elseif ($binned !== null)
                     <a href="{{ route('admin.content.edit', ['type' => $type, 'entry' => $binned->id]) }}" wire:navigate class="block truncate text-sm text-zinc-500 line-through hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white" title="{{ $binned->title }}" data-test="translation-edit-{{ $language->code }}">{{ $binned->title }}</a>
-                    <span class="mt-0.5 flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400"><flux:icon.trash variant="micro" class="size-3" />{{ __('content.grid.legend.trashed') }}</span>
+                    <span class="mt-0.5 flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400"><flux:icon.trash variant="micro" class="size-3" />{{ __('hata::content.grid.legend.trashed') }}</span>
                 @else
-                    <span class="block text-sm text-zinc-400 dark:text-zinc-500">{{ __('content.translations.none') }}</span>
+                    <span class="block text-sm text-zinc-400 dark:text-zinc-500">{{ __('hata::content.translations.none') }}</span>
                     @if ($canLink || ($canCreate && $fromId !== null))
                         <div class="mt-2 flex flex-wrap gap-2">
                             @if ($canLink)
-                                <flux:button size="xs" icon="magnifying-glass" x-on:click="Livewire.dispatch('choose-translation', { locale: @js($language->code) })" data-test="translation-choose-{{ $language->code }}">{{ __('content.translations.choose') }}</flux:button>
+                                <flux:button size="xs" icon="magnifying-glass" x-on:click="Livewire.dispatch('choose-translation', { locale: @js($language->code) })" data-test="translation-choose-{{ $language->code }}">{{ __('hata::content.translations.choose') }}</flux:button>
                             @endif
                             @if ($canCreate && $fromId !== null)
-                                <flux:button size="xs" icon="plus" :href="route('admin.content.create', ['type' => $type, 'from' => $fromId, 'locale' => $language->code])" wire:navigate data-test="translation-create-{{ $language->code }}">{{ __('content.translations.create') }}</flux:button>
+                                <flux:button size="xs" icon="plus" :href="route('admin.content.create', ['type' => $type, 'from' => $fromId, 'locale' => $language->code])" wire:navigate data-test="translation-create-{{ $language->code }}">{{ __('hata::content.translations.create') }}</flux:button>
                             @endif
                         </div>
                     @endif
@@ -71,9 +71,9 @@
 
             @if ($record !== null)
                 <div class="flex shrink-0 items-center">
-                    <flux:button size="xs" variant="ghost" icon="pencil-square" :href="route('admin.content.edit', ['type' => $type, 'entry' => $record->id])" wire:navigate :title="__('content.translations.edit')" :aria-label="__('content.translations.edit')" />
+                    <flux:button size="xs" variant="ghost" icon="pencil-square" :href="route('admin.content.edit', ['type' => $type, 'entry' => $record->id])" wire:navigate :title="__('hata::content.translations.edit')" :aria-label="__('hata::content.translations.edit')" />
                     @if ($canLink)
-                        <flux:button size="xs" variant="ghost" icon="link-slash" x-on:click="$wire.confirmUnlink({{ $record->id }})" :title="__('content.link.unlink')" :aria-label="__('content.link.unlink')" data-test="translation-unlink-{{ $language->code }}" />
+                        <flux:button size="xs" variant="ghost" icon="link-slash" x-on:click="$wire.confirmUnlink({{ $record->id }})" :title="__('hata::content.link.unlink')" :aria-label="__('hata::content.link.unlink')" data-test="translation-unlink-{{ $language->code }}" />
                     @endif
                 </div>
             @endif

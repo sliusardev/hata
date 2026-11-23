@@ -1,10 +1,10 @@
 <div class="flex items-start max-md:flex-col">
     <div class="me-10 w-full pb-4 md:w-[220px]">
-        <flux:navlist aria-label="{{ __('settings.heading') }}">
-            <flux:navlist.item :href="route('profile.edit')" wire:navigate>{{ __('settings.nav.profile') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('language.edit')" wire:navigate>{{ __('settings.nav.language') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('settings.nav.security') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('settings.nav.appearance') }}</flux:navlist.item>
+        <flux:navlist aria-label="{{ __('hata::settings.heading') }}">
+            <flux:navlist.item :href="route('profile.edit')" wire:navigate>{{ __('hata::settings.nav.profile') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('language.edit')" wire:navigate>{{ __('hata::settings.nav.language') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('hata::settings.nav.security') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('hata::settings.nav.appearance') }}</flux:navlist.item>
         </flux:navlist>
     </div>
 

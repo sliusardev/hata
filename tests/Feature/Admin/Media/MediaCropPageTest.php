@@ -43,7 +43,7 @@ it('opens the crop page for an editable image', function () {
         ->assertOk()
         ->assertSee('hero.webp')
         ->assertSee(route('admin.media.source', $media), escape: false)
-        ->assertSee(__('media.crop.apply'));
+        ->assertSee(__('hata::media.crop.apply'));
 });
 
 it('gives the ratio buttons a click expression the browser can run', function () {
@@ -112,8 +112,8 @@ it('applies the crop after confirmation and redirects to the library', function 
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('confirmApply')
         ->assertSet('showApplyModal', true)
-        ->assertSee(__('media.crop.confirm.heading', ['name' => 'hero.webp']))
-        ->assertSee(trans_choice('media.crop.confirm.body', 2))
+        ->assertSee(__('hata::media.crop.confirm.heading', ['name' => 'hero.webp']))
+        ->assertSee(trans_choice('hata::media.crop.confirm.body', 2))
         ->call('apply')
         ->assertHasNoErrors()
         ->assertRedirect(route('admin.media.index', ['folder' => $folder->id]));
@@ -124,7 +124,7 @@ it('applies the crop after confirmation and redirects to the library', function 
     expect($media->version)->toBe(2)
         ->and($media->edits['crop'])->toEqual(['x' => 0, 'y' => 0, 'w' => 1500, 'h' => 1000])
         ->and([$image->width(), $image->height()])->toBe([1500, 1000])
-        ->and(session('toast.text'))->toBe(__('media.crop.messages.applied'));
+        ->and(session('toast.text'))->toBe(__('hata::media.crop.messages.applied'));
 });
 
 it('shows an invalid crop as an error and stays on the page', function () {
@@ -154,7 +154,7 @@ it('saves a copy and leaves the source unchanged', function () {
     expect($media->fresh()->version)->toBe(1)
         ->and(Storage::disk('local')->get($media->path))->toBe($before)
         ->and([$copy->width, $copy->height])->toBe([400, 300])
-        ->and(session('toast.text'))->toBe(__('media.crop.messages.copied', ['name' => $copy->name]));
+        ->and(session('toast.text'))->toBe(__('hata::media.crop.messages.copied', ['name' => $copy->name]));
 });
 
 it('hides save as copy without media.upload', function () {
@@ -162,7 +162,7 @@ it('hides save as copy without media.upload', function () {
     $media = cropPageMedia(makeImage('webp', 800, 600));
 
     Livewire::test('hata::admin.media.crop', ['media' => $media])
-        ->assertDontSee(__('media.crop.save_copy'))
+        ->assertDontSee(__('hata::media.crop.save_copy'))
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('saveCopy')
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger')
@@ -243,9 +243,9 @@ it('explains when the image is too large to edit on this server', function () {
     $media = cropPageMedia(makeImage('webp', 800, 600));
 
     Livewire::test('hata::admin.media.crop', ['media' => $media])
-        ->assertSee(__('media.errors.too_large_to_edit'))
+        ->assertSee(__('hata::media.errors.too_large_to_edit'))
         ->assertDontSee(route('admin.media.source', $media), escape: false)
-        ->assertDontSee(__('media.crop.apply'));
+        ->assertDontSee(__('hata::media.crop.apply'));
 });
 
 it('says the file was changed meanwhile when the crop loses the race', function () {
@@ -255,7 +255,7 @@ it('says the file was changed meanwhile when the crop loses the race', function 
     Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('apply')
-        ->assertHasErrors(['crop' => __('media.errors.changed_meanwhile')])
+        ->assertHasErrors(['crop' => __('hata::media.errors.changed_meanwhile')])
         ->assertNoRedirect();
 });
 
@@ -269,7 +269,7 @@ it('shows a storage error and keeps the file when the disk does not store the cr
     Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('apply')
-        ->assertHasErrors(['crop' => __('media.errors.storage_failed')])
+        ->assertHasErrors(['crop' => __('hata::media.errors.storage_failed')])
         ->assertNoRedirect();
 
     expect($media->fresh()->version)->toBe(1);

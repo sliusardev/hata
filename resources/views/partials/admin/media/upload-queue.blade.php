@@ -14,16 +14,16 @@
         <div class="flex size-18 items-center justify-center rounded-2xl bg-zinc-800 text-white dark:bg-white dark:text-zinc-800">
             <flux:icon name="arrow-up-tray" variant="outline" class="size-9" />
         </div>
-        <div class="text-xl font-semibold text-zinc-900 dark:text-white">{{ __('media.upload.drop_title') }}</div>
+        <div class="text-xl font-semibold text-zinc-900 dark:text-white">{{ __('hata::media.upload.drop_title') }}</div>
         <div class="max-w-md text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-            {{ __('media.upload.drop_hint', ['image' => $imageMb, 'document' => $documentMb]) }}
+            {{ __('hata::media.upload.drop_hint', ['image' => $imageMb, 'document' => $documentMb]) }}
         </div>
     </div>
 
     <section
         x-cloak
         x-show="queue.length > 0"
-        aria-label="{{ __('media.upload.queue') }}"
+        aria-label="{{ __('hata::media.upload.queue') }}"
         class="fixed end-4 bottom-4 z-40 w-[22.5rem] max-w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-zinc-800"
         data-test="media-upload-queue"
     >
@@ -36,11 +36,11 @@
                     square
                     x-on:click="collapsed = ! collapsed"
                     x-bind:aria-expanded="collapsed ? 'false' : 'true'"
-                    x-bind:aria-label="collapsed ? @js(__('media.upload.expand')) : @js(__('media.upload.collapse'))"
+                    x-bind:aria-label="collapsed ? @js(__('hata::media.upload.expand')) : @js(__('hata::media.upload.collapse'))"
                 >
                     <flux:icon name="chevron-down" variant="micro" class="size-4 transition" x-bind:class="collapsed && 'rotate-180'" />
                 </flux:button>
-                <flux:button size="sm" variant="ghost" square x-show="! busy" x-on:click="clear()" :aria-label="__('media.upload.close')">
+                <flux:button size="sm" variant="ghost" square x-show="! busy" x-on:click="clear()" :aria-label="__('hata::media.upload.close')">
                     <flux:icon name="x-mark" variant="micro" class="size-4" />
                 </flux:button>
             </div>
@@ -73,7 +73,7 @@
                         <flux:icon name="check" variant="mini" class="size-5 shrink-0 text-green-700 dark:text-green-400" />
                     </template>
                     <template x-if="item.status === 'failed'">
-                        <flux:button size="sm" x-on:click="remove(item)">{{ __('media.upload.remove') }}</flux:button>
+                        <flux:button size="sm" x-on:click="remove(item)">{{ __('hata::media.upload.remove') }}</flux:button>
                     </template>
                 </li>
             </template>

@@ -28,7 +28,7 @@ it('creates, renames and refuses duplicate folders', function () {
     expect($banners->parent_id)->toBe($parent->id);
 
     $component->call('createFolder', ' Banners ')
-        ->assertHasErrors(['folderName' => __('media.errors.folder_exists')]);
+        ->assertHasErrors(['folderName' => __('hata::media.errors.folder_exists')]);
 
     expect(MediaFolder::query()->where('name', 'Banners')->count())->toBe(1);
 
@@ -66,7 +66,7 @@ it('requires typing the folder name when it holds more than 10 files', function 
     Livewire::test('hata::admin.media.index')
         ->call('confirmFolderDelete', $folder->id)
         ->assertSet('showFolderDeleteModal', true)
-        ->assertSee(__('media.folders.delete.type_name', ['name' => 'Archive']))
+        ->assertSee(__('hata::media.folders.delete.type_name', ['name' => 'Archive']))
         ->set('confirmName', 'Archiv')
         ->call('deleteFolder')
         ->assertHasErrors('confirmName');
@@ -85,9 +85,9 @@ it('deletes a folder with everything inside after confirmation', function () {
 
     $component = Livewire::test('hata::admin.media.index', ['folder' => (string) $child->id])
         ->call('confirmFolderDelete', $folder->id)
-        ->assertSee(__('media.folders.delete.summary', [
-            'files' => trans_choice('media.index.file_count', 11),
-            'folders' => trans_choice('media.folders.delete.subfolders', 1),
+        ->assertSee(__('hata::media.folders.delete.summary', [
+            'files' => trans_choice('hata::media.index.file_count', 11),
+            'folders' => trans_choice('hata::media.folders.delete.subfolders', 1),
         ]));
 
     $this->assertModelExists($folder);
@@ -204,7 +204,7 @@ it('shows a danger toast when a folder is moved into its descendant', function (
     Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $a->id, $b->id)
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
-            && ($params['slots']['text'] ?? null) === __('media.errors.folder_into_itself'));
+            && ($params['slots']['text'] ?? null) === __('hata::media.errors.folder_into_itself'));
 
     expect($a->refresh()->parent_id)->toBeNull();
 });
@@ -218,7 +218,7 @@ it('shows a danger toast when the target already has a folder with that name', f
     Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $moving->id, $target->id)
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
-            && ($params['slots']['text'] ?? null) === __('media.errors.folder_exists'));
+            && ($params['slots']['text'] ?? null) === __('hata::media.errors.folder_exists'));
 
     expect($moving->refresh()->parent_id)->toBeNull();
 });
@@ -411,12 +411,12 @@ it('shows the tiles instead of the empty state in a folder that only has subfold
 
     Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->assertSee('Banners')
-        ->assertSee(__('media.index.subfolders.no_files'))
-        ->assertDontSee(__('media.index.empty.title'))
-        ->assertDontSee(__('media.index.no_results.title'))
+        ->assertSee(__('hata::media.index.subfolders.no_files'))
+        ->assertDontSee(__('hata::media.index.empty.title'))
+        ->assertDontSee(__('hata::media.index.no_results.title'))
         ->set('view', 'list')
         ->assertSeeHtml('data-test="media-subfolder-'.$child->id.'"')
-        ->assertSee(__('media.index.subfolders.no_files'));
+        ->assertSee(__('hata::media.index.subfolders.no_files'));
 });
 
 it('opens a subfolder from its tile', function () {

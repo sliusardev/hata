@@ -12,7 +12,7 @@
 @if (count($languages) > 1)
     <details class="group relative shrink-0" data-test="language-switcher">
         <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800 [&::-webkit-details-marker]:hidden">
-            <span class="sr-only">{{ __('content.public.language') }}:</span>
+            <span class="sr-only">{{ __('hata::content.public.language') }}:</span>
             <span>{{ $current->native }}</span>
             <svg class="size-4 text-zinc-400 transition group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />

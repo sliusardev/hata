@@ -49,7 +49,7 @@ class MaintenanceRunController extends Controller
         }
 
         $succeeded = $run->status === MaintenanceStatus::Succeeded;
-        $text = __($succeeded ? 'maintenance.messages.succeeded' : 'maintenance.messages.failed', ['action' => $run->title()]);
+        $text = __($succeeded ? 'hata::maintenance.messages.succeeded' : 'hata::maintenance.messages.failed', ['action' => $run->title()]);
 
         $succeeded ? Toast::success($text) : Toast::danger($text);
 

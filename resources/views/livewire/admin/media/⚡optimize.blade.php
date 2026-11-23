@@ -12,7 +12,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 
-new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extends MediaBatchPage {
+new #[Layout('hata::layouts.app')] #[Title('hata::media.optimize.title')] class extends MediaBatchPage {
     #[Computed]
     public function candidateCount(): int
     {
@@ -45,7 +45,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
         try {
             $this->engine()->start($actor);
         } catch (OptimizationDisabledException) {
-            Flux::toast(variant: 'danger', text: __('media.optimize.disabled'));
+            Flux::toast(variant: 'danger', text: __('hata::media.optimize.disabled'));
 
             return false;
         }
@@ -87,36 +87,36 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
 
 <div class="w-full max-w-3xl space-y-6" data-test="media-optimize" @if ($polling) wire:poll.2s.keep-alive="tick" @endif>
     <div class="flex items-center gap-3">
-        <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('media.batch.back')" :tooltip="__('media.batch.back')" />
+        <flux:button variant="ghost" icon="arrow-left" :href="route('admin.media.index')" wire:navigate :aria-label="__('hata::media.batch.back')" :tooltip="__('hata::media.batch.back')" />
         <div class="min-w-0">
-            <flux:heading size="xl" level="1">{{ __('media.optimize.title') }}</flux:heading>
-            <flux:text>{{ __('media.optimize.description') }}</flux:text>
+            <flux:heading size="xl" level="1">{{ __('hata::media.optimize.title') }}</flux:heading>
+            <flux:text>{{ __('hata::media.optimize.description') }}</flux:text>
         </div>
     </div>
 
     @unless ($enabled)
-        <flux:callout variant="warning" icon="exclamation-triangle" :heading="__('media.optimize.disabled')" data-test="optimize-disabled">
-            <flux:callout.text>{{ __('media.optimize.disabled_body') }}</flux:callout.text>
+        <flux:callout variant="warning" icon="exclamation-triangle" :heading="__('hata::media.optimize.disabled')" data-test="optimize-disabled">
+            <flux:callout.text>{{ __('hata::media.optimize.disabled_body') }}</flux:callout.text>
             <x-slot name="actions">
-                <flux:button :href="route('admin.settings.edit', ['tab' => 'media'])" wire:navigate>{{ __('media.optimize.open_settings') }}</flux:button>
+                <flux:button :href="route('admin.settings.edit', ['tab' => 'media'])" wire:navigate>{{ __('hata::media.optimize.open_settings') }}</flux:button>
             </x-slot>
         </flux:callout>
     @endunless
 
     @if ($run === null)
         <flux:card class="space-y-4">
-            <flux:heading size="lg">{{ __('media.optimize.idle_heading') }}</flux:heading>
+            <flux:heading size="lg">{{ __('hata::media.optimize.idle_heading') }}</flux:heading>
             @if ($enabled)
                 <flux:text>
                     @if ($this->candidateCount > 0)
-                        {{ trans_choice('media.optimize.candidates', $this->candidateCount, ['count' => $this->candidateCount]) }}
+                        {{ trans_choice('hata::media.optimize.candidates', $this->candidateCount, ['count' => $this->candidateCount]) }}
                     @else
-                        {{ __('media.optimize.none') }}
+                        {{ __('hata::media.optimize.none') }}
                     @endif
                 </flux:text>
             @endif
             <flux:button variant="primary" wire:click="start" :disabled="! $enabled || $this->candidateCount === 0" data-test="optimize-start">
-                {{ __('media.optimize.start') }}
+                {{ __('hata::media.optimize.start') }}
             </flux:button>
         </flux:card>
     @else
@@ -129,15 +129,15 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
         @endphp
 
         @if ($stale)
-            <flux:callout variant="warning" icon="exclamation-triangle" :heading="__('media.optimize.stale_heading')" data-test="optimize-stale">
-                <flux:callout.text>{{ __('media.optimize.stale_body') }}</flux:callout.text>
+            <flux:callout variant="warning" icon="exclamation-triangle" :heading="__('hata::media.optimize.stale_heading')" data-test="optimize-stale">
+                <flux:callout.text>{{ __('hata::media.optimize.stale_body') }}</flux:callout.text>
                 <x-slot name="actions">
-                    <flux:button wire:click="startOver" :disabled="! $enabled">{{ __('media.optimize.start_over') }}</flux:button>
+                    <flux:button wire:click="startOver" :disabled="! $enabled">{{ __('hata::media.optimize.start_over') }}</flux:button>
                 </x-slot>
             </flux:callout>
         @elseif ($run->status === 'running' && $this->queueAvailable && $this->browserFallback)
             <flux:callout variant="warning" icon="exclamation-triangle" data-test="optimize-fallback">
-                <flux:callout.text>{{ __('media.batch.fallback') }}</flux:callout.text>
+                <flux:callout.text>{{ __('hata::media.batch.fallback') }}</flux:callout.text>
             </flux:callout>
         @endif
 
@@ -145,14 +145,14 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <flux:heading size="lg">
-                        {{ $run->status === 'done' ? __('media.optimize.done_heading') : trans_choice('media.batch.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
+                        {{ $run->status === 'done' ? __('hata::media.optimize.done_heading') : trans_choice('hata::media.batch.progress', $run->total, ['processed' => $processed, 'total' => $run->total]) }}
                     </flux:heading>
                     <flux:badge :color="match ($run->status) { 'running' => 'blue', 'paused' => 'amber', default => 'green' }" size="sm">
-                        {{ __("media.optimize.status.{$run->status}") }}
+                        {{ __("hata::media.optimize.status.{$run->status}") }}
                     </flux:badge>
                 </div>
                 @if ($secondsLeft !== null && ! $stale)
-                    <flux:text>{{ __('media.batch.time_left', ['time' => \Carbon\CarbonInterval::seconds($secondsLeft)->cascade()->forHumans(['parts' => 2, 'short' => true])]) }}</flux:text>
+                    <flux:text>{{ __('hata::media.batch.time_left', ['time' => \Carbon\CarbonInterval::seconds($secondsLeft)->cascade()->forHumans(['parts' => 2, 'short' => true])]) }}</flux:text>
                 @endif
             </div>
 
@@ -160,19 +160,19 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
 
             <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div>
-                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('media.optimize.stats.processed') }}</dt>
+                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('hata::media.optimize.stats.processed') }}</dt>
                     <dd class="font-medium">{{ $processed }} / {{ $run->total }}</dd>
                 </div>
                 <div>
-                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('media.optimize.stats.saved') }}</dt>
+                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('hata::media.optimize.stats.saved') }}</dt>
                     <dd class="font-medium" data-test="optimize-saved">{{ $saved >= 0 ? $size($saved) : '+'.$size(-$saved) }}</dd>
                 </div>
                 <div>
-                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('media.optimize.stats.average') }}</dt>
+                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('hata::media.optimize.stats.average') }}</dt>
                     <dd class="font-medium">{{ $averageSaving }}%</dd>
                 </div>
                 <div>
-                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('media.optimize.stats.skipped') }}</dt>
+                    <dt class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('hata::media.optimize.stats.skipped') }}</dt>
                     <dd class="font-medium">{{ $run->skipped() }}</dd>
                 </div>
             </dl>
@@ -181,7 +181,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
                 <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400" data-test="optimize-skipped">
                     @foreach (['already_optimal', 'too_large', 'unreadable', 'missing', 'changed'] as $reason)
                         @if (($run->counts[$reason] ?? 0) > 0)
-                            <li>{{ trans_choice("media.optimize.skipped_reasons.{$reason}", $run->counts[$reason], ['count' => $run->counts[$reason]]) }}</li>
+                            <li>{{ trans_choice("hata::media.optimize.skipped_reasons.{$reason}", $run->counts[$reason], ['count' => $run->counts[$reason]]) }}</li>
                         @endif
                     @endforeach
                 </ul>
@@ -189,34 +189,34 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
 
             @if ($run->status === 'done')
                 @if ($this->candidateCount > 0)
-                    <flux:text>{{ trans_choice('media.optimize.done_left', $this->candidateCount, ['count' => $this->candidateCount]) }}</flux:text>
+                    <flux:text>{{ trans_choice('hata::media.optimize.done_left', $this->candidateCount, ['count' => $this->candidateCount]) }}</flux:text>
                 @endif
                 <div class="flex flex-wrap gap-2">
                     @if ($this->candidateCount > 0)
-                        <flux:button variant="primary" wire:click="start" :disabled="! $enabled" data-test="optimize-start-new">{{ __('media.optimize.start_new') }}</flux:button>
+                        <flux:button variant="primary" wire:click="start" :disabled="! $enabled" data-test="optimize-start-new">{{ __('hata::media.optimize.start_new') }}</flux:button>
                     @endif
-                    <flux:button wire:click="stop">{{ __('common.actions.close') }}</flux:button>
+                    <flux:button wire:click="stop">{{ __('hata::common.actions.close') }}</flux:button>
                 </div>
             @elseif (! $stale)
                 <div class="flex flex-wrap gap-2">
                     @if ($run->status === 'running')
-                        <flux:button icon="pause" wire:click="pause" data-test="optimize-pause">{{ __('media.batch.pause') }}</flux:button>
+                        <flux:button icon="pause" wire:click="pause" data-test="optimize-pause">{{ __('hata::media.batch.pause') }}</flux:button>
                     @else
-                        <flux:button variant="primary" icon="play" wire:click="resume" :disabled="! $enabled" data-test="optimize-resume">{{ __('media.batch.resume') }}</flux:button>
+                        <flux:button variant="primary" icon="play" wire:click="resume" :disabled="! $enabled" data-test="optimize-resume">{{ __('hata::media.batch.resume') }}</flux:button>
                     @endif
-                    <flux:button variant="danger" icon="stop" wire:click="$set('showStopModal', true)" data-test="optimize-stop">{{ __('media.batch.stop') }}</flux:button>
+                    <flux:button variant="danger" icon="stop" wire:click="$set('showStopModal', true)" data-test="optimize-stop">{{ __('hata::media.batch.stop') }}</flux:button>
                 </div>
-                <flux:text size="sm">{{ $browserMode ? __('media.batch.tab_open_browser') : __('media.batch.tab_open_queue') }}</flux:text>
+                <flux:text size="sm">{{ $browserMode ? __('hata::media.batch.tab_open_browser') : __('hata::media.batch.tab_open_queue') }}</flux:text>
             @else
                 <div>
-                    <flux:button wire:click="stop">{{ __('media.batch.stop') }}</flux:button>
+                    <flux:button wire:click="stop">{{ __('hata::media.batch.stop') }}</flux:button>
                 </div>
             @endif
         </flux:card>
 
         @if ($run->recent !== [])
             <flux:card class="space-y-3">
-                <flux:heading size="lg">{{ __('media.batch.recent') }}</flux:heading>
+                <flux:heading size="lg">{{ __('hata::media.batch.recent') }}</flux:heading>
                 <ul class="divide-y divide-zinc-200 dark:divide-white/10" data-test="optimize-recent">
                     @foreach ($run->recent as $item)
                         <li wire:key="recent-{{ $loop->index }}-{{ $item['name'] }}" class="flex items-center justify-between gap-3 py-2">
@@ -225,7 +225,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
                                 @if ($item['outcome'] === 'optimized')
                                     <span>{{ $size($item['before']) }} → {{ $size($item['after']) }}</span>
                                 @endif
-                                <flux:badge :color="$outcomeColors[$item['outcome']] ?? 'zinc'" size="sm">{{ __("media.optimize.outcomes.{$item['outcome']}") }}</flux:badge>
+                                <flux:badge :color="$outcomeColors[$item['outcome']] ?? 'zinc'" size="sm">{{ __("hata::media.optimize.outcomes.{$item['outcome']}") }}</flux:badge>
                             </span>
                         </li>
                     @endforeach
@@ -234,7 +234,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.optimize.title')] class extend
         @endif
     @endif
 
-    <x-hata::confirm-modal wire:model.self="showStopModal" :heading="__('media.optimize.stop_heading')" :confirm-label="__('media.batch.stop')" confirm-action="stop">
-        {{ __('media.optimize.stop_body') }}
+    <x-hata::confirm-modal wire:model.self="showStopModal" :heading="__('hata::media.optimize.stop_heading')" :confirm-label="__('hata::media.batch.stop')" confirm-action="stop">
+        {{ __('hata::media.optimize.stop_body') }}
     </x-hata::confirm-modal>
 </div>

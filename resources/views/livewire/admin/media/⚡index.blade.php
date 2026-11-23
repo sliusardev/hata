@@ -41,7 +41,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
-new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends Component {
+new #[Layout('hata::layouts.app')] #[Title('hata::media.index.title')] class extends Component {
     use WithFileUploads {
         _startUpload as startTemporaryUpload;
         _finishUpload as finishTemporaryUpload;
@@ -358,7 +358,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         $this->reset('upload', 'uploadPickedSize', 'uploadPickedExtension', 'uploadFolderId');
 
         if (! $file instanceof TemporaryUploadedFile) {
-            return ['ok' => false, 'error' => __('media.upload.failed')];
+            return ['ok' => false, 'error' => __('hata::media.upload.failed')];
         }
 
         $result = $storeUploadedMedia->handle($this->actor(), $file, $folderId, $pickedSize, $pickedExtension);
@@ -425,18 +425,18 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         } catch (AuthorizationException) {
             $this->toastForbidden();
 
-            return ['ok' => false, 'error' => __('media.errors.forbidden')];
+            return ['ok' => false, 'error' => __('hata::media.errors.forbidden')];
         } catch (Throwable $exception) {
             report($exception);
-            Flux::toast(variant: 'danger', text: __('media.replace.failed'));
+            Flux::toast(variant: 'danger', text: __('hata::media.replace.failed'));
 
-            return ['ok' => false, 'error' => __('media.replace.failed')];
+            return ['ok' => false, 'error' => __('hata::media.replace.failed')];
         } finally {
             $file->delete();
         }
 
         $this->refreshAfterFileChange();
-        Flux::toast(variant: 'success', text: __('media.replace.done'));
+        Flux::toast(variant: 'success', text: __('hata::media.replace.done'));
 
         return ['ok' => true];
     }
@@ -474,7 +474,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         try {
             $restoreOriginal->handle($this->actor(), $media);
         } catch (ValidationException $exception) {
-            Flux::toast(variant: 'danger', text: $exception->errors()['original'][0] ?? __('media.restore.failed'));
+            Flux::toast(variant: 'danger', text: $exception->errors()['original'][0] ?? __('hata::media.restore.failed'));
 
             return;
         } catch (MediaChangedException $exception) {
@@ -487,13 +487,13 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
             return;
         } catch (Throwable $exception) {
             report($exception);
-            Flux::toast(variant: 'danger', text: __('media.restore.failed'));
+            Flux::toast(variant: 'danger', text: __('hata::media.restore.failed'));
 
             return;
         }
 
         $this->refreshAfterFileChange();
-        Flux::toast(variant: 'success', text: __('media.restore.done'));
+        Flux::toast(variant: 'success', text: __('hata::media.restore.done'));
     }
 
     /**
@@ -640,7 +640,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         }
 
         if (count($ids) > ZipMedia::MAX_FILES) {
-            Flux::toast(variant: 'danger', text: __('media.bulk.zip_too_large', ['files' => ZipMedia::MAX_FILES]));
+            Flux::toast(variant: 'danger', text: __('hata::media.bulk.zip_too_large', ['files' => ZipMedia::MAX_FILES]));
 
             return;
         }
@@ -834,7 +834,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         $this->openDetails($media->id);
         unset($this->media, $this->totals, $this->folders);
         $this->closeDetailsWhenHidden();
-        Flux::toast(variant: 'success', text: __('media.messages.saved'));
+        Flux::toast(variant: 'success', text: __('hata::media.messages.saved'));
     }
 
     #[Computed]
@@ -887,7 +887,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         }
 
         $this->forgetDeletedMedia();
-        Flux::toast(variant: 'success', text: trans_choice('media.messages.deleted', $count));
+        Flux::toast(variant: 'success', text: trans_choice('hata::media.messages.deleted', $count));
     }
 
     /**
@@ -957,7 +957,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
 
         unset($this->folders, $this->folderList, $this->totals, $this->media);
         $this->closeDetailsWhenHidden();
-        Flux::toast(variant: 'success', text: trans_choice('media.messages.moved', $items->count()));
+        Flux::toast(variant: 'success', text: trans_choice('hata::media.messages.moved', $items->count()));
     }
 
     /**
@@ -1016,7 +1016,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         $this->runFolderAction(function () use ($name): void {
             app(CreateFolder::class)->handle($this->actor(), $name, $this->currentFolder);
             $this->expandFolderId = $this->currentFolder?->id;
-        }, __('media.messages.folder_created'));
+        }, __('hata::media.messages.folder_created'));
     }
 
     public function renameFolder(int $id, string $name): void
@@ -1029,7 +1029,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
 
         $this->runFolderAction(function () use ($folder, $name): void {
             app(RenameFolder::class)->handle($this->actor(), $folder, $name);
-        }, __('media.messages.folder_renamed'));
+        }, __('hata::media.messages.folder_renamed'));
     }
 
     /**
@@ -1053,7 +1053,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         try {
             app(MoveFolder::class)->handle($this->actor(), $folder, $target);
         } catch (ValidationException $exception) {
-            Flux::toast(variant: 'danger', text: collect($exception->errors())->flatten()->first() ?? __('media.errors.folder_into_itself'));
+            Flux::toast(variant: 'danger', text: collect($exception->errors())->flatten()->first() ?? __('hata::media.errors.folder_into_itself'));
 
             return;
         } catch (AuthorizationException) {
@@ -1064,7 +1064,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
 
         $this->expandFolderId = $target?->id;
         unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders, $this->hasSubfolders);
-        Flux::toast(variant: 'success', text: __('media.messages.folder_moved'));
+        Flux::toast(variant: 'success', text: __('hata::media.messages.folder_moved'));
     }
 
     public function openMoveFolder(int $id): void
@@ -1185,7 +1185,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         }
 
         if ($summary['files'] > 10 && trim($this->confirmName) !== $folder->name) {
-            $this->addError('confirmName', __('media.folders.delete.name_mismatch'));
+            $this->addError('confirmName', __('hata::media.folders.delete.name_mismatch'));
 
             return;
         }
@@ -1211,7 +1211,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
 
         unset($this->folders, $this->folderList, $this->currentFolder, $this->breadcrumb, $this->subfolders, $this->hasSubfolders);
         $this->forgetDeletedMedia();
-        Flux::toast(variant: 'success', text: __('media.messages.folder_deleted'));
+        Flux::toast(variant: 'success', text: __('hata::media.messages.folder_deleted'));
     }
 
     /**
@@ -1226,7 +1226,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         return [
             'locale' => app()->getLocale(),
             'forms' => collect([1, 2, 5])
-                ->mapWithKeys(fn (int $count): array => [$count => trans_choice('media.bulk.dragging', $count, ['count' => ':count'])])
+                ->mapWithKeys(fn (int $count): array => [$count => trans_choice('hata::media.bulk.dragging', $count, ['count' => ':count'])])
                 ->all(),
         ];
     }
@@ -1409,7 +1409,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
 
     private function toastForbidden(): void
     {
-        Flux::toast(variant: 'danger', text: __('media.errors.forbidden'));
+        Flux::toast(variant: 'danger', text: __('hata::media.errors.forbidden'));
     }
 
     /**
@@ -1438,7 +1438,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         try {
             $action();
         } catch (ValidationException $exception) {
-            $this->addError('folderName', $exception->errors()['name'][0] ?? __('media.errors.folder_name'));
+            $this->addError('folderName', $exception->errors()['name'][0] ?? __('hata::media.errors.folder_name'));
 
             return;
         } catch (AuthorizationException) {
@@ -1581,13 +1581,13 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
 >
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <flux:heading size="xl" level="1">{{ __('media.index.title') }}</flux:heading>
-            <flux:subheading>{{ __('media.index.description') }}</flux:subheading>
+            <flux:heading size="xl" level="1">{{ __('hata::media.index.title') }}</flux:heading>
+            <flux:subheading>{{ __('hata::media.index.description') }}</flux:subheading>
         </div>
 
         @if ($canUpload)
             <flux:button variant="primary" icon="arrow-up-tray" x-on:click="$refs.uploadInput.click()" data-test="media-upload">
-                {{ __('media.upload.button') }}
+                {{ __('hata::media.upload.button') }}
             </flux:button>
             <input
                 type="file"
@@ -1603,8 +1603,8 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
     @if (auth()->user()->can('settings.edit') && \Hata\Support\Media\MediaDisks::publishes((string) config('media.disk')) && in_array(app(\Hata\Support\Media\DirectServing::class)->state(), ['link_missing', 'unreachable'], true))
         <flux:callout icon="exclamation-triangle" variant="warning" data-test="direct-warning">
             <flux:callout.text>
-                {{ __('media.index.direct_warning') }}
-                <flux:link :href="route('admin.settings.edit', ['tab' => 'media'])" wire:navigate>{{ __('media.index.direct_warning_link') }}</flux:link>
+                {{ __('hata::media.index.direct_warning') }}
+                <flux:link :href="route('admin.settings.edit', ['tab' => 'media'])" wire:navigate>{{ __('hata::media.index.direct_warning_link') }}</flux:link>
             </flux:callout.text>
         </flux:callout>
     @endif
@@ -1613,31 +1613,31 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         <flux:input
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
-            :placeholder="__('media.index.search')"
-            :aria-label="__('media.index.search')"
+            :placeholder="__('hata::media.index.search')"
+            :aria-label="__('hata::media.index.search')"
             clearable
             class="lg:max-w-xs"
         />
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:flex">
-            <flux:select wire:model.live="type" :aria-label="__('media.index.filters.type')" class="lg:w-44">
-                <flux:select.option value="">{{ __('media.index.filters.all_types') }}</flux:select.option>
+            <flux:select wire:model.live="type" :aria-label="__('hata::media.index.filters.type')" class="lg:w-44">
+                <flux:select.option value="">{{ __('hata::media.index.filters.all_types') }}</flux:select.option>
                 @foreach (Hata\Enums\MediaKind::cases() as $kind)
-                    <flux:select.option :value="$kind->value">{{ __('media.index.types.'.$kind->value) }}</flux:select.option>
+                    <flux:select.option :value="$kind->value">{{ __('hata::media.index.types.'.$kind->value) }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="month" :aria-label="__('media.index.filters.month')" class="lg:w-48">
-                <flux:select.option value="">{{ __('media.index.filters.any_date') }}</flux:select.option>
+            <flux:select wire:model.live="month" :aria-label="__('hata::media.index.filters.month')" class="lg:w-48">
+                <flux:select.option value="">{{ __('hata::media.index.filters.any_date') }}</flux:select.option>
                 @foreach ($this->months as $value => $label)
                     <flux:select.option :value="$value">{{ $label }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             {{-- Not wire:model: a select would send the boolean back as a string. --}}
-            <flux:select wire:change="$set('unused', $event.target.value === '1')" :aria-label="__('media.index.filters.usage')" class="lg:w-56">
-                <flux:select.option value="0" :selected="! $unused">{{ __('media.index.filters.all_files') }}</flux:select.option>
-                <flux:select.option value="1" :selected="$unused">{{ __('media.index.filters.unused') }}</flux:select.option>
+            <flux:select wire:change="$set('unused', $event.target.value === '1')" :aria-label="__('hata::media.index.filters.usage')" class="lg:w-56">
+                <flux:select.option value="0" :selected="! $unused">{{ __('hata::media.index.filters.all_files') }}</flux:select.option>
+                <flux:select.option value="1" :selected="$unused">{{ __('hata::media.index.filters.unused') }}</flux:select.option>
             </flux:select>
         </div>
 
@@ -1650,26 +1650,26 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
                 wire:click="toggleSelecting"
                 :aria-pressed="$selecting ? 'true' : 'false'"
                 class="self-start lg:self-auto"
-                :tooltip="__('media.bulk.select_keys')"
+                :tooltip="__('hata::media.bulk.select_keys')"
                 data-test="media-select-several"
             >
-                {{ $selecting ? __('media.bulk.done_selecting') : __('media.bulk.select_several') }}
+                {{ $selecting ? __('hata::media.bulk.done_selecting') : __('hata::media.bulk.select_several') }}
             </flux:button>
         @endif
 
-        <flux:button.group :aria-label="__('media.index.views.label')" class="self-start lg:self-auto">
+        <flux:button.group :aria-label="__('hata::media.index.views.label')" class="self-start lg:self-auto">
             <flux:button
                 icon="squares-2x2"
                 :variant="$view === 'grid' ? 'filled' : 'outline'"
                 wire:click="$set('view', 'grid')"
-                :aria-label="__('media.index.views.grid')"
+                :aria-label="__('hata::media.index.views.grid')"
                 :aria-pressed="$view === 'grid' ? 'true' : 'false'"
             />
             <flux:button
                 icon="list-bullet"
                 :variant="$view === 'list' ? 'filled' : 'outline'"
                 wire:click="$set('view', 'list')"
-                :aria-label="__('media.index.views.list')"
+                :aria-label="__('hata::media.index.views.list')"
                 :aria-pressed="$view === 'list' ? 'true' : 'false'"
             />
         </flux:button.group>
@@ -1688,7 +1688,7 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
         <div class="min-w-0 flex-1 space-y-4" data-media-drag-labels="{{ json_encode($this->dragLabels) }}">
             <div class="flex min-h-8 items-center gap-2 text-sm">
                 @include('hata::partials.admin.media.breadcrumb', ['folder' => $folder, 'crumbs' => $this->breadcrumb, 'rootValue' => 'null'])
-                <flux:text size="sm" variant="subtle">· {{ trans_choice('media.index.file_count', $this->media->total()) }}</flux:text>
+                <flux:text size="sm" variant="subtle">· {{ trans_choice('hata::media.index.file_count', $this->media->total()) }}</flux:text>
 
                 @if ($this->currentFolder && $canManageFolders)
                     @include('hata::partials.admin.media.folder-menu', ['folderId' => $this->currentFolder->id, 'testId' => 'media-folder-actions'])
@@ -1719,12 +1719,12 @@ new #[Layout('hata::layouts.app')] #[Title('media.index.title')] class extends C
             @island(name: 'files', always: true)
                 @php $canMoveFiles = auth()->user()->can('manageFolders', Hata\Models\Media::class); @endphp
                 @if ($this->media->isEmpty() && $this->hasSubfolders)
-                    <flux:text size="sm" variant="subtle" data-test="media-no-files">{{ __('media.index.subfolders.no_files') }}</flux:text>
+                    <flux:text size="sm" variant="subtle" data-test="media-no-files">{{ __('hata::media.index.subfolders.no_files') }}</flux:text>
                 @elseif ($this->media->isEmpty())
                     <x-hata::admin.empty-state
                         icon="photo"
-                        :heading="$this->totals['all'] > 0 ? __('media.index.no_results.title') : __('media.index.empty.title')"
-                        :description="$this->totals['all'] > 0 ? __('media.index.no_results.description') : __('media.index.empty.description')"
+                        :heading="$this->totals['all'] > 0 ? __('hata::media.index.no_results.title') : __('hata::media.index.empty.title')"
+                        :description="$this->totals['all'] > 0 ? __('hata::media.index.no_results.description') : __('hata::media.index.empty.description')"
                     />
                 @elseif ($view === 'list')
                     <div wire:key="media-list" data-media-area x-on:click="mediaDetailsClose.emptyClick($event, $wire)">

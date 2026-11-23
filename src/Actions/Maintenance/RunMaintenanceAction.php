@@ -78,7 +78,7 @@ class RunMaintenanceAction
 
         register_shutdown_function(function () use ($run, $state): void {
             if (! $state['finished'] && $run->exists) {
-                $this->finish($run, MaintenanceStatus::Interrupted, null, __('maintenance.errors.interrupted'));
+                $this->finish($run, MaintenanceStatus::Interrupted, null, __('hata::maintenance.errors.interrupted'));
             }
         });
 

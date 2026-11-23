@@ -6,7 +6,7 @@ use Livewire\Attributes\Layout;
 new #[Layout('hata::layouts.app')] class extends EntryEditPage {
     public function render(): mixed
     {
-        return $this->view()->title(__('content.form.page_title', [
+        return $this->view()->title(__('hata::content.form.page_title', [
             'type' => $this->contentType->label(),
             'title' => $this->entry->title,
         ]));

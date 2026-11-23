@@ -16,9 +16,9 @@
 
             <flux:sidebar.nav class="gap-6 px-3 py-5">
                 @can('admin.access')
-                    <flux:sidebar.group :heading="__('navigation.platform')" :class="$groupClasses">
+                    <flux:sidebar.group :heading="__('hata::navigation.platform')" :class="$groupClasses">
                         <flux:sidebar.item icon="home" :icon:variant="request()->routeIs('admin.dashboard') ? 'solid' : 'outline'" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>
-                            {{ __('navigation.dashboard') }}
+                            {{ __('hata::navigation.dashboard') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 
@@ -42,7 +42,7 @@
                         $contentTypes = array_filter($contentTypes, fn ($contentType) => auth()->user()->can('viewAny', [Hata\Models\Entry::class, $contentType->key()]));
                     @endphp
                     @if ($contentTypes !== [] || auth()->user()->can('media.view'))
-                        <flux:sidebar.group :heading="__('navigation.content')" :class="$groupClasses">
+                        <flux:sidebar.group :heading="__('hata::navigation.content')" :class="$groupClasses">
                             @foreach ($contentTypes as $contentType)
                                 @php $isCurrent = request()->routeIs('admin.content.*') && request()->route('type') === $contentType->key(); @endphp
                                 <flux:sidebar.item :icon="$contentType->icon()" :icon:variant="$isCurrent ? 'solid' : 'outline'" :href="route('admin.content.index', $contentType->key())" :current="$isCurrent" wire:navigate wire:key="nav-content-{{ $contentType->key() }}">
@@ -51,41 +51,41 @@
                             @endforeach
                             @can('media.view')
                                 <flux:sidebar.item icon="photo" :icon:variant="request()->routeIs('admin.media.*') ? 'solid' : 'outline'" :href="route('admin.media.index')" :current="request()->routeIs('admin.media.*')" wire:navigate>
-                                    {{ __('navigation.media') }}
+                                    {{ __('hata::navigation.media') }}
                                 </flux:sidebar.item>
                             @endcan
                         </flux:sidebar.group>
                     @endif
 
                     @canany(['users.view', 'roles.view', 'settings.edit', 'maintenance.run'])
-                        <flux:sidebar.group :heading="__('navigation.administration')" :class="$groupClasses">
+                        <flux:sidebar.group :heading="__('hata::navigation.administration')" :class="$groupClasses">
                             @can('users.view')
                                 <flux:sidebar.item icon="users" :icon:variant="request()->routeIs('admin.users.*') ? 'solid' : 'outline'" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>
-                                    {{ __('navigation.users') }}
+                                    {{ __('hata::navigation.users') }}
                                 </flux:sidebar.item>
                             @endcan
                             @can('roles.view')
                                 <flux:sidebar.item icon="shield-check" :icon:variant="request()->routeIs('admin.roles.*') ? 'solid' : 'outline'" :href="route('admin.roles.index')" :current="request()->routeIs('admin.roles.*')" wire:navigate>
-                                    {{ __('navigation.roles') }}
+                                    {{ __('hata::navigation.roles') }}
                                 </flux:sidebar.item>
                             @endcan
                             @can('settings.edit')
                                 <flux:sidebar.item icon="adjustments-horizontal" :icon:variant="request()->routeIs('admin.settings.*') ? 'solid' : 'outline'" :href="route('admin.settings.edit')" :current="request()->routeIs('admin.settings.*')" wire:navigate>
-                                    {{ __('navigation.site_settings') }}
+                                    {{ __('hata::navigation.site_settings') }}
                                 </flux:sidebar.item>
                             @endcan
                             @can('maintenance.run')
                                 <flux:sidebar.item icon="wrench-screwdriver" :icon:variant="request()->routeIs('admin.maintenance') ? 'solid' : 'outline'" :href="route('admin.maintenance')" :current="request()->routeIs('admin.maintenance')" wire:navigate>
-                                    {{ __('navigation.maintenance') }}
+                                    {{ __('hata::navigation.maintenance') }}
                                 </flux:sidebar.item>
                             @endcan
                         </flux:sidebar.group>
                     @endcanany
                 @endcan
 
-                <flux:sidebar.group :heading="__('navigation.account')" :class="$groupClasses">
+                <flux:sidebar.group :heading="__('hata::navigation.account')" :class="$groupClasses">
                     <flux:sidebar.item icon="user-circle" :icon:variant="request()->routeIs('profile.edit', 'language.edit', 'security.edit', 'appearance.edit') ? 'solid' : 'outline'" :href="route('profile.edit')" :current="request()->routeIs('profile.edit', 'language.edit', 'security.edit', 'appearance.edit')" wire:navigate>
-                        {{ __('navigation.my_profile') }}
+                        {{ __('hata::navigation.my_profile') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
@@ -94,7 +94,7 @@
 
             <flux:sidebar.nav class="px-3 pb-2">
                 <flux:sidebar.item icon="arrow-top-right-on-square" :href="route('home')" target="_blank">
-                    {{ __('navigation.view_site') }}
+                    {{ __('hata::navigation.view_site') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 
@@ -136,7 +136,7 @@
 
                     <flux:menu.radio.group>
                         <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
-                            {{ __('navigation.settings') }}
+                            {{ __('hata::navigation.settings') }}
                         </flux:menu.item>
                     </flux:menu.radio.group>
 
@@ -151,7 +151,7 @@
                             class="w-full cursor-pointer"
                             data-test="logout-button"
                         >
-                            {{ __('navigation.log_out') }}
+                            {{ __('hata::navigation.log_out') }}
                         </flux:menu.item>
                     </form>
                 </flux:menu>

@@ -53,7 +53,7 @@ it('replaces the open file after confirmation', function () {
         ->call('confirmReplace')
         ->assertSet('showReplaceModal', true)
         ->assertSet('replacingId', $media->id)
-        ->assertSee(__('media.replace.heading', ['name' => 'old.jpg']))
+        ->assertSee(__('hata::media.replace.heading', ['name' => 'old.jpg']))
         ->call('replaceConfirmed')
         ->assertSet('showReplaceModal', false)
         ->assertSet('replacingId', null)
@@ -85,7 +85,7 @@ it('refuses a replacement of another kind with a toast and keeps the file', func
         ->assertSet('replacingId', null);
 
     expect($component->effects['returns'][0]['ok'])->toBeFalse()
-        ->and($component->effects['returns'][0]['error'])->toBe(__('media.errors.other_kind', ['kind' => __('media.errors.kinds.image')]))
+        ->and($component->effects['returns'][0]['error'])->toBe(__('hata::media.errors.other_kind', ['kind' => __('hata::media.errors.kinds.image')]))
         ->and($media->refresh()->name)->toBe('old.jpg')
         ->and($media->version)->toBe(1)
         ->and(Storage::disk('local')->get($media->path))->toBe($before);
@@ -199,14 +199,14 @@ it('says the file was changed meanwhile when a replace or restore loses the race
     $this->mock(ReplaceMediaFile::class)->shouldReceive('handle')->andThrow(MediaChangedException::changed());
     $this->mock(RestoreOriginal::class)->shouldReceive('handle')->andThrow(MediaChangedException::changed());
     $danger = fn (string $event, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
-        && ($params['slots']['text'] ?? null) === __('media.errors.changed_meanwhile');
+        && ($params['slots']['text'] ?? null) === __('hata::media.errors.changed_meanwhile');
 
     Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->set('replacement', replacementFile('Fresh photo.jpg', makeImage('jpg', 1000, 700)))
         ->call('confirmReplace')
         ->call('replaceConfirmed')
-        ->assertReturned(['ok' => false, 'error' => __('media.errors.changed_meanwhile')])
+        ->assertReturned(['ok' => false, 'error' => __('hata::media.errors.changed_meanwhile')])
         ->assertDispatched('toast-show', $danger);
 
     Livewire::test('hata::admin.media.index')

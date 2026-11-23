@@ -17,7 +17,7 @@ class RichText extends Field
     {
         return ['string', function (string $attribute, mixed $value, Closure $fail): void {
             if (is_string($value) && strlen($value) > EntryInput::BODY_MAX_BYTES) {
-                $fail('content.entry.body_too_long')->translate();
+                $fail('hata::content.entry.body_too_long')->translate();
             }
         }];
     }

@@ -33,7 +33,7 @@ class CreateStorageLink
         $this->directServing->refresh();
 
         if (! $this->directServing->linked()) {
-            throw new StorageLinkException(__('site_settings.media.storage.direct.link_failed', ['command' => 'php artisan storage:link --force']));
+            throw new StorageLinkException(__('hata::site_settings.media.storage.direct.link_failed', ['command' => 'php artisan storage:link --force']));
         }
     }
 }

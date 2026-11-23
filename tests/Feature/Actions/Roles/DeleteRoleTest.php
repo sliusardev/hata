@@ -31,7 +31,7 @@ test('rule 1: the super-admin role cannot be deleted, even by a super admin', fu
     $role = Role::findByName('super-admin');
 
     expect(fn () => app(DeleteRole::class)->handle($actor, $role))
-        ->toThrow(ProtectedActionException::class, __('roles.errors.super_admin_locked'));
+        ->toThrow(ProtectedActionException::class, __('hata::roles.errors.super_admin_locked'));
 
     $this->assertModelExists($role);
 });
@@ -41,7 +41,7 @@ test('rule 6: system roles cannot be deleted', function () {
     $role = Role::findByName('author');
 
     expect(fn () => app(DeleteRole::class)->handle($actor, $role))
-        ->toThrow(ProtectedActionException::class, __('roles.errors.cannot_delete_system'));
+        ->toThrow(ProtectedActionException::class, __('hata::roles.errors.cannot_delete_system'));
 
     $this->assertModelExists($role);
 });
@@ -52,7 +52,7 @@ test('rule 7: a role assigned to users cannot be deleted', function () {
     User::factory()->count(2)->withRole('moderator')->create();
 
     expect(fn () => app(DeleteRole::class)->handle($actor, $role))
-        ->toThrow(ProtectedActionException::class, __('roles.errors.cannot_delete_in_use', ['users' => trans_choice('users.count', 2)]));
+        ->toThrow(ProtectedActionException::class, __('hata::roles.errors.cannot_delete_in_use', ['users' => trans_choice('hata::users.count', 2)]));
 
     $this->assertModelExists($role);
 });

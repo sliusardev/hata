@@ -7,14 +7,10 @@ return [
     | Authentication Language Lines
     |--------------------------------------------------------------------------
     |
-    | The top-level lines are used by Laravel and Fortify. The nested arrays
-    | hold the texts of the authentication pages.
+    | The texts of the authentication pages. Laravel's own lines (failed, password,
+    | throttle) are in resources/lang-framework.
     |
     */
-
-    'failed' => 'These credentials do not match our records.',
-    'password' => 'The provided password is incorrect.',
-    'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
 
     'login' => [
         'title' => 'Log in',

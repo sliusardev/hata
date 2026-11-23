@@ -166,7 +166,7 @@ new #[Layout('hata::layouts.app')] class extends EntryFormPage {
 
         // The source went to the trash or was deleted after the form opened: never save a standalone record instead.
         if ($this->sourceId !== null && $source === null) {
-            $this->addError('form.source', __('content.form.source_gone'));
+            $this->addError('form.source', __('hata::content.form.source_gone'));
             $this->dispatch('entry-form-invalid');
 
             return;
@@ -182,7 +182,7 @@ new #[Layout('hata::layouts.app')] class extends EntryFormPage {
 
         $this->finished = true;
 
-        Toast::success($entry->wasRecentlyCreated ? __('content.form.created') : __('content.form.exists'));
+        Toast::success($entry->wasRecentlyCreated ? __('hata::content.form.created') : __('hata::content.form.exists'));
 
         $this->redirectRoute('admin.content.edit', ['type' => $this->type, 'entry' => $entry->id], navigate: true);
     }

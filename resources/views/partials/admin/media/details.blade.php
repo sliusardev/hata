@@ -27,15 +27,15 @@
 @endphp
 
 <aside
-    aria-label="{{ __('media.details.heading') }}"
+    aria-label="{{ __('hata::media.details.heading') }}"
     class="w-full shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-white xl:w-80 2xl:w-96 dark:border-white/10 dark:bg-zinc-900"
     wire:key="media-details-{{ $media->id }}"
     data-media-details
     data-test="media-details"
 >
     <div class="flex items-center justify-between border-b border-zinc-200 py-2 ps-4 pe-2 dark:border-white/10">
-        <flux:heading size="sm" level="2">{{ __('media.details.heading') }}</flux:heading>
-        <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.closeDetails(true)" :aria-label="__('media.details.close')" />
+        <flux:heading size="sm" level="2">{{ __('hata::media.details.heading') }}</flux:heading>
+        <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.closeDetails(true)" :aria-label="__('hata::media.details.close')" />
     </div>
 
     <div class="flex aspect-[3/2] items-center justify-center bg-zinc-100 dark:bg-white/5">
@@ -43,11 +43,11 @@
             href="{{ $media->url() }}"
             target="_blank"
             rel="noopener"
-            title="{{ __('media.details.open') }}"
+            title="{{ __('hata::media.details.open') }}"
             class="flex size-full cursor-zoom-in items-center justify-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
             data-test="media-details-preview"
         >
-            <span class="sr-only">{{ __('media.details.open') }}</span>
+            <span class="sr-only">{{ __('hata::media.details.open') }}</span>
             @if ($thumbUrl = $media->thumbUrl())
                 <img src="{{ $thumbUrl }}" alt="{{ $media->altFor(app()->getLocale()) }}" class="size-full object-contain" />
             @else
@@ -65,18 +65,18 @@
             <div>
                 <div class="text-sm font-semibold break-all text-zinc-800 dark:text-white">{{ $media->name }}</div>
                 <dl class="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] text-zinc-700 dark:text-zinc-300">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('media.details.type') }}</dt>
-                    <dd>{{ $convertedFrom ? __('media.details.type_converted', ['type' => $media->extension(), 'original' => $convertedFrom]) : $media->extension() }}</dd>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('media.details.size') }}</dt>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('hata::media.details.type') }}</dt>
+                    <dd>{{ $convertedFrom ? __('hata::media.details.type_converted', ['type' => $media->extension(), 'original' => $convertedFrom]) : $media->extension() }}</dd>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('hata::media.details.size') }}</dt>
                     <dd>{{ implode(' · ', array_filter([$media->humanSize(), $media->width && $media->height ? $media->width.' × '.$media->height : null])) }}</dd>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('media.details.uploaded') }}</dt>
-                    <dd>{{ $media->uploader ? __('media.details.uploaded_by', ['date' => $uploaded, 'name' => $media->uploader->name]) : $uploaded }}</dd>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('hata::media.details.uploaded') }}</dt>
+                    <dd>{{ $media->uploader ? __('hata::media.details.uploaded_by', ['date' => $uploaded, 'name' => $media->uploader->name]) : $uploaded }}</dd>
                 </dl>
 
                 @if ($media->savedBytes() !== null)
                     <div class="mt-3 flex items-center gap-2 rounded-lg bg-green-50 px-2.5 py-2 text-[13px] text-green-800 dark:bg-green-400/10 dark:text-green-300">
                         <flux:icon name="check" variant="micro" class="shrink-0" />
-                        <span>{{ __('media.details.optimized', [
+                        <span>{{ __('hata::media.details.optimized', [
                             'before' => Hata\Models\Media::formatBytes((int) $media->original_size),
                             'after' => $media->humanSize(),
                             'percent' => $media->savedPercent(),
@@ -85,13 +85,13 @@
                 @elseif (in_array($media->optimize_failure, ['too_large', 'unreadable'], true))
                     <div class="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-2 text-[13px] text-amber-800 dark:bg-amber-400/10 dark:text-amber-300">
                         <flux:icon name="exclamation-triangle" variant="micro" class="shrink-0" />
-                        <span>{{ $media->optimize_failure === 'too_large' ? __('media.details.not_optimized') : __('media.details.unreadable') }}</span>
+                        <span>{{ $media->optimize_failure === 'too_large' ? __('hata::media.details.not_optimized') : __('hata::media.details.unreadable') }}</span>
                     </div>
                 @endif
             </div>
 
-            <flux:select wire:model="details.folder_id" :label="__('media.details.folder')" :disabled="! $canEdit">
-                <flux:select.option value="">{{ __('media.index.folders.none') }}</flux:select.option>
+            <flux:select wire:model="details.folder_id" :label="__('hata::media.details.folder')" :disabled="! $canEdit">
+                <flux:select.option value="">{{ __('hata::media.index.folders.none') }}</flux:select.option>
                 @foreach ($folderPaths as $id => $path)
                     <flux:select.option :value="$id" wire:key="details-folder-{{ $id }}">{{ $path }}</flux:select.option>
                 @endforeach
@@ -99,7 +99,7 @@
 
             <div class="space-y-2">
                 <flux:label for="alt-{{ $primaryLocale }}">
-                    {{ __('media.details.alt') }}@if (count($locales) > 1) ({{ $locales[$primaryLocale] }})@endif
+                    {{ __('hata::media.details.alt') }}@if (count($locales) > 1) ({{ $locales[$primaryLocale] }})@endif
                 </flux:label>
                 <flux:textarea
                     id="alt-{{ $primaryLocale }}"
@@ -108,7 +108,7 @@
                     :disabled="! $canEdit"
                 />
                 <flux:error name="details.alt.{{ $primaryLocale }}" />
-                <flux:text size="sm">{{ __('media.details.alt_hint') }}</flux:text>
+                <flux:text size="sm">{{ __('hata::media.details.alt_hint') }}</flux:text>
 
                 @if ($translationLocales !== [])
                     <div
@@ -127,16 +127,16 @@
                             class="flex w-full items-center gap-1.5 rounded-md py-1 text-start text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
                         >
                             <flux:icon.chevron-right variant="micro" class="transition-transform" x-bind:class="open && 'rotate-90'" />
-                            <span>{{ __('media.details.translations') }}</span>
+                            <span>{{ __('hata::media.details.translations') }}</span>
                             <span class="text-zinc-400 dark:text-zinc-500">·</span>
                             <span
                                 class="text-zinc-500 dark:text-zinc-400"
-                                x-text="@js(__('media.details.translations_filled', ['filled' => '__FILLED__', 'total' => count($translationLocales)])).replace('__FILLED__', filled)"
-                            >{{ __('media.details.translations_filled', ['filled' => $translationsFilled, 'total' => count($translationLocales)]) }}</span>
+                                x-text="@js(__('hata::media.details.translations_filled', ['filled' => '__FILLED__', 'total' => count($translationLocales)])).replace('__FILLED__', filled)"
+                            >{{ __('hata::media.details.translations_filled', ['filled' => $translationsFilled, 'total' => count($translationLocales)]) }}</span>
                         </button>
 
                         <div id="alt-translations" x-show="open" x-cloak class="mt-2 space-y-3 border-s border-zinc-200 ps-3 dark:border-white/10">
-                            <flux:text size="sm">{{ __('media.details.translations_hint') }}</flux:text>
+                            <flux:text size="sm">{{ __('hata::media.details.translations_hint') }}</flux:text>
                             @foreach ($translationLocales as $locale => $language)
                                 <div wire:key="alt-field-{{ $locale }}" class="space-y-1">
                                     <flux:label for="alt-{{ $locale }}">{{ $language }}</flux:label>
@@ -155,10 +155,10 @@
                 @endif
             </div>
 
-            <flux:input wire:model="details.title" :label="__('media.details.title')" :disabled="! $canEdit" />
+            <flux:input wire:model="details.title" :label="__('hata::media.details.title')" :disabled="! $canEdit" />
 
             <div class="space-y-1.5">
-                <flux:label>{{ __('media.details.usage') }}</flux:label>
+                <flux:label>{{ __('hata::media.details.usage') }}</flux:label>
                 @forelse ($media->usages as $usage)
                     @php($usageUrl = $usage->url(auth()->user()))
                     <div class="text-[13px] text-zinc-700 dark:text-zinc-300" wire:key="usage-{{ $usage->id }}">
@@ -169,7 +169,7 @@
                         @endif
                     </div>
                 @empty
-                    <div><flux:badge size="sm" color="amber">{{ __('media.index.nowhere') }}</flux:badge></div>
+                    <div><flux:badge size="sm" color="amber">{{ __('hata::media.index.nowhere') }}</flux:badge></div>
                 @endforelse
             </div>
 
@@ -182,27 +182,27 @@
                         copyText(this.url).then((copied) => (copied ? this.copied() : this.selectInstead()));
                     },
                     copied() {
-                        this.$flux.toast({ text: @js(__('media.details.copied')), variant: 'success' });
+                        this.$flux.toast({ text: @js(__('hata::media.details.copied')), variant: 'success' });
                     },
                     selectInstead() {
                         const field = this.$root.querySelector('input');
                         field?.focus();
                         field?.select();
-                        this.$flux.toast({ text: @js(__('media.details.copy_failed')), variant: 'danger' });
+                        this.$flux.toast({ text: @js(__('hata::media.details.copy_failed')), variant: 'danger' });
                     },
                 }"
             >
-                <flux:input size="sm" readonly :value="$media->appUrl()" :aria-label="__('media.details.url')" class="min-w-0 flex-1" x-on:focus="$event.target.select()" />
-                <flux:button size="sm" icon="link" x-on:click="copy()" data-test="media-details-copy">{{ __('media.details.copy') }}</flux:button>
+                <flux:input size="sm" readonly :value="$media->appUrl()" :aria-label="__('hata::media.details.url')" class="min-w-0 flex-1" x-on:focus="$event.target.select()" />
+                <flux:button size="sm" icon="link" x-on:click="copy()" data-test="media-details-copy">{{ __('hata::media.details.copy') }}</flux:button>
             </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 border-t border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-white/5">
             @if ($canEdit)
-                <flux:button type="submit" variant="primary" size="sm" x-bind:disabled="saving" data-test="media-details-save">{{ __('common.actions.save') }}</flux:button>
+                <flux:button type="submit" variant="primary" size="sm" x-bind:disabled="saving" data-test="media-details-save">{{ __('hata::common.actions.save') }}</flux:button>
             @endif
-            <flux:button size="sm" icon="arrow-top-right-on-square" :href="$media->url()" target="_blank" rel="noopener" :aria-label="__('media.details.open')" :tooltip="__('media.details.open')" data-test="media-details-open" />
-            <flux:button size="sm" icon="arrow-down-tray" :href="$media->appUrl().'?download=1'" :aria-label="__('media.details.download')" :tooltip="__('media.details.download')" />
+            <flux:button size="sm" icon="arrow-top-right-on-square" :href="$media->url()" target="_blank" rel="noopener" :aria-label="__('hata::media.details.open')" :tooltip="__('hata::media.details.open')" data-test="media-details-open" />
+            <flux:button size="sm" icon="arrow-down-tray" :href="$media->appUrl().'?download=1'" :aria-label="__('hata::media.details.download')" :tooltip="__('hata::media.details.download')" />
             @if ($canEdit)
                 <input
                     type="file"
@@ -211,22 +211,22 @@
                     class="hidden"
                     x-on:change="replaceFile($event.target)"
                 />
-                <span x-show="replacing" x-cloak role="status" class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('media.replace.working') }}</span>
+                <span x-show="replacing" x-cloak role="status" class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('hata::media.replace.working') }}</span>
             @endif
             <flux:spacer />
-            <x-hata::admin.row-actions :label="__('media.details.actions')" data-test="media-details-actions">
+            <x-hata::admin.row-actions :label="__('hata::media.details.actions')" data-test="media-details-actions">
                 @if ($canEdit && $media->offersEditing())
                     <flux:menu.item icon="scissors" :href="route('admin.media.crop', $media)" wire:navigate data-test="media-details-crop">
-                        {{ __('media.details.crop') }}
+                        {{ __('hata::media.details.crop') }}
                     </flux:menu.item>
                 @endif
                 @if ($canEdit)
                     <flux:menu.item icon="arrow-path" x-on:click="$refs.replaceInput.click()" x-bind:disabled="replacing" data-test="media-details-replace">
-                        {{ __('media.details.replace') }}
+                        {{ __('hata::media.details.replace') }}
                     </flux:menu.item>
                     @if ($media->original_path)
                         <flux:menu.item icon="arrow-uturn-left" x-on:click="$wire.confirmRestore()" data-test="media-details-restore">
-                            {{ __('media.details.restore') }}
+                            {{ __('hata::media.details.restore') }}
                         </flux:menu.item>
                     @endif
                 @endif
@@ -235,7 +235,7 @@
                         <flux:menu.separator />
                     @endif
                     <flux:menu.item variant="danger" icon="trash" x-on:click="$wire.confirmDelete({{ $media->id }})" data-test="media-details-delete">
-                        {{ __('common.actions.delete') }}
+                        {{ __('hata::common.actions.delete') }}
                     </flux:menu.item>
                 @endcan
             </x-hata::admin.row-actions>

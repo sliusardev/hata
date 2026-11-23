@@ -42,8 +42,8 @@ class SyncRolePermissions
 
         foreach (array_diff($target, $current) as $added) {
             if (! $this->rules->canGrantPermission($actor, $added)) {
-                throw ProtectedActionException::because('roles.errors.cannot_grant_permission', [
-                    'permission' => __("permissions.items.{$added}"),
+                throw ProtectedActionException::because('hata::roles.errors.cannot_grant_permission', [
+                    'permission' => $this->registry->permissionLabel($added),
                 ]);
             }
         }

@@ -192,7 +192,7 @@ abstract class EntryEditPage extends EntryFormPage
 
         unset($this->groupRecords, $this->localeChoices);
 
-        Flux::toast(variant: 'success', text: __('content.link.unlinked', ['title' => $target->title]));
+        Flux::toast(variant: 'success', text: __('hata::content.link.unlinked', ['title' => $target->title]));
     }
 
     /**
@@ -244,13 +244,13 @@ abstract class EntryEditPage extends EntryFormPage
             unset($this->termOptions);
         }
 
-        Flux::toast(variant: 'success', text: __('content.form.saved'));
+        Flux::toast(variant: 'success', text: __('hata::content.form.saved'));
 
         $this->dispatch(
             'entry-saved',
             locale: $this->entry->locale,
             state: strtolower($this->entry->state()->name),
-            title: __('content.form.page_title', ['type' => $this->contentType->label(), 'title' => $this->entry->title]).' - '.config('app.name'),
+            title: __('hata::content.form.page_title', ['type' => $this->contentType->label(), 'title' => $this->entry->title]).' - '.config('app.name'),
         );
     }
 
@@ -287,8 +287,8 @@ abstract class EntryEditPage extends EntryFormPage
         $this->finished = true;
 
         Toast::success($count > 1
-            ? trans_choice('content.list.trash.done_with_children', $count)
-            : __('content.list.trash.done'));
+            ? trans_choice('hata::content.list.trash.done_with_children', $count)
+            : __('hata::content.list.trash.done'));
 
         $this->redirectRoute('admin.content.index', ['type' => $this->type]);
     }
@@ -309,7 +309,7 @@ abstract class EntryEditPage extends EntryFormPage
             return;
         }
 
-        Toast::success(__('content.list.restored', ['title' => $restored->title]));
+        Toast::success(__('hata::content.list.restored', ['title' => $restored->title]));
 
         $this->redirectRoute('admin.content.edit', ['type' => $this->type, 'entry' => $this->entryId], navigate: true);
     }

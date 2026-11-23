@@ -15,7 +15,7 @@ enum MaintenanceStatus: string
 
     public function label(): string
     {
-        return __('maintenance.statuses.'.$this->value);
+        return __('hata::maintenance.statuses.'.$this->value);
     }
 
     public function color(): string

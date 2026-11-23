@@ -32,7 +32,7 @@
             ].find(({ pattern }) => pattern.test(ua))?.name;
 
             if (browser && os) {
-                return @js(__('settings.passkeys.default_name')).replace(':browser', browser).replace(':os', os);
+                return @js(__('hata::settings.passkeys.default_name')).replace(':browser', browser).replace(':os', os);
             }
 
             return browser || os || '';
@@ -70,7 +70,7 @@
     }"
 >
     <template x-if="!supported">
-        <flux:text>{{ __('settings.passkeys.not_supported') }}</flux:text>
+        <flux:text>{{ __('hata::settings.passkeys.not_supported') }}</flux:text>
     </template>
 
     <template x-if="supported && !showForm">
@@ -80,7 +80,7 @@
                 icon="plus"
                 x-on:click="showForm = true"
             >
-                {{ __('settings.passkeys.add') }}
+                {{ __('hata::settings.passkeys.add') }}
             </flux:button>
         </div>
     </template>
@@ -88,14 +88,14 @@
     <template x-if="supported && showForm">
         <div class="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
             <flux:input
-                label="{{ __('settings.passkeys.name_label') }}"
+                label="{{ __('hata::settings.passkeys.name_label') }}"
                 x-model="name"
-                placeholder="{{ __('settings.passkeys.name_placeholder') }}"
+                placeholder="{{ __('hata::settings.passkeys.name_placeholder') }}"
                 x-on:keydown.enter.prevent="register()"
                 x-ref="passkeyNameInput"
                 x-init="$nextTick(() => $refs.passkeyNameInput?.focus())"
             />
-            <flux:text class="!mt-1">{{ __('settings.passkeys.name_help') }}</flux:text>
+            <flux:text class="!mt-1">{{ __('hata::settings.passkeys.name_help') }}</flux:text>
 
             <p x-show="error" x-text="error" x-cloak class="text-sm text-red-600 dark:text-red-400"></p>
 
@@ -105,14 +105,14 @@
                     x-on:click="register()"
                     x-bind:disabled="loading || !name.trim()"
                 >
-                    <span x-show="!loading">{{ __('settings.passkeys.register') }}</span>
-                    <span x-show="loading" x-cloak>{{ __('settings.passkeys.registering') }}</span>
+                    <span x-show="!loading">{{ __('hata::settings.passkeys.register') }}</span>
+                    <span x-show="loading" x-cloak>{{ __('hata::settings.passkeys.registering') }}</span>
                 </flux:button>
                 <flux:button
                     variant="ghost"
                     x-on:click="cancel()"
                 >
-                    {{ __('common.actions.cancel') }}
+                    {{ __('hata::common.actions.cancel') }}
                 </flux:button>
             </div>
         </div>

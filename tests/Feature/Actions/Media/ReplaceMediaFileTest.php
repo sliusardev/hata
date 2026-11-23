@@ -98,7 +98,7 @@ it('refuses a file of another kind and changes nothing', function () {
         app(ReplaceMediaFile::class)->handle($this->actor, $media, uploadedImage('a.pdf', $pdf));
         $this->fail('Expected an exception.');
     } catch (MediaUploadException $e) {
-        expect($e->getMessage())->toBe(__('media.errors.other_kind', ['kind' => __('media.errors.kinds.image')]));
+        expect($e->getMessage())->toBe(__('hata::media.errors.other_kind', ['kind' => __('hata::media.errors.kinds.image')]));
     }
 
     expect($media->fresh()->getAttributes())->toBe($before);
@@ -159,7 +159,7 @@ it('refuses to replace across the raster and svg line on any site disk and write
         app(ReplaceMediaFile::class)->handle($this->actor, $media, uploadedImage($files[$to][0], $files[$to][1]));
         $this->fail('Expected an exception.');
     } catch (MediaUploadException $e) {
-        expect($e->getMessage())->toBe(__('media.replace.svg_boundary'));
+        expect($e->getMessage())->toBe(__('hata::media.replace.svg_boundary'));
     }
 
     expect($media->fresh()->getAttributes())->toBe($before)

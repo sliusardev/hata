@@ -23,10 +23,10 @@ class SetContentTypeActive
     {
         Gate::forUser($actor)->authorize('settings.edit');
 
-        $type = $this->types->find($key) ?? throw ProtectedActionException::because('site_settings.content.messages.unknown');
+        $type = $this->types->find($key) ?? throw ProtectedActionException::because('hata::site_settings.content.messages.unknown');
 
         if ($type->required() && ! $active) {
-            throw ProtectedActionException::because('site_settings.content.messages.required', ['type' => $type->pluralLabel()]);
+            throw ProtectedActionException::because('hata::site_settings.content.messages.required', ['type' => $type->pluralLabel()]);
         }
 
         // Only keys of registered types are kept, so a type removed from the code leaves nothing behind.
