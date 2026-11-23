@@ -188,7 +188,7 @@ with the package and checks the `hata::` keys.
 - Fonts (today Bunny's Instrument Sans through the Vite plugin) are bundled into `dist/` or loaded the same way the
   build does now; the builder picks, keeping no third-party request the site does not have today.
 - Flux's CSS is compiled into Hata's admin CSS at build time, so Hata pins `livewire/flux` to the minor it was built
-  with (`~2.21`), and every Hata release is built against the Flux it allows.
+  with (`~2.21.0`), and every Hata release is built against the Flux it allows.
 - Module assets: a module's admin pages may use Tailwind classes that Hata's CSS lacks. A module ships its own
   prebuilt CSS/JS and registers it (`Hata::adminAssets(...)` or a registry), and the admin layout includes the
   registered files. This is the one asset API built now (goal 4), exercised by a test fixture, not by a real module.

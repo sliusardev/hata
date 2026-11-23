@@ -14,7 +14,7 @@ see what the command printed and who ran what.
 
 ## Page
 
-- `GET /admin/maintenance` (`admin.maintenance`, Livewire SFC `pages::admin.maintenance.index`), admin group
+- `GET /admin/maintenance` (`admin.maintenance`, Livewire SFC `hata::admin.maintenance.index`), admin group
   plus `can:maintenance.run`; `mount()` authorizes again. Sidebar item "Maintenance" under Administration,
   after "Site settings", shown with the permission.
 - Tabs like Site settings (`flux:navbar`; `#[Url] tab`, `TABS` in the page; an unknown value falls back to `actions`): **Actions**, **Journal** and **Logs**. Each tab loads only its own data: the Actions tab never queries the journal, the Journal tab never reads the migration state, and only the Logs tab lists the logs folder. The user asked for tabs because database tools will be added later as another tab.
@@ -28,7 +28,7 @@ see what the command printed and who ran what.
   which names what will run (the number of migrations, the seeder). "Rebuild caches" adds a warning in the
   local environment: cached config and routes hide later `.env` and route edits. The dialog is a real form:
   its button posts `action` and `seeder` to `POST /admin/maintenance/run` (below) and disables itself while
-  the request runs. It is not `<x-confirm-modal>`, whose button calls a Livewire action.
+  the request runs. It is not `<x-hata::confirm-modal>`, whose button calls a Livewire action.
 - **Last result** (Actions tab): the run made just before this page load: status badge, action, duration, output in a monospace block, and a link to the journal.
 - **Journal** tab: `flux:table`, 15 per page, newest first: when (site timezone), who, action (with the seeder),
   status, duration; the row's "⋮" menu (and the action's name) opens the output in a modal (`showOutput()`).
@@ -44,7 +44,7 @@ see what the command printed and who ran what.
 
 ## Actions
 
-`App\Enums\MaintenanceAction` is the whole list; nothing else is ever passed to Artisan.
+`Hata\Enums\MaintenanceAction` is the whole list; nothing else is ever passed to Artisan.
 
 | Action | Command |
 |---|---|
@@ -53,7 +53,7 @@ see what the command printed and who ran what.
 | `clear_caches` | `optimize:clear` |
 | `rebuild_caches` | `optimize` |
 
-`App\Actions\Maintenance\RunMaintenanceAction::handle(User $actor, MaintenanceAction $action, ?string $seeder)`:
+`Hata\Actions\Maintenance\RunMaintenanceAction::handle(AdminUser $actor, MaintenanceAction $action, ?string $seeder)`:
 
 1. Authorizes `maintenance.run`.
 2. For `seed`, resolves the name through `SeederCatalog::resolve()`; a name that is not on the list (a full
@@ -65,7 +65,7 @@ see what the command printed and who ran what.
 4. Takes the run lock by creating the journal entry (below); another run in progress throws
    `MaintenanceException::busy()`.
 5. (Without the journal table only `migrate` gets this far, see "First deploy".) Lifts the time limit where the host allows, runs the command through
-   `App\Support\Maintenance\ArtisanRunner` (the one place that calls Artisan; buffered, undecorated output)
+   `Hata\Support\Maintenance\ArtisanRunner` (the one place that calls Artisan; buffered, undecorated output)
    and finishes the entry: exit code 0 is `succeeded`, anything else `failed`; a command that throws is
    `failed` with the exception's class and message as output, and is reported to the log.
 6. Deletes journal entries beyond the latest 200 (`KEEP`).
@@ -75,7 +75,7 @@ see what the command printed and who ran what.
 `POST /admin/maintenance/run` (`admin.maintenance.run`, `Admin\MaintenanceRunController`, admin group plus
 `can:maintenance.run`) validates `action` against the enum, calls the action and redirects to the page. A
 refusal (`MaintenanceException`) becomes a danger toast; a finished run becomes a success or danger toast
-(`App\Support\Toast`) and its id is flashed (`LAST_RUN_KEY`), which the page's `mount()` reads for "Last
+(`Hata\Support\Toast`) and its id is flashed (`LAST_RUN_KEY`), which the page's `mount()` reads for "Last
 result".
 
 Why not a Livewire action (both were hit in the browser while building this):
@@ -114,13 +114,16 @@ every other action is refused with "run the migrations first".
 `SeederCatalog::names()`: every concrete class under `database/seeders` (subfolders too) that extends
 `Illuminate\Database\Seeder`, by its name relative to `Database\Seeders`, sorted, `DatabaseSeeder` first.
 Seeders run through `db:seed --class`, so the container builds them.
+These are the **site's** seeders (`database_path()` is the host's): Hata's own `Hata\Database\Seeders\HataSeeder`
+and `RoleSeeder` are not listed, because they live in the package; the site's `DatabaseSeeder` (written by
+`hata:install`) calls `HataSeeder`, so running `DatabaseSeeder` from the page syncs the permissions and roles.
 
 ## Logs tab
 
 The owner reads Laravel's logs here instead of opening the files over SSH or FTP. The user asked for the files
 as they are, in a viewer with highlighting, every file of the folder, view and delete; no package.
 
-- **Files** (`App\Support\Maintenance\LogFiles`): the regular files directly in `storage/logs`, newest first,
+- **Files** (`Hata\Support\Maintenance\LogFiles`): the regular files directly in `storage/logs`, newest first,
   so `single`, `daily` and custom channels need no setting. Dot files, subfolders and symbolic links are left
   out. `resolve($name)` returns a path only for a name the listing holds; every read and delete goes through
   it, so nothing outside the folder can be read or deleted. The page's actions take the file's `key` (an md5
@@ -135,7 +138,7 @@ as they are, in a viewer with highlighting, every file of the folder, view and d
   `Admin\MaintenanceLogChunkController`, admin group plus `can:maintenance.run`, `no-store`), so a log never
   travels in the component's responses. "Load earlier lines" fetches the chunk above and keeps the scroll
   position.
-- **Reading** (`App\Support\Maintenance\LogReader::chunk($path, $before)`): at most 256 KB (`CHUNK`) ending at
+- **Reading** (`Hata\Support\Maintenance\LogReader::chunk($path, $before)`): at most 256 KB (`CHUNK`) ending at
   `$before` (the end of the file when null), moved to the start of a line unless that line alone is longer
   than a chunk. Returns `html`, `start` (pass it as the next `before`; 0 is the top), `end`, `size`; the
   route adds `remaining` (the size above, formatted). The text is made valid UTF-8 and escaped before any
@@ -144,9 +147,9 @@ as they are, in a viewer with highlighting, every file of the folder, view and d
   (`[date] env.LEVEL:`) gets `log-date` and `log-level log-level-{level}`; stack frames (`#12 …`),
   `[stacktrace]` and `[previous exception]` get `log-trace`. The colors are in `resources/css/app.css`
   (`.log-text`). Nothing is parsed into entries, so files that are not Laravel logs show as plain text.
-- **Deleting** (`App\Actions\Maintenance\DeleteLogFile::handle(User $actor, string $name)`): authorizes
+- **Deleting** (`Hata\Actions\Maintenance\DeleteLogFile::handle(AdminUser $actor, string $name)`): authorizes
   `maintenance.run`, resolves the name, deletes the file; an unlisted name or a failed delete throws
-  `MaintenanceException`. Called from a Livewire action behind `<x-confirm-modal>` (deleting a file touches
+  `MaintenanceException`. Called from a Livewire action behind `<x-hata::confirm-modal>` (deleting a file touches
   nothing Livewire depends on). A channel that was writing to the file creates it again on its next write; a
   long-running process (a queue worker) keeps its handle and writes to the deleted file until it restarts,
   which the confirmation says. A file that could not be deleted stays open in the viewer; one that is gone
@@ -154,11 +157,11 @@ as they are, in a viewer with highlighting, every file of the folder, view and d
 
 ## Config cache and stored settings
 
-`config:cache` boots a fresh application to collect the config. `AppServiceProvider::boot()` applies the
+`config:cache` boots a fresh application to collect the config. `HataServiceProvider::boot()` applies the
 stored site settings there too, which would freeze them into `bootstrap/cache/config.php`: a setting removed
 later would keep its old value, and the decrypted SMTP password and S3 secret would be written to that file.
 So `SiteSettings::apply()` does nothing while the config cache is being built
-(`SiteSettings::buildingConfigCache()`): `AppServiceProvider` suspends it between the console's
+(`SiteSettings::buildingConfigCache()`): `HataServiceProvider` suspends it between the console's
 `CommandStarting` and `CommandFinished` events for `config:cache` and `optimize` (the events carry the
 resolved command name, so options before the command, abbreviations and `Artisan::call()` are covered), and
 "Rebuild caches" wraps its run in `SiteSettings::withoutApplying()` as well. The cache

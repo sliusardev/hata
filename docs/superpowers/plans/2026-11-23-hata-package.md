@@ -14,7 +14,7 @@
 
 - Composer name `sliusardev/hata`, `"type": "library"`, `"license": "proprietary"`; private GitHub repository `sliusardev/hata` (git remote host alias `github.com-sliusardev`).
 - PHP namespace `Hata\`; view, translation, Livewire and Blade-component namespace `hata`; config key `hata`.
-- PHP `^8.4`, `laravel/framework ^13`, `livewire/livewire ^4.4`, `livewire/flux ~2.21` (pinned to the minor the assets are built with), no `livewire/flux-pro`, no Pro components.
+- PHP `^8.4`, `laravel/framework ^13`, `livewire/livewire ^4.4`, `livewire/flux ~2.21.0` (pinned to the minor the assets are built with), no `livewire/flux-pro`, no Pro components.
 - The only new dependency is `orchestra/testbench` (dev), plus Pest/Larastan glue it needs. Drop `laravel/chisel`, `laravel/tinker`, `laravel/sail`, `laravel/pail`, `laravel/pao`, `laravel/boost` from the package's requirements (they are host/dev-app tools; Boost lives in the demo).
 - Hata never names `App\Models\User` (resolve the model from `auth.providers.users.model`) and never sets `Date::use(...)`, `Password::defaults(...)` or `DB::prohibitDestructiveCommands(...)`.
 - No extra per-request work: admin/site assets are static files under `public/vendor/hata`; public record pages keep the ≤ 5 queries budget (`PublicContentTest`); public pages never use Livewire.

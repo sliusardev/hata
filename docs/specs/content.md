@@ -9,7 +9,7 @@ type, fields, a taxonomy) is in the README, section "Content types". Design: `do
 
 ## Content types
 
-`App\Support\Content\ContentType` is the base of one kind of content. A type is a small class:
+`Hata\Support\Content\ContentType` is the base of one kind of content. A type is a small class:
 
 | Method | Meaning |
 |---|---|
@@ -31,7 +31,7 @@ type, fields, a taxonomy) is in the README, section "Content types". Design: `do
 | `permission($action)` | `"{key}.{action}"` |
 | `assertValidBase($locale)` | throws `InvalidArgumentException` when `base($locale)` is neither null nor one segment matching `EntrySlug::FORMAT` (`blog/news`, `/blog`, `Blog` and `''` are refused): `Entry::url()` would build an address the content route never matches |
 
-`App\Support\Content\ContentTypes` (singleton) holds the registered types: `register()`, `all()`, `find()`,
+`Hata\Support\Content\ContentTypes` (singleton) holds the registered types: `register()`, `all()`, `find()`,
 `get()` (throws on an unknown key) and `pattern()`, an alternation of the keys for route constraints (it
 matches nothing while no type is registered). Keys follow the permission segment format. `register()` refuses a key
 that is already registered (`InvalidArgumentException`). The bases are not checked there: `assertValidBases()` checks
@@ -48,7 +48,7 @@ from `boot()`: the admin routes' `{type}` pattern (`pattern()`) is built when th
 another provider boots, and a type registered after that has no admin pages (and the route cache keeps the pattern it
 was built with).
 
-`App\Providers\ContentServiceProvider` binds the singleton and registers the classes listed in `config/hata.php`
+`Hata\Providers\ContentServiceProvider` binds the singleton and registers the classes listed in `config/hata.php`
 → `types`, in that order (each made by the container): `PagesType` (key `pages`, hierarchical, no base, no fields) and
 `PostsType` (key `posts`, flat, base `posts` in every language, one field: `Gallery::make('gallery')`, per language)
 in the kit. The list holds class names only, so the config cache keeps it and a request pays nothing for it; a type's
@@ -154,7 +154,7 @@ cached. The command only writes files; it runs no migration and writes nothing t
 
 ## Fields
 
-`App\Support\Content\Fields\Field` (`Text`, `Textarea`, `RichText`, `Number`, `Date`, `Toggle`, `Select`,
+`Hata\Support\Content\Fields\Field` (`Text`, `Textarea`, `RichText`, `Number`, `Date`, `Toggle`, `Select`,
 `MediaFile`, `Gallery`) is built with `Field::make($name)` and chained `label($key)`, `shared()` (the value is
 the same in every language of a record group) and `required()`. `Select` adds `options()`.
 
@@ -172,7 +172,7 @@ A rich text field follows the body's rules: the same allowlist on save (so it ma
 `EntryInput::BODY_MAX_BYTES` as sent (`content.entry.body_too_long`), and its images recorded as usages (only files
 that exist, as for the body). A toggle has no required state: it is always true or false. A malformed date is stored as null (its rule reports
 it). `MediaFile` takes a file of any kind unless narrowed with `accept('image')` or `accept('document')`; `Gallery`
-takes images only. Both validate with `App\Rules\MediaSelection`, so every id, each gallery item included, must be
+takes images only. Both validate with `Hata\Rules\MediaSelection`, so every id, each gallery item included, must be
 an existing file of the right kind.
 
 ## Records
@@ -187,11 +187,11 @@ path index is 307 characters wide, which fits MySQL's limit on utf8mb4 (checked 
 nulls `author_id`, deleting a media file nulls `image_id`, deleting a parent nulls `parent_id`, deleting an entry
 for good removes its redirects.
 
-`App\Models\EntryGroup`: casts `shared` to an array; `entries()`; `takenLocales($groupId)` (the languages the group
+`Hata\Models\EntryGroup`: casts `shared` to an array; `entries()`; `takenLocales($groupId)` (the languages the group
 holds a record in, trashed ones included) and `recordIn($groupId, $locale)` (that record, trashed or not) are the one
-answer to "is this language taken" for `CreateEntry`, `UpdateEntry` and the create page. `App\Models\EntryRedirect`: `entry()`.
+answer to "is this language taken" for `CreateEntry`, `UpdateEntry` and the create page. `Hata\Models\EntryRedirect`: `entry()`.
 
-`App\Models\Entry` (soft deletes are the trash; `HasSearchIndex` from title and slug):
+`Hata\Models\Entry` (soft deletes are the trash; `HasSearchIndex` from title and slug):
 
 | Member | Meaning |
 |---|---|
@@ -211,7 +211,7 @@ answer to "is this language taken" for `CreateEntry`, `UpdateEntry` and the crea
 | `url($absolute = true)` | the site address from the `content` route (`ContentLocales::route()` in the record's language): the language prefix (none for the default content language, `/<code>` for the others), the type's base for that language, then `path`. No query |
 | `fieldValue($name)` | a shared field's value from the group's `shared`, any other from `fields` |
 
-`App\Enums\EntryStatus` (`Draft`, `Published`) is stored; `EntryState` is not.
+`Hata\Enums\EntryStatus` (`Draft`, `Published`) is stored; `EntryState` is not.
 
 Factories: `Entry::factory()` makes a draft in `pages` and `en`, with its own group and a `path` taken from the
 parent. States: `page()`, `draft()`, `published()` (a day ago), `scheduled()` (a day ahead), `inLocale()`,
@@ -220,7 +220,7 @@ group and type).
 
 ## Slugs, paths and redirects
 
-`App\Support\Content\EntryPaths` (resolved from the container):
+`Hata\Support\Content\EntryPaths` (resolved from the container):
 
 | Method | Meaning |
 |---|---|
@@ -232,7 +232,7 @@ group and type).
 | `lockForSave($entry, $parent, $locale)` | for the caller's transaction, before it writes: locks the record's row and the parent's in id order (two saves never wait on each other) and checks what validation saw still holds: the record is live with the language and path the caller loaded (else a `slug` error, `content.entry.changed_meanwhile`), the parent is a live record of the language at the same path and not the record or anything under it (else `parent_id`, `content.entry.parent_invalid`). `CreateEntry` and `UpdateEntry` call it, so a page cannot land under a parent that has just left the language, and two pages cannot be moved under each other |
 | `isReserved($type, $locale, $parent, $slug)` | the one answer to "reserved at the top of the address": no parent, a type with no base, and the slug is in `ReservedSlugs` or is the base of any registered type in that language. Used by both `suggest()` and `EntrySlug` |
 
-`App\Rules\EntrySlug($type, $locale, $parent, $ignore)` checks, in this order: the format
+`Hata\Rules\EntrySlug($type, $locale, $parent, $ignore)` checks, in this order: the format
 `^[a-z0-9]+(-[a-z0-9]+)*$`; not reserved (only for a record at the top of the address, that is without a parent
 and in a type with no base: `ReservedSlugs`, or the base of any registered type in that language); the full path
 at most 255 characters; not taken by another record of the type and language, trashed ones included, the record
@@ -245,7 +245,7 @@ anchored with `\A` and `\z` (`EntrySlug::FORMAT`), so `"about\n"` is refused.
 A record's body is HTML from the rich text editor. It is sanitized once on save and printed unescaped, so the
 sanitizer is the security boundary. Package: `symfony/html-sanitizer` (parsed with PHP's `Dom\HTMLDocument`).
 
-`App\Support\Content\BodySanitizer`:
+`Hata\Support\Content\BodySanitizer`:
 
 | Method | Meaning |
 |---|---|
@@ -254,7 +254,7 @@ sanitizer is the security boundary. Package: `symfony/html-sanitizer` (parsed wi
 | `withoutMedia($html, $id)` | the body without that file's images; null when nothing is left. For the delete of a media file |
 
 Images are stored as `<img data-media-id="12" alt="...">`, never with an address.
-`App\Support\Content\BodyRenderer::render($html)` returns an `HtmlString`: each image gets `src` from
+`Hata\Support\Content\BodyRenderer::render($html)` returns an `HtmlString`: each image gets `src` from
 `Media::url()` (already carrying `?v=`), `width` and `height` when the file has them, `loading="lazy"` and
 `decoding="async"`; its `alt` is the one stored in the body, else the file's alt in the request's language. An
 image whose file is gone or is not an image is dropped. One `whereIn` query for a body with images, none without.
@@ -262,7 +262,7 @@ It does not sanitize again: it trusts that the body was cleaned on save.
 
 ## Editor
 
-`<x-admin.rich-text wire:model="form.body" :label="…" :images="$images" :locale="$entry->locale" :readonly="false" />`
+`<x-hata::admin.rich-text wire:model="form.body" :label="…" :images="$images" :locale="$entry->locale" :readonly="false" />`
 (`resources/views/components/admin/rich-text.blade.php`) is a Tiptap 3 editor (npm `@tiptap/core`, `@tiptap/pm`,
 `@tiptap/starter-kit`, pinned to 3.34.0; approved by the user) driven by the Alpine component `richText`
 (`resources/js/rich-text-field.js`, registered in `app.js`). The Tiptap code (`resources/js/rich-text.js`) is loaded
@@ -315,7 +315,7 @@ box shows a skeleton; if it fails, a message asks to reload.
 
 ## Saving records
 
-`App\Support\Content\EntryInput` (static) holds the form's rules and turns the data into what is written.
+`Hata\Support\Content\EntryInput` (static) holds the form's rules and turns the data into what is written.
 `rules($type, $locale, $entry)` and `validate($type, $locale, $entry, $data)`:
 
 | Key | Rule |
@@ -335,15 +335,15 @@ box shows a skeleton; if it fails, a message asks to reload.
 lookup is shared by the parent rule, the slug rule and the caller), the status enum, the UTC date, and every field of
 the type by name as its form value.
 
-`App\Support\Content\EntryAuthors::query($type)`: the users who hold `<type>.create` directly or through a role, and
+`Hata\Support\Content\EntryAuthors::query($type)`: the users who hold `<type>.create` directly or through a role, and
 super admins; `options($type)` gives `id => name` by name.
 
-`App\Policies\EntryPolicy` checks the type's own permission: `viewAny($user, $type)` and `view` → any of `view`,
+`Hata\Policies\EntryPolicy` checks the type's own permission: `viewAny($user, $type)` and `view` → any of `view`,
 `edit` and `create` (as decision 31 does for roles, so `edit` or `create` without `view` is not a dead end),
 `create($user, $type)` → `create`, `update`, `restore` and `preview` → `edit`, `delete` and `forceDelete` →
 `delete`. Use `can('create', [Entry::class, 'pages'])` for the two that take a type key.
 
-`App\Actions\Content\CreateEntry::handle($actor, $type, $locale, $data, $source = null)`: authorizes `create`;
+`Hata\Actions\Content\CreateEntry::handle($actor, $type, $locale, $data, $source = null)`: authorizes `create`;
 refuses a language that is not on the site (`ContentLocales::has()`, a `locale` field error); with `$source` joins
 its group, else makes a group. When the group already has a record in that language (trashed ones count, as in the
 unique index), that record is returned unchanged; also when another request created it meanwhile: a slug that then
@@ -357,7 +357,7 @@ false)`), and the group and its `shared.<name>` usages are not touched, because 
 in the other languages, published ones included. A new record (no source) has a group of its own, and a creator sets
 its shared values. A path held by a redirect row takes it over (the row goes).
 
-`App\Actions\Content\UpdateEntry::handle($actor, $entry, $data, $locale = null)`: authorizes `update`; refuses a record
+`Hata\Actions\Content\UpdateEntry::handle($actor, $entry, $data, $locale = null)`: authorizes `update`; refuses a record
 in the trash with `ProtectedActionException` (`content.entry.trashed`: it is restored first); the record's type never
 changes, whatever the data says. A changed slug or parent goes through `EntryPaths::move()`. A path taken by another
 request between the check and the write is a `slug` field error.
@@ -372,7 +372,7 @@ unique index refusal on the language is a `locale` error too), and
 `EntryPaths::relocate()` keeps the old address as a redirect: `ContentRouter` redirects to `Entry::url()`, so the old
 address leads to the new language's one.
 
-`App\Actions\Content\LinkTranslations::handle($actor, $entry, $other)`: makes the existing record `$other` the
+`Hata\Actions\Content\LinkTranslations::handle($actor, $entry, $other)`: makes the existing record `$other` the
 translation of `$entry` in its language. Authorizes `update` on both; refuses (`ProtectedActionException`) records of
 different types, of one group already or in the trash (`content.link.invalid`), and a language the entry's group
 already has, trashed ones included (`content.link.overlap`). Both groups' rows are locked in id order and the
@@ -382,14 +382,14 @@ error, and the emptied group is deleted only when it really has no record left. 
 of the group it joins; a group left empty is deleted with its usages. Written past the model, so `updated_at` stays:
 linking is not an edit.
 
-`App\Actions\Content\UnlinkTranslation::handle($actor, $entry)`: takes the record out of its group into a new one
+`Hata\Actions\Content\UnlinkTranslation::handle($actor, $entry)`: takes the record out of its group into a new one
 with a copy of the shared values (read under a lock inside the transaction) and their usages
 (`EntryWriter::syncSharedUsages()`); the others stay together.
 Authorizes `update`; refuses a record in the trash (`content.entry.trashed`) and one with no other record in its
 group, trashed ones counted (`content.link.alone`).
 
 Both validate the data themselves (`EntryInput`), so a tampered value is a field error with nothing stored, and write
-in one transaction through `App\Actions\Content\EntryWriter`: the body through `BodySanitizer::clean()`;
+in one transaction through `Hata\Actions\Content\EntryWriter`: the body through `BodySanitizer::clean()`;
 `published_at` set to now when publishing without one; per-language field values (`toStorage()`) into
 `entries.fields`, shared ones into `entry_groups.shared` (merged, so a value written from one translation reads the
 same from every other; only the shared fields the validated input carries, none for a creator's translation); then
@@ -433,7 +433,7 @@ redirects (on MySQL the lock makes such a restore wait; SQLite has no row locks,
 until the transaction's first write, after which SQLite lets no other writer in). Six queries whatever the number of
 records. A group that still has a record in another language stays.
 
-`content:prune-trash` prints "Removed N trashed record(s)." and runs `daily()` in `routes/console.php` next to
+`content:prune-trash` prints "Removed N trashed record(s)." and runs `daily()` from `HataServiceProvider` (the schedule) next to
 `media:prune-deleted`. The admin list prunes too, so no cron is required.
 
 A content language that has records, trashed ones included, cannot be removed (`RemoveContentLocale`, see the
@@ -446,15 +446,15 @@ Routes in `routes/admin.php` (prefix `admin`, `auth`, `verified`, `can:admin.acc
 
 | Route | Name | Page |
 |---|---|---|
-| `admin/content/{type}` | `admin.content.index` | `pages::admin.content.index`, the list; authorizes `viewAny` (`view`, `edit` or `create`) |
-| `admin/content/{type}/create` | `admin.content.create` | `pages::admin.content.create`, the form for a new record; authorizes `create`, and `view` of the `from` record. Takes `locale` and `from` |
-| `admin/content/{type}/{entry}/edit` | `admin.content.edit` | `pages::admin.content.edit`, the form of a saved record: a record of another type is 404, authorizes `view`; trashed records resolve (`withTrashed()`) and open read-only |
+| `admin/content/{type}` | `admin.content.index` | `hata::admin.content.index`, the list; authorizes `viewAny` (`view`, `edit` or `create`) |
+| `admin/content/{type}/create` | `admin.content.create` | `hata::admin.content.create`, the form for a new record; authorizes `create`, and `view` of the `from` record. Takes `locale` and `from` |
+| `admin/content/{type}/{entry}/edit` | `admin.content.edit` | `hata::admin.content.edit`, the form of a saved record: a record of another type is 404, authorizes `view`; trashed records resolve (`withTrashed()`) and open read-only |
 
 **Sidebar.** The "Content" group lists every registered type the actor may view (`viewAny`: `view`, `edit` or `create`; its plural label and icon),
 then Media; the group shows when any of them or `media.view` holds.
 
-**List** (`pages::admin.content.index`, a plain full-page component, no islands; its logic is the class
-`App\Livewire\Admin\EntryListPage`, which the page extends, so PHPStan analyses it, decision 32):
+**List** (`hata::admin.content.index`, a plain full-page component, no islands; its logic is the class
+`Hata\Livewire\Admin\EntryListPage`, which the page extends, so PHPStan analyses it, decision 32):
 
 - Header: the type's plural label and description; "Create page" (`create`) links to `admin.content.create` (no
   `locale`: the new form takes the list's remembered language, else the default).
@@ -492,13 +492,13 @@ then Media; the group shows when any of them or `media.view` holds.
   instead, and the codes stay under the address.
 - Menu: Edit (`edit`), Publish (a draft or scheduled record) and Unpublish (a published or scheduled one), both
   `edit`, at once with a toast and no confirmation since each undoes the other (`setStatus()`,
-  `App\Actions\Content\SetEntryStatus`: publishing a record with no date or a date ahead dates it now, unpublishing
+  `Hata\Actions\Content\SetEntryStatus`: publishing a record with no date or a date ahead dates it now, unpublishing
   keeps the date; nothing else changes), View on site (public records; in a switched-off language a muted note instead,
   `content.form.language_off`, since that address answers 404), Move to trash (`delete`). Translations are added from the
   row's language codes.
 - Trash tab: a flat list by `deleted_at`, newest first, with "Removed on <date>" (`deleted_at` + `trash_days`). Menu:
   Restore (`edit`, `RestoreEntry`) and Delete for good (`delete`, `DeleteEntry`).
-- The bulk actions are `App\Actions\Content\BulkEntries` (`trash`, `restore`, `delete`, each taking the actor, the
+- The bulk actions are `Hata\Actions\Content\BulkEntries` (`trash`, `restore`, `delete`, each taking the actor, the
   type and ids and leaving out ids that are not records of the type in the needed state); the page only reports.
 - Bulk selection: a checkbox per row and one in the header for the whole page, shown to those who have a bulk action
   (`edit` or `delete`). The picks are the `selected` property, bound from Alpine
@@ -512,7 +512,7 @@ then Media; the group shows when any of them or `media.view` holds.
   dropped when the tab, the search, a filter, the sort or the page changes, and after an action.
 - "Empty the trash" (the Trash tab, `delete`, shown while the trash holds anything): after a confirmation naming the
   count, `EmptyEntryTrash` for the languages the list shows.
-- Confirmations (`<x-confirm-modal>`): moving to the trash names the number of subpages going with it
+- Confirmations (`<x-hata::confirm-modal>`): moving to the trash names the number of subpages going with it
   (`descendantsCount()`); deleting for good is always confirmed and names the number of trashed records under it.
   Results are toasts; a `ProtectedActionException` (a restore conflict) is a danger toast.
 - Empty states: no records at all invites creating the first; a search or filter with no match offers "Clear filters";
@@ -521,7 +521,7 @@ then Media; the group shows when any of them or `media.view` holds.
   `content.prune_trash`; the prune covers every type), so no cron is required. After an action that empties the page
   the list is on, it shows the last page that still has rows.
 
-`App\Support\Content\EntryListQuery::for($type, $locale, $locales)` (an empty `$locale` means every language in
+`Hata\Support\Content\EntryListQuery::for($type, $locale, $locales)` (an empty `$locale` means every language in
 `$locales`, the site's) builds the list: `tab()`, `search()`, `sort('title'|'date'|'tree', 'asc'|'desc')`, `isTree()`, `query()`, `paginate($perPage)` and
 `counts()` (one query of five scalar subqueries, each the tab's own query through `Entry::inState()`, so a state is
 defined once for the rows and for their count). It selects only the columns a row shows and eager loads `image`, `author` (`id`,
@@ -549,9 +549,9 @@ linking to its edit page, its state, an edit button and, for an editable saved r
 offers "Choose" (the `choose-translation` browser event with the code, an editable saved record) and "Create" (`create`; the create page with
 `from` and `locale`). A switched-off language is marked. It makes no query.
 
-**Form** (`pages::admin.content.create` and `pages::admin.content.edit`, both on `App\Livewire\Admin\EntryFormPage`
-(decision 32; the edit page's own logic is `App\Livewire\Admin\EntryEditPage`, which extends it), the markup in `partials/admin/content/entry-form.blade.php`, the values in
-`App\Livewire\Forms\EntryForm`; plain full-page components, no islands, `wire:model` without `.live` everywhere):
+**Form** (`hata::admin.content.create` and `hata::admin.content.edit`, both on `Hata\Livewire\Admin\EntryFormPage`
+(decision 32; the edit page's own logic is `Hata\Livewire\Admin\EntryEditPage`, which extends it), the markup in `partials/admin/content/entry-form.blade.php`, the values in
+`Hata\Livewire\Forms\EntryForm`; plain full-page components, no islands, `wire:model` without `.live` everywhere):
 
 - **New record.** `locale` from the query must be a language of the site (`ContentLocales::has()`), else 404; without it
   the list's remembered language, else the default (the list's Create buttons send no `locale`; the "Add
@@ -615,7 +615,7 @@ error instead of creating a record outside the group. Save calls
   `content.form.page_title` (":type: :title") through `->title()`.
 - **Left column**: a card with the title, the address (the prefix as text: the site address without the scheme, the
   language prefix when not the default, the type's base, the parent's path; the slug is the input), the body
-  (`<x-admin.rich-text>`, its images given as `editorImages`, id => URL with one query for the body and the rich text
+  (`<x-hata::admin.rich-text>`, its images given as `editorImages`, id => URL with one query for the body and the rich text
   fields) and the excerpt; a "Details" card with `localFields()` when the type has any; the "Search engines" card with a
   live preview (address; title: the SEO title alone, else the title, " - " and the site name, the rule of
   `Entry::documentTitle()`; description falling back to the excerpt) and the SEO title and description.
@@ -634,7 +634,7 @@ error instead of creating a record outside the group. Save calls
   without the record and its descendants, plus "No parent"; one query; a trashed record shows only its actual parent,
   trashed or not, so its read-only prefix is its stored path) and the author (a select of
   `EntryAuthors::options()` plus the current author; only the name for a user without `edit`). "Move to trash"
-  (`delete`): `<x-confirm-modal>` naming the subpages going with it, then `TrashEntry`, a toast and the list.
+  (`delete`): `<x-hata::confirm-modal>` naming the subpages going with it, then `TrashEntry`, a toast and the list.
 - **Leaving with unsaved changes** (a link, Back, closing the tab): a dialog offers to stay, to leave without saving
   and, for a saved record, "Save and go": the form is saved and the page the editor was leaving for opens once the
   save has succeeded; a refused save keeps the editor on the form at the first error.
@@ -694,9 +694,9 @@ instead of 405 (asserted); an OPTIONS request to an unknown one answers 200 with
 (cached) collection keeps both content routes last. `ReservedSlugs` skips them (they carry `SetContentLocale`, and their
 first segment is a parameter).
 
-**Lookup before the session** (`App\Http\Middleware\LookUpContent`, on the content routes only, which never serve
-Livewire). `bootstrap/app.php` puts it in the middleware priority list right before `StartSession`
-(`prependToPriorityList()`), so the router sorts it ahead of the session (after `EncryptCookies` and
+**Lookup before the session** (`Hata\Http\Middleware\LookUpContent`, on the content routes only, which never serve
+Livewire). `HataServiceProvider` puts it in the middleware priority list right before `StartSession`
+(`addToMiddlewarePriorityBefore()`), so the router sorts it ahead of the session (after `EncryptCookies` and
 `AddQueuedCookiesToResponse`), although the route sits in the `web` group (asserted on both routes). It reads the
 language from the address the way `SetContentLocale` does, through the same `ContentLocales` methods:
 `codeForPrefix($prefix)` (the `{locale}` parameter, else the default) and `isDefaultPrefix($prefix)`. The default
@@ -742,7 +742,7 @@ translations and its image.
 
 `lookup()` checks `PATH_PATTERN` again, anchored with `\z` so a trailing newline never matches (for direct calls, and
 because MySQL compares paths without regard to case), so a path with a capital letter is never matched by the database. A trailing slash gets the framework's trim, as for every
-route of the application (`/admin/` behaves the same): `/about/` shows `/about`. On Apache the kit's `public/.htaccess`
+route of the application (`/admin/` behaves the same): `/about/` shows `/about`. On Apache the `public/.htaccess` from Hata's `stubs/htaccess`
 redirects it; on nginx both addresses answer until a redirect rule or the canonical tag (head tags, a later part) is
 added. No other normalising.
 
@@ -765,7 +765,7 @@ a user without `edit` get 404; for a request with a session cookie that 404 come
 that is not added it comes before), so such a visitor could tell an added-but-off language from one that is not
 added, which reveals nothing about its pages.
 
-**Controller** (`App\Http\Controllers\ContentController`): null → 404; a redirect → 301 with `Cache-Control: no-cache`
+**Controller** (`Hata\Http\Controllers\ContentController`): null → 404; a redirect → 301 with `Cache-Control: no-cache`
 (the old path may be taken by a new record later, so a browser must not keep it for good); else the view `site.entry`
 with the record, the body through `BodyRenderer::render()`, `galleries` (the images of the type's `Gallery`
 fields by field name, in the picked order; one query, made only for a record whose gallery holds something; the view
@@ -801,7 +801,7 @@ lists the stored ones (in every language, trashed ones included) and fails when 
 - `layouts/site.blade.php`: `<html lang dir>` from the content language, `<title>` from `$pageTitle`, which the page
   builds whole (`Entry::documentTitle()`: the `seo_title` alone when set, else the title, " - " and the site name; the
   form's search preview uses the same rule and separator), `<meta name="robots" content="noindex">` in preview, the
-  favicons, the public stylesheet only (`@vite('resources/css/site.css')`, below), the color scheme
+  favicons, the public stylesheet only (`@hataAssets(['resources/css/site.css'])`, from Hata's prebuilt `dist/`, below), the color scheme
   (`partials.color-scheme`), a small inline script that sets the `dark` class from the stored appearance (Flux's
   `flux.appearance`, when the visitor has used the admin) or else the visitor's system light/dark preference (no Flux,
   Livewire or admin JavaScript is loaded), `hreflang`,

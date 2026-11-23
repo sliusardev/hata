@@ -36,6 +36,46 @@ jobs:
       - name: Run static analysis
         run: composer types:check
 
+  assets:
+    name: Built assets are up to date
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      # The build compiles Flux's CSS from vendor/livewire/flux, so the Composer packages come first.
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Fail if dist/ is stale
+        run: |
+          git add --intent-to-add dist
+          if ! git diff --exit-code --stat -- dist; then
+            echo "::error::dist/ differs from a fresh build. Run npm run build and commit dist/."
+            exit 1
+          fi
+
   tests:
     name: PHP ${{ matrix.php }} / ${{ matrix.database }}
     runs-on: ubuntu-latest

@@ -1,110 +1,196 @@
-# Admin panel starter kit
+# Hata
 
-A Laravel admin panel starter kit with users, roles and permissions, built on the official Laravel Livewire starter kit. Stage 1 covers the foundation: an English/Ukrainian interface, code-defined permissions, roles, and user and role management. Pages, posts, media and frontend themes come in later stages.
+Hata (`sliusardev/hata`) is an admin panel and CMS for Laravel, installed as a Composer package. It gives a fresh
+Laravel app sign-in (with 2FA and passkeys), users, roles and permissions, site settings, a media library, a
+maintenance page, content types (pages, posts, categories, tags, and your own) with their public pages, and an
+English and Ukrainian interface. Hata's fixes reach a site with `composer update`.
 
-## Stack
+The contract behind this guide (every name and rule) is [docs/specs/package.md](docs/specs/package.md); the design
+decisions are in [CLAUDE.md](CLAUDE.md).
 
-- Laravel 13, PHP 8.4+ with the `intl` extension (file sizes and numbers are formatted with it)
-- Livewire 4 (single-file components), Flux UI (free), Tailwind CSS 4
-- Laravel Fortify for authentication (login, password reset, 2FA, passkeys)
-- spatie/laravel-permission for roles and permissions
-- Pest for tests
+## Requirements
+
+- PHP 8.4+ with `intl`, and GD or Imagick (with WebP) for image optimization
+- Laravel 13
 - MySQL/MariaDB or SQLite
+- No Node.js on the site: Hata's admin and site assets come prebuilt. No queue worker or cron is required either, so a
+  site runs on shared hosting as well as on a VPS.
 
-Production needs neither Node.js nor long-running workers, so the kit runs on shared hosting as well as on a VPS.
+Hata brings Livewire 4, Flux (free; pinned to `~2.21.0` because its CSS is built into Hata's assets), Laravel Fortify
+and spatie/laravel-permission as dependencies.
 
-## Installation
+## Installing
 
-```bash
-git clone <repository-url> admin && cd admin
-composer install
-cp .env.example .env
-php artisan key:generate
+### 1. Give Composer access to the private repository
+
+Hata lives in the private GitHub repository `sliusardev/hata`. In the site's `composer.json`:
+
+```json
+"repositories": [
+    {"type": "vcs", "url": "git@github.com:sliusardev/hata.git"}
+]
 ```
 
-Configure the database in `.env` (SQLite works out of the box with `DB_CONNECTION=sqlite`), then:
+With SSH access to GitHub (a deploy key on the server) that is enough. Otherwise use the HTTPS URL
+`https://github.com/sliusardev/hata.git` and a token: create a fine-grained GitHub token with access to the
+`sliusardev/hata` repository only and the permission **Contents: read-only**, then
 
 ```bash
-php artisan migrate
-php artisan storage:link # lets the web server serve the uploaded images directly
-php artisan db:seed      # creates the permissions and the system roles
-php artisan admin:create # creates the first super admin
-npm install && npm run build
+composer config github-oauth.github.com <token>   # writes auth.json; keep it out of git (Laravel's .gitignore has it)
 ```
 
-`db:seed` is safe to run on every deploy. It only creates missing permissions, roles and the initial admin, and it never removes permissions that an administrator assigned.
+On a server or in CI, pass it as `COMPOSER_AUTH='{"github-oauth": {"github.com": "<token>"}}'` instead.
+
+### 2. Require Hata and run the installer
+
+On a fresh Laravel 13 app (`laravel new site`, no starter kit), with the database configured in `.env`:
+
+```bash
+composer require sliusardev/hata:dev-main    # until the first tagged release; then a version constraint
+php artisan hata:install
+```
+
+To create the first super admin without prompts, set `ADMIN_NAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`
+(remove the password after the install), or pass `--name`, `--email` and `--password`. `--no-migrate` skips the
+migrations. The installer refuses to run while the config is cached (`php artisan config:clear` first).
+
+What it does, each step safe to repeat:
+
+- Adds `implements AdminUser` and `use IsAdminUser` to `app/Models/User.php`.
+- Removes Laravel's `welcome` route and view (Hata's home page takes `/`).
+- Adds `configureDefaults()` to `app/Providers/AppServiceProvider.php`: immutable dates, strict password rules in
+  production and `DB::prohibitDestructiveCommands()` in production. These are your site's defaults; Hata does not
+  depend on them.
+- Makes `database/seeders/DatabaseSeeder.php` call `Hata\Database\Seeders\HataSeeder` (and drops the skeleton's Test
+  User and `WithoutModelEvents`).
+- Ensures `composer.json` → `post-update-cmd` runs `vendor:publish --tag=laravel-assets --force` and `view:clear`.
+- Publishes `config/hata.php` and the assets (`public/vendor/hata`), runs the migrations, syncs the permissions and
+  roles, creates the super admin, stores the site's first content language, and creates the storage link.
+
+It ends with a report: every step is `done`, `already done`, `skipped`, `failed` or `do by hand`. A file it cannot
+follow (because you changed it) is left untouched, and the report prints the lines to add yourself. The command
+exits with 1 when a step failed, and with 0 otherwise.
+
+### 3. Web server
+
+Uploaded images are static files under `/storage/media/` (after `php artisan storage:link`, which the installer runs;
+on hosting without symlinks, use Admin → Site settings → Media → "Create the storage link", and until then images go
+through the app, only slower). Hata's assets are static files under `/vendor/hata/`.
+
+**Apache:** copy `vendor/sliusardev/hata/stubs/htaccess` to `public/.htaccess`. It is Laravel's file plus a week of
+caching and `X-Content-Type-Options: nosniff` for images under `storage/media/` (it assumes the site is at the domain
+root). Optionally, cache the hashed asset files for a year:
+
+```apache
+<IfModule mod_headers.c>
+    <If "%{REQUEST_URI} =~ m#^/vendor/hata/assets/#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
+</IfModule>
+```
+
+**nginx:** add to the site's `server` block, before the generic `location /` (an `add_header` inside a `location`
+replaces the ones inherited from the `server` block, so keep both lines):
+
+```nginx
+location ^~ /storage/media/ {
+    add_header Cache-Control "public, max-age=604800";
+    add_header X-Content-Type-Options nosniff;
+    try_files $uri /index.php?$query_string;
+}
+
+location ^~ /vendor/hata/assets/ {
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    try_files $uri =404;
+}
+```
+
+The media fallback sends a request for a missing file to Laravel, so an address handed out before the link broke still
+answers. Without these rules browsers still cache the files, because the file names change with every edit.
 
 ### Shared hosting without SSH
 
-1. Build the frontend locally (`npm run build`) and upload `public/build` together with the code.
-2. Set `ADMIN_NAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`.
-3. Run the migrations and the seeder from your hosting control panel (`php artisan migrate --force && php artisan db:seed --force`). The seeder creates that super admin if it does not exist yet.
-4. Create the storage link (`php artisan storage:link`) if the panel can run it. Otherwise open Admin → Site settings → Media and press "Create the storage link"; images work without it, only more slowly.
-5. Remove `ADMIN_PASSWORD` from `.env` after the first deploy.
+Install locally (or in CI) with `composer install --no-dev`, upload the code with `vendor/` and `public/vendor/hata`,
+set `ADMIN_*` in `.env`, run `php artisan migrate --force && php artisan db:seed --force` from the hosting panel, then
+remove `ADMIN_PASSWORD`. Later migrations can run from Admin → Maintenance. With `QUEUE_CONNECTION=sync`, long media
+tasks run in the open admin page, or with `php artisan media:optimize` / `media:move-disk`. With a real queue, run a
+worker and use one shared cache store (database, redis or file, not `array`): media jobs use cache locks.
 
-No job needs a worker. On hosting without workers, set `QUEUE_CONNECTION=sync`: long media tasks (optimizing or moving existing files) then run in the open admin page, or with `php artisan media:optimize` / `media:move-disk` over SSH. With a real queue, run a worker and use one shared cache store (database, redis or file, not `array`) because media jobs use cache locks.
-
-## Creating the first admin
+## Updating
 
 ```bash
-php artisan admin:create
+composer update sliusardev/hata   # post-update-cmd republishes public/vendor/hata and clears compiled views
+php artisan migrate               # or Admin → Maintenance → Run migrations
+php artisan db:seed --force       # only when an update adds permissions; safe to repeat (or permissions:sync)
 ```
 
-The command asks for the name, email and password. To run it without prompts, pass the values as options:
+Keep both `post-update-cmd` lines: without the publish the admin runs old CSS/JS against new views, and without
+`view:clear` compiled views can keep stale component names. After changing `.env` or `config/hata.php` on a site that
+caches its config and routes, run `php artisan optimize` (or Admin → Maintenance → Rebuild caches).
 
-```bash
-php artisan admin:create --name="Jane Doe" --email=jane@example.com --password="a-strong-password"
-```
+## Configuration
 
-The new user gets the `super-admin` role, which passes every permission check.
+`config/hata.php` (published by the installer, or `php artisan vendor:publish --tag=hata-config`) has three sections:
 
-## Roles and permissions
+- `admin`: the admin path, interface languages, registration, the default role of registered users, the display
+  timezone, colors, logos, the initial admin (`ADMIN_*`).
+- `content`: the content types, the trash period, reserved slugs.
+- `media`: the disk, optimization, upload limits, thumbnails.
 
-- **Permissions** are declared in code and can only be assigned to roles from the interface.
-- **System roles** are created by the seeder: `super-admin`, `admin`, `editor` and `author`. They cannot be deleted, and `super-admin` cannot be changed at all.
-- **Code checks permissions, never role names:** `can('users.edit')`, `@can('roles.view')`. The only exception is super-admin, which passes every check through `Gate::before`.
-- **Protection rules** prevent removing the last super admin, changing your own roles, deleting yourself and escalating privileges. They are enforced in the actions in `app/Actions`, not only in the interface.
+Keys missing from your file keep Hata's defaults, so a file published by an older Hata keeps working. Lists
+(`content.types`, `content.reserved_slugs`) and `admin.interface_locales` replace Hata's value as a whole. Values saved
+in Admin → Site settings override the file and `.env`.
 
-### Adding a permission
+### Admin path
 
-1. Declare it in `config/internal/permissions.php` under its resource group (format `resource.action`):
+The admin answers at `/admin` unless the site picks another path, so bots probing `/admin` find nothing. Set
+`HATA_ADMIN_PATH=cp-7f3k` in `.env` (one segment of lowercase letters, digits and hyphens; not a language code or an
+address another route uses, otherwise Hata refuses to register its routes and names the reason), then rebuild the
+route cache with `php artisan optimize`. The `/admin` slug is then free for content. It is config only, never a site
+setting, so a wrong value can't lock you out.
 
-    ```php
-    'groups' => [
-        'pages' => ['view', 'create', 'edit', 'delete'],
-    ],
-    ```
+### Languages
 
-    A module can register its permissions from a service provider instead:
+The **interface** (admin, account settings, sign-in) is in English and Ukrainian; each user picks one under Settings →
+Language. To add one, list it in `config/hata.php` → `admin.interface_locales` (for example `'pl' => 'Polski'`) and
+translate every file of `vendor/sliusardev/hata/resources/lang/en` into `lang/vendor/hata/pl/`. To change a single line,
+put just that key in `lang/vendor/hata/<locale>/<file>.php`. Laravel's validation, password and pagination lines are
+read Laravel first, then Hata, then your `lang/`, so your own line wins.
 
-    ```php
-    $this->app->make(\App\Support\Permissions\PermissionRegistry::class)
-        ->register('pages', ['view', 'create', 'edit', 'delete']);
-    ```
+The **content** languages of the public site are a separate list, chosen in Admin → Site settings → Languages from a
+built-in catalogue. The installer stores the interface default as the first one. Details:
+`docs/specs/languages.md`.
 
-2. Add the labels to every language in `lang/*/permissions.php` (`groups.pages`, `items.pages.view`, …).
-3. Optionally grant it to a system role by default in `config/internal/permissions.php` → `roles`.
-4. Run `php artisan permissions:sync` (or `php artisan db:seed`). Add `--prune` to delete permissions that were removed from the registry.
+## Using the admin
 
-## Languages
+- **Roles and permissions:** the system roles `super-admin`, `admin`, `editor` and `author` are created by the seeder.
+  Code checks permissions (`can('users.edit')`), never role names; a super admin passes every check. Protection rules
+  stop removing the last super admin, changing your own roles, deleting yourself and granting what you don't have.
+- **Registration** is off by default. Turn it on in Admin → Site settings (or `ADMIN_REGISTRATION_ENABLED=true`);
+  registered users get the role chosen there, none by default.
+- **Site settings** hold the site name, languages, content types (on and off), timezone, email (SMTP), the light and
+  dark logo (picked from the media library), the color scheme and media storage.
+- **Media library:** rasters are optimized to WebP and served as static files; SVG, documents and kept originals stay
+  private and go through the app. Upload limits default to 30 MB per image and 20 MB per document; set PHP's
+  `upload_max_filesize` and `post_max_size` to at least `32M`. AVIF and HEIC need an Imagick that decodes them.
+  Optional S3-compatible storage (S3, R2, B2, Spaces, MinIO) is set up under Site settings → Media, and existing
+  files move between disks with Admin → Media → Move or `php artisan media:move-disk s3|public`. Details:
+  `docs/specs/media.md`.
+- **Maintenance** (super admin only; the permission `maintenance.run` is reserved): run pending migrations, one of
+  the site's seeders, clear or rebuild the caches, read and delete log files; every run is journaled. If "Rebuild
+  caches" ever leaves the site unable to open, delete the files in `bootstrap/cache/` (keep `.gitignore`).
 
-The interface is available in English (`en`, the default and fallback) and Ukrainian (`uk`). Each user chooses a language under **Settings → Language**. Guests see `APP_LOCALE`.
+Commands: `hata:install`, `admin:create`, `permissions:sync [--prune]`, `make:content-type`, `content:check`,
+`content:prune-trash`, `media:optimize`, `media:move-disk`, `media:prune-deleted`.
 
-### Adding a language
+## Extending Hata
 
-1. Add it to `config/app.php` → `available_locales`, for example `'pl' => 'Polski'`.
-2. Copy `lang/en` to `lang/pl` and translate every file. Use PHP files only, not JSON.
+Extend through these points instead of editing `vendor/` or copying Hata's files; everything here keeps receiving
+Hata's fixes. A module package (such as a shop) uses the same API from its service provider.
 
-`tests/Feature/Localization/TranslationParityTest.php` fails if a file or key is missing, a value is empty, or placeholders differ from English. It also fails if the code uses a translation key that does not exist.
+### Content types
 
-## Content types
-
-Pages, posts and their taxonomies are content types: small classes in `app/Support/Content/Types`, listed in
-`config/hata.php` → `content.types`. Every type gets the same admin list and form, translations (one record per language),
-addresses with redirects, a trash and four permissions (`<key>.view|create|edit|delete`). The kit has `pages` (a tree at
-the site root), `posts` (at `/posts`, with a gallery field) and the posts' taxonomies `categories` and `tags`.
-
-### Adding a content type
+Pages, posts and their taxonomies (categories, tags) are content types. Add your own:
 
 ```bash
 php artisan make:content-type Recipes          # flat, at /recipes
@@ -113,16 +199,14 @@ php artisan permissions:sync
 php artisan content:check                      # no existing page is hidden by the new base
 ```
 
-The command writes the class, adds it to `config/hata.php` and adds English lines to `lang/*/content.php` and
-`lang/*/permissions.php` for you to translate. Then give the new permissions to roles (the Roles page, or
-`config/internal/permissions.php` → `roles` for new installs).
-
-### Adding fields
+The command writes `app/ContentTypes/RecipesType.php`, adds it to your `config/hata.php` → `content.types` (publishing
+the file first if needed) and adds English lines to `lang/<locale>/content.php` and `lang/<locale>/permissions.php`
+for every interface language, for you to translate. Then give the new permissions to roles on the Roles page.
 
 A type's extra fields are its `fields()` method; no migration is needed (values are stored as JSON on the record):
 
 ```php
-use App\Support\Content\Fields\{Date, Gallery, MediaFile, Number, RichText, Select, Text, Textarea, Toggle};
+use Hata\Support\Content\Fields\{Date, Gallery, MediaFile, Number, RichText, Select, Text, Textarea, Toggle};
 
 public function fields(): array
 {
@@ -135,111 +219,117 @@ public function fields(): array
 }
 ```
 
-Add each field's label to `lang/*/content.php` → `fields` (`'subtitle' => 'Subtitle'`). The admin form shows the
-fields at once; on the public page a gallery is printed by the kit's template, other fields are read in the template
-with `$entry->fieldValue('subtitle')` (`resources/views/site/entry.blade.php`).
+Add each field's label to `lang/<locale>/content.php` → `fields`. A taxonomy is a type whose `taxonomyOf()` returns
+the types it files (`['posts']`); that one method adds a card to their form, a column and filter to their list, a
+menu item and a public page per term. A type's labels are read from your `lang/` files; a module's type returns its
+own namespace from `translationPrefix()` (`'shop::'`). Types are switched off without being removed in Site settings
+→ Content types. Details: `docs/specs/content.md`.
 
-### Adding a taxonomy
-
-A taxonomy is a content type that names the types it belongs to. Its terms are records too, one per language, and a
-record is filed under terms of its own language:
+### Permissions
 
 ```php
-// app/Support/Content/Types/BrandsType.php
-class BrandsType extends ContentType
-{
-    public function key(): string { return 'brands'; }
-    public function icon(): string { return 'tag'; }
-    public function hierarchical(): bool { return false; }       // true: a tree with checkboxes (categories)
-    public function base(string $locale): ?string { return 'brands'; }
+use Hata\Support\Permissions\PermissionRegistry;
 
-    public function taxonomyOf(): array
-    {
-        return ['posts'];                                         // or several: ['posts', 'recipes']
-    }
-}
+// in a service provider's register() or boot()
+$this->app->make(PermissionRegistry::class)->register('reports', ['view', 'export']);                  // site: lang/*/permissions.php
+$this->app->make(PermissionRegistry::class)->register('shop', ['view', 'edit'], 'shop::permissions');  // module
 ```
 
-Generate it with `make:content-type Brands` and add the `taxonomyOf()` method. That one method gives the posts' form
-a "Brands" card, the posts' list a column and a filter (return `false` from `hasListFilter()` to leave the filter out),
-the menu an item under Posts, and the site a page per term at `/brands/<slug>`.
+Labels are `groups.<group>` and `items.<group>.<action>` in that translation file (the site's `permissions.php` by
+default). Run `php artisan permissions:sync` (`--prune` removes permissions no longer registered).
 
-### Switching a type off
+### Admin pages, menu and assets
 
-Site settings → Content types switches a type off without removing it: it leaves the admin menu and the site (404),
-and its records, translations and permissions are kept. A taxonomy goes off with its type. Pages cannot be switched
-off.
-
-Details: `docs/specs/content.md`.
-
-## Public registration
-
-Registration is disabled by default. Turn it on in **Admin → Site settings** (or set `ADMIN_REGISTRATION_ENABLED=true`). Registered users get the role chosen there, no role by default, so they cannot open the admin panel until an administrator assigns one.
-
-The site settings page also holds the site name, default language, timezone, email (SMTP) settings the light/dark logo (PNG, JPG, WebP or SVG, picked from the media library) and the color scheme of the admin panel (nine presets or your company color). Values saved there override `.env`. After updating an existing install, run `php artisan migrate`, `php artisan permissions:sync` and `php artisan db:seed --class=RoleSeeder` so the `admin` role gets the new `settings.edit` permission.
-
-## Media library
-
-Admin → Media stores raster images (and their thumbnails) on Laravel's `public` disk and serves them as static files, so PHP does not run for them; this needs `php artisan storage:link`. SVG, documents and the kept originals stay on a private disk and are always served through the app (see "Serving images" below).
-
-- **Image extension:** PHP needs GD or Imagick, with WebP support, to optimize uploaded images. AVIF and HEIC need an Imagick build that can decode them. HEIC is never stored as HEIC: Safari converts it to JPEG in the browser, otherwise the server converts it to WebP (JPEG when the format setting keeps the original). Without such an Imagick, AVIF is stored as it is, and a HEIC the browser could not convert is refused with a hint to export it as JPG.
-- **Upload limits:** the default limits are 30 MB per image and 20 MB per document (`config/hata.php`). Set `upload_max_filesize` and `post_max_size` in `php.ini` to at least `32M`, or uploads fail before the app sees them. The Media tab shows the cap the server actually allows.
-- **Optional S3-compatible storage:** by default files stay on the server. Under Admin → Site settings → Media you can send new uploads to S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces or MinIO (endpoint, region, bucket, keys, path-style for MinIO, optional public/CDN URL; "Test connection" checks them; `AWS_*` in `.env` work as defaults). The adapter `league/flysystem-aws-s3-v3` is already installed. Existing files move between the two with Admin → Media → move page or `php artisan media:move-disk s3|public`. The app keeps serving SVG itself and signs document links, so the bucket can stay private unless you set a public URL. For a long queue move, set `DB_QUEUE_RETRY_AFTER` above 1845 (see `docs/specs/media.md`, Known limitations). `php artisan media:prune-deleted` runs daily from the scheduler and removes replaced objects (on S3 and on the `public` disk, with their originals) after 7 days; without a cron the batches and the library page do it.
-- **Serving images:** see the section below.
-- **Memory:** very large photos that don't fit in `memory_limit` are stored without optimization, with a note in the file details.
-
-### Serving images
-
-Without the storage link nothing breaks: the same images are served through the app, which is just slower. The admin shows a warning in the media library to users who may edit site settings, and Admin → Site settings → Media has a "Create the storage link" button (and "Check again", which asks the browser to load a small test image the way it loads any picture and so also catches a web server that does not follow symlinks or a wrong `APP_URL`). Until the first administrator opens an admin page after installation, images also go through the app.
-
-Static files get their headers from the web server. Apache gets them from `public/.htaccess` (a week of caching and `X-Content-Type-Options: nosniff`, only for images under `storage/media/`), so there is nothing to do; that rule assumes the site is served at the domain root, not from a subdirectory. On nginx, add this to the site's `server` block, before the generic `location /` (an `add_header` inside a `location` replaces the ones inherited from the `server` block, so keep both lines):
-
-```nginx
-location ^~ /storage/media/ {
-    add_header Cache-Control "public, max-age=604800";
-    add_header X-Content-Type-Options nosniff;
-    try_files $uri /index.php?$query_string;
-}
+```php
+// routes: the admin middleware, path and names
+Route::middleware(['web', 'auth', 'verified', 'can:admin.access'])
+    ->prefix(config('hata.admin.path'))
+    ->name('admin.')
+    ->group(function () {
+        Route::livewire('reports', 'reports.index')->middleware('can:reports.view')->name('reports.index');
+    });
 ```
 
-The `try_files` fallback sends a request for a missing file to Laravel, so an address that was handed out before the link broke still answers. Without these rules browsers still cache the files, because the file names change with every edit.
+```php
+use Hata\Support\Admin\{AdminAssets, AdminMenu, AdminMenuItem};
 
-## Admin path
+// in a service provider's boot()
+$this->app->make(AdminMenu::class)->add(new AdminMenuItem(
+    key: 'reports',
+    label: 'reports.menu',                 // a translation key or plain text
+    icon: 'chart-bar',                     // a Flux icon
+    route: 'admin.reports.index',
+    permission: fn ($user) => $user->can('admin.access') && $user->can('reports.view'),
+    group: 'administration',               // platform, content, administration, account, or your own group()
+    order: 50,
+));
 
-The admin answers at `/admin` unless the site picks another path, so bots probing `/admin` find nothing. Set
-`HATA_ADMIN_PATH=cp-7f3k` in `.env` (one segment of lowercase letters, digits and hyphens; not a language code
-or an address another route uses, otherwise Hata refuses to start the routes and names the reason), then rebuild
-the route cache with `php artisan optimize`. The `/admin` slug is then free for content. It is config only, never
-a site setting, so a wrong value can't lock you out of the admin.
+// a module's own prebuilt CSS/JS (published under public/vendor/shop), printed after Hata's in the admin <head>
+$this->app->make(AdminAssets::class)->add('vendor/shop', ['resources/css/admin.css']);
+```
 
-## Maintenance page
+A full-page Livewire component uses `#[Layout('hata::layouts.app')]`; a Blade page wraps itself in
+`<x-hata::layouts.app :title="__('reports.title')">`. Hata's components are yours to use:
+`<x-hata::confirm-modal>`, `<x-hata::admin.row-actions>`, `<x-hata::admin.empty-state>`, `<x-hata::admin.rich-text>`,
+`<x-hata::flash-toast>`, `<x-hata::site-logo>`, the layouts `<x-hata::layouts.app>`, `<x-hata::layouts.auth>` and
+`<x-hata::layouts.focus>`, and the Livewire media picker `hata::media-picker`. Menu details:
+`docs/specs/admin-menu.md`.
 
-`/admin/maintenance` runs a few service commands from the admin, for hosting where a console is inconvenient:
-pending migrations (`migrate --force`), one seeder from `database/seeders` (`db:seed --class`), clearing the
-caches (`optimize:clear`) and rebuilding them (`optimize`). Every run is confirmed first and written to a
-journal with who ran it and the command's output.
+### Theme and view overrides
 
-Only a super admin can open it. The permission `maintenance.run` is reserved: the `admin` role does not get it
-from `*`; a super admin can give it to a role in the role's matrix.
+The public pages are Blade views: `hata::layouts.site`, `hata::site.entry` (a record), `hata::site.list` (a type's
+list), `hata::site.term` (a term) and `hata::welcome` (the home page). Laravel lets a site override any of Hata's Blade
+views, components and layouts by putting a file at the same path under `resources/views/vendor/hata/`, for example
+`resources/views/vendor/hata/site/entry.blade.php`.
 
-If "Rebuild caches" ever leaves the site unable to open, delete the files in `bootstrap/cache/` (keep
-`.gitignore`) over SFTP or SSH; the site then reads `.env` and the routes directly again.
+**An overridden view stops receiving Hata's fixes:** your copy is used from then on, whatever Hata changes in its own.
+Prefer the extension points above; override the public `site/*` and `layouts/site` views for a theme, and admin views
+only with a good reason. Livewire pages (the admin's screens under `resources/views/livewire`) cannot be overridden
+this way.
 
-## Development
+### Seeders and migrations
+
+Your `DatabaseSeeder` calls `HataSeeder` (the installer writes it) and then your own seeders; don't wrap it in
+`WithoutModelEvents`. Hata's migrations load from the package; add your own as usual. Don't publish Fortify's
+two-factor migration or laravel/passkeys' migration: Hata already creates those columns and that table, and the
+published copies would fail.
+
+### What a site accepts by installing Hata
+
+Hata is a CMS, not a library, so a few site-wide mechanisms come with it: its routes (`/`, the content fallback, which
+any route of yours beats, sign-in, `/settings`, the admin, media), `SetLocale` on the `web` group, the content lookup
+before the session starts, site settings written over `app.name`, `app.locale`, `mail.*` and the S3 disk, a handler
+for missing translation keys (a site that needs its own calls
+`Hata\Support\Translation\VendorTranslations::translate()` from it), global validation attribute names, a morph map
+for its models, and a super admin who passes every permission check. The full list:
+[docs/specs/package.md](docs/specs/package.md#what-a-site-accepts-by-installing-hata).
+
+## Developing Hata
+
+This repository is the package; `/Users/vitalii/Herd/hata-demo` is the app to look at it in a browser. The demo
+requires Hata through a path repository with a symlink:
+
+```json
+"repositories": [{"name": "hata", "type": "path", "url": "../hata", "options": {"symlink": true}}],
+"require": {"sliusardev/hata": "*@dev"}
+```
+
+Herd serves it at https://hata.test. PHP, views and translations show there at once. `php artisan migrate:fresh --seed`
+in the demo rebuilds it with the `ADMIN_*` super admin from its `.env`.
 
 ```bash
-composer run dev        # the local development processes (php artisan dev)
-php artisan test        # tests on SQLite in memory
+composer test           # Pint (check), PHPStan level 7, Pest on Orchestra Testbench (SQLite in memory)
 composer lint           # format with Pint
-composer types:check    # PHPStan
+npm ci && npm run build # rebuild dist/ after changing resources/css or resources/js; commit dist/ with the change
 ```
 
-To run the tests against MySQL, create an empty database and override the connection:
+After a build, run `php artisan vendor:publish --tag=hata-assets --force` in the demo. To run the suite against MySQL,
+create an empty database and override the connection (never at the same time as the SQLite run; `pest --parallel`
+does not work in this setup):
 
 ```bash
-DB_CONNECTION=mysql DB_DATABASE=app_testing DB_USERNAME=root DB_PASSWORD= php artisan test
+DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_DATABASE=hata_testing DB_USERNAME=root DB_PASSWORD= vendor/bin/pest
 ```
 
-GitHub Actions runs Pint and PHPStan, then runs the test suite on PHP 8.4 and 8.5 against both SQLite and MySQL 8.
-
-Architecture notes and the decisions made during development are in [CLAUDE.md](CLAUDE.md).
+GitHub Actions runs Pint and PHPStan, checks that `npm run build` leaves `dist/` unchanged (PHP 8.5), and runs the
+suite on PHP 8.4 and 8.5 against SQLite and MySQL 8, on pushes to `main` and on pull requests.

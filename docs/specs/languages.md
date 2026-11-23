@@ -9,13 +9,13 @@ it (`docs/specs/content.md`); posts and themes come later. Design:
 | | Interface languages | Content languages |
 |---|---|---|
 | What | the admin, account settings, sign-in pages | the public site's content |
-| Where from | `config('hata.admin.interface_locales')`, one `lang/<code>/` folder each | the catalogue `config/internal/languages.php`, chosen in Site settings → Languages |
+| Where from | `config('hata.admin.interface_locales')`, each with Hata's `resources/lang/<code>/` or the site's `lang/vendor/hata/<code>/` | the catalogue `config/internal/languages.php`, chosen in Site settings → Languages |
 | Who chooses | each user, in their account settings; the site has a default | an administrator with `settings.edit` |
 
 They are independent: a site may have twelve content languages and two interface languages. Adding a content
 language needs no deploy and no translation of the admin. The one link: a content language whose code is also
 an interface language shows the service pages in that language (below). For that link, an interface
-language's folder and key must equal the catalogue code (`lang/pt-br`, not Laravel's `pt_BR`).
+language's folder and key must equal the catalogue code (`lang/vendor/hata/pt-br`, not Laravel's `pt_BR`).
 
 ## Catalogue
 
@@ -23,9 +23,9 @@ language's folder and key must equal the catalogue code (`lang/pt-br`, not Larav
 `pt-br`, `zh-hans`, `zh-hant`, `en-gb`, `sr-latn`). Codes are lowercase with hyphens and are what appears in
 the address. Editing the file changes the route pattern, so the route cache must be rebuilt after it.
 
-- `App\Support\Localization\LanguageCatalog`: `all()`, `find()`, `has()`, `codes()`, `pattern()` (the route
+- `Hata\Support\Localization\LanguageCatalog`: `all()`, `find()`, `has()`, `codes()`, `pattern()` (the route
   pattern: an alternation of every code).
-- `App\Support\Localization\Language` (value object): `code`, `name`, `native`, `rtl`, `hreflang()`
+- `Hata\Support\Localization\Language` (value object): `code`, `name`, `native`, `rtl`, `hreflang()`
   (`pt-br` → `pt-BR`, `zh-hans` → `zh-Hans`), `direction()`, `hasInterface()`.
 
 ## The site's languages
@@ -37,7 +37,7 @@ Two site settings, applied over config like the others (`docs/specs/site-setting
 | `content_locales` | `hata.content.locales` | list of `['code' => string, 'active' => bool]`, in the order added |
 | `content_default_locale` | `hata.content.default_locale` | the default language |
 
-`App\Support\Localization\ContentLocales` (singleton) reads config only:
+`Hata\Support\Localization\ContentLocales` (singleton) reads config only:
 
 - `entries()`: the list made valid, the default first: codes outside the catalogue and repeats are dropped; a
   default that is not in the list is replaced (the default interface language if listed, else the first
@@ -70,11 +70,11 @@ Two site settings, applied over config like the others (`docs/specs/site-setting
 
 ### Routing
 
-`Route::localized(function () { … })` (a macro registered in `AppServiceProvider::register()`) registers its
+`Route::localized(function () { … })` (a macro registered in `HataServiceProvider::register()`) registers its
 routes twice: under `{locale}` with names prefixed `localized.` and the catalogue pattern, and then as they
 are. The prefixed copy comes first on purpose: a wildcard route of the default language (`{slug}/{child}`)
 would otherwise take `/de/about` for itself.
-Both copies carry `App\Http\Middleware\SetContentLocale`. The pattern comes from the catalogue file, not from
+Both copies carry `Hata\Http\Middleware\SetContentLocale`. The pattern comes from the catalogue file, not from
 settings, so the routes can be cached and never change when a language is switched. Catalogue codes are
 reserved slugs, so a first segment equal to a code is always a language.
 
@@ -140,8 +140,8 @@ Site settings → Languages (`?tab=languages`, `settings.edit`). Partials
 - **Language of the admin and sign-in pages**: the field `default_locale` (moved here from the General tab),
   one of the interface languages, saved with the tab's Save button.
 
-Actions (`App\Actions\Settings`, each `handle(User $actor, …)`, authorizing `settings.edit`; refusals throw
-`App\Exceptions\ContentLocaleException`): `AddContentLocale` (unknown, already added),
+Actions (`Hata\Actions\Settings`, each `handle(AdminUser $actor, …)`, authorizing `settings.edit`; refusals throw
+`Hata\Exceptions\ContentLocaleException`): `AddContentLocale` (unknown, already added),
 `SetContentLocaleActive` (not added, the default), `SetDefaultContentLocale` (not added, off;
 `$alsoInterface`), `RemoveContentLocale` (not added, the default, has records: `Entry::withTrashed()` counted by `locale`,
 `ContentLocaleException::hasContent($count)`). They always store the whole list with its
@@ -149,7 +149,7 @@ default, so the first change also stores what was derived until then.
 
 ## Reserved slugs
 
-`App\Support\Localization\ReservedSlugs::contains($slug)` (case-insensitive), for the content types to check
+`Hata\Support\Localization\ReservedSlugs::contains($slug)` (case-insensitive), for the content types to check
 when a slug is saved: every catalogue code (not only the added ones), the first segment of every route that
 is not a localized public one (computed from the router; a first segment that is a parameter, as in the content
 route, is skipped), and `hata.content.reserved_slugs` (what the web server
