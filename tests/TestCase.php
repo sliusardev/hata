@@ -28,6 +28,10 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // a developer's running `npm run dev` leaves a `hot` file in the package root: tests never read it
+        $this->app->instance('hata.hot_file', sys_get_temp_dir().'/hata-test-hot-'.getmypid());
+        $this->app->forgetScopedInstances();
+
         $this->useKitContentTypes();
     }
 

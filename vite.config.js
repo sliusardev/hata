@@ -3,7 +3,7 @@ import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
     plugins: lazyPlugins(() => [
         laravel({
             input: [
@@ -24,7 +24,8 @@ export default defineConfig({
         }),
         tailwindcss(),
     ]),
-    base: '/vendor/hata/',
+    // the published address applies to the build only: the dev server serves from its root (the hot file's address)
+    base: command === 'build' ? '/vendor/hata/' : '',
     publicDir: 'resources/static',
     build: {
         outDir: 'dist',
@@ -44,4 +45,4 @@ export default defineConfig({
             ],
         },
     },
-});
+}));

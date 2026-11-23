@@ -22,6 +22,7 @@ use Hata\Providers\ContentServiceProvider;
 use Hata\Providers\FortifyServiceProvider;
 use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Assets\HataAssets;
+use Hata\Support\Assets\HataVite;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\LanguageCatalog;
 use Hata\Support\Media\DirectServing;
@@ -83,6 +84,9 @@ class HataServiceProvider extends ServiceProvider
         $this->app->singleton(DirectServing::class);
         $this->app->singleton(ContentLocales::class);
         $this->app->singleton(AdminAssets::class);
+        $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
+            $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
+        ));
 
         $this->registerLocalizedRoutes();
         $this->registerFluxOverrides();

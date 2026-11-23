@@ -2,7 +2,6 @@
 
 namespace Hata\Support\Assets;
 
-use Hata\Hata;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\HtmlString;
 
@@ -46,11 +45,21 @@ final class HataAssets
         return asset(self::DIRECTORY.'/'.ltrim($path, '/'));
     }
 
-    private static function vite(): Vite
+    /**
+     * The Vite instance of the request: one per request (a scoped binding), so the manifest is parsed once. Its hot
+     * file is the package's `hot` unless the container binds `hata.hot_file` (tests do, so a developer's running dev
+     * server never reaches them).
+     */
+    public static function makeVite(string $hotFile): HataVite
     {
         return (new HataVite)
             ->useBuildDirectory(self::DIRECTORY)
             ->useManifestFilename('.vite/manifest.json')
-            ->useHotFile(Hata::path('hot'));
+            ->useHotFile($hotFile);
+    }
+
+    private static function vite(): Vite
+    {
+        return app(HataVite::class);
     }
 }

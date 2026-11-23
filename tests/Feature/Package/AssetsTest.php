@@ -5,11 +5,12 @@ use Hata\Hata;
 use Hata\HataServiceProvider;
 use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Assets\HataAssets;
+use Hata\Support\Assets\HataVite;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\File;
 
 afterEach(function () {
-    File::delete(Hata::path('hot'));
+    File::delete(app('hata.hot_file'));
     File::deleteDirectory(public_path('vendor/shop'));
 });
 
@@ -22,12 +23,28 @@ it('renders hata tags from its own manifest without touching the host vite', fun
         ->toContain('.js')
         ->not->toContain('/build/');
 
-    // the host's own Vite keeps its build directory and is never reconfigured
-    expect(app(Vite::class)->manifestHash())->toBeNull();
+    // the host's own Vite keeps its default build directory and hot file, and renders from the host's manifest
+    File::ensureDirectoryExists(public_path('build'));
+    File::put(public_path('build/manifest.json'), json_encode([
+        'resources/js/host.js' => ['file' => 'assets/host-1.js', 'src' => 'resources/js/host.js', 'isEntry' => true],
+    ]));
+
+    try {
+        $host = (string) app(Vite::class)(['resources/js/host.js']);
+    } finally {
+        File::deleteDirectory(public_path('build'));
+    }
+
+    expect($host)->toContain('/build/assets/host-1.js')
+        ->and(app(Vite::class)->hotFile())->toBe(public_path('hot'));
+
+    // one instance per request, so the manifest is parsed once
+    expect(app(HataVite::class))->toBe(app(HataVite::class));
 });
 
 it('uses the hot file while the package dev server runs', function () {
-    File::put(Hata::path('hot'), 'http://localhost:5199');
+    File::put(app('hata.hot_file'), 'http://localhost:5199');
+    app()->forgetScopedInstances();
 
     expect((string) HataAssets::tags(['resources/css/app.css']))
         ->toContain('http://localhost:5199/@vite/client')
@@ -60,9 +77,9 @@ it('builds dynamic chunks that resolve under the published directory', function 
         ->toContain('resources/js/rich-text.js', 'node_modules/cropperjs/dist/cropper.js');
 });
 
-it('appends module assets after hata\'s in the admin head', function () {
-    File::ensureDirectoryExists(public_path('vendor/shop'));
-    File::put(public_path('vendor/shop/manifest.json'), json_encode([
+it('appends module assets after hata\'s in the admin head', function (string $manifest) {
+    File::ensureDirectoryExists(dirname(public_path('vendor/shop/'.$manifest)));
+    File::put(public_path('vendor/shop/'.$manifest), json_encode([
         'resources/css/shop.css' => ['file' => 'assets/shop-abc123.css', 'src' => 'resources/css/shop.css', 'isEntry' => true],
     ]));
 
@@ -75,7 +92,7 @@ it('appends module assets after hata\'s in the admin head', function () {
     $shop = strpos($html, '/vendor/shop/assets/shop-abc123.css');
 
     expect($hata)->not->toBeFalse()->and($shop)->not->toBeFalse()->and($shop)->toBeGreaterThan($hata);
-});
+})->with(['.vite/manifest.json', 'manifest.json']);
 
 it('publishes dist under laravel-assets and hata-assets', function () {
     foreach (['laravel-assets', 'hata-assets'] as $tag) {
