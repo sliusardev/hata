@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\File;
  *
  * @return array<string, mixed>
  */
-function flattenedTranslations(string $locale): array
+function flattenedTranslations(string $locale, string $root = 'resources/lang'): array
 {
     $lines = [];
 
-    foreach (File::files(Hata::path("resources/lang/{$locale}")) as $file) {
+    foreach (File::files(Hata::path("{$root}/{$locale}")) as $file) {
         $group = $file->getFilenameWithoutExtension();
 
         foreach (Arr::dot(require $file->getPathname()) as $key => $value) {
@@ -40,9 +40,9 @@ function translatedLocales(): array
 /**
  * @return list<string>
  */
-function translationFiles(string $locale): array
+function translationFiles(string $locale, string $root = 'resources/lang'): array
 {
-    return collect(File::files(Hata::path("resources/lang/{$locale}")))
+    return collect(File::files(Hata::path("{$root}/{$locale}")))
         ->map(fn (SplFileInfo $file): string => $file->getFilename())
         ->sort()
         ->values()
@@ -155,4 +155,56 @@ test('no Hata translation key is used without the hata:: namespace', function ()
         ->all();
 
     expect($bare)->toBe([]);
+});
+
+/**
+ * Laravel's own English for the framework groups, with Hata's additions (the form field names in
+ * `validation.attributes`) on top: the source the other languages of `resources/lang-framework` follow.
+ *
+ * @return array<string, mixed>
+ */
+function frameworkEnglish(): array
+{
+    $lines = [];
+
+    foreach (File::files(base_path('vendor/laravel/framework/src/Illuminate/Translation/lang/en')) as $file) {
+        foreach (Arr::dot(require $file->getPathname()) as $key => $value) {
+            $lines["{$file->getFilenameWithoutExtension()}.{$key}"] = $value;
+        }
+    }
+
+    // The placeholders Laravel leaves for a site to fill in are not lines to translate.
+    unset($lines['validation.custom.attribute-name.rule-name'], $lines['validation.attributes']);
+
+    return [...$lines, ...flattenedTranslations('en', 'resources/lang-framework')];
+}
+
+test('every language of lang-framework has the framework groups and the keys of Laravel\'s English', function () {
+    $english = array_keys(frameworkEnglish());
+    $groups = array_map(fn (SplFileInfo $file): string => $file->getFilename(), File::files(base_path('vendor/laravel/framework/src/Illuminate/Translation/lang/en')));
+    sort($groups);
+
+    foreach (translatedLocales() as $locale) {
+        $translated = array_values(array_diff(array_keys(flattenedTranslations($locale, 'resources/lang-framework')), ['validation.custom']));
+
+        expect(translationFiles($locale, 'resources/lang-framework'))->toBe($groups, "Files differ in {$locale}")
+            ->and(array_values(array_diff($english, $translated)))->toBe([], "Missing in {$locale}")
+            ->and(array_values(array_diff($translated, $english)))->toBe([], "Extra in {$locale}");
+    }
+});
+
+test('lang-framework has no empty value and keeps the placeholders of the English', function () {
+    $english = frameworkEnglish();
+
+    foreach (array_keys(config('app.available_locales')) as $locale) {
+        $lines = flattenedTranslations($locale, 'resources/lang-framework');
+
+        $empty = collect($lines)->filter(fn (mixed $value): bool => $value !== [] && (! is_string($value) || trim($value) === ''))->keys()->all();
+        $mismatched = collect($lines)
+            ->filter(fn (mixed $value, string $key): bool => $locale !== 'en' && is_string($value) && isset($english[$key]) && is_string($english[$key]) && placeholdersIn($value) !== placeholdersIn($english[$key]))
+            ->keys()
+            ->all();
+
+        expect($empty)->toBe([], "Empty values in {$locale}")->and($mismatched)->toBe([], "Placeholder mismatch in {$locale}");
+    }
 });

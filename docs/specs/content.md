@@ -12,14 +12,15 @@ type, fields, a taxonomy) is in the README, section "Content types". Design: `do
 | Method | Meaning |
 |---|---|
 | `key()` | the stored type name, the admin address segment and the permission group (`pages`) |
-| `label()`, `pluralLabel()` | translated names, from `content.types.<key>.label` / `.plural` by default |
+| `translationPrefix()` | where the type's lines live: `''` for a site's or module's type (`content.types.<key>.*` in the site's own `lang/`), `'hata::'` for the kit's four types; every label below and the type's permission labels (`<prefix>permissions`) are read through it |
+| `label()`, `pluralLabel()` | translated names, from `<prefix>content.types.<key>.label` / `.plural` by default |
 | `icon()` | icon name for navigation |
 | `hierarchical()` | records form a tree with a parent and a path |
 | `base($locale)` | first address segment of the type in a language, or null for the root; must be one slug in the slug format (`assertValidBase()`) |
 | `fields()` | the extra fields (none by default); `field($name)`, `sharedFields()`, `localFields()` |
-| `description()` | the line under the admin list's heading, from `content.types.<key>.description` |
-| `createLabel()` | the list's "Create" button ("Create page"), from `content.types.<key>.create` |
-| `newLabel()` | the heading of a new record's form ("New page"), from `content.types.<key>.new`, else `createLabel()` |
+| `description()` | the line under the admin list's heading, from `<prefix>content.types.<key>.description` |
+| `createLabel()` | the list's "Create" button ("Create page"), from `<prefix>content.types.<key>.create` |
+| `newLabel()` | the heading of a new record's form ("New page"), from `<prefix>content.types.<key>.new`, else `createLabel()` |
 | `required()` | true for a type the site cannot do without (pages): it has no switch in Site settings → Content types |
 | `taxonomyOf()` | the keys of the types this type is a taxonomy of (`['posts']`); empty for an ordinary type. `isTaxonomy()` tells whether it names any |
 | `hasListFilter()` | for a taxonomy: whether the list of its types has a filter by its terms (true by default) |
@@ -115,7 +116,9 @@ request already loads.
 `App\Support\Content\ContentTypeGenerator`) writes `app/Support/Content/Types/PostsType.php`, adds the class to
 `config/content.php` → `types` (with its `use` line), and adds the type's lines to every language's `content.php`
 (`types.<key>`: `label`, `plural`, `description`, `new`, `create`) and `permissions.php` (`groups.<key>`,
-`items.<key>.*`). The lines are English in every language, built from the name, to be translated by the developer.
+`items.<key>.*`), which are the site's own files (a site type has the empty prefix). The lines are English in every language, built from the name, to be translated by the developer.
+
+A field's label is `content.fields.<name>` in the site's translations when it exists, else Hata's `hata::content.fields.<name>` (`Field::labelText()` tries the site's key first), so a site line relabels a field of any type, kit types included; `->label('key')` names a key explicitly.
 
 | Input | Meaning |
 |---|---|

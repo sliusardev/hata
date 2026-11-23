@@ -8,7 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Ukrainian validation messages. Keep the key set identical to
-    | lang/en/validation.php (enforced by the translation parity test).
+    | Laravel's own English validation.php plus lang-framework/en (enforced by the translation parity test).
     |
     */
 

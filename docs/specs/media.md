@@ -29,7 +29,7 @@ New sidebar group "Content" with the item "Media" (shown with `media.view`). Pag
 
 ## Permissions
 
-`config/permissions.php` → `media: view, upload, edit, delete`. Labels in `lang/*/permissions.php`. The `admin` role gets them through `*`; `editor` gets all four (RoleSeeder only adds).
+`config/permissions.php` → `media: view, upload, edit, delete`. Labels in `hata::permissions` (`resources/lang/*/permissions.php`). The `admin` role gets them through `*`; `editor` gets all four (RoleSeeder only adds).
 
 - `media.upload`: upload files, "Save as copy" in crop.
 - `media.edit`: alt/title, move between folders, create/rename/delete folders, crop, replace file, restore original, run optimization of existing files, move files between disks.

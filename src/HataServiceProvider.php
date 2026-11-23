@@ -36,6 +36,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Foundation\CachesRoutes;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Session\Middleware\StartSession;
@@ -48,7 +49,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Translation\FileLoader;
-use Illuminate\Translation\Translator;
 use Illuminate\View\Compilers\BladeCompiler;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
@@ -84,6 +84,8 @@ class HataServiceProvider extends ServiceProvider
 
         $this->mergeSpatiePermissionDefaults();
         $this->configurePackages();
+
+        $this->registerFrameworkTranslations();
 
         $this->app->singleton(
             PermissionRegistry::class,
@@ -321,21 +323,42 @@ class HataServiceProvider extends ServiceProvider
     }
 
     /**
+     * Laravel reads its own groups by their global names (`validation.required`, `auth.failed`, the password
+     * broker and pagination lines), so Hata's lines for them (`resources/lang-framework`) cannot sit under the
+     * `hata` namespace. They are inserted into the loader's paths between the framework's English and the site's
+     * `lang/`, so a site's own file (lang:publish, laravel-lang) always wins over Hata, and Hata over Laravel.
+     */
+    private function registerFrameworkTranslations(): void
+    {
+        $this->app->extend('translation.loader', function ($loader, Application $app) {
+            if (! $loader instanceof FileLoader) {
+                return $loader;
+            }
+
+            $paths = $loader->paths();
+            $sitePath = array_search($app->langPath(), $paths, true);
+            array_splice($paths, is_int($sitePath) ? $sitePath : count($paths), 0, [Hata::path('resources/lang-framework')]);
+
+            $extended = new FileLoader($app->make('files'), $paths);
+
+            foreach ($loader->jsonPaths() as $jsonPath) {
+                $extended->addJsonPath($jsonPath);
+            }
+
+            foreach ($loader->namespaces() as $namespace => $hint) {
+                $extended->addNamespace($namespace, $hint);
+            }
+
+            return $extended;
+        });
+    }
+
+    /**
      * The package's translations, and the literal strings that vendor packages pass to __().
      */
     private function configureTranslations(): void
     {
         $this->loadTranslationsFrom(Hata::path('resources/lang'), 'hata');
-
-        // Laravel reads its own groups by their global names (`validation.required`, `auth.failed`, the password
-        // broker and pagination lines), so those few files cannot sit under the `hata` namespace.
-        $this->callAfterResolving('translator', function (Translator $translator): void {
-            $loader = $translator->getLoader();
-
-            if ($loader instanceof FileLoader) {
-                $loader->addPath(Hata::path('resources/lang-framework'));
-            }
-        });
 
         Lang::handleMissingKeysUsing(
             fn (string $key, array $replace, ?string $locale): ?string => VendorTranslations::translate($key, $replace, $locale),

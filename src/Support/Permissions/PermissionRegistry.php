@@ -2,6 +2,7 @@
 
 namespace Hata\Support\Permissions;
 
+use Illuminate\Support\Facades\Lang;
 use InvalidArgumentException;
 
 /**
@@ -17,11 +18,19 @@ class PermissionRegistry
     private array $groups = [];
 
     /**
-     * The translation file prefix of each group's labels, e.g. `hata::permissions` or `shop::permissions`.
+     * The translation file prefix of each group's label (the first registration of the group), e.g.
+     * `hata::permissions` or `shop::permissions`.
      *
      * @var array<string, string>
      */
-    private array $prefixes = [];
+    private array $groupPrefixes = [];
+
+    /**
+     * The translation file prefix of each permission's label (the registration that added it).
+     *
+     * @var array<string, string>
+     */
+    private array $permissionPrefixes = [];
 
     /**
      * Register actions for a resource group. Registering the same group again merges the actions.
@@ -40,7 +49,12 @@ class PermissionRegistry
             }
         }
 
-        $this->prefixes[$group] = $translationPrefix;
+        $this->groupPrefixes[$group] ??= $translationPrefix;
+
+        foreach ($actions as $action) {
+            $this->permissionPrefixes["{$group}.{$action}"] ??= $translationPrefix;
+        }
+
         $this->groups[$group] = array_values(array_unique([...($this->groups[$group] ?? []), ...$actions]));
 
         return $this;
@@ -74,16 +88,36 @@ class PermissionRegistry
         return $named;
     }
 
+    /**
+     * The group's label from its owner's translations, else from the site's own `permissions.groups.<group>`
+     * (a group a site added to `config/permissions.php` is labelled there).
+     */
     public function groupLabel(string $group): string
     {
-        return __(($this->prefixes[$group] ?? 'permissions').".groups.{$group}");
+        return $this->label(($this->groupPrefixes[$group] ?? 'permissions').".groups.{$group}", "permissions.groups.{$group}");
     }
 
     public function permissionLabel(string $permission): string
     {
-        $group = strstr($permission, '.', true);
+        return $this->label(($this->permissionPrefixes[$permission] ?? 'permissions').".items.{$permission}", "permissions.items.{$permission}");
+    }
 
-        return __(($this->prefixes[$group] ?? 'permissions').".items.{$permission}");
+    /**
+     * The translation key the registry reads for a permission's label, before the site fallback.
+     */
+    public function permissionLabelKey(string $permission): string
+    {
+        return ($this->permissionPrefixes[$permission] ?? 'permissions').".items.{$permission}";
+    }
+
+    public function groupLabelKey(string $group): string
+    {
+        return ($this->groupPrefixes[$group] ?? 'permissions').".groups.{$group}";
+    }
+
+    private function label(string $key, string $siteKey): string
+    {
+        return Lang::has($key) ? __($key) : __($siteKey);
     }
 
     /**

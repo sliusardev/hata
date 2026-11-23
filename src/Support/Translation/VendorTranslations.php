@@ -3,7 +3,7 @@
 namespace Hata\Support\Translation;
 
 /**
- * Maps literal English strings that vendor packages (Fortify, passkeys, Flux) pass to __() onto keys in lang/{locale}/*.php.
+ * Maps literal English strings that vendor packages (Fortify, passkeys, Flux) pass to __() onto keys in the `hata::` translations (resources/lang/{locale}/*.php).
  *
  * The project keeps translations in PHP files only (no lang/*.json), so these literals
  * would otherwise never be translated. Registered via Lang::handleMissingKeysUsing().
