@@ -49,10 +49,10 @@ test('it counts users and permissions without a query per role', function () {
 
 test('the navigation shows roles only with the roles.view permission', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'roles.view'])->create());
-    $this->get(route('admin.dashboard'))->assertSee(route('admin.roles.index'));
+    $this->get(route('admin.dashboard'))->assertSee('href="'.route('admin.roles.index', absolute: false).'"', false);
 
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
-    $this->get(route('admin.dashboard'))->assertDontSee(route('admin.roles.index'));
+    $this->get(route('admin.dashboard'))->assertDontSee('href="'.route('admin.roles.index', absolute: false).'"', false);
 });
 
 test('the role name links to the role page', function () {

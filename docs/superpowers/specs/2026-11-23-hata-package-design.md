@@ -134,6 +134,13 @@ These site-wide mechanisms are Hata features and move as they are (my call, told
   this is what the Site settings page edits.
 - `Lang::handleMissingKeysUsing()` for the vendor-literal map (decision 7). Laravel keeps one handler; the README
   says a site that needs its own must call Hata's from it.
+- Fortify's `features`, `views`, `home`, `middleware`, `limiters` and `lowercase_usernames`, set over the site's
+  `config/fortify.php` (Hata's sign-in flows depend on them); `images.default` (imagick or gd) and Livewire's
+  `temporary_file_upload.rules` (the media limits).
+- An exact `Gate::policy()` mapping of the configured user model to `Hata\Policies\UserPolicy`, which beats a guessed
+  `App\Policies\UserPolicy` and `#[UsePolicy]`; a site that needs its own extends Hata's and registers it in its
+  `AppServiceProvider::boot()`, which runs after Hata's. (Added after the final review; the full list is in
+  `docs/specs/package.md`.)
 
 ### Stored class names
 
@@ -184,7 +191,9 @@ with the package and checks the `hata::` keys.
 - They are published to `public/vendor/hata` under the `laravel-assets` tag. Laravel's skeleton already runs
   `vendor:publish --tag=laravel-assets --force` on `post-update-cmd`, so every `composer update` refreshes them; the
   installer checks that line is in the host's `composer.json`. They are static files (no PHP per request); URLs carry
-  the Vite manifest's hashed names.
+  the Vite manifest's hashed names. *Amended after the final review:* a deploy that runs `composer install` from the
+  lock file never runs `post-update-cmd`, so the installer also adds `@php artisan vendor:publish --tag=hata-assets
+  --force --ansi` to `post-autoload-dump`, after `package:discover` (it runs on install and update).
 - Fonts (today Bunny's Instrument Sans through the Vite plugin) are bundled into `dist/` or loaded the same way the
   build does now; the builder picks, keeping no third-party request the site does not have today.
 - Flux's CSS is compiled into Hata's admin CSS at build time, so Hata pins `livewire/flux` to the minor it was built

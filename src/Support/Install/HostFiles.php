@@ -17,9 +17,9 @@ use stdClass;
 final class HostFiles
 {
     /**
-     * The commands a site's `post-update-cmd` needs: every `composer update` republishes Hata's built assets
-     * (`public/vendor/hata`), and clears the compiled views, because Blade recompiles a template only when its own
-     * file changes, not when an updated Hata resolves a component differently.
+     * The commands a site's `post-update-cmd` needs: every `composer update` republishes every package's assets
+     * (Hata's among them), and clears the compiled views, because Blade recompiles a template only when its own file
+     * changes, not when an updated Hata resolves a component differently.
      *
      * @var list<string>
      */
@@ -27,6 +27,23 @@ final class HostFiles
         '@php artisan vendor:publish --tag=laravel-assets --ansi --force',
         '@php artisan view:clear --ansi',
     ];
+
+    /**
+     * The command a site's `post-autoload-dump` needs, right after `package:discover`: it runs on `composer install`
+     * too, so a deploy that installs from the lock file (`git pull && composer install --no-dev`) also publishes the
+     * built assets of the Hata it installed. Without it the views would print tags for hashed files that are not in
+     * `public/vendor/hata`.
+     *
+     * @var list<string>
+     */
+    public const array POST_AUTOLOAD_DUMP_COMMANDS = [
+        '@php artisan vendor:publish --tag=hata-assets --force --ansi',
+    ];
+
+    /**
+     * The command in `post-autoload-dump` that Hata's publish follows: it must run after the packages are discovered.
+     */
+    private const string PACKAGE_DISCOVER = '@php artisan package:discover --ansi';
 
     /**
      * Laravel's skeleton `run()` body of `DatabaseSeeder`: a test user from the factory (which needs Faker, a dev
@@ -209,14 +226,20 @@ final class HostFiles
     }
 
     /**
-     * The commands of `POST_UPDATE_COMMANDS` in `scripts.post-update-cmd` of the host's composer.json. The JSON is
-     * read and checked as data; the missing commands are written into the existing text (4 spaces, as Composer
-     * writes it), so the rest of the file keeps its formatting. Only when the text has an unusual layout is the whole
-     * file re-encoded.
+     * The commands of `POST_AUTOLOAD_DUMP_COMMANDS` in `scripts.post-autoload-dump` (after `package:discover`) and of
+     * `POST_UPDATE_COMMANDS` in `scripts.post-update-cmd` of the host's composer.json. The JSON is read and checked as
+     * data; the missing commands are written into the existing text (4 spaces, as Composer writes it), so the rest of
+     * the file keeps its formatting. Only when the text has an unusual layout is the whole file re-encoded.
      */
     public function ensureAssetsPublishScript(string $composerJson): HostFileResult
     {
-        $manual = "In composer.json, \"scripts\" → \"post-update-cmd\":\n"
+        $scripts = [
+            'post-autoload-dump' => self::POST_AUTOLOAD_DUMP_COMMANDS,
+            'post-update-cmd' => self::POST_UPDATE_COMMANDS,
+        ];
+        $manual = 'In composer.json, "scripts" → "post-autoload-dump", after '.$this->jsonString(self::PACKAGE_DISCOVER).":\n"
+            .implode(",\n", array_map(fn (string $command): string => $this->jsonString($command), self::POST_AUTOLOAD_DUMP_COMMANDS))
+            ."\n\nIn composer.json, \"scripts\" → \"post-update-cmd\":\n"
             .implode(",\n", array_map(fn (string $command): string => $this->jsonString($command), self::POST_UPDATE_COMMANDS));
 
         $source = $this->read($composerJson);
@@ -227,23 +250,35 @@ final class HostFiles
             return HostFileResult::unrecognized($manual);
         }
 
-        $current = $data->scripts->{'post-update-cmd'} ?? [];
-        $current = is_string($current) ? [$current] : $current;
+        $updated = (string) $source;
+        $changed = false;
 
-        if (! is_array($current) || ! array_is_list($current) || array_filter($current, 'is_string') !== $current) {
-            return HostFileResult::unrecognized($manual);
+        foreach ($scripts as $key => $commands) {
+            $current = $data->scripts->{$key} ?? [];
+            $current = is_string($current) ? [$current] : $current;
+
+            if (! is_array($current) || ! array_is_list($current) || array_filter($current, 'is_string') !== $current) {
+                return HostFileResult::unrecognized($manual);
+            }
+
+            $missing = array_values(array_diff($commands, $current));
+
+            if ($missing === []) {
+                continue;
+            }
+
+            $after = $key === 'post-autoload-dump' && in_array(self::PACKAGE_DISCOVER, $current, true) ? self::PACKAGE_DISCOVER : null;
+            $at = $after === null ? count($current) : (int) array_search($after, $current, true) + 1;
+
+            $data->scripts ??= new stdClass;
+            $data->scripts->{$key} = [...array_slice($current, 0, $at), ...$missing, ...array_slice($current, $at)];
+            $updated = $updated === null ? null : $this->insertJsonCommands($updated, $key, $missing, $after);
+            $changed = true;
         }
 
-        $missing = array_values(array_diff(self::POST_UPDATE_COMMANDS, $current));
-
-        if ($missing === []) {
+        if (! $changed) {
             return HostFileResult::alreadyDone();
         }
-
-        $data->scripts ??= new stdClass;
-        $data->scripts->{'post-update-cmd'} = [...$current, ...$missing];
-
-        $updated = $this->insertJsonCommands((string) $source, $missing);
 
         if ($updated === null || json_decode($updated) != $data) {
             $updated = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n";
@@ -253,29 +288,35 @@ final class HostFiles
     }
 
     /**
-     * Adds commands to `post-update-cmd` in the text: at the end of the array, or as a new array first in "scripts".
+     * Adds commands to a script's array in the text: after the line of `$after` when it is there, else at the end of
+     * the array, or as a new array first in "scripts".
      *
      * @param  list<string>  $commands
      */
-    private function insertJsonCommands(string $source, array $commands): ?string
+    private function insertJsonCommands(string $source, string $key, array $commands, ?string $after = null): ?string
     {
-        if (preg_match('/^( *)"post-update-cmd": \[\n((?:.*\n)*?)\1\]/m', $source, $match, PREG_OFFSET_CAPTURE) === 1) {
-            $indent = $match[1][0].'    ';
-            $items = rtrim($match[2][0], "\n");
-            $lines = array_map(fn (string $command): string => $indent.$this->jsonString($command), $commands);
-            $items = ($items === '' ? '' : $items.",\n").implode(",\n", $lines)."\n";
+        $quotedKey = preg_quote($this->jsonString($key), '/');
 
-            return substr_replace($source, $items, $match[2][1], strlen($match[2][0]));
+        if (preg_match('/^( *)'.$quotedKey.': \[\n((?:.*\n)*?)\1\]/m', $source, $match, PREG_OFFSET_CAPTURE) === 1) {
+            $indent = $match[1][0].'    ';
+            $items = $match[2][0] === '' ? [] : explode("\n", rtrim($match[2][0], "\n"));
+            $items = array_map(fn (string $line): string => rtrim($line, ','), $items);
+            $lines = array_map(fn (string $command): string => $indent.$this->jsonString($command), $commands);
+            $position = $after === null ? false : array_search($indent.$this->jsonString($after), $items, true);
+            $position = $position === false ? count($items) : $position + 1;
+            array_splice($items, $position, 0, $lines);
+
+            return substr_replace($source, implode(",\n", $items)."\n", $match[2][1], strlen($match[2][0]));
         }
 
-        if (str_contains($source, '"post-update-cmd"')) {
+        if (str_contains($source, $this->jsonString($key))) {
             return null;
         }
 
         if (preg_match('/^( *)"scripts": \{\n( *)"/m', $source, $match, PREG_OFFSET_CAPTURE) === 1) {
             $indent = $match[2][0];
             $lines = array_map(fn (string $command): string => $indent.'    '.$this->jsonString($command), $commands);
-            $entry = $indent."\"post-update-cmd\": [\n".implode(",\n", $lines)."\n".$indent."],\n";
+            $entry = $indent.$this->jsonString($key).": [\n".implode(",\n", $lines)."\n".$indent."],\n";
             $at = $match[0][1] + strlen($match[1][0].'"scripts": {'."\n");
 
             return substr_replace($source, $entry, $at, 0);

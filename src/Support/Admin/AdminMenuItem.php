@@ -50,13 +50,14 @@ final readonly class AdminMenuItem
     }
 
     /**
-     * Built once per item object: the menu checks it and the sidebar prints it.
+     * Built once per item object: the menu checks it and the sidebar prints it. Relative, so the memo holds nothing
+     * of the request: a worker that serves many requests (Octane) never prints the first request's host.
      */
     public function url(): string
     {
         static $urls = new WeakMap;
 
-        return $urls[$this] ??= route($this->route, $this->routeParameters);
+        return $urls[$this] ??= route($this->route, $this->routeParameters, absolute: false);
     }
 
     public function isCurrent(): bool

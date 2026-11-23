@@ -31,23 +31,12 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations: drops the columns this migration adds.
+     * Deliberately nothing: the roles table may be the site's own (spatie's migration), and the labels of its roles
+     * live in these columns; rolling Hata back must never lose a site's roles. `migrate:fresh` still drops them.
      */
     public function down(): void
     {
-        $roles = (string) config('permission.table_names.roles');
-
-        if (! Schema::hasTable($roles)) {
-            return;
-        }
-
-        $present = array_values(array_diff(['label', 'is_system'], $this->missing($roles)));
-
-        if ($present !== []) {
-            Schema::table($roles, function (Blueprint $table) use ($present) {
-                $table->dropColumn($present);
-            });
-        }
+        //
     }
 
     /**

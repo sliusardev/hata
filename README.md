@@ -63,7 +63,9 @@ What it does, each step safe to repeat:
   depend on them.
 - Makes `database/seeders/DatabaseSeeder.php` call `Hata\Database\Seeders\HataSeeder` (and drops the skeleton's Test
   User and `WithoutModelEvents`).
-- Ensures `composer.json` → `post-update-cmd` runs `vendor:publish --tag=laravel-assets --force` and `view:clear`.
+- Ensures `composer.json` → `post-autoload-dump` runs `vendor:publish --tag=hata-assets --force` right after
+  `package:discover` (so `composer install` publishes the assets too), and `post-update-cmd` runs
+  `vendor:publish --tag=laravel-assets --force` and `view:clear`.
 - Publishes `config/hata.php` and the assets (`public/vendor/hata`), runs the migrations, syncs the permissions and
   roles, creates the super admin, stores the site's first content language, and creates the storage link.
 
@@ -78,16 +80,10 @@ on hosting without symlinks, use Admin → Site settings → Media → "Create t
 through the app, only slower). Hata's assets are static files under `/vendor/hata/`.
 
 **Apache:** copy `vendor/sliusardev/hata/stubs/htaccess` to `public/.htaccess`. It is Laravel's file plus a week of
-caching and `X-Content-Type-Options: nosniff` for images under `storage/media/` (it assumes the site is at the domain
-root). Optionally, cache the hashed asset files for a year:
-
-```apache
-<IfModule mod_headers.c>
-    <If "%{REQUEST_URI} =~ m#^/vendor/hata/assets/#">
-        Header set Cache-Control "public, max-age=31536000, immutable"
-    </If>
-</IfModule>
-```
+caching and `X-Content-Type-Options: nosniff` for images under `storage/media/`, and a year of
+`Cache-Control: public, max-age=31536000, immutable` for Hata's assets under `vendor/hata/assets/`, whose names carry
+a content hash (both rules assume the site is at the domain root). A site that keeps its own `.htaccess` copies the two
+`mod_headers` blocks from the end of the stub.
 
 **nginx:** add to the site's `server` block, before the generic `location /` (an `add_header` inside a `location`
 replaces the ones inherited from the `server` block, so keep both lines):
@@ -108,6 +104,27 @@ location ^~ /vendor/hata/assets/ {
 The media fallback sends a request for a missing file to Laravel, so an address handed out before the link broke still
 answers. Without these rules browsers still cache the files, because the file names change with every edit.
 
+### Deploying
+
+A deploy that pulls the code and installs from the lock file (`git pull && composer install --no-dev`) needs no
+step for Hata's assets: Composer runs `post-autoload-dump` on every install and update, and its
+`vendor:publish --tag=hata-assets --force` line (added by the installer) copies the built assets of the installed Hata
+to `public/vendor/hata`. `composer update` also runs `post-update-cmd` (every package's assets again, and
+`view:clear`). Without the publish the views print tags for hashed files that are not there, and the admin and the
+site load without CSS and JavaScript.
+
+What runs automatically is the publish (and `view:clear` on update). The deploy script runs the rest itself:
+
+```bash
+git pull
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan optimize          # caches config, routes, views and events; never caches the stored site settings
+```
+
+`php artisan db:seed --force` is needed only when an update adds permissions (safe to repeat), and a queue worker is
+restarted with `php artisan queue:restart`.
+
 ### Shared hosting without SSH
 
 Install locally (or in CI) with `composer install --no-dev`, upload the code with `vendor/` and `public/vendor/hata`,
@@ -124,8 +141,9 @@ php artisan migrate               # or Admin → Maintenance → Run migrations
 php artisan db:seed --force       # only when an update adds permissions; safe to repeat (or permissions:sync)
 ```
 
-Keep both `post-update-cmd` lines: without the publish the admin runs old CSS/JS against new views, and without
-`view:clear` compiled views can keep stale component names. After changing `.env` or `config/hata.php` on a site that
+Keep the `post-autoload-dump` publish and both `post-update-cmd` lines: without the publish the admin runs old CSS/JS
+against new views (or none at all after `composer install`), and without `view:clear` compiled views can keep stale
+component names. After changing `.env` or `config/hata.php` on a site that
 caches its config and routes, run `php artisan optimize` (or Admin → Maintenance → Rebuild caches).
 
 ## Configuration
@@ -301,7 +319,13 @@ any route of yours beats, sign-in, `/settings`, the admin, media), `SetLocale` o
 before the session starts, site settings written over `app.name`, `app.locale`, `mail.*` and the S3 disk, a handler
 for missing translation keys (a site that needs its own calls
 `Hata\Support\Translation\VendorTranslations::translate()` from it), global validation attribute names, a morph map
-for its models, and a super admin who passes every permission check. The full list:
+for its models, and a super admin who passes every permission check. It also sets these config values over the
+site's own files: Fortify's `features`, `views`, `home`, `middleware`, `limiters` and `lowercase_usernames` (a site's
+`config/fortify.php` values for them are ignored), `images.default` (imagick or gd) and Livewire's
+`temporary_file_upload.rules`. The site's user model gets `Hata\Policies\UserPolicy` as its exact policy, which beats
+an `App\Policies\UserPolicy` Laravel would guess and a `#[UsePolicy]`: a site that needs its own extends
+`Hata\Policies\UserPolicy` and registers it with `Gate::policy()` in its `AppServiceProvider::boot()` (it runs after
+Hata's). The full list:
 [docs/specs/package.md](docs/specs/package.md#what-a-site-accepts-by-installing-hata).
 
 ## Developing Hata

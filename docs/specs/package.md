@@ -40,8 +40,11 @@ Steps, in order:
    - `database/seeders/DatabaseSeeder.php`: `$this->call(HataSeeder::class)`; the skeleton's Test User and
      `WithoutModelEvents` are removed (Faker is dev-only; `WithoutModelEvents` would leave the admin without a
      search index). A changed seeder that uses `WithoutModelEvents` is left for a by-hand fix.
-   - `composer.json` → `scripts.post-update-cmd`: both `@php artisan vendor:publish --tag=laravel-assets --ansi --force`
-     and `@php artisan view:clear --ansi`.
+   - `composer.json` → `scripts.post-autoload-dump`: `@php artisan vendor:publish --tag=hata-assets --force --ansi`
+     right after `@php artisan package:discover --ansi` (at the end when that line is missing), and
+     `scripts.post-update-cmd`: both `@php artisan vendor:publish --tag=laravel-assets --ansi --force` and
+     `@php artisan view:clear --ansi`. A script written as a single string is read as a one-line list; a missing key is
+     added; a file whose scripts are not lists of strings is left for a by-hand fix.
 2. `config/hata.php` copied from the package unless the site has one (the same file as
    `vendor:publish --tag=hata-config`). Spatie's migration is never published (Hata ships those tables).
 3. `vendor:publish --tag=laravel-assets --force` (Hata's `dist/` → `public/vendor/hata`).
@@ -67,6 +70,19 @@ by-hand lines. The report is always printed.
 - Then `php artisan migrate` (Admin → Maintenance can run it) and `php artisan db:seed --force` or
   `php artisan permissions:sync` when the update adds permissions (both are safe to rerun).
 - After changing `.env` or `config/hata.php` on a site that caches: `php artisan optimize`.
+
+## Deploying
+
+- `HataVite` reads the manifest from the package's own `dist/`, so the tags always name the installed version's
+  hashed files; they must also be in `public/vendor/hata`. A deploy that installs from the lock file
+  (`git pull && composer install --no-dev`) never runs `post-update-cmd`, so the publish lives in
+  `post-autoload-dump`, which Composer runs on both `install` and `update` (and `dump-autoload`): a cheap copy of
+  `dist/` each time.
+- What runs automatically: the assets publish (every install, update and dump-autoload) and, on `composer update`,
+  every package's `laravel-assets` and `view:clear`. The deploy script also runs `php artisan migrate --force` and
+  `php artisan optimize` (and `db:seed --force` when an update adds permissions, `queue:restart` with a worker).
+- Web server: `stubs/htaccess` caches `/storage/media/` images for a week and `/vendor/hata/assets/` (hashed names) for
+  a year with `immutable`; the README has the same two nginx `location` blocks.
 
 ## Admin path
 
@@ -115,7 +131,26 @@ These are Hata features, not defaults a site can opt out of:
 - `Gate::before`: a `super-admin` passes every ability, the site's too.
 - `permission.models.role` is `Hata\Models\Role`; spatie's tables (with Hata's `label`/`is_system` columns on
   `roles`).
+- Fortify is configured by Hata, in `HataServiceProvider::register()` (`configurePackages()`), over whatever the site's
+  `config/fortify.php` says: the whole `fortify.features` list (registration, which `EnsureRegistrationIsEnabled`
+  hides while the site setting is off, password reset, two-factor with confirmation, passkeys), `fortify.views`
+  (`true`), `fortify.home` (`/dashboard`), `fortify.middleware` (`web` plus `EnsureRegistrationIsEnabled`),
+  `fortify.limiters` (`login`, `two-factor`, `passkeys`, with Hata's rate limiters of those names) and
+  `fortify.lowercase_usernames` (`true`); Fortify's actions (`createUsersUsing`, `resetUserPasswordsUsing`) and views
+  are Hata's (`Hata\Providers\FortifyServiceProvider`).
+- `images.default` is `imagick` when the extension is loaded, else `gd`, and Livewire's
+  `livewire.temporary_file_upload.rules` are `required|file|max:<the larger media limit>` (`configureMedia()`, at
+  boot), so a site's own values for both are replaced.
+- The configured user model (`auth.providers.users.model`) gets an exact `Gate::policy($model,
+  Hata\Policies\UserPolicy::class)` (`configureAuthorization()`, at boot). It beats a policy Laravel would guess for
+  it (`App\Policies\UserPolicy`) and the model's `#[UsePolicy]`. A site that needs its own user policy extends
+  `Hata\Policies\UserPolicy` (Hata's admin calls its abilities) and registers it with `Gate::policy()` in its own
+  `AppServiceProvider::boot()`, which runs after Hata's.
 - The schedule entries `media:prune-deleted` and `content:prune-trash` (daily).
+
+A site that must change one of these config values sets it in its own `AppServiceProvider` (`register()` for the
+Fortify keys, `boot()` for the others): application providers register and boot after package providers. Hata
+expects the values above, so a changed one is the site's to support.
 
 Hata never sets `Date::use()`, `Password::defaults()` or `DB::prohibitDestructiveCommands()`: those are the site's,
 written by the installer into its `AppServiceProvider`.

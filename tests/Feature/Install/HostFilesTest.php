@@ -240,21 +240,67 @@ describe('addSeederCall', function () {
 });
 
 describe('ensureAssetsPublishScript', function () {
-    it('adds view:clear after the skeleton\'s asset publish and keeps the rest of the file', function () {
+    it('adds Hata\'s publish after package:discover and view:clear after the skeleton\'s asset publish, keeping the rest of the file', function () {
         $path = hostFile('composer.json');
         $skeleton = File::get($path);
 
         expectEditedOnceInto($path, fn (string $file) => app(HostFiles::class)->ensureAssetsPublishScript($file), str_replace(
-            "            \"@php artisan vendor:publish --tag=laravel-assets --ansi --force\"\n",
-            "            \"@php artisan vendor:publish --tag=laravel-assets --ansi --force\",\n            \"@php artisan view:clear --ansi\"\n",
+            [
+                "            \"@php artisan package:discover --ansi\"\n",
+                "            \"@php artisan vendor:publish --tag=laravel-assets --ansi --force\"\n",
+            ],
+            [
+                "            \"@php artisan package:discover --ansi\",\n            \"@php artisan vendor:publish --tag=hata-assets --force --ansi\"\n",
+                "            \"@php artisan vendor:publish --tag=laravel-assets --ansi --force\",\n            \"@php artisan view:clear --ansi\"\n",
+            ],
             $skeleton,
         ));
     });
 
-    it('adds both commands to a composer.json without post-update-cmd', function () {
+    it('puts Hata\'s publish right after package:discover when other commands follow it', function () {
+        $path = hostFile('composer.json', fn (string $source) => str_replace(
+            "            \"@php artisan package:discover --ansi\"\n",
+            "            \"@php artisan package:discover --ansi\",\n            \"@php artisan filament:upgrade\"\n",
+            $source,
+        ));
+
+        expect(app(HostFiles::class)->ensureAssetsPublishScript($path)->status)->toBe(HostFileStatus::Changed)
+            ->and(json_decode(File::get($path), true)['scripts']['post-autoload-dump'])->toBe([
+                'Illuminate\\Foundation\\ComposerScripts::postAutoloadDump',
+                '@php artisan package:discover --ansi',
+                '@php artisan vendor:publish --tag=hata-assets --force --ansi',
+                '@php artisan filament:upgrade',
+            ]);
+    });
+
+    it('accepts scripts written as a single string', function () {
         $path = hostFile('composer.json', function (string $source) {
             $data = json_decode($source, true);
-            unset($data['scripts']['post-update-cmd']);
+            $data['scripts']['post-autoload-dump'] = '@php artisan package:discover --ansi';
+            $data['scripts']['post-update-cmd'] = '@php artisan view:clear --ansi';
+
+            return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n";
+        });
+
+        expect(app(HostFiles::class)->ensureAssetsPublishScript($path)->status)->toBe(HostFileStatus::Changed);
+
+        $scripts = json_decode(File::get($path), true)['scripts'];
+
+        expect($scripts['post-autoload-dump'])->toBe([
+            '@php artisan package:discover --ansi',
+            '@php artisan vendor:publish --tag=hata-assets --force --ansi',
+        ])
+            ->and($scripts['post-update-cmd'])->toBe([
+                '@php artisan view:clear --ansi',
+                '@php artisan vendor:publish --tag=laravel-assets --ansi --force',
+            ])
+            ->and(app(HostFiles::class)->ensureAssetsPublishScript($path)->status)->toBe(HostFileStatus::AlreadyDone);
+    });
+
+    it('adds the commands to a composer.json without post-update-cmd or post-autoload-dump', function () {
+        $path = hostFile('composer.json', function (string $source) {
+            $data = json_decode($source, true);
+            unset($data['scripts']['post-update-cmd'], $data['scripts']['post-autoload-dump']);
 
             return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n";
         });
@@ -267,12 +313,24 @@ describe('ensureAssetsPublishScript', function () {
             '@php artisan vendor:publish --tag=laravel-assets --ansi --force',
             '@php artisan view:clear --ansi',
         ])
-            ->and($data['scripts']['post-autoload-dump'])->toHaveCount(2)
-            ->and(File::get($path))->toContain("\n    \"scripts\": {\n        \"post-update-cmd\": [\n");
+            ->and($data['scripts']['post-autoload-dump'])->toBe(['@php artisan vendor:publish --tag=hata-assets --force --ansi'])
+            ->and($data['scripts']['setup'])->toHaveCount(6);
     });
 
     it('leaves a composer.json it cannot read alone', function () {
         $path = hostFile('composer.json', fn (string $source) => str_replace('"scripts": {', '"scripts": {,', $source));
+
+        expectLeftUntouched($path, fn (string $file) => app(HostFiles::class)->ensureAssetsPublishScript($file), '"@php artisan vendor:publish --tag=hata-assets --force --ansi"');
+    });
+
+    it('leaves a composer.json whose post-autoload-dump is not a list of commands alone', function () {
+        $path = hostFile('composer.json', fn (string $source) => str_replace(
+            "\"post-autoload-dump\": [\n            \"Illuminate\\\\Foundation\\\\ComposerScripts::postAutoloadDump\",\n            \"@php artisan package:discover --ansi\"\n        ]",
+            '"post-autoload-dump": {"discover": "@php artisan package:discover --ansi"}',
+            $source,
+        ));
+
+        expect(File::get($path))->toContain('"post-autoload-dump": {');
 
         expectLeftUntouched($path, fn (string $file) => app(HostFiles::class)->ensureAssetsPublishScript($file), '"@php artisan view:clear --ansi"');
     });

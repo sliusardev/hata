@@ -48,10 +48,10 @@ it('shows the content group in the sidebar only with media.view', function () {
     $this->actingAs(mediaViewer());
     $this->get(route('admin.dashboard'))
         ->assertSee(__('hata::navigation.content'))
-        ->assertSee(route('admin.media.index'));
+        ->assertSee('href="'.route('admin.media.index', absolute: false).'"', false);
 
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
-    $this->get(route('admin.dashboard'))->assertDontSee(route('admin.media.index'));
+    $this->get(route('admin.dashboard'))->assertDontSee('href="'.route('admin.media.index', absolute: false).'"', false);
 });
 
 it('filters by folder, no folder, type, month, unused and search', function (string $filter) {

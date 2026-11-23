@@ -194,6 +194,30 @@ it('skips and logs an item whose route is not defined in production', function (
     Log::shouldHaveReceived('warning')->once()->withArgs(fn (string $message): bool => str_contains($message, 'shop.ghost'));
 });
 
+it('skips a broken item in production with app.debug on, and logs it once per process', function () {
+    inProduction();
+    config(['app.debug' => true]);
+    Log::spy();
+    app(AdminMenu::class)
+        ->group('shop', 'Shop', 50)
+        ->add(new AdminMenuItem('shop.debug-ghost', 'Ghost', 'star', 'admin.shop.nowhere', null, 'shop'))
+        ->add(new AdminMenuItem('shop.real', 'Real', 'star', 'admin.dashboard', null, 'shop'));
+    $user = User::factory()->withRole('super-admin')->create();
+
+    app(AdminMenu::class)->for($user);
+    $items = app(AdminMenu::class)->for($user)['shop']['items'];
+
+    expect(collect($items)->pluck('key')->all())->toBe(['shop.real']);
+    Log::shouldHaveReceived('warning')->once()->withArgs(fn (string $message): bool => str_contains($message, 'shop.debug-ghost'));
+});
+
+it('builds relative item addresses, so no request\'s host is remembered', function () {
+    $item = new AdminMenuItem('shop.orders', 'Orders', 'star', 'admin.dashboard', null, 'shop');
+
+    expect($item->url())->toBe(route('admin.dashboard', absolute: false))
+        ->and($item->url())->toStartWith('/');
+});
+
 it('does not hide a wrong route parameter', function () {
     app(AdminMenu::class)
         ->group('shop', 'Shop', 50)

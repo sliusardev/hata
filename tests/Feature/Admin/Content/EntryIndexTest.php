@@ -68,12 +68,12 @@ test('the list opens with pages.view', function () {
 test('the sidebar shows the pages item only with pages.view', function () {
     $this->actingAs(contentViewer());
     $this->get(route('admin.dashboard'))
-        ->assertSee(route('admin.content.index', 'pages'))
+        ->assertSee('href="'.route('admin.content.index', 'pages', absolute: false).'"', false)
         ->assertSee(__('hata::navigation.content'));
 
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
     $this->get(route('admin.dashboard'))
-        ->assertDontSee(route('admin.content.index', 'pages'))
+        ->assertDontSee('href="'.route('admin.content.index', 'pages', absolute: false).'"', false)
         ->assertDontSee(__('hata::navigation.content'));
 });
 
@@ -81,7 +81,7 @@ test('edit or create without view opens the list, the sidebar item and a record'
     $this->actingAs(User::factory()->withPermissions(['admin.access', $permission])->create());
     $page = Entry::factory()->create(['title' => 'About the company']);
 
-    $this->get(route('admin.dashboard'))->assertSee(route('admin.content.index', 'pages'));
+    $this->get(route('admin.dashboard'))->assertSee('href="'.route('admin.content.index', 'pages', absolute: false).'"', false);
     $this->get(route('admin.content.index', 'pages'))->assertOk()->assertSee('About the company');
     $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))->assertOk();
 })->with(['pages.edit', 'pages.create']);
@@ -103,8 +103,8 @@ test('the content group shows with media.view alone, without the pages item', fu
 
     $this->get(route('admin.dashboard'))
         ->assertSee(__('hata::navigation.content'))
-        ->assertSee(route('admin.media.index'))
-        ->assertDontSee(route('admin.content.index', 'pages'));
+        ->assertSee('href="'.route('admin.media.index', absolute: false).'"', false)
+        ->assertDontSee('href="'.route('admin.content.index', 'pages', absolute: false).'"', false);
 });
 
 test('tabs filter the records and count them', function () {

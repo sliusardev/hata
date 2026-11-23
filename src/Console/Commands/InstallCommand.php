@@ -128,7 +128,7 @@ class InstallCommand extends Command
 
         $this->fileStep("Host defaults ({$paths->relative($paths->appServiceProvider)})", $files->addHostDefaults($paths->appServiceProvider));
         $this->fileStep("Seeder call ({$paths->relative($paths->databaseSeeder)})", $files->addSeederCall($paths->databaseSeeder));
-        $this->fileStep("Asset publish on composer update ({$paths->relative($paths->composerJson)})", $files->ensureAssetsPublishScript($paths->composerJson));
+        $this->fileStep("Asset publish on composer install and update ({$paths->relative($paths->composerJson)})", $files->ensureAssetsPublishScript($paths->composerJson));
     }
 
     /**
@@ -450,8 +450,10 @@ class InstallCommand extends Command
             'Web server caching of images under /storage/media/: on Apache, use'
                 .' vendor/sliusardev/hata/stubs/htaccess as public/.htaccess (Laravel\'s file plus the media rules);'
                 .' on nginx, add the location block of the README, "Serving images".',
-            'Keep `@php artisan vendor:publish --tag=laravel-assets --ansi --force` and `@php artisan view:clear --ansi`'
-                .' in composer.json → post-update-cmd: every update of Hata needs both.',
+            'Keep `@php artisan vendor:publish --tag=hata-assets --force --ansi` in composer.json → post-autoload-dump'
+                .' (it publishes the assets on composer install too, as a deploy runs it) and'
+                .' `@php artisan vendor:publish --tag=laravel-assets --ansi --force` and `@php artisan view:clear --ansi`'
+                .' in post-update-cmd: every update of Hata needs them.',
         ]);
 
         if (Route::has('admin.dashboard')) {

@@ -46,10 +46,10 @@ test('it is displayed with the settings.edit permission', function () {
 
 test('the sidebar links to the page only with the settings.edit permission', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'users.view'])->create());
-    $this->get(route('admin.users.index'))->assertDontSee(route('admin.settings.edit'));
+    $this->get(route('admin.users.index'))->assertDontSee('href="'.route('admin.settings.edit', absolute: false).'"', false);
 
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.edit'])->create());
-    $this->get(route('admin.dashboard'))->assertSee(route('admin.settings.edit'));
+    $this->get(route('admin.dashboard'))->assertSee('href="'.route('admin.settings.edit', absolute: false).'"', false);
 });
 
 test('each tab saves only its own settings and redirects back to it with a message', function (string $tab, array $expected) {

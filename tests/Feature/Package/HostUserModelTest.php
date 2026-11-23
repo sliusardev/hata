@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Member;
+use App\Models\PartlyGuardedMember;
 use App\Models\UnguardedMember;
 use App\Models\User;
 use Hata\Hata;
@@ -57,6 +58,15 @@ it('leaves an unguarded host model fillable everywhere', function () {
 
     expect($member->getFillable())->toBe([])
         ->and($member->fresh()?->title)->toBe('Editor');
+});
+
+it('leaves a host model that guards only some columns fillable for the others', function () {
+    $member = PartlyGuardedMember::create(['id' => 4242, 'name' => 'Partly Open', 'email' => 'partly@example.test', 'password' => 'secret-password', 'title' => 'Editor']);
+
+    expect($member->getFillable())->toBe([])
+        ->and($member->id)->not->toBe(4242)
+        ->and($member->fresh()?->title)->toBe('Editor')
+        ->and(Hash::check('secret-password', (string) $member->fresh()?->password))->toBeTrue();
 });
 
 it('decides the users pages with hata\'s policy over a policy laravel guesses for the host model', function () {

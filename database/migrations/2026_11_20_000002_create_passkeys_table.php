@@ -30,10 +30,11 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * Deliberately nothing: `up()` skips when the site already has the table, so the table may be the site's own,
+     * and rolling Hata back must never delete a site's passkeys. `migrate:fresh` still drops it with the rest.
      */
     public function down(): void
     {
-        Schema::dropIfExists('passkeys');
+        //
     }
 };

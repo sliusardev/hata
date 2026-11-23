@@ -34,10 +34,10 @@ test('it lists users with their translated roles', function () {
 
 test('the navigation shows users only with the users.view permission', function () {
     $this->actingAs(usersViewer());
-    $this->get(route('admin.dashboard'))->assertSee(route('admin.users.index'));
+    $this->get(route('admin.dashboard'))->assertSee('href="'.route('admin.users.index', absolute: false).'"', false);
 
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
-    $this->get(route('admin.dashboard'))->assertDontSee(route('admin.users.index'));
+    $this->get(route('admin.dashboard'))->assertDontSee('href="'.route('admin.users.index', absolute: false).'"', false);
 });
 
 test('search ignores the case of Cyrillic names', function (string $term) {

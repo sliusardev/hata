@@ -6,8 +6,29 @@
 *.md diff=markdown
 *.php diff=php
 
-CHANGELOG.md export-ignore
-README.md export-ignore
-.github/workflows/browser-tests.yml export-ignore
-
 /dist -diff
+
+# What a site installs is src/, config/, database/, routes/, resources/ (views, lang, lang-framework, boost, static),
+# dist/, stubs/, composer.json and README.md. The rest is for developing Hata and stays out of the archive Composer
+# downloads. resources/css and resources/js are the build's sources: a site gets them built in dist/, and the
+# `@hataAssets` names are manifest keys, never read as files.
+/.ai export-ignore
+/.editorconfig export-ignore
+/.gitattributes export-ignore
+/.github export-ignore
+/.gitignore export-ignore
+/.npmrc export-ignore
+/CLAUDE.md export-ignore
+/composer.lock export-ignore
+/docs export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/phpstan.neon export-ignore
+/phpunit.xml export-ignore
+/pint.json export-ignore
+/resources/css export-ignore
+/resources/js export-ignore
+/testbench.yaml export-ignore
+/tests export-ignore
+/vite.config.js export-ignore
+/workbench export-ignore

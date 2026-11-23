@@ -51,15 +51,15 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations. The two-factor columns stay: they may be the host's (Fortify's migration).
+     * Reverse the migrations: drops only `search_index`, Hata's own derived column. The two-factor columns and
+     * `locale` stay: `up()` skips a column the site already has, so they may be the site's own (Fortify's migration,
+     * or a site's language column), and rolling Hata back must never delete a site's data.
      */
     public function down(): void
     {
-        $present = array_values(array_filter(['locale', 'search_index'], fn (string $column): bool => Schema::hasColumn('users', $column)));
-
-        if ($present !== []) {
-            Schema::table('users', function (Blueprint $table) use ($present) {
-                $table->dropColumn($present);
+        if (Schema::hasColumn('users', 'search_index')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropColumn('search_index');
             });
         }
     }

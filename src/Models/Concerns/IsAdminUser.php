@@ -31,9 +31,11 @@ trait IsAdminUser
      */
     public function initializeIsAdminUser(): void
     {
-        // A host that is unguarded (`$guarded = []`, no fillable) already fills every column: a fillable list would
-        // turn that into "only these".
-        if ($this->getFillable() !== [] || $this->guarded !== []) {
+        // Only a host that lists its fillable columns, or guards everything, gets Hata's columns added to that list. A
+        // host without a fillable list that guards some columns (`$guarded = ['id']`) or none (`$guarded = []`)
+        // already fills every other column: a fillable list would turn that into "only these". The property is read
+        // rather than getGuarded(), which answers [] while the model is unguarded statically (seeding).
+        if ($this->getFillable() !== [] || $this->guarded === ['*']) {
             $this->mergeFillable(['name', 'email', 'password', 'locale']);
         }
 

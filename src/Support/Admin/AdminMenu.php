@@ -36,6 +36,13 @@ final class AdminMenu
     private array $providers = [];
 
     /**
+     * The registration mistakes this process has logged already.
+     *
+     * @var array<string, true>
+     */
+    private static array $warned = [];
+
+    /**
      * Declares a group (or renames and reorders it). `$label` is a translation key or a plain string.
      */
     public function group(string $key, string $label, int $order): static
@@ -189,15 +196,23 @@ final class AdminMenu
     }
 
     /**
-     * A registration mistake: thrown where a developer sees it, logged and skipped in production.
+     * A registration mistake: thrown where a developer sees it (local and testing), skipped elsewhere and logged once
+     * per process for each item, so a production site with `app.debug` on still renders its admin and a long-running
+     * worker does not repeat the warning on every page.
      */
     private function problem(AdminMenuItem $item, string $problem): void
     {
         $message = "The admin menu item [{$item->key}] is left out: {$problem}.";
 
-        if (app()->isLocal() || app()->environment('testing') || config('app.debug')) {
+        if (app()->environment('local', 'testing')) {
             throw new LogicException($message);
         }
+
+        if (isset(self::$warned[$message])) {
+            return;
+        }
+
+        self::$warned[$message] = true;
 
         Log::warning($message);
     }
