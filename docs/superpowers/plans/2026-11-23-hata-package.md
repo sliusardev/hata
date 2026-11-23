@@ -361,3 +361,22 @@ The admin panel answers at `/admin` on every site, which bots probe. A site pick
 - [ ] **Step 4: Run** — `composer test`; green.
 - [ ] **Step 5: Browser** — the user sets `HATA_ADMIN_PATH` in the demo's `.env`, runs `php artisan optimize:clear`, opens the admin at the new path (sidebar links, media library, login redirect to the admin), then removes the variable.
 - [ ] **Step 6: Commit** — `Let a site choose the admin path`
+
+---
+
+### Task 14: Content languages stored at install, so the interface default never moves the site (the user's report, 2026-11-23; run right after Task 11)
+
+On a fresh site no content-language list is stored, so `ContentLocales` (src/Support/Localization/ContentLocales.php:64-72) falls back to the site's default interface language for the default content language. Changing "Default language" (interface) in Site settings → Languages then silently changes the site's content language: published records in the old language start answering 404. Found by the user on the demo.
+
+**Files:** `database/seeders/HataSeeder.php` (after Task 11's rename), `src/Support/Settings/SiteSettings.php` (the stored keys `content_locales` / `content_default_locale`, see its `CONFIG_PATHS`), test `tests/Feature/Localization/ContentLanguagesSeededTest.php`; `docs/specs/languages.md` (state the rule), CLAUDE.md decision 56 one-line addendum.
+
+**Interfaces:**
+- `HataSeeder` (so also `hata:install`) stores, when and only when no content-language list is stored yet: `content_locales` = `[['code' => <interface default>, 'active' => true]]` and `content_default_locale` = that code, through `SiteSettings` (the same write path the Languages tab uses), idempotent. It never overwrites a stored list.
+- The fallback in `ContentLocales` stays for sites without stored settings (tests, old installs); no behavior change there.
+
+- [ ] **Step 1: Tests** — `it('stores the content languages on first seeding')` (fresh DB, interface default `uk` → after HataSeeder the stored list is exactly uk, default uk); `it('keeps a stored content language list')` (stored [uk, en] default en → seeding again leaves it); `it('does not move the site language when the interface default changes')` (after seeding with uk, save interface default `en` via the settings form/action → `ContentLocales` default is still `uk`, a published uk page at `/test-page` still answers 200).
+- [ ] **Step 2: Run, expect FAIL.**
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** — `composer test`; green.
+- [ ] **Step 5: Demo** — the user (or the controller at their word) runs `php artisan db:seed --force` in the demo (idempotent), then switches the interface default in Site settings → Languages and confirms `/test-page` and the site language stay.
+- [ ] **Step 6: Commit** — `Store the content languages at install so the interface default never moves the site`
