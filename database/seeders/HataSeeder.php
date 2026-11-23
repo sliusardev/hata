@@ -8,7 +8,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 
-class DatabaseSeeder extends Seeder
+class HataSeeder extends Seeder
 {
     /**
      * Seed the application's database.

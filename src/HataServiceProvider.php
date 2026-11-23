@@ -6,6 +6,7 @@ use Closure;
 use Composer\InstalledVersions;
 use Hata\Console\Commands\CheckContentAddresses;
 use Hata\Console\Commands\CreateAdmin;
+use Hata\Console\Commands\InstallCommand;
 use Hata\Console\Commands\MakeContentType;
 use Hata\Console\Commands\MoveMediaDisk;
 use Hata\Console\Commands\OptimizeMedia;
@@ -126,6 +127,7 @@ class HataServiceProvider extends ServiceProvider
         $this->commands([
             CheckContentAddresses::class,
             CreateAdmin::class,
+            InstallCommand::class,
             MakeContentType::class,
             MoveMediaDisk::class,
             OptimizeMedia::class,

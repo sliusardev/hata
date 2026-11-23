@@ -120,8 +120,8 @@ return [
         | Initial Super Admin
         |--------------------------------------------------------------------------
         |
-        | Used by the DatabaseSeeder to create the first super admin on hosting
-        | without SSH access. Leave ADMIN_EMAIL empty to skip it, and remove the
+        | Used by HataSeeder (and hata:install) to create the first super admin
+        | on hosting without SSH access. Leave ADMIN_EMAIL empty to skip it, and remove the
         | password from the environment after the first deploy.
         |
         */

@@ -1,0 +1,5 @@
+Remove the site's own `/` route (Hata's home page is `/`), such as Laravel's:
+
+Route::get('/', function () {
+    return view('welcome');
+});

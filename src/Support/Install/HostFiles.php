@@ -1,0 +1,413 @@
+<?php
+
+namespace Hata\Support\Install;
+
+use Hata\Hata;
+use ParseError;
+use stdClass;
+
+/**
+ * The edits `hata:install` makes to a host's own files. Each edit takes the file's path, works on the shape Pint
+ * gives Laravel's skeleton (as the content-type generator does with config and language files, decision 62), and is
+ * idempotent: a file that already has the change is not written, and a file of another shape is left untouched,
+ * with the lines to add by hand in the result. An edited PHP file must still parse, or it is not written either.
+ *
+ * Paths are always parameters: nothing here reads the application's own paths.
+ */
+final class HostFiles
+{
+    /**
+     * The commands a site's `post-update-cmd` needs: every `composer update` republishes Hata's built assets
+     * (`public/vendor/hata`), and clears the compiled views, because Blade recompiles a template only when its own
+     * file changes, not when an updated Hata resolves a component differently.
+     *
+     * @var list<string>
+     */
+    public const array POST_UPDATE_COMMANDS = [
+        '@php artisan vendor:publish --tag=laravel-assets --ansi --force',
+        '@php artisan view:clear --ansi',
+    ];
+
+    /**
+     * Laravel's skeleton `run()` body of `DatabaseSeeder`: a test user from the factory (which needs Faker, a dev
+     * dependency) with the password "password", replaced by Hata's seeding (decision 13).
+     */
+    private const string SKELETON_SEEDER_BODY = <<<'PHP'
+                // User::factory(10)->create();
+
+                User::factory()->create([
+                    'name' => 'Test User',
+                    'email' => 'test@example.com',
+                ]);
+
+        PHP;
+
+    /**
+     * `implements AdminUser` and `use IsAdminUser` on the host's user model, with their imports.
+     */
+    public function addUserTrait(string $userModel): HostFileResult
+    {
+        $manual = $this->stub('user-model.stub');
+        $source = $this->read($userModel);
+
+        if ($source === null || ! str_contains($source, "use Illuminate\\Foundation\\Auth\\User as Authenticatable;\n")) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        $hasInterface = preg_match('/^(?:final |abstract )?class \w+ extends Authenticatable implements [^{]*\bAdminUser\b/m', $source) === 1;
+        $hasTrait = preg_match('/^    use [^;(]*\bIsAdminUser\b[^;]*;$/m', $source) === 1;
+
+        if ($hasInterface && $hasTrait) {
+            return HostFileResult::alreadyDone();
+        }
+
+        $updated = $source;
+
+        if (! $hasInterface) {
+            $updated = preg_replace_callback(
+                '/^((?:final )?class \w+ extends Authenticatable)(?: implements ([\w\\\\]+(?:, [\w\\\\]+)*))?\n(?=\{\n)/m',
+                fn (array $match): string => $match[1].' implements '.implode(', ', [...array_filter(explode(', ', $match[2] ?? '')), 'AdminUser'])."\n",
+                $updated,
+                1,
+                $count,
+            );
+
+            $updated = $count === 1 ? $this->addImports((string) $updated, ['Hata\\Contracts\\AdminUser']) : null;
+        }
+
+        if (! $hasTrait && $updated !== null) {
+            $classStart = (int) strpos($updated, "\n{\n");
+
+            if (preg_match('/^    use ([\w, ]+);$/m', $updated, $match, PREG_OFFSET_CAPTURE, $classStart) === 1) {
+                $traits = $this->insertSorted(explode(', ', $match[1][0]), 'IsAdminUser');
+                $updated = substr_replace($updated, implode(', ', $traits), $match[1][1], strlen($match[1][0]));
+                $updated = $this->addImports($updated, ['Hata\\Models\\Concerns\\IsAdminUser']);
+            } else {
+                $updated = null;
+            }
+        }
+
+        return $this->write($userModel, $source, $updated, $manual);
+    }
+
+    /**
+     * Removes the skeleton's `/` route to the `welcome` view: Hata registers the home page at `/`, and a host route
+     * there would win over it. The view itself is deleted by the command.
+     */
+    public function removeWelcomeRoute(string $webRoutes): HostFileResult
+    {
+        $manual = $this->stub('welcome-route.stub');
+
+        $source = $this->read($webRoutes);
+
+        if ($source === null) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        $updated = preg_replace(
+            [
+                "/\n?^Route::get\\('\\/', function \\(\\) \\{\n    return view\\('welcome'\\);\n\\}\\);\n/m",
+                "/\n?^Route::view\\('\\/', 'welcome'\\);\n/m",
+            ],
+            '',
+            $source,
+        );
+
+        if ($updated === null || $this->hasHomeRoute($updated)) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        if ($updated === $source) {
+            return HostFileResult::alreadyDone();
+        }
+
+        if (! str_contains($updated, 'Route::')) {
+            $updated = str_replace("use Illuminate\\Support\\Facades\\Route;\n", '', $updated);
+            $updated = trim(substr($updated, strlen('<?php'))) === '' ? "<?php\n" : str_replace("\n\n\n", "\n\n", $updated);
+        }
+
+        return $this->write($webRoutes, $source, $updated, $manual);
+    }
+
+    /**
+     * The starter kit's `configureDefaults()` (immutable dates, no destructive DB commands in production, strict
+     * passwords in production), called first in `boot()`. Hata itself never sets these: they are the site's choice.
+     */
+    public function addHostDefaults(string $appServiceProvider): HostFileResult
+    {
+        $method = $this->stub('app-service-provider-defaults.stub');
+        $imports = ['Carbon\\CarbonImmutable', 'Illuminate\\Support\\Facades\\Date', 'Illuminate\\Support\\Facades\\DB', 'Illuminate\\Validation\\Rules\\Password'];
+        $manual = implode("\n", array_map(fn (string $class): string => "use {$class};", $imports))
+            ."\n\n// first in boot():\n\$this->configureDefaults();\n\n".$method;
+
+        $source = $this->read($appServiceProvider);
+
+        if ($source === null) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        $hasMethod = str_contains($source, 'function configureDefaults(');
+        $isCalled = str_contains($source, '$this->configureDefaults();');
+
+        if ($hasMethod && $isCalled) {
+            return HostFileResult::alreadyDone();
+        }
+
+        if ($hasMethod || $isCalled
+            || preg_match('/^    public function boot\(\): void\n    \{\n(.*?)^    \}\n/ms', $source, $boot, PREG_OFFSET_CAPTURE) !== 1
+            || ! str_ends_with($source, "    }\n}\n")) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        $body = $boot[1][0] === "        //\n" ? '' : $boot[1][0];
+        $updated = substr_replace($source, "        \$this->configureDefaults();\n".$body, $boot[1][1], strlen($boot[1][0]));
+        $updated = substr($updated, 0, -strlen("}\n"))."\n".$method."}\n";
+
+        return $this->write($appServiceProvider, $source, $this->addImports($updated, $imports), $manual);
+    }
+
+    /**
+     * `$this->call(HataSeeder::class);` first in the host's `DatabaseSeeder`. The skeleton's test user goes, and so
+     * does its `WithoutModelEvents`: Hata's models fill columns (the search index) from their events.
+     */
+    public function addSeederCall(string $databaseSeeder): HostFileResult
+    {
+        $manual = <<<'TEXT'
+            use Hata\Database\Seeders\HataSeeder;
+
+            // first in run(), in a seeder that does not use WithoutModelEvents (Hata's models need their events):
+            $this->call(HataSeeder::class);
+            TEXT;
+
+        $source = $this->read($databaseSeeder);
+
+        if ($source === null) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        if (str_contains($source, 'HataSeeder::class')) {
+            return HostFileResult::alreadyDone();
+        }
+
+        $call = "        \$this->call(HataSeeder::class);\n";
+        $runStart = "    public function run(): void\n    {\n";
+
+        if (str_contains($source, $runStart.self::SKELETON_SEEDER_BODY."    }\n")) {
+            $updated = str_replace($runStart.self::SKELETON_SEEDER_BODY, $runStart.$call, $source);
+            $updated = str_replace(["    use WithoutModelEvents;\n\n", "use Illuminate\\Database\\Console\\Seeds\\WithoutModelEvents;\n"], '', $updated);
+
+            if (! str_contains($updated, 'User::')) {
+                $updated = str_replace("use App\\Models\\User;\n", '', $updated);
+            }
+        } elseif (substr_count($source, $runStart) === 1 && ! str_contains($source, 'WithoutModelEvents')) {
+            $updated = str_replace($runStart, $runStart.$call, $source);
+        } else {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        return $this->write($databaseSeeder, $source, $this->addImports($updated, ['Hata\\Database\\Seeders\\HataSeeder']), $manual);
+    }
+
+    /**
+     * The commands of `POST_UPDATE_COMMANDS` in `scripts.post-update-cmd` of the host's composer.json. The JSON is
+     * read and checked as data; the missing commands are written into the existing text (4 spaces, as Composer
+     * writes it), so the rest of the file keeps its formatting. Only when the text has an unusual layout is the whole
+     * file re-encoded.
+     */
+    public function ensureAssetsPublishScript(string $composerJson): HostFileResult
+    {
+        $manual = "In composer.json, \"scripts\" → \"post-update-cmd\":\n"
+            .implode(",\n", array_map(fn (string $command): string => $this->jsonString($command), self::POST_UPDATE_COMMANDS));
+
+        $source = $this->read($composerJson);
+        $data = $source === null ? null : json_decode($source);
+
+        if (! $data instanceof stdClass
+            || (isset($data->scripts) && ! $data->scripts instanceof stdClass)) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        $current = $data->scripts->{'post-update-cmd'} ?? [];
+        $current = is_string($current) ? [$current] : $current;
+
+        if (! is_array($current) || ! array_is_list($current) || array_filter($current, 'is_string') !== $current) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        $missing = array_values(array_diff(self::POST_UPDATE_COMMANDS, $current));
+
+        if ($missing === []) {
+            return HostFileResult::alreadyDone();
+        }
+
+        $data->scripts ??= new stdClass;
+        $data->scripts->{'post-update-cmd'} = [...$current, ...$missing];
+
+        $updated = $this->insertJsonCommands((string) $source, $missing);
+
+        if ($updated === null || json_decode($updated) != $data) {
+            $updated = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n";
+        }
+
+        return $this->write($composerJson, (string) $source, $updated, $manual);
+    }
+
+    /**
+     * Adds commands to `post-update-cmd` in the text: at the end of the array, or as a new array first in "scripts".
+     *
+     * @param  list<string>  $commands
+     */
+    private function insertJsonCommands(string $source, array $commands): ?string
+    {
+        if (preg_match('/^( *)"post-update-cmd": \[\n((?:.*\n)*?)\1\]/m', $source, $match, PREG_OFFSET_CAPTURE) === 1) {
+            $indent = $match[1][0].'    ';
+            $items = rtrim($match[2][0], "\n");
+            $lines = array_map(fn (string $command): string => $indent.$this->jsonString($command), $commands);
+            $items = ($items === '' ? '' : $items.",\n").implode(",\n", $lines)."\n";
+
+            return substr_replace($source, $items, $match[2][1], strlen($match[2][0]));
+        }
+
+        if (str_contains($source, '"post-update-cmd"')) {
+            return null;
+        }
+
+        if (preg_match('/^( *)"scripts": \{\n( *)"/m', $source, $match, PREG_OFFSET_CAPTURE) === 1) {
+            $indent = $match[2][0];
+            $lines = array_map(fn (string $command): string => $indent.'    '.$this->jsonString($command), $commands);
+            $entry = $indent."\"post-update-cmd\": [\n".implode(",\n", $lines)."\n".$indent."],\n";
+            $at = $match[0][1] + strlen($match[1][0].'"scripts": {'."\n");
+
+            return substr_replace($source, $entry, $at, 0);
+        }
+
+        return null;
+    }
+
+    private function jsonString(string $value): string
+    {
+        return (string) json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Whether routes/web.php still declares a `/` route or renders the welcome view.
+     */
+    private function hasHomeRoute(string $source): bool
+    {
+        return preg_match('/Route::\w+\(\s*[\'"]\/[\'"]/', $source) === 1
+            || preg_match('/[\'"]welcome[\'"]/', $source) === 1;
+    }
+
+    /**
+     * Adds `use` lines to the file's top-level imports, each where Pint's alphabetical order puts it. Returns null
+     * when the file has no top-level `use` line to place them by.
+     *
+     * @param  list<string>  $classes
+     */
+    private function addImports(?string $source, array $classes): ?string
+    {
+        foreach ($classes as $class) {
+            if ($source === null) {
+                return null;
+            }
+
+            if (preg_match('/^use '.preg_quote($class, '/').';$/m', $source) === 1) {
+                continue;
+            }
+
+            $header = (string) preg_replace('/^(?:(?:final|abstract|readonly) )*(?:class|interface|trait|enum) .*/ms', '', $source);
+
+            preg_match_all('/^use ([\w\\\\]+)(?: as \w+)?;$/m', $header, $imports, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+
+            $at = null;
+            $afterLast = null;
+
+            foreach ($imports as $import) {
+                if ($this->compareImports($class, $import[1][0]) < 0) {
+                    $at = $import[0][1];
+
+                    break;
+                }
+
+                $afterLast = $import[0][1] + strlen($import[0][0]) + 1;
+            }
+
+            $at ??= $afterLast;
+
+            if ($at === null) {
+                return null;
+            }
+
+            $source = substr_replace($source, "use {$class};\n", $at, 0);
+        }
+
+        return $source;
+    }
+
+    /**
+     * The order of PHP-CS-Fixer's `ordered_imports` (alpha): case-insensitive, with `\` read as a space.
+     */
+    private function compareImports(string $first, string $second): int
+    {
+        return strcasecmp(str_replace('\\', ' ', $first), str_replace('\\', ' ', $second));
+    }
+
+    /**
+     * @param  list<string>  $names
+     * @return list<string>
+     */
+    private function insertSorted(array $names, string $name): array
+    {
+        foreach ($names as $index => $existing) {
+            if (strcasecmp($name, $existing) < 0) {
+                array_splice($names, $index, 0, [$name]);
+
+                return $names;
+            }
+        }
+
+        return [...$names, $name];
+    }
+
+    /**
+     * Writes the edited file, unless the edit failed or (for PHP) the result no longer parses.
+     */
+    private function write(string $path, string $source, ?string $updated, string $manual): HostFileResult
+    {
+        if ($updated === null) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        if ($updated === $source) {
+            return HostFileResult::alreadyDone();
+        }
+
+        if (str_ends_with($path, '.php')) {
+            try {
+                $parses = token_get_all($updated, TOKEN_PARSE) !== [];
+            } catch (ParseError) {
+                $parses = false;
+            }
+
+            if (! $parses) {
+                return HostFileResult::unrecognized($manual);
+            }
+        }
+
+        file_put_contents($path, $updated);
+
+        return HostFileResult::changed();
+    }
+
+    private function read(string $path): ?string
+    {
+        $contents = is_file($path) ? file_get_contents($path) : false;
+
+        return $contents === false ? null : $contents;
+    }
+
+    private function stub(string $name): string
+    {
+        return (string) file_get_contents(Hata::path('stubs/'.$name));
+    }
+}

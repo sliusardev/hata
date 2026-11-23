@@ -33,7 +33,7 @@ Components: `resources/views/pages/admin/roles/`. The create and edit pages exte
 
 **Reserved permissions** (`config/internal/permissions.php` → `reserved`, currently `maintenance.run`): `*` in a role's defaults does not grant them (`RoleSeeder` subtracts the list when it expands `*`). They are listed in the registry, the matrix and `permissions:sync` like any permission, so a super admin can give one to a role on purpose; rule 5 keeps everyone else from granting what they don't have.
 
-- Created by `RoleSeeder` (from `DatabaseSeeder`) with `is_system = true`. Reseeding only adds permissions, never removes them.
+- Created by `RoleSeeder` (from `HataSeeder`) with `is_system = true`. Reseeding only adds permissions, never removes them.
 - Default permissions are in `config/internal/permissions.php` → `roles`. Names are translated via `roles.names.<name>`.
 - The `App\Models\Role` model (extends Spatie's) adds `label` and `is_system`. `displayName()` returns the translation for system roles and `label` for custom ones.
 

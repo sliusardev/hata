@@ -201,7 +201,7 @@ confirmation, a file gone meanwhile, the folder is not read on other tabs, the c
 - A `migrate` started over SSH at the same moment is not detected.
 - With sessions kept in the cache store (`SESSION_DRIVER=cache`, or redis shared with the cache), "Clear
   caches" logs everyone out and the result toast is lost; the kit's default is database sessions.
-- `DatabaseSeeder` creates the super admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` when that user does not exist,
+- `HataSeeder` (called by the site's `DatabaseSeeder`) creates the super admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` when that user does not exist,
   so a role given `maintenance.run` can bring that account back if those values are still in `.env`.
 - A single crop or replace in progress is not checked before "Clear caches"; on the `file` and `redis` cache
   stores its lock could be lost (media batches are checked).

@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 /**
  * Create a user with the super-admin role. Used by the admin:create command and the
- * DatabaseSeeder, where no authenticated user performs the action.
+ * HataSeeder, where no authenticated user performs the action.
  */
 class CreateSuperAdmin
 {

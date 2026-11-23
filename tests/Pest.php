@@ -66,7 +66,7 @@ expect()->extend('toBeOne', function () {
 */
 
 /**
- * Create the registered permissions and the system roles, as the DatabaseSeeder does.
+ * Create the registered permissions and the system roles, as HataSeeder does.
  */
 function seedRolesAndPermissions(): void
 {

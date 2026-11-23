@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use Hata\Database\Seeders\DatabaseSeeder as HataSeeder;
+use Hata\Database\Seeders\HataSeeder;
 use Illuminate\Database\Seeder;
 
 /**

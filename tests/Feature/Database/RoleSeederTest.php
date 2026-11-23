@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\User;
-use Hata\Database\Seeders\DatabaseSeeder;
+use Hata\Database\Seeders\HataSeeder;
 use Hata\Models\Role;
 
 test('it creates the system roles with their default permissions', function () {
@@ -54,8 +54,8 @@ test('the database seeder creates the initial super admin from the configuration
         'password' => 'secret-password',
     ]]);
 
-    $this->seed(DatabaseSeeder::class);
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(HataSeeder::class);
+    $this->seed(HataSeeder::class);
 
     $owner = User::where('email', 'owner@example.com')->sole();
     expect($owner->name)->toBe('Owner')
@@ -66,7 +66,7 @@ test('the database seeder creates the initial super admin from the configuration
 test('the database seeder creates no user when no initial admin is configured', function () {
     config(['hata.admin.initial_admin' => ['name' => null, 'email' => null, 'password' => null]]);
 
-    $this->seed(DatabaseSeeder::class);
+    $this->seed(HataSeeder::class);
 
     expect(User::count())->toBe(0)
         ->and(Role::count())->toBe(4);
