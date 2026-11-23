@@ -102,7 +102,7 @@ it('stops without dispatching again when optimization was turned off during the 
     Queue::fake();
     jobCandidate();
     $run = app(OptimizeExistingMedia::class)->startWithoutActor();
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     app()->call([new OptimizeExistingMediaBatch($run->id), 'handle']);
 

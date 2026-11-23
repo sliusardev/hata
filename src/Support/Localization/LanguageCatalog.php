@@ -15,7 +15,7 @@ class LanguageCatalog
     {
         $languages = [];
 
-        foreach ((array) config('languages') as $code => $entry) {
+        foreach ((array) config('hata.languages') as $code => $entry) {
             $languages[(string) $code] = new Language((string) $code, (string) $entry['name'], (string) $entry['native'], (bool) ($entry['rtl'] ?? false));
         }
 
@@ -24,12 +24,12 @@ class LanguageCatalog
 
     public function has(string $code): bool
     {
-        return array_key_exists($code, (array) config('languages'));
+        return array_key_exists($code, (array) config('hata.languages'));
     }
 
     public function find(string $code): ?Language
     {
-        $entry = config('languages')[$code] ?? null;
+        $entry = config('hata.languages')[$code] ?? null;
 
         return $entry === null ? null : new Language($code, (string) $entry['name'], (string) $entry['native'], (bool) ($entry['rtl'] ?? false));
     }
@@ -39,7 +39,7 @@ class LanguageCatalog
      */
     public function codes(): array
     {
-        return array_map(strval(...), array_keys((array) config('languages')));
+        return array_map(strval(...), array_keys((array) config('hata.languages')));
     }
 
     /**

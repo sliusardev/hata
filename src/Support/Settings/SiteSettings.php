@@ -32,9 +32,9 @@ class SiteSettings
     public const array CONFIG_PATHS = [
         'site_name' => 'app.name',
         'default_locale' => 'app.locale',
-        'timezone' => 'admin.timezone',
-        'registration_enabled' => 'admin.registration_enabled',
-        'default_role' => 'admin.default_role',
+        'timezone' => 'hata.admin.timezone',
+        'registration_enabled' => 'hata.admin.registration_enabled',
+        'default_role' => 'hata.admin.default_role',
         'mail_mailer' => 'mail.default',
         'mail_host' => 'mail.mailers.smtp.host',
         'mail_port' => 'mail.mailers.smtp.port',
@@ -43,22 +43,22 @@ class SiteSettings
         'mail_password' => 'mail.mailers.smtp.password',
         'mail_from_address' => 'mail.from.address',
         'mail_from_name' => 'mail.from.name',
-        'logo_light' => 'admin.logo.light',
-        'logo_dark' => 'admin.logo.dark',
-        'color_scheme' => 'admin.colors.scheme',
-        'color_accent' => 'admin.colors.accent',
-        'color_gray' => 'admin.colors.gray',
-        'color_tint_sidebar' => 'admin.colors.tint_sidebar',
-        'media_optimize' => 'media.optimize.enabled',
-        'media_max_side' => 'media.optimize.max_side',
-        'media_quality' => 'media.optimize.quality',
-        'media_format' => 'media.optimize.format',
-        'media_strip_exif' => 'media.optimize.strip_exif',
-        'media_client_resize' => 'media.optimize.client_resize',
-        'media_keep_originals' => 'media.optimize.keep_originals',
-        'media_max_image_mb' => 'media.limits.image_mb',
-        'media_max_document_mb' => 'media.limits.document_mb',
-        'media_storage' => 'media.disk',
+        'logo_light' => 'hata.admin.logo.light',
+        'logo_dark' => 'hata.admin.logo.dark',
+        'color_scheme' => 'hata.admin.colors.scheme',
+        'color_accent' => 'hata.admin.colors.accent',
+        'color_gray' => 'hata.admin.colors.gray',
+        'color_tint_sidebar' => 'hata.admin.colors.tint_sidebar',
+        'media_optimize' => 'hata.media.optimize.enabled',
+        'media_max_side' => 'hata.media.optimize.max_side',
+        'media_quality' => 'hata.media.optimize.quality',
+        'media_format' => 'hata.media.optimize.format',
+        'media_strip_exif' => 'hata.media.optimize.strip_exif',
+        'media_client_resize' => 'hata.media.optimize.client_resize',
+        'media_keep_originals' => 'hata.media.optimize.keep_originals',
+        'media_max_image_mb' => 'hata.media.limits.image_mb',
+        'media_max_document_mb' => 'hata.media.limits.document_mb',
+        'media_storage' => 'hata.media.disk',
         'media_s3_endpoint' => 'filesystems.disks.s3.endpoint',
         'media_s3_region' => 'filesystems.disks.s3.region',
         'media_s3_bucket' => 'filesystems.disks.s3.bucket',
@@ -67,9 +67,9 @@ class SiteSettings
         'media_s3_path_style' => 'filesystems.disks.s3.use_path_style_endpoint',
         'media_s3_public_url' => 'filesystems.disks.s3.url',
         'media_s3_prefix' => 'filesystems.disks.s3.root',
-        'content_locales' => 'content.locales',
-        'content_default_locale' => 'content.default_locale',
-        'content_disabled_types' => 'content.disabled_types',
+        'content_locales' => 'hata.content.locales',
+        'content_default_locale' => 'hata.content.default_locale',
+        'content_disabled_types' => 'hata.content.disabled_types',
     ];
 
     /**
@@ -109,7 +109,7 @@ class SiteSettings
 
     /**
      * "Do not scale" is stored as 0, because a null value would remove the setting
-     * and bring back the default from config/media.php. In config it is null.
+     * and bring back the default from config/hata.php. In config it is null.
      */
     public const string NO_MAX_SIDE = 'media_max_side';
 
@@ -265,7 +265,7 @@ class SiteSettings
 
         // The site's default interface language, where no request's own language can overwrite it.
         $defaultLocale = $this->stored()['default_locale'] ?? null;
-        config(['content.interface_default' => is_string($defaultLocale) && $defaultLocale !== '' ? $defaultLocale : $this->configuredLocale]);
+        config(['hata.content.interface_default' => is_string($defaultLocale) && $defaultLocale !== '' ? $defaultLocale : $this->configuredLocale]);
 
         // The s3 disk is resolved once and keeps its config, so a changed setting needs a fresh one. Only then: the CLI
         // and queue workers apply the settings before every batch and keep the resolved client otherwise.

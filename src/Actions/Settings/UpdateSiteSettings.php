@@ -100,7 +100,7 @@ class UpdateSiteSettings
     private function settingsInEffect(): array
     {
         return [
-            'media_storage' => config('media.disk'),
+            'media_storage' => config('hata.media.disk'),
             'media_s3_endpoint' => config('filesystems.disks.s3.endpoint'),
             'media_s3_region' => config('filesystems.disks.s3.region'),
             'media_s3_bucket' => config('filesystems.disks.s3.bucket'),

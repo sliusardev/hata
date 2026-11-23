@@ -4,7 +4,7 @@
 --}}
 @php
     $canEdit = auth()->user()->can('update', $media);
-    $locales = (array) config('app.available_locales');
+    $locales = (array) config('hata.admin.interface_locales');
     $primaryLocale = \Hata\Models\Media::primaryAltLocale();
     $translationLocales = array_diff_key($locales, [$primaryLocale => true]);
     $primaryAlt = $media->altFor($primaryLocale, fallback: false);
@@ -14,7 +14,7 @@
     ));
     $translationErrors = collect(array_keys($translationLocales))
         ->contains(fn (string $locale): bool => $errors->has('details.alt.'.$locale));
-    $uploaded = $media->created_at?->tz(config('admin.timezone'))->isoFormat('LL');
+    $uploaded = $media->created_at?->tz(config('hata.admin.timezone'))->isoFormat('LL');
     $convertedFrom = $media->convertedFrom();
     $folderPaths = [];
     $stack = [];

@@ -85,7 +85,7 @@
                         <flux:badge size="sm" color="zinc">{{ trans_choice('hata::media.index.used_count', $item->usages_count) }}</flux:badge>
                     @endif
                 </flux:table.cell>
-                <flux:table.cell class="whitespace-nowrap max-lg:hidden">{{ $item->created_at?->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
+                <flux:table.cell class="whitespace-nowrap max-lg:hidden">{{ $item->created_at?->tz(config('hata.admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
                 <flux:table.cell align="end">
                     <x-hata::admin.row-actions data-test="media-actions-{{ $item->id }}">
                         <flux:menu.item icon="information-circle" x-on:click="$wire.select({{ $item->id }}, true)">{{ __('hata::media.details.heading') }}</flux:menu.item>

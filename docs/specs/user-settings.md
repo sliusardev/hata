@@ -20,7 +20,7 @@ Middleware: `auth`. Security also requires `password.confirm`. Routes are in `ro
 
 ## Language
 
-- A select from `config('app.available_locales')`, saved to `users.locale` (`string(10)`, nullable).
+- A select from `config('hata.admin.interface_locales')`, saved to `users.locale` (`string(10)`, nullable).
 - After saving, a full redirect (no `wire:navigate`): the interface and `<html lang>` switch immediately. The toast goes through `App\Support\Toast` (session flash).
 - The `SetLocale` middleware (web group) applies `users.locale` or `config('app.locale')`. An unknown value falls back to the default.
 - `User` implements `HasLocalePreference`, so emails go out in the user's language.

@@ -78,7 +78,7 @@ describe('catalogue', function () {
             expect($code)->toMatch('/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/');
         }
 
-        expect(array_diff(array_keys(config('app.available_locales')), $catalog->codes()))->toBe([])
+        expect(array_diff(array_keys(config('hata.admin.interface_locales')), $catalog->codes()))->toBe([])
             ->and($catalog->find('uk'))->toEqual(new Language('uk', 'Ukrainian', 'Українська'))
             ->and($catalog->find('xx'))->toBeNull();
     });

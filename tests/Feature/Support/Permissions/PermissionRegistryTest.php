@@ -43,7 +43,7 @@ test('every registered permission and group has a label in every language', func
 
     $registry = app(PermissionRegistry::class);
 
-    foreach (array_keys(config('app.available_locales')) as $locale) {
+    foreach (array_keys(config('hata.admin.interface_locales')) as $locale) {
         foreach (Arr::except($registry->groups(), ['products']) as $group => $permissions) {
             expect(Lang::hasForLocale($registry->groupLabelKey($group), $locale))->toBeTrue("{$registry->groupLabelKey($group)} missing in {$locale}");
 
@@ -55,7 +55,7 @@ test('every registered permission and group has a label in every language', func
 });
 
 test('every system role has a translated name in every language', function () {
-    foreach (array_keys(config('app.available_locales')) as $locale) {
+    foreach (array_keys(config('hata.admin.interface_locales')) as $locale) {
         foreach (SystemRole::cases() as $role) {
             expect(Lang::hasForLocale("hata::roles.names.{$role->value}", $locale))->toBeTrue("hata::roles.names.{$role->value} missing in {$locale}");
         }

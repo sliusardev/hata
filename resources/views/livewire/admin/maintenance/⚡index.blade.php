@@ -376,7 +376,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::maintenance.title')] class ext
     $lastRun = $tab === 'actions' ? $this->lastRun : null;
     $openedLog = $tab === 'logs' ? $this->openedLog : null;
     $logFiles = $tab === 'logs' && $openedLog === null ? $this->logFiles : [];
-    $logDate = fn (int $timestamp): string => Illuminate\Support\Facades\Date::createFromTimestamp($timestamp)->tz(config('admin.timezone'))->isoFormat('LL, LT');
+    $logDate = fn (int $timestamp): string => Illuminate\Support\Facades\Date::createFromTimestamp($timestamp)->tz(config('hata.admin.timezone'))->isoFormat('LL, LT');
     $cardClasses = 'flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-zinc-900';
     $iconClasses = 'flex size-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-white/10 dark:text-zinc-200';
     $outputClasses = 'max-h-96 overflow-auto rounded-lg bg-zinc-900 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-100 dark:bg-black/40';
@@ -540,7 +540,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::maintenance.title')] class ext
                     @foreach ($this->runs as $run)
                         @php $runStatus = $run->shownStatus(); @endphp
                         <flux:table.row :key="$run->id">
-                            <flux:table.cell class="whitespace-nowrap">{{ $run->started_at->tz(config('admin.timezone'))->isoFormat('LL, LT') }}</flux:table.cell>
+                            <flux:table.cell class="whitespace-nowrap">{{ $run->started_at->tz(config('hata.admin.timezone'))->isoFormat('LL, LT') }}</flux:table.cell>
                             <flux:table.cell class="max-md:hidden">{{ $run->user_name }}</flux:table.cell>
                             <flux:table.cell>
                                 <button type="button" wire:click="showOutput({{ $run->id }})" class="max-w-64 truncate text-start font-medium text-zinc-800 hover:underline dark:text-white">{{ $run->title() }}</button>
@@ -762,7 +762,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::maintenance.title')] class ext
                     <flux:heading size="lg">{{ $viewing->title() }}</flux:heading>
                     <div class="flex flex-wrap items-center gap-2">
                         <flux:badge size="sm" :color="$viewingStatus->color()">{{ $viewingStatus->label() }}</flux:badge>
-                        <flux:text size="sm">{{ $viewing->user_name }} · {{ $viewing->started_at->tz(config('admin.timezone'))->isoFormat('LL, LT') }}</flux:text>
+                        <flux:text size="sm">{{ $viewing->user_name }} · {{ $viewing->started_at->tz(config('hata.admin.timezone'))->isoFormat('LL, LT') }}</flux:text>
                     </div>
                 </div>
 

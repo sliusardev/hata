@@ -83,7 +83,7 @@ it('narrows the library by search, month and folder and loads 30 files at a time
     $picker->set('search', '')->set('folder', (string) $folder->id);
     expect($picker->instance()->files->modelKeys())->toBe([$inFolder->id]);
 
-    $picker->set('folder', '')->set('month', now()->subYear()->tz(config('admin.timezone'))->format('Y-m'));
+    $picker->set('folder', '')->set('month', now()->subYear()->tz(config('hata.admin.timezone'))->format('Y-m'));
     expect($picker->instance()->files->modelKeys())->toBe([$old->id]);
 });
 

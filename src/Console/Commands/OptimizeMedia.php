@@ -87,7 +87,7 @@ class OptimizeMedia extends MediaBatchCommand
      */
     private function optimizationEnabled(): bool
     {
-        return (bool) config('media.optimize.enabled');
+        return (bool) config('hata.media.optimize.enabled');
     }
 
     private function megabytes(int $bytes): string

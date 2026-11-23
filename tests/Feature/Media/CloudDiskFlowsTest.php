@@ -21,11 +21,11 @@ use Livewire\Livewire;
 beforeEach(function () {
     seedRolesAndPermissions();
     config([
-        'media.disk' => 's3',
+        'hata.media.disk' => 's3',
         'filesystems.disks.s3.driver' => 's3',
         'filesystems.disks.s3.url' => 'https://cdn.test',
-        'media.optimize.enabled' => true,
-        'media.optimize.keep_originals' => true,
+        'hata.media.optimize.enabled' => true,
+        'hata.media.optimize.keep_originals' => true,
     ]);
     $cloud = fakeCloudDisk('s3');
     $cloud->buildTemporaryUrlsUsing(fn ($path) => 'https://signed.test/'.$path.'?sig=1');

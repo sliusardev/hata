@@ -172,7 +172,7 @@ function usePublicMediaDisk(bool $direct = false): void
 {
     Storage::fake('public');
     Storage::fake('local');
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
 
     if ($direct) {
         DirectServing::fake();

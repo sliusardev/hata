@@ -32,7 +32,7 @@ class SetLocale
 
     private function interfaceLanguage(mixed $locale): ?string
     {
-        return is_string($locale) && array_key_exists($locale, (array) config('app.available_locales')) ? $locale : null;
+        return is_string($locale) && array_key_exists($locale, (array) config('hata.admin.interface_locales')) ? $locale : null;
     }
 
     private function lastSiteLanguage(Request $request): ?string

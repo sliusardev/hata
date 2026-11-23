@@ -4,7 +4,7 @@ use Hata\Actions\Fortify\CreateNewUser;
 use Hata\Support\Settings\SiteSettings;
 
 test('registration is disabled by default', function () {
-    expect(config('admin.registration_enabled'))->toBeFalse();
+    expect(config('hata.admin.registration_enabled'))->toBeFalse();
 
     $this->get('/register')->assertNotFound();
     $this->get(route('login'))->assertOk()->assertDontSee(__('hata::auth.login.sign_up'));
@@ -45,7 +45,7 @@ test('registered users get the default role from the site settings', function ()
 
 test('super-admin is never given to registered users', function () {
     seedRolesAndPermissions();
-    config(['admin.default_role' => 'super-admin']);
+    config(['hata.admin.default_role' => 'super-admin']);
 
     $user = app(CreateNewUser::class)->create([
         'name' => 'New User',

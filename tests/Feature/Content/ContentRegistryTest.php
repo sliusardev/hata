@@ -29,14 +29,14 @@ test('pages is registered as a hierarchical type with no base and no fields', fu
 });
 
 test('the types listed in the config are registered in that order', function () {
-    config(['content.types' => [ProductsType::class, PagesType::class]]);
+    config(['hata.content.types' => [ProductsType::class, PagesType::class]]);
     app()->forgetInstance(ContentTypes::class);
 
     expect(array_keys(app(ContentTypes::class)->all()))->toBe(['products', 'pages']);
 });
 
 test('a config cache built before the list of types existed keeps the pages', function () {
-    config(['content.types' => null]);
+    config(['hata.content.types' => null]);
     app()->forgetInstance(ContentTypes::class);
 
     expect(array_keys(app(ContentTypes::class)->all()))->toBe(['pages']);
@@ -189,7 +189,7 @@ test('every content type of the site has a valid base in every language', functi
     $types = new ContentTypes;
 
     // The file, not the config: tests run with the pages type alone.
-    foreach ((require Hata::path('config/content.php'))['types'] as $class) {
+    foreach ((require Hata::path('config/hata.php'))['content']['types'] as $class) {
         $types->register(app($class));
     }
 

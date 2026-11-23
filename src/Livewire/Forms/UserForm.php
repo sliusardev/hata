@@ -97,7 +97,7 @@ class UserForm extends Form
         return [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($user?->id),
-            'locale' => ['required', 'string', Rule::in(array_keys(config('app.available_locales')))],
+            'locale' => ['required', 'string', Rule::in(array_keys(config('hata.admin.interface_locales')))],
             'roles' => ['array'],
             'roles.*' => ['integer', Rule::exists(Role::class, 'id')],
         ];

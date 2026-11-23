@@ -59,7 +59,7 @@ final readonly class MediaFilters
             return [];
         }
 
-        $timezone = (string) config('admin.timezone');
+        $timezone = (string) config('hata.admin.timezone');
         $cursor = CarbonImmutable::parse($oldest, (string) config('app.timezone'))->tz($timezone)->startOfMonth();
         $last = CarbonImmutable::now($timezone)->startOfMonth();
         $months = [];
@@ -83,7 +83,7 @@ final readonly class MediaFilters
             return null;
         }
 
-        $start = CarbonImmutable::createFromFormat('!Y-m', $month, (string) config('admin.timezone'));
+        $start = CarbonImmutable::createFromFormat('!Y-m', $month, (string) config('hata.admin.timezone'));
 
         if (! $start instanceof CarbonImmutable) {
             return null;

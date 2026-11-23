@@ -70,7 +70,7 @@ class EntryForm extends Form
      */
     public function localDate(?DateTimeInterface $date): string
     {
-        return $date === null ? '' : Date::instance($date)->tz((string) config('admin.timezone'))->format('Y-m-d\TH:i');
+        return $date === null ? '' : Date::instance($date)->tz((string) config('hata.admin.timezone'))->format('Y-m-d\TH:i');
     }
 
     public function fillFromEntry(Entry $entry): void

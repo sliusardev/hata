@@ -22,8 +22,8 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
     $taxonomies = $this->taxonomies;
     $showTranslations = $this->multilingual && ! $inTrash;
     $activeCodes = app(Hata\Support\Localization\ContentLocales::class)->activeCodes();
-    $timezone = config('admin.timezone');
-    $trashDays = (int) config('content.trash_days');
+    $timezone = config('hata.admin.timezone');
+    $trashDays = (int) config('hata.content.trash_days');
     $selectable = $abilities['edit'] || $abilities['delete'];
     $checkbox = 'size-4 cursor-pointer rounded accent-zinc-800 dark:accent-white';
 @endphp

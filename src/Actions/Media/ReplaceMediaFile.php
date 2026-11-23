@@ -43,8 +43,8 @@ class ReplaceMediaFile
 
         $contents = (string) file_get_contents($file->getRealPath());
         $keepOriginal = $type['kind'] === MediaKind::Image
-            && config('media.optimize.enabled')
-            && config('media.optimize.keep_originals');
+            && config('hata.media.optimize.enabled')
+            && config('hata.media.optimize.keep_originals');
 
         return $this->rebuilder->handle(
             $media,

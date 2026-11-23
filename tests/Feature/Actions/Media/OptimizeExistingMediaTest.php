@@ -131,7 +131,7 @@ it('optimizes a file without an original and keeps its bytes as the original', f
 
 it('marks a file already optimal when its current bytes do not shrink', function () {
     $bytes = optimizedBytes(noisyJpeg(600, 400));
-    config(['media.optimize.quality' => 95]);
+    config(['hata.media.optimize.quality' => 95]);
     $media = optimizableMedia($bytes, 'image/webp', attributes: ['optimized_with' => 'webp:2560:80:exif0']);
 
     [$outcome, $before, $after] = engine()->optimizeOne($media);
@@ -148,7 +148,7 @@ it('marks a file already optimal when its current bytes do not shrink', function
 it('writes the result from a kept original even when it is bigger than the current file', function () {
     $original = noisyJpeg(600, 400);
     $media = optimizableMedia(optimizedBytes($original), 'image/webp', $original, ['optimized_with' => 'webp:2560:80:exif0']);
-    config(['media.optimize.quality' => 95]);
+    config(['hata.media.optimize.quality' => 95]);
 
     [$outcome, $before, $after] = engine()->optimizeOne($media);
     $media->refresh();
@@ -254,7 +254,7 @@ it('does nothing for a stale run or a held lock', function (string $case) {
     engine()->startWithoutActor();
 
     match ($case) {
-        'stale' => config(['media.optimize.quality' => 60]),
+        'stale' => config(['hata.media.optimize.quality' => 60]),
         'held lock' => Cache::lock('media-optimization-batch', 60)->get(),
     };
 
@@ -268,7 +268,7 @@ it('does nothing for a stale run or a held lock', function (string $case) {
 it('pauses the run when it finds optimization off, and goes on after a resume once it is on again', function () {
     optimizableMedia(makeImage('jpg', 400, 300));
     engine()->startWithoutActor();
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     $run = engine()->processBatch('browser', 0);
 
@@ -276,7 +276,7 @@ it('pauses the run when it finds optimization off, and goes on after a resume on
         ->and($run->status)->toBe('paused')
         ->and(app(OptimizationRunStore::class)->get()->status)->toBe('paused');
 
-    config(['media.optimize.enabled' => true]);
+    config(['hata.media.optimize.enabled' => true]);
     engine()->resume();
     $run = engine()->processBatch('browser', 0);
 
@@ -288,7 +288,7 @@ it('pauses before the next file when optimization is turned off during the batch
     optimizableMedia(makeImage('jpg', 400, 300));
     optimizableMedia(makeImage('jpg', 400, 300));
     engine()->startWithoutActor();
-    rebuilderRunning(fn () => config(['media.optimize.enabled' => false]));
+    rebuilderRunning(fn () => config(['hata.media.optimize.enabled' => false]));
 
     $run = engine()->processBatch('cli', 60);
 
@@ -342,7 +342,7 @@ it('does not apply stored edits again when the original file is gone', function 
 });
 
 it('refuses to start a run while optimization is off', function () {
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     expect(fn () => engine()->startWithoutActor())->toThrow(OptimizationDisabledException::class)
         ->and(app(OptimizationRunStore::class)->get())->toBeNull();

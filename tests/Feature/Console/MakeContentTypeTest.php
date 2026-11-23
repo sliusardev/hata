@@ -22,7 +22,7 @@ beforeEach(function () {
     $this->root = sys_get_temp_dir().'/make-content-type-'.Str::random(12);
 
     File::ensureDirectoryExists($this->root.'/config');
-    File::copy(Hata::path('config/content.php'), $this->root.'/config/content.php');
+    File::copy(Hata::path('config/hata.php'), $this->root.'/config/hata.php');
 
     foreach (['en', 'uk'] as $locale) {
         File::ensureDirectoryExists("{$this->root}/lang/{$locale}");
@@ -37,7 +37,7 @@ beforeEach(function () {
         $app->make(PermissionRegistry::class),
         $this->root.'/types',
         $this->root.'/lang',
-        $this->root.'/config/content.php',
+        $this->root.'/config/hata.php',
     ));
 });
 
@@ -75,8 +75,8 @@ test('it writes a flat type with its config entry and its lines in every languag
         ->and($type->fields())->toBe([])
         ->and((new ContentTypes)->register($type)->find('recipes'))->toBe($type);
 
-    expect((require $this->root.'/config/content.php')['types'])
-        ->toBe([...(require Hata::path('config/content.php'))['types'], 'Hata\Support\Content\Types\RecipesType']);
+    expect((require $this->root.'/config/hata.php')['content']['types'])
+        ->toBe([...(require Hata::path('config/hata.php'))['content']['types'], 'Hata\Support\Content\Types\RecipesType']);
 
     foreach (['en', 'uk'] as $locale) {
         $content = require "{$this->root}/lang/{$locale}/content.php";
@@ -163,14 +163,14 @@ test('it keeps an acronym one word and makes the default base of an underscored 
 test('it keeps the imports of the config in sorted order', function () {
     $this->artisan('make:content-type', ['name' => 'Articles'])->assertSuccessful();
 
-    $config = File::get($this->root.'/config/content.php');
+    $config = File::get($this->root.'/config/hata.php');
 
     preg_match_all('/^use [^;]+;$/m', $config, $imports);
     $sorted = $imports[0];
     sort($sorted);
 
     expect($imports[0])->toBe($sorted)->toContain('use Hata\\Support\\Content\\Types\\ArticlesType;')
-        ->and((require $this->root.'/config/content.php')['types'])->toBe([...(require Hata::path('config/content.php'))['types'], 'Hata\Support\Content\Types\ArticlesType']);
+        ->and((require $this->root.'/config/hata.php')['content']['types'])->toBe([...(require Hata::path('config/hata.php'))['content']['types'], 'Hata\Support\Content\Types\ArticlesType']);
 });
 
 test('it refuses a base that is the address of an existing page, trashed or not', function (bool $trashed) {

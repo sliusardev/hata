@@ -9,7 +9,7 @@ it (`docs/specs/content.md`); posts and themes come later. Design:
 | | Interface languages | Content languages |
 |---|---|---|
 | What | the admin, account settings, sign-in pages | the public site's content |
-| Where from | `config('app.available_locales')`, one `lang/<code>/` folder each | the catalogue `config/languages.php`, chosen in Site settings → Languages |
+| Where from | `config('hata.admin.interface_locales')`, one `lang/<code>/` folder each | the catalogue `config/internal/languages.php`, chosen in Site settings → Languages |
 | Who chooses | each user, in their account settings; the site has a default | an administrator with `settings.edit` |
 
 They are independent: a site may have twelve content languages and two interface languages. Adding a content
@@ -19,7 +19,7 @@ language's folder and key must equal the catalogue code (`lang/pt-br`, not Larav
 
 ## Catalogue
 
-`config/languages.php`: code → `name` (English), `native`, optional `rtl`. About 130 languages (ISO 639-1 plus
+`config/internal/languages.php`: code → `name` (English), `native`, optional `rtl`. About 130 languages (ISO 639-1 plus
 `pt-br`, `zh-hans`, `zh-hant`, `en-gb`, `sr-latn`). Codes are lowercase with hyphens and are what appears in
 the address. Editing the file changes the route pattern, so the route cache must be rebuilt after it.
 
@@ -34,8 +34,8 @@ Two site settings, applied over config like the others (`docs/specs/site-setting
 
 | Setting | Config | Meaning |
 |---|---|---|
-| `content_locales` | `content.locales` | list of `['code' => string, 'active' => bool]`, in the order added |
-| `content_default_locale` | `content.default_locale` | the default language |
+| `content_locales` | `hata.content.locales` | list of `['code' => string, 'active' => bool]`, in the order added |
+| `content_default_locale` | `hata.content.default_locale` | the default language |
 
 `App\Support\Localization\ContentLocales` (singleton) reads config only:
 
@@ -47,7 +47,7 @@ Two site settings, applied over config like the others (`docs/specs/site-setting
 - `all()`, `active()`, `default()`, `defaultCode()`, `has()`, `isActive()`, `language($code)`.
 - `codeForPrefix($prefix)`: the language of a public address from its `{locale}` parameter (the default without one);
   `isDefaultPrefix($prefix)`: the address carries the default language's own prefix (answered with a 301).
-- `interfaceDefault()`: the site's default interface language, from `content.interface_default`.
+- `interfaceDefault()`: the site's default interface language, from `hata.content.interface_default`.
   `SiteSettings::apply()` writes that key (the stored `default_locale`, else `app.locale` as the config files
   give it, read when the singleton is built). **Never read `app.locale` for the site default**:
   `Application::setLocale()` writes the current request's language into it.
@@ -152,7 +152,7 @@ default, so the first change also stores what was derived until then.
 `App\Support\Localization\ReservedSlugs::contains($slug)` (case-insensitive), for the content types to check
 when a slug is saved: every catalogue code (not only the added ones), the first segment of every route that
 is not a localized public one (computed from the router; a first segment that is a parameter, as in the content
-route, is skipped), and `content.reserved_slugs` (what the web server
+route, is skipped), and `hata.content.reserved_slugs` (what the web server
 answers itself: `storage`, `build`, `robots.txt`, …). Nothing calls it on a public request.
 
 ## Performance

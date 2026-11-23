@@ -294,7 +294,7 @@ class Media extends Model
      */
     public static function primaryAltLocale(): string
     {
-        $locales = (array) config('app.available_locales');
+        $locales = (array) config('hata.admin.interface_locales');
         $default = app(ContentLocales::class)->interfaceDefault();
 
         return array_key_exists($default, $locales) ? $default : (string) array_key_first($locales);

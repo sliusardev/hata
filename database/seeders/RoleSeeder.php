@@ -28,9 +28,9 @@ class RoleSeeder extends Seeder
                 $role->update(['is_system' => true]);
             }
 
-            $defaults = config("permissions.roles.{$systemRole->value}", []);
+            $defaults = config("hata.permissions.roles.{$systemRole->value}", []);
             $permissions = in_array('*', $defaults, true)
-                ? array_values(array_diff($registry->all(), config('permissions.reserved', [])))
+                ? array_values(array_diff($registry->all(), config('hata.permissions.reserved', [])))
                 : array_values(array_intersect($defaults, $registry->all()));
 
             $missing = array_values(array_diff($permissions, $role->permissions()->pluck('name')->all()));

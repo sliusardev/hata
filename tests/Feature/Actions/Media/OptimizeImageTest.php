@@ -10,7 +10,7 @@ use Intervention\Image\Interfaces\ImageInterface;
 dataset('drivers', ['gd', 'imagick']);
 
 beforeEach(function () {
-    config(['media.optimize' => [
+    config(['hata.media.optimize' => [
         'enabled' => true,
         'max_side' => 2560,
         'quality' => 80,
@@ -75,7 +75,7 @@ it('strips exif', function (string $driver) {
     $jpeg = withExif(makeImage('jpg', 1200, 800));
 
     foreach (['webp', 'original'] as $format) {
-        config(['media.optimize.format' => $format]);
+        config(['hata.media.optimize.format' => $format]);
 
         $result = app(OptimizeImage::class)->handle($jpeg, 'image/jpeg');
 
@@ -87,7 +87,7 @@ it('strips exif', function (string $driver) {
 
 it('keeps the original format when asked', function (string $driver) {
     useImageDriver($driver);
-    config(['media.optimize.format' => 'original']);
+    config(['hata.media.optimize.format' => 'original']);
 
     $result = app(OptimizeImage::class)->handle(makeImage('jpg', 3000, 2000), 'image/jpeg');
 
@@ -173,7 +173,7 @@ it('reports heic unreadable on gd', function () {
 
 it('returns the scaled image even when it is larger than the input', function (string $driver) {
     useImageDriver($driver);
-    config(['media.optimize.max_side' => 500, 'media.optimize.quality' => 100]);
+    config(['hata.media.optimize.max_side' => 500, 'hata.media.optimize.quality' => 100]);
     mt_srand(1);
     $noise = imagecreatetruecolor(600, 400);
     for ($x = 0; $x < 600; $x++) {
@@ -194,7 +194,7 @@ it('returns the scaled image even when it is larger than the input', function (s
 })->with('drivers');
 
 it('leaves images untouched when optimization is disabled', function () {
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
     $jpeg = makeImage('jpg', 3000, 2000);
 
     $result = app(OptimizeImage::class)->handle($jpeg, 'image/jpeg');
@@ -329,7 +329,7 @@ it('falls back to a thumbnail from the result when the capture would not fit in 
 });
 
 it('builds the fingerprint from the settings', function () {
-    config(['media.optimize.max_side' => null, 'media.optimize.quality' => 70, 'media.optimize.strip_exif' => false]);
+    config(['hata.media.optimize.max_side' => null, 'hata.media.optimize.quality' => 70, 'hata.media.optimize.strip_exif' => false]);
 
     expect(app(OptimizeImage::class)->fingerprint())->toBe('webp:none:70:exif1');
 });
@@ -361,7 +361,7 @@ function useHeicDecodingImagick(): string
 
 it('converts heic to jpeg when the format setting keeps the original', function () {
     $heic = useHeicDecodingImagick();
-    config(['media.optimize.format' => 'original']);
+    config(['hata.media.optimize.format' => 'original']);
 
     $result = app(OptimizeImage::class)->handle($heic, 'image/heic');
 
@@ -373,7 +373,7 @@ it('converts heic to jpeg when the format setting keeps the original', function 
 
 it('converts heic to webp even when optimization is disabled', function () {
     $heic = useHeicDecodingImagick();
-    config(['media.optimize.enabled' => false, 'media.optimize.max_side' => 320]);
+    config(['hata.media.optimize.enabled' => false, 'hata.media.optimize.max_side' => 320]);
 
     $result = app(OptimizeImage::class)->handle($heic, 'image/heic');
 
@@ -397,7 +397,7 @@ function redCornerPng(): string
 
 it('rotates clockwise', function (string $driver) {
     useImageDriver($driver);
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     $result = app(OptimizeImage::class)->handle(redCornerPng(), 'image/png', ['rotate' => 90]);
     $image = imagecreatefromstring($result->contents);
@@ -421,7 +421,7 @@ it('crops in the rotated frame', function (string $driver) {
 
 it('applies edits even with optimization off and keeps the format', function (string $driver) {
     useImageDriver($driver);
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     $result = app(OptimizeImage::class)->handle(makeImage('jpg', 800, 600), 'image/jpeg', ['flip_h' => true, 'rotate' => 90]);
 

@@ -48,7 +48,7 @@ class SiteLogo
      */
     public static function own(string $variant): ?Media
     {
-        $id = config("admin.logo.{$variant}");
+        $id = config("hata.admin.logo.{$variant}");
 
         if (! is_int($id)) {
             return null;
@@ -69,7 +69,7 @@ class SiteLogo
     private static function load(): void
     {
         $ids = array_values(array_unique(array_filter(
-            array_map(fn (string $variant): mixed => config("admin.logo.{$variant}"), self::VARIANTS),
+            array_map(fn (string $variant): mixed => config("hata.admin.logo.{$variant}"), self::VARIANTS),
             is_int(...),
         )));
         $found = Media::query()->whereKey($ids)->get()->keyBy('id');

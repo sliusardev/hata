@@ -17,11 +17,11 @@ use InvalidArgumentException;
 use Throwable;
 
 /**
- * Writes a new content type: its class, its entry in `config/content.php` → `types`, and its lines in every
+ * Writes a new content type: its class, its entry in `config/hata.php` → `content.types`, and its lines in every
  * language's `content.php` and `permissions.php` (English text in each, to be translated).
  *
  * The config and language files are edited as text, by the shape Pint gives them (a top-level `'section' => [`
- * closed by `],` at the same indent). A file that has another shape is left alone, and so is one that no longer
+ * closed by `],` at the same indent; the type list is the `types` section inside the `content` one). A file that has another shape is left alone, and so is one that no longer
  * loads with the new lines; the lines are returned to be added by hand.
  */
 class ContentTypeGenerator
@@ -45,7 +45,7 @@ class ContentTypeGenerator
     ) {
         $this->typesPath = $typesPath ?? Hata::path('src/Support/Content/Types');
         $this->langPath = $langPath ?? Hata::path('resources/lang');
-        $this->configFile = $configFile ?? Hata::path('config/content.php');
+        $this->configFile = $configFile ?? Hata::path('config/hata.php');
     }
 
     /**
@@ -206,19 +206,19 @@ class ContentTypeGenerator
     /**
      * The edits to the config and language files: where the lines go and how to tell that they arrived.
      *
-     * @return list<array{file: string, lines: string, inserts: list<array{section: string, lines: string}>, import: string|null, expect: string, contains: string|null}>
+     * @return list<array{file: string, lines: string, inserts: list<array{section: string, lines: string, parent?: string}>, import: string|null, expect: string, contains: string|null}>
      */
     private function edits(string $key, string $class, string $singular, string $plural, bool $hierarchical): array
     {
         $fqcn = self::TYPES_NAMESPACE.'\\'.$class;
-        $configLine = "        {$class}::class,\n";
+        $configLine = "            {$class}::class,\n";
 
         $edits = [[
             'file' => $this->configFile,
             'lines' => "use {$fqcn};\n\n'types' => [\n{$configLine}],\n",
-            'inserts' => [['section' => 'types', 'lines' => $configLine]],
+            'inserts' => [['section' => 'types', 'lines' => $configLine, 'parent' => 'content']],
             'import' => $fqcn,
-            'expect' => 'types',
+            'expect' => 'content.types',
             'contains' => $fqcn,
         ]];
 
@@ -282,7 +282,7 @@ class ContentTypeGenerator
      * lines (left from an earlier run or added by hand; it is not touched). False when the file is missing, has
      * another shape, or no longer loads with the lines (it is then put back as it was).
      *
-     * @param  array{file: string, lines: string, inserts: list<array{section: string, lines: string}>, import: string|null, expect: string, contains: string|null}  $edit
+     * @param  array{file: string, lines: string, inserts: list<array{section: string, lines: string, parent?: string}>, import: string|null, expect: string, contains: string|null}  $edit
      * @param  array<string, string>  $originals
      */
     private function apply(array $edit, array &$originals): bool
@@ -299,7 +299,7 @@ class ContentTypeGenerator
         $source = $original;
 
         foreach ($edit['inserts'] as $insert) {
-            $source = $this->insertIntoSection($source, $insert['section'], $insert['lines']);
+            $source = $this->insertIntoSection($source, $insert['section'], $insert['lines'], $insert['parent'] ?? null);
 
             if ($source === null) {
                 return false;
@@ -353,13 +353,27 @@ class ContentTypeGenerator
     }
 
     /**
-     * Adds the lines at the end of a top-level array section, or returns null when the file has no such section
-     * in the expected shape.
+     * Adds the lines at the end of an array section (a top-level one, or one inside the top-level `$parent`), or
+     * returns null when the file has no such section in the expected shape.
      */
-    private function insertIntoSection(string $source, string $section, string $lines): ?string
+    private function insertIntoSection(string $source, string $section, string $lines, ?string $parent = null): ?string
     {
-        $pattern = '/^( {4}\''.preg_quote($section, '/').'\' => \[\n(?:.*\n)*?)( {4}\],\n)/m';
-        $result = preg_replace_callback($pattern, fn (array $match): string => $match[1].$lines.$match[2], $source, 1, $count);
+        $indent = $parent === null ? '    ' : '        ';
+        $body = '/^( {'.strlen($indent).'}\''.preg_quote($section, '/').'\' => \[\n(?:.*\n)*?)( {'.strlen($indent).'}\],\n)/m';
+
+        if ($parent !== null) {
+            $outer = '/^    \''.preg_quote($parent, '/').'\' => \[\n(?:.*\n)*?^    \],\n/m';
+
+            if (preg_match($outer, $source, $match, PREG_OFFSET_CAPTURE) !== 1) {
+                return null;
+            }
+
+            $inner = preg_replace_callback($body, fn (array $found): string => $found[1].$lines.$found[2], $match[0][0], 1, $count);
+
+            return $count === 1 ? substr_replace($source, $inner, $match[0][1], strlen($match[0][0])) : null;
+        }
+
+        $result = preg_replace_callback($body, fn (array $found): string => $found[1].$lines.$found[2], $source, 1, $count);
 
         return $count === 1 ? $result : null;
     }

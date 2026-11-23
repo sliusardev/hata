@@ -23,7 +23,7 @@ class PruneEntryTrash
     public function handle(): int
     {
         $removed = 0;
-        $cutoff = now()->subDays((int) config('content.trash_days'));
+        $cutoff = now()->subDays((int) config('hata.content.trash_days'));
 
         Entry::onlyTrashed()
             ->where('deleted_at', '<', $cutoff)

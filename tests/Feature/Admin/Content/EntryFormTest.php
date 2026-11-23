@@ -308,7 +308,7 @@ test('moving to the trash asks first, names the subpages and returns to the list
 test('a trashed record opens read-only with the removal date and can be restored with edit', function () {
     $this->actingAs(formEditor());
     $page = Entry::factory()->create(['title' => 'Old', 'deleted_at' => now()->subDays(2)]);
-    $removal = $page->deleted_at->copy()->addDays((int) config('content.trash_days'))->tz(config('admin.timezone'))->isoFormat('LL');
+    $removal = $page->deleted_at->copy()->addDays((int) config('hata.content.trash_days'))->tz(config('hata.admin.timezone'))->isoFormat('LL');
 
     $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))
         ->assertOk()

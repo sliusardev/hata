@@ -22,7 +22,7 @@ class MakeContentType extends Command
     public function handle(ContentTypeGenerator $generator): int
     {
         if ($this->laravel->configurationIsCached()) {
-            $this->components->error('The config is cached, so the types of config/content.php may not be the registered ones. Run `php artisan config:clear` first.');
+            $this->components->error('The config is cached, so the types of config/hata.php may not be the registered ones. Run `php artisan config:clear` first.');
 
             return self::FAILURE;
         }
@@ -59,7 +59,7 @@ class MakeContentType extends Command
 
         $this->components->bulletList([
             'Translate the new lines in lang/*/content.php and lang/*/permissions.php (they are in English).',
-            "Run `php artisan permissions:sync`, then give the {$type->key}.* permissions to roles (config/permissions.php → roles, or the Roles page).",
+            "Run `php artisan permissions:sync`, then give the {$type->key}.* permissions to roles (config/internal/permissions.php → roles, or the Roles page).",
             'If the config or the routes are cached, rebuild them (`php artisan optimize`).',
             'If the type has a base path, run `php artisan content:check`: a page already at that address would be hidden by it.',
         ]);

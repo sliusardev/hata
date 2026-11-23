@@ -63,7 +63,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::media.optimize.title')] class 
      */
     protected function mustProcessHere(): bool
     {
-        return ! config('media.optimize.enabled');
+        return ! config('hata.media.optimize.enabled');
     }
 
     protected function refresh(): void
@@ -75,7 +75,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::media.optimize.title')] class 
 
 @php
     $run = $this->run;
-    $enabled = (bool) config('media.optimize.enabled');
+    $enabled = (bool) config('hata.media.optimize.enabled');
     $stale = $this->isStale;
     $browserMode = ! $this->queueAvailable || $this->browserFallback;
     // Keeps polling while optimization is off, so the next tick pauses the run. keep-alive: browsers throttle polling

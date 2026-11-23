@@ -54,7 +54,7 @@ class OptimizeExistingMedia extends MediaBatchEngine
      */
     public function startWithoutActor(): OptimizationRun
     {
-        if (! config('media.optimize.enabled')) {
+        if (! config('hata.media.optimize.enabled')) {
             throw new OptimizationDisabledException;
         }
 
@@ -95,7 +95,7 @@ class OptimizeExistingMedia extends MediaBatchEngine
 
     protected function mustPause(): bool
     {
-        return ! config('media.optimize.enabled');
+        return ! config('hata.media.optimize.enabled');
     }
 
     protected function next(MediaBatchRun $run): ?Media
@@ -170,7 +170,7 @@ class OptimizeExistingMedia extends MediaBatchEngine
             return [OptimizeOutcome::AlreadyOptimal, $before, $before];
         }
 
-        $keepOriginal = ! $source->isOriginal && config('media.optimize.enabled') && config('media.optimize.keep_originals');
+        $keepOriginal = ! $source->isOriginal && config('hata.media.optimize.enabled') && config('hata.media.optimize.keep_originals');
 
         $this->rebuilder->store(
             $media,

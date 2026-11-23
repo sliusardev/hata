@@ -207,7 +207,7 @@ it('shows the size after the max-side scale, as the applied file will have it', 
 ]);
 
 it('shows the uncapped size when max-side scaling is off', function () {
-    config(['media.optimize.max_side' => 0]);
+    config(['hata.media.optimize.max_side' => 0]);
     $media = cropPageMedia(makeImage('webp', 2560, 1707), makeImage('jpg', 3800, 2500));
 
     Livewire::test('hata::admin.media.crop', ['media' => $media])->assertSee('3800 × 2500');

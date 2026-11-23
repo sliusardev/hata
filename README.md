@@ -67,7 +67,7 @@ The new user gets the `super-admin` role, which passes every permission check.
 
 ### Adding a permission
 
-1. Declare it in `config/permissions.php` under its resource group (format `resource.action`):
+1. Declare it in `config/internal/permissions.php` under its resource group (format `resource.action`):
 
     ```php
     'groups' => [
@@ -83,7 +83,7 @@ The new user gets the `super-admin` role, which passes every permission check.
     ```
 
 2. Add the labels to every language in `lang/*/permissions.php` (`groups.pages`, `items.pages.view`, …).
-3. Optionally grant it to a system role by default in `config/permissions.php` → `roles`.
+3. Optionally grant it to a system role by default in `config/internal/permissions.php` → `roles`.
 4. Run `php artisan permissions:sync` (or `php artisan db:seed`). Add `--prune` to delete permissions that were removed from the registry.
 
 ## Languages
@@ -100,7 +100,7 @@ The interface is available in English (`en`, the default and fallback) and Ukrai
 ## Content types
 
 Pages, posts and their taxonomies are content types: small classes in `app/Support/Content/Types`, listed in
-`config/content.php` → `types`. Every type gets the same admin list and form, translations (one record per language),
+`config/hata.php` → `content.types`. Every type gets the same admin list and form, translations (one record per language),
 addresses with redirects, a trash and four permissions (`<key>.view|create|edit|delete`). The kit has `pages` (a tree at
 the site root), `posts` (at `/posts`, with a gallery field) and the posts' taxonomies `categories` and `tags`.
 
@@ -113,9 +113,9 @@ php artisan permissions:sync
 php artisan content:check                      # no existing page is hidden by the new base
 ```
 
-The command writes the class, adds it to `config/content.php` and adds English lines to `lang/*/content.php` and
+The command writes the class, adds it to `config/hata.php` and adds English lines to `lang/*/content.php` and
 `lang/*/permissions.php` for you to translate. Then give the new permissions to roles (the Roles page, or
-`config/permissions.php` → `roles` for new installs).
+`config/internal/permissions.php` → `roles` for new installs).
 
 ### Adding fields
 
@@ -183,7 +183,7 @@ The site settings page also holds the site name, default language, timezone, ema
 Admin → Media stores raster images (and their thumbnails) on Laravel's `public` disk and serves them as static files, so PHP does not run for them; this needs `php artisan storage:link`. SVG, documents and the kept originals stay on a private disk and are always served through the app (see "Serving images" below).
 
 - **Image extension:** PHP needs GD or Imagick, with WebP support, to optimize uploaded images. AVIF and HEIC need an Imagick build that can decode them. HEIC is never stored as HEIC: Safari converts it to JPEG in the browser, otherwise the server converts it to WebP (JPEG when the format setting keeps the original). Without such an Imagick, AVIF is stored as it is, and a HEIC the browser could not convert is refused with a hint to export it as JPG.
-- **Upload limits:** the default limits are 30 MB per image and 20 MB per document (`config/media.php`). Set `upload_max_filesize` and `post_max_size` in `php.ini` to at least `32M`, or uploads fail before the app sees them. The Media tab shows the cap the server actually allows.
+- **Upload limits:** the default limits are 30 MB per image and 20 MB per document (`config/hata.php`). Set `upload_max_filesize` and `post_max_size` in `php.ini` to at least `32M`, or uploads fail before the app sees them. The Media tab shows the cap the server actually allows.
 - **Optional S3-compatible storage:** by default files stay on the server. Under Admin → Site settings → Media you can send new uploads to S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces or MinIO (endpoint, region, bucket, keys, path-style for MinIO, optional public/CDN URL; "Test connection" checks them; `AWS_*` in `.env` work as defaults). The adapter `league/flysystem-aws-s3-v3` is already installed. Existing files move between the two with Admin → Media → move page or `php artisan media:move-disk s3|public`. The app keeps serving SVG itself and signs document links, so the bucket can stay private unless you set a public URL. For a long queue move, set `DB_QUEUE_RETRY_AFTER` above 1845 (see `docs/specs/media.md`, Known limitations). `php artisan media:prune-deleted` runs daily from the scheduler and removes replaced objects (on S3 and on the `public` disk, with their originals) after 7 days; without a cron the batches and the library page do it.
 - **Serving images:** see the section below.
 - **Memory:** very large photos that don't fit in `memory_limit` are stored without optimization, with a note in the file details.

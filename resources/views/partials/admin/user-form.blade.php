@@ -34,7 +34,7 @@
         </div>
 
         <flux:select wire:model="form.locale" :label="__('hata::users.form.locale')">
-            @foreach (config('app.available_locales') as $code => $languageName)
+            @foreach (config('hata.admin.interface_locales') as $code => $languageName)
                 <flux:select.option :value="$code" wire:key="locale-{{ $code }}">{{ $languageName }}</flux:select.option>
             @endforeach
         </flux:select>
@@ -46,7 +46,7 @@
                 <flux:label>{{ __('hata::users.form.email_verified') }}</flux:label>
                 <div>
                     @if ($editedUser?->email_verified_at)
-                        <flux:badge color="green" icon="check-circle" size="sm">{{ __('hata::users.form.verified') }} · {{ $editedUser->email_verified_at->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:badge>
+                        <flux:badge color="green" icon="check-circle" size="sm">{{ __('hata::users.form.verified') }} · {{ $editedUser->email_verified_at->tz(config('hata.admin.timezone'))->isoFormat('LL') }}</flux:badge>
                     @else
                         <flux:badge color="zinc" size="sm">{{ __('hata::users.form.not_verified') }}</flux:badge>
                     @endif

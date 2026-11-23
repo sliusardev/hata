@@ -8,7 +8,7 @@ use InvalidArgumentException;
 /**
  * The permissions known to the application, grouped by resource.
  *
- * Filled from config/permissions.php and extendable by modules and themes through register().
+ * Filled from config/internal/permissions.php and extendable by modules and themes through register().
  */
 class PermissionRegistry
 {
@@ -90,7 +90,7 @@ class PermissionRegistry
 
     /**
      * The group's label from its owner's translations, else from the site's own `permissions.groups.<group>`
-     * (a group a site added to `config/permissions.php` is labelled there).
+     * (a group a site added to `config/internal/permissions.php` is labelled there).
      */
     public function groupLabel(string $group): string
     {

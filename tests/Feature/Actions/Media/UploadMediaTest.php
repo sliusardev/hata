@@ -66,7 +66,7 @@ it('rejects a php file renamed to jpg', function () {
 });
 
 it('enforces the size limit using the picked size', function () {
-    config(['media.limits.image_mb' => 1]);
+    config(['hata.media.limits.image_mb' => 1]);
     $file = uploadedImage('a.jpg', makeImage());
 
     try {
@@ -108,7 +108,7 @@ it('stores documents without processing', function () {
 });
 
 it('does not keep originals when the setting is off', function () {
-    config(['media.optimize.keep_originals' => false]);
+    config(['hata.media.optimize.keep_originals' => false]);
 
     $media = app(UploadMedia::class)->handle($this->actor, uploadedImage('a.jpg', makeImage()));
 
@@ -194,7 +194,7 @@ it('rejects heic whenever the optimizer could not convert it', function (Optimiz
 ]);
 
 it('keeps no original when optimization is off', function () {
-    config(['media.optimize.enabled' => false, 'media.optimize.keep_originals' => true]);
+    config(['hata.media.optimize.enabled' => false, 'hata.media.optimize.keep_originals' => true]);
 
     $media = app(UploadMedia::class)->handle($this->actor, uploadedImage('a.jpg', makeImage()));
 
@@ -212,7 +212,7 @@ it('stores whether the uploaded image is animated', function () {
 
 it('stores an upload on a cloud disk under versioned paths with its content type and cache header', function () {
     $disk = fakeCloudDisk();
-    config(['media.disk' => 's3']);
+    config(['hata.media.disk' => 's3']);
 
     $media = app(UploadMedia::class)->handle($this->actor, uploadedImage('photo.jpg', makeImage('jpg', 1200, 800)));
 

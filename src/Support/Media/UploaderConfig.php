@@ -21,8 +21,8 @@ final class UploaderConfig
     {
         return [
             'canUpload' => $actor->can('create', Media::class),
-            'clientResize' => config('media.optimize.enabled') && config('media.optimize.client_resize'),
-            'clientSide' => (int) config('media.client_side'),
+            'clientResize' => config('hata.media.optimize.enabled') && config('hata.media.optimize.client_resize'),
+            'clientSide' => (int) config('hata.media.client_side'),
             'accept' => $extensions ?? array_keys(MediaTypes::ALLOWED),
             'types' => array_map(fn (array $type): string => $type['kind']->value, MediaTypes::ALLOWED),
             'limits' => collect(MediaKind::cases())

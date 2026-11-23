@@ -83,7 +83,7 @@
 
     <div class="max-w-sm">
         <flux:select wire:model="form.default_locale" :label="__('hata::site_settings.languages.default_locale')">
-            @foreach (config('app.available_locales') as $code => $languageName)
+            @foreach (config('hata.admin.interface_locales') as $code => $languageName)
                 <flux:select.option :value="$code" wire:key="locale-{{ $code }}">{{ $languageName }}</flux:select.option>
             @endforeach
         </flux:select>

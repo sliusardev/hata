@@ -41,7 +41,7 @@ class CreateNewUser implements CreatesNewUsers
      */
     private function assignDefaultRole(User $user): void
     {
-        $roleName = config('admin.default_role');
+        $roleName = config('hata.admin.default_role');
 
         if (blank($roleName)) {
             return;

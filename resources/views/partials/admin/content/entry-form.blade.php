@@ -17,7 +17,7 @@
     $abilities = $this->abilities;
     $readOnly = $this->readOnly();
     $trashed = $entry?->trashed() ?? false;
-    $timezone = (string) config('admin.timezone');
+    $timezone = (string) config('hata.admin.timezone');
     $languages = $this->languages;
     $multilingual = count($languages) > 1;
     $parentOptions = $this->parentOptions;
@@ -141,7 +141,7 @@
             <flux:callout variant="warning" icon="trash" data-test="trashed-callout">
                 <flux:callout.heading>{{ __('hata::content.form.trashed.title') }}</flux:callout.heading>
                 <flux:callout.text>
-                    {{ __('hata::content.form.trashed.removal', ['date' => $entry->deleted_at->copy()->addDays((int) config('content.trash_days'))->tz($timezone)->isoFormat('LL')]) }}
+                    {{ __('hata::content.form.trashed.removal', ['date' => $entry->deleted_at->copy()->addDays((int) config('hata.content.trash_days'))->tz($timezone)->isoFormat('LL')]) }}
                     {{ $abilities['edit'] ? __('hata::content.form.trashed.restore_hint') : __('hata::content.form.trashed.no_restore') }}
                 </flux:callout.text>
                 @if ($abilities['edit'])
@@ -421,7 +421,7 @@
             @if ($this->trashingChildren > 0)
                 {{ trans_choice('hata::content.list.trash.confirm_children', $this->trashingChildren, ['title' => $entry->title]) }}
             @else
-                {{ trans_choice('hata::content.list.trash.confirm', (int) config('content.trash_days'), ['title' => $entry->title]) }}
+                {{ trans_choice('hata::content.list.trash.confirm', (int) config('hata.content.trash_days'), ['title' => $entry->title]) }}
             @endif
         </x-hata::confirm-modal>
     @endif

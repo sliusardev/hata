@@ -26,12 +26,12 @@ beforeEach(function () {
     seedRolesAndPermissions();
     $this->prefix = 'hata-integration-'.Str::lower((string) Str::ulid());
     config([
-        'media.disk' => 's3',
+        'hata.media.disk' => 's3',
         'filesystems.disks.s3.root' => $this->prefix,
         // Local stores often run on a self-signed certificate.
         'filesystems.disks.s3.http' => ['verify' => false],
-        'media.optimize.enabled' => true,
-        'media.optimize.keep_originals' => true,
+        'hata.media.optimize.enabled' => true,
+        'hata.media.optimize.keep_originals' => true,
     ]);
     Storage::forgetDisk('s3');
     $this->actor = User::factory()->withPermissions(['admin.access', 'media.view', 'media.upload', 'media.edit', 'media.delete'])->create();

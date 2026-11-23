@@ -68,7 +68,7 @@ class ContentTypes
      */
     public function disabledKeys(): array
     {
-        return array_values(array_filter((array) config('content.disabled_types', []), is_string(...)));
+        return array_values(array_filter((array) config('hata.content.disabled_types', []), is_string(...)));
     }
 
     /**

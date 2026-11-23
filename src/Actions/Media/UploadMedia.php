@@ -76,12 +76,12 @@ class UploadMedia
             [$width, $height, $fingerprint, $failure] = [$result->width, $result->height, $result->fingerprint, $result->failure];
         }
 
-        $disk = MediaDisks::diskFor((string) config('media.disk'), $type['kind'], $mime);
+        $disk = MediaDisks::diskFor((string) config('hata.media.disk'), $type['kind'], $mime);
         $originalsDisk = MediaDisks::originalsDisk($disk);
         $key = (string) Str::ulid();
         $version = 1;
         $path = MediaPaths::file($disk, $key, $version, $extension, now());
-        $originalPath = isset($original) && config('media.optimize.enabled') && config('media.optimize.keep_originals')
+        $originalPath = isset($original) && config('hata.media.optimize.enabled') && config('hata.media.optimize.keep_originals')
             ? MediaPaths::original($disk, $key, $version, $type['ext'])
             : null;
         $thumbPath = $thumbnail === null ? null : MediaPaths::thumb($disk, $key, $version);

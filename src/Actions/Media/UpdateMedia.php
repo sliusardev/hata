@@ -24,7 +24,7 @@ class UpdateMedia
         ])->validate();
 
         if (array_key_exists('alt', $validated)) {
-            $locales = array_keys((array) config('app.available_locales'));
+            $locales = array_keys((array) config('hata.admin.interface_locales'));
             $validated['alt'] = array_map(
                 fn (?string $text): string => trim((string) $text),
                 array_intersect_key($validated['alt'], array_flip($locales)),

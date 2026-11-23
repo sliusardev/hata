@@ -21,7 +21,7 @@ function runLogoImport(): void
 beforeEach(function () {
     Storage::fake('local');
     Storage::fake('media');
-    config(['media.disk' => 'media']);
+    config(['hata.media.disk' => 'media']);
 });
 
 it('imports a branding logo into the Logo folder and keeps the setting and usage as SetLogo would', function () {

@@ -1,7 +1,7 @@
 <?php
 
 beforeEach(function () {
-    config(['admin.registration_enabled' => true]);
+    config(['hata.admin.registration_enabled' => true]);
 });
 
 test('registration screen can be rendered', function () {

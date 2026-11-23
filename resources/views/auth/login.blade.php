@@ -51,7 +51,7 @@
             </div>
         </form>
 
-        @if (Route::has('register') && config('admin.registration_enabled'))
+        @if (Route::has('register') && config('hata.admin.registration_enabled'))
             <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600 dark:text-zinc-400">
                 <span>{{ __('hata::auth.login.no_account') }}</span>
                 <flux:link :href="route('register')" wire:navigate>{{ __('hata::auth.login.sign_up') }}</flux:link>

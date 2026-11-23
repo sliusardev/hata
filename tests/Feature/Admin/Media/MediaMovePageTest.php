@@ -15,7 +15,7 @@ beforeEach(function () {
     Storage::fake('public');
     fakeCloudDisk('s3');
     seedRolesAndPermissions();
-    config(['media.disk' => 's3', 'filesystems.disks.s3.bucket' => 'media', 'queue.default' => 'sync']);
+    config(['hata.media.disk' => 's3', 'filesystems.disks.s3.bucket' => 'media', 'queue.default' => 'sync']);
     $this->actor = User::factory()->withPermissions(['admin.access', 'media.view', 'media.edit'])->create();
     $this->actingAs($this->actor);
 });
@@ -53,7 +53,7 @@ it('shows how many files are on the other disk and where they go', function () {
 });
 
 it('counts only the files this server would place elsewhere and calls it this server', function () {
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
     movePageCandidate();
     Media::factory()->document()->create(['disk' => 'local']);
     Media::factory()->create(['disk' => 'local', 'mime' => 'image/svg+xml', 'path' => 'media/x.svg']);
@@ -146,7 +146,7 @@ it('lists failed files after the run', function () {
 });
 
 it('offers a new move to the configured storage after a finished move to the other one', function () {
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
     $media = Media::factory()->create(['disk' => 's3', 'size' => 4]);
     Storage::disk('s3')->put($media->path, 'data');
 
@@ -155,7 +155,7 @@ it('offers a new move to the configured storage after a finished move to the oth
     expect($media->fresh()->disk)->toBe('public');
 
     // The admin switched the storage back afterwards: what is left and a new move both concern that storage.
-    config(['media.disk' => 's3']);
+    config(['hata.media.disk' => 's3']);
 
     $component->call('$refresh')
         ->assertSee(trans_choice('hata::media.move.done_left', 1, ['count' => 1]))
@@ -166,7 +166,7 @@ it('offers a new move to the configured storage after a finished move to the oth
 });
 
 it('offers no move while the private local mode from .env is in effect', function () {
-    config(['media.disk' => 'local']);
+    config(['hata.media.disk' => 'local']);
     Media::factory()->create(['disk' => 's3']);
     Media::factory()->create(['disk' => 'public']);
 

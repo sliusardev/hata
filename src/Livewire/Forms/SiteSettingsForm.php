@@ -123,26 +123,26 @@ class SiteSettingsForm extends Form
     {
         $this->site_name = (string) config('app.name');
         $this->default_locale = app(ContentLocales::class)->interfaceDefault();
-        $this->timezone = (string) config('admin.timezone');
-        $this->registration_enabled = (bool) config('admin.registration_enabled');
-        $this->default_role = (string) config('admin.default_role');
+        $this->timezone = (string) config('hata.admin.timezone');
+        $this->registration_enabled = (bool) config('hata.admin.registration_enabled');
+        $this->default_role = (string) config('hata.admin.default_role');
         $this->mail_mailer = $settings->has('mail_mailer') ? 'smtp' : 'server';
         $this->mail_from_address = (string) config('mail.from.address');
         $this->mail_from_name = (string) config('mail.from.name');
-        $this->color_scheme = (string) config('admin.colors.scheme');
-        $this->color_accent = ColorScheme::isHexColor(config('admin.colors.accent')) ? (string) config('admin.colors.accent') : '#2563eb';
-        $this->color_gray = (string) config('admin.colors.gray');
-        $this->color_tint_sidebar = (bool) config('admin.colors.tint_sidebar');
-        $this->media_optimize = (bool) config('media.optimize.enabled');
-        $this->media_max_side = is_int(config('media.optimize.max_side')) ? (string) config('media.optimize.max_side') : 'none';
-        $this->media_quality = (string) config('media.optimize.quality');
-        $this->media_format = (string) config('media.optimize.format');
-        $this->media_strip_exif = (bool) config('media.optimize.strip_exif');
-        $this->media_client_resize = (bool) config('media.optimize.client_resize');
-        $this->media_keep_originals = (bool) config('media.optimize.keep_originals');
-        $this->media_max_image_mb = (string) config('media.limits.image_mb');
-        $this->media_max_document_mb = (string) config('media.limits.document_mb');
-        $this->media_storage = config('media.disk') === 's3' ? 's3' : 'public';
+        $this->color_scheme = (string) config('hata.admin.colors.scheme');
+        $this->color_accent = ColorScheme::isHexColor(config('hata.admin.colors.accent')) ? (string) config('hata.admin.colors.accent') : '#2563eb';
+        $this->color_gray = (string) config('hata.admin.colors.gray');
+        $this->color_tint_sidebar = (bool) config('hata.admin.colors.tint_sidebar');
+        $this->media_optimize = (bool) config('hata.media.optimize.enabled');
+        $this->media_max_side = is_int(config('hata.media.optimize.max_side')) ? (string) config('hata.media.optimize.max_side') : 'none';
+        $this->media_quality = (string) config('hata.media.optimize.quality');
+        $this->media_format = (string) config('hata.media.optimize.format');
+        $this->media_strip_exif = (bool) config('hata.media.optimize.strip_exif');
+        $this->media_client_resize = (bool) config('hata.media.optimize.client_resize');
+        $this->media_keep_originals = (bool) config('hata.media.optimize.keep_originals');
+        $this->media_max_image_mb = (string) config('hata.media.limits.image_mb');
+        $this->media_max_document_mb = (string) config('hata.media.limits.document_mb');
+        $this->media_storage = config('hata.media.disk') === 's3' ? 's3' : 'public';
         $this->media_s3_endpoint = (string) config('filesystems.disks.s3.endpoint');
         $this->media_s3_region = (string) config('filesystems.disks.s3.region');
         $this->media_s3_bucket = (string) config('filesystems.disks.s3.bucket');
@@ -248,7 +248,7 @@ class SiteSettingsForm extends Form
     {
         return [
             'site_name' => ['required', 'string', 'max:255'],
-            'default_locale' => ['required', Rule::in(array_keys(config('app.available_locales')))],
+            'default_locale' => ['required', Rule::in(array_keys(config('hata.admin.interface_locales')))],
             'timezone' => ['required', 'timezone:all'],
             'registration_enabled' => ['boolean'],
             'default_role' => ['nullable', 'string', Rule::exists('roles', 'name'), Rule::notIn([SystemRole::SuperAdmin->value])],
@@ -285,8 +285,8 @@ class SiteSettingsForm extends Form
             'media_s3_path_style' => ['boolean'],
             'media_s3_public_url' => ['nullable', 'url:http,https', 'max:255'],
             'media_s3_prefix' => ['nullable', 'string', 'max:255'],
-            'media_max_image_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap('media.limits.image_mb')],
-            'media_max_document_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap('media.limits.document_mb')],
+            'media_max_image_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap('hata.media.limits.image_mb')],
+            'media_max_document_mb' => ['required', 'integer', 'between:1,512', $this->withinServerCap('hata.media.limits.document_mb')],
         ];
     }
 

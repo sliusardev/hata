@@ -1600,7 +1600,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::media.index.title')] class ext
         @endif
     </div>
 
-    @if (auth()->user()->can('settings.edit') && \Hata\Support\Media\MediaDisks::publishes((string) config('media.disk')) && in_array(app(\Hata\Support\Media\DirectServing::class)->state(), ['link_missing', 'unreachable'], true))
+    @if (auth()->user()->can('settings.edit') && \Hata\Support\Media\MediaDisks::publishes((string) config('hata.media.disk')) && in_array(app(\Hata\Support\Media\DirectServing::class)->state(), ['link_missing', 'unreachable'], true))
         <flux:callout icon="exclamation-triangle" variant="warning" data-test="direct-warning">
             <flux:callout.text>
                 {{ __('hata::media.index.direct_warning') }}
@@ -1771,8 +1771,8 @@ new #[Layout('hata::layouts.app')] #[Title('hata::media.index.title')] class ext
 
     @if ($canUpload)
         @include('hata::partials.admin.media.upload-queue', [
-            'imageMb' => (int) config('media.limits.image_mb'),
-            'documentMb' => (int) config('media.limits.document_mb'),
+            'imageMb' => (int) config('hata.media.limits.image_mb'),
+            'documentMb' => (int) config('hata.media.limits.document_mb'),
         ])
     @endif
 </section>

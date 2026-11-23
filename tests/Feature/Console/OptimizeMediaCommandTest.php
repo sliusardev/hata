@@ -78,7 +78,7 @@ it('starts a fresh run with --restart', function () {
 });
 
 it('fails when optimization is off', function () {
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     $this->artisan('media:optimize')
         ->expectsOutputToContain('Optimization is off in the media settings.')
@@ -90,7 +90,7 @@ it('fails when optimization is off', function () {
 it('starts over when the stored run is stale', function () {
     commandCandidate();
     app(OptimizeExistingMedia::class)->startWithoutActor();
-    config(['media.optimize.quality' => 55]);
+    config(['hata.media.optimize.quality' => 55]);
 
     $this->artisan('media:optimize')->assertSuccessful();
 
@@ -117,7 +117,7 @@ it('gives up when another batch keeps the lock', function () {
 it('stops with an error when optimization is turned off during the run', function () {
     commandCandidate();
     commandCandidate();
-    Media::updated(fn () => config(['media.optimize.enabled' => false]));
+    Media::updated(fn () => config(['hata.media.optimize.enabled' => false]));
 
     $this->artisan('media:optimize')
         ->expectsOutputToContain('Optimization is off in the media settings.')

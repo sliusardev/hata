@@ -327,7 +327,7 @@ test('a translation by an actor without edit leaves the shared values alone; a n
 
 test('publishing without a date publishes now; a future date schedules; the date is read in the site timezone', function () {
     $this->travelTo(now()->setDate(2026, 7, 1)->setTime(12, 0));
-    config(['admin.timezone' => 'Europe/Kyiv']);
+    config(['hata.admin.timezone' => 'Europe/Kyiv']);
 
     $now = createEntryAs($this->editor, 'pages', 'uk', ['title' => 'Зараз', 'slug' => 'zaraz', 'status' => 'published']);
 

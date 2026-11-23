@@ -10,7 +10,7 @@
                     @if ($languageOff && $entry->isPublic())
                         {{ __('hata::content.public.language_off') }}
                     @elseif ($entry->state() === Hata\Enums\EntryState::Scheduled)
-                        {{ __('hata::content.public.scheduled', ['date' => $entry->published_at->tz(config('admin.timezone'))->isoFormat('LLL')]) }}
+                        {{ __('hata::content.public.scheduled', ['date' => $entry->published_at->tz(config('hata.admin.timezone'))->isoFormat('LLL')]) }}
                     @else
                         {{ __('hata::content.public.draft') }}
                     @endif

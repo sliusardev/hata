@@ -62,7 +62,7 @@ it('replaces an image and keeps id, key and alt', function () {
 });
 
 it('drops the old original when originals are not kept', function () {
-    config(['media.optimize.keep_originals' => false]);
+    config(['hata.media.optimize.keep_originals' => false]);
     $media = replaceableMedia();
     $old = $media->original_path;
 
@@ -123,7 +123,7 @@ it('replaces a document without processing', function () {
 it('applies the size limit with the picked size', function () {
     $media = replaceableMedia();
     $limit = 30 * 1024 * 1024;
-    config(['media.limits.image_mb' => 30]);
+    config(['hata.media.limits.image_mb' => 30]);
 
     expect(fn () => app(ReplaceMediaFile::class)->handle($this->actor, $media, uploadedImage('a.webp', makeImage('webp')), $limit + 1))
         ->toThrow(MediaUploadException::class);
@@ -146,7 +146,7 @@ it('refuses to replace across the raster and svg line on any site disk and write
         's3' => fakeCloudDisk(),
         default => null,
     };
-    config(['media.disk' => $siteDisk]);
+    config(['hata.media.disk' => $siteDisk]);
     $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>';
     $files = ['svg' => ['logo.svg', $svg, 'image/svg+xml'], 'png' => ['logo.png', makeImage('png'), 'image/png']];
     [, $bytes, $mime] = $files[$from];

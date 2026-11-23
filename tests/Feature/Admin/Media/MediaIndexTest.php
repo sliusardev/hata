@@ -56,7 +56,7 @@ it('shows the content group in the sidebar only with media.view', function () {
 
 it('filters by folder, no folder, type, month, unused and search', function (string $filter) {
     $this->actingAs(mediaViewer());
-    config(['admin.timezone' => 'Europe/Kyiv']);
+    config(['hata.admin.timezone' => 'Europe/Kyiv']);
 
     [$params, $visible, $hidden] = match ($filter) {
         'folder' => (function () {
@@ -300,7 +300,7 @@ it('shows the stable app url in the details panel even for a direct cloud file',
 
 describe('direct serving warning', function () {
     beforeEach(function () {
-        config(['media.disk' => 'public']);
+        config(['hata.media.disk' => 'public']);
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'settings.edit'])->create());
     });
 
@@ -327,7 +327,7 @@ describe('direct serving warning', function () {
     });
 
     it('stays quiet when the site disk is not served by this server', function () {
-        config(['media.disk' => 's3']);
+        config(['hata.media.disk' => 's3']);
         DirectServing::fake(state: 'link_missing');
 
         $this->get(route('admin.media.index'))->assertOk()->assertDontSee(__('hata::media.index.direct_warning'));

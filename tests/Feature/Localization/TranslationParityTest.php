@@ -34,7 +34,7 @@ function flattenedTranslations(string $locale, string $root = 'resources/lang'):
  */
 function translatedLocales(): array
 {
-    return array_values(array_diff(array_keys(config('app.available_locales')), ['en']));
+    return array_values(array_diff(array_keys(config('hata.admin.interface_locales')), ['en']));
 }
 
 /**
@@ -81,7 +81,7 @@ test('every available locale has the same keys as English', function () {
 });
 
 test('no translation value is empty', function () {
-    foreach (array_keys(config('app.available_locales')) as $locale) {
+    foreach (array_keys(config('hata.admin.interface_locales')) as $locale) {
         $empty = collect(flattenedTranslations($locale))
             ->filter(fn (mixed $value): bool => $value !== [] && (! is_string($value) || trim($value) === ''))
             ->keys()
@@ -196,7 +196,7 @@ test('every language of lang-framework has the framework groups and the keys of 
 test('lang-framework has no empty value and keeps the placeholders of the English', function () {
     $english = frameworkEnglish();
 
-    foreach (array_keys(config('app.available_locales')) as $locale) {
+    foreach (array_keys(config('hata.admin.interface_locales')) as $locale) {
         $lines = flattenedTranslations($locale, 'resources/lang-framework');
 
         $empty = collect($lines)->filter(fn (mixed $value): bool => $value !== [] && (! is_string($value) || trim($value) === ''))->keys()->all();

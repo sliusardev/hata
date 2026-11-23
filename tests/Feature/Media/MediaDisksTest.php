@@ -55,7 +55,7 @@ it('keeps originals of a published file on the private disk', function () {
 it('opts a test into the public media disk', function () {
     usePublicMediaDisk();
 
-    expect(config('media.disk'))->toBe('public');
+    expect(config('hata.media.disk'))->toBe('public');
 });
 
 it('treats the public disk as publishing by its name even without a url, and no other local disk', function () {

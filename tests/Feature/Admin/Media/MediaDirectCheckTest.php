@@ -17,7 +17,7 @@ beforeEach(function () {
     Storage::fake('public');
     Storage::fake('local');
     config([
-        'media.disk' => 'public',
+        'hata.media.disk' => 'public',
         'filesystems.disks.public.driver' => 'local',
         'filesystems.disks.public.url' => 'https://example.test/storage',
     ]);
@@ -209,7 +209,7 @@ describe('probe config in the layout', function () {
 
     it('is not rendered when the site disk does not publish files', function () {
         linkPublicDiskForCheck();
-        config(['media.disk' => 'local']);
+        config(['hata.media.disk' => 'local']);
         $this->actingAs(settingsEditor());
 
         $this->get(route('admin.dashboard'))->assertOk()->assertDontSee('mediaDirectProbe', false);

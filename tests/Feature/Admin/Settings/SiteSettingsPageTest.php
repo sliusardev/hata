@@ -81,8 +81,8 @@ test('saved settings are applied to the config', function () {
         ->call('save');
 
     expect(config('app.name'))->toBe('Hata')
-        ->and(config('admin.timezone'))->toBe('Europe/Kyiv')
-        ->and(config('admin.registration_enabled'))->toBeTrue();
+        ->and(config('hata.admin.timezone'))->toBe('Europe/Kyiv')
+        ->and(config('hata.admin.registration_enabled'))->toBeTrue();
 });
 
 test('the tab comes from the query string and falls back to general', function () {

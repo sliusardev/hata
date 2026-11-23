@@ -44,7 +44,7 @@ class ReservedSlugs
         return array_values(array_unique([
             ...$this->catalog->codes(),
             ...$segments,
-            ...array_map(mb_strtolower(...), (array) config('content.reserved_slugs')),
+            ...array_map(mb_strtolower(...), (array) config('hata.content.reserved_slugs')),
         ]));
     }
 }

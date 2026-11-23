@@ -24,6 +24,7 @@ use Hata\Providers\FortifyServiceProvider;
 use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Assets\HataAssets;
 use Hata\Support\Assets\HataVite;
+use Hata\Support\Config\HataConfig;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\LanguageCatalog;
 use Hata\Support\Media\DirectServing;
@@ -69,18 +70,9 @@ class HataServiceProvider extends ServiceProvider
      */
     public const array LAYOUTS = ['app', 'app.header', 'app.sidebar', 'auth', 'auth.card', 'auth.simple', 'auth.split', 'focus', 'site'];
 
-    /**
-     * The configuration files of the package, merged under their own keys (interim: one `hata` key later).
-     *
-     * @var list<string>
-     */
-    private const array CONFIG_FILES = ['admin', 'content', 'languages', 'media', 'permissions'];
-
     public function register(): void
     {
-        foreach (self::CONFIG_FILES as $file) {
-            $this->mergeConfig($file);
-        }
+        HataConfig::apply($this->app, $this->app->make('config'));
 
         $this->mergeSpatiePermissionDefaults();
         $this->configurePackages();
@@ -89,7 +81,7 @@ class HataServiceProvider extends ServiceProvider
 
         $this->app->singleton(
             PermissionRegistry::class,
-            fn (): PermissionRegistry => (new PermissionRegistry)->registerMany(config('permissions.groups', []), 'hata::permissions'),
+            fn (): PermissionRegistry => (new PermissionRegistry)->registerMany(config('hata.permissions.groups', []), 'hata::permissions'),
         );
 
         $this->app->singleton(SiteSettings::class);
@@ -143,21 +135,6 @@ class HataServiceProvider extends ServiceProvider
     }
 
     /**
-     * Like `mergeConfigFrom()`, except that a cached config without the file's key still gets it: a cache built
-     * before Hata was installed, or one Testbench's fresh application (which never reads the cache) believes in.
-     */
-    private function mergeConfig(string $file): void
-    {
-        $config = $this->app->make('config');
-
-        if ($this->app instanceof CachesConfiguration && $this->app->configurationIsCached() && $config->has($file)) {
-            return;
-        }
-
-        $config->set($file, array_merge(require Hata::path("config/{$file}.php"), (array) $config->get($file, [])));
-    }
-
-    /**
      * Gives spatie/laravel-permission its whole default config when the site has not published one (or only part of
      * it). Spatie's own provider merges its file one level deep, so a host `permission` array that holds just
      * `models.role` (which Hata sets below) would hide spatie's other `models` and every other key, and the
@@ -188,7 +165,7 @@ class HataServiceProvider extends ServiceProvider
     private function configurePackages(): void
     {
         config([
-            'app.available_locales' => config('app.available_locales') ?? [
+            'hata.admin.interface_locales' => config('hata.admin.interface_locales') ?? [
                 'en' => 'English',
                 'uk' => 'Українська',
             ],
@@ -304,7 +281,7 @@ class HataServiceProvider extends ServiceProvider
             'livewire.temporary_file_upload.rules' => [
                 'required',
                 'file',
-                'max:'.(max((int) config('media.limits.image_mb'), (int) config('media.limits.document_mb')) * 1024),
+                'max:'.(max((int) config('hata.media.limits.image_mb'), (int) config('hata.media.limits.document_mb')) * 1024),
             ],
         ]);
     }
@@ -396,6 +373,8 @@ class HataServiceProvider extends ServiceProvider
      */
     private function configureAssets(): void
     {
+        $this->publishes([Hata::path('config/hata.php') => config_path('hata.php')], 'hata-config');
+
         $this->publishes(
             [Hata::path('dist') => public_path(HataAssets::DIRECTORY)],
             ['laravel-assets', 'hata-assets'],

@@ -90,7 +90,7 @@ it('maps the storage settings onto config and rebuilds the s3 disk', function ()
         'media_s3_prefix' => 'prod',
     ]);
 
-    expect(config('media.disk'))->toBe('s3')
+    expect(config('hata.media.disk'))->toBe('s3')
         ->and(config('filesystems.disks.s3.endpoint'))->toBe('http://minio.test:9000')
         ->and(config('filesystems.disks.s3.region'))->toBe('eu-west-1')
         ->and(config('filesystems.disks.s3.key'))->toBe('k')
@@ -113,7 +113,7 @@ it('stores the s3 settings from the media tab, encrypts the secret and never ren
 
     expect($stored)->not->toBe('topsecret')
         ->and(Crypt::decryptString($stored))->toBe('topsecret')
-        ->and(config('media.disk'))->toBe('s3')
+        ->and(config('hata.media.disk'))->toBe('s3')
         ->and(config('filesystems.disks.s3.bucket'))->toBe('media-bucket')
         ->and(config('filesystems.disks.s3.url'))->toBe('https://cdn.example.com')
         ->and(config('filesystems.disks.s3.root'))->toBe('prod')
@@ -151,7 +151,7 @@ it('refuses to save s3 as the storage when the connection test fails, and keeps 
 
     expect(Setting::query()->where('key', 'like', 'media_s3_%')->exists())->toBeFalse()
         ->and(Setting::query()->where('key', 'media_storage')->exists())->toBeFalse()
-        ->and(config('media.disk'))->toBe('local');
+        ->and(config('hata.media.disk'))->toBe('local');
 });
 
 it('saves the connection fields without a test while the storage stays local', function () {
@@ -164,7 +164,7 @@ it('saves the connection fields without a test while the storage stays local', f
 
     expect($test->calls)->toBe([])
         ->and(config('filesystems.disks.s3.bucket'))->toBe('media-bucket')
-        ->and(config('media.disk'))->toBe('local');
+        ->and(config('hata.media.disk'))->toBe('local');
 });
 
 it('requires a bucket, key and secret for s3', function () {
@@ -255,14 +255,14 @@ it('refuses to clear the connection while files are on s3', function () {
 });
 
 it('says how many files are on the other disk', function () {
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
     Media::factory()->count(2)->create(['disk' => 's3']);
 
     storageTab()->assertSee(trans_choice('hata::site_settings.media.storage.other_disk', 2, ['count' => 2]));
 });
 
 it('does not count files that belong on the private disk as being on the other disk', function () {
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
     Media::factory()->document()->create(['disk' => 'local']);
     Media::factory()->create(['disk' => 'local', 'mime' => 'image/svg+xml']);
     Media::factory()->create(['disk' => 'public']);
@@ -271,7 +271,7 @@ it('does not count files that belong on the private disk as being on the other d
 });
 
 it('counts rasters on the private disk and anything on s3 as being on the other disk', function () {
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
     Media::factory()->create(['disk' => 'local']);
     Media::factory()->document()->create(['disk' => 's3']);
 
@@ -279,7 +279,7 @@ it('counts rasters on the private disk and anything on s3 as being on the other 
 });
 
 it('links the files on the other disk to the move page for users who may move them', function () {
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
@@ -292,7 +292,7 @@ it('links the files on the other disk to the move page for users who may move th
 });
 
 it('advertises no move while the private local mode from .env is in effect', function () {
-    config(['media.disk' => 'local']);
+    config(['hata.media.disk' => 'local']);
     Media::factory()->count(2)->create(['disk' => 's3']);
     Media::factory()->create(['disk' => 'public']);
 
@@ -302,7 +302,7 @@ it('advertises no move while the private local mode from .env is in effect', fun
 });
 
 it('counts the files on the other disk once, not on every update of the tab', function () {
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
     Media::factory()->count(2)->create(['disk' => 's3']);
     $component = storageTab()->assertSee(trans_choice('hata::site_settings.media.storage.other_disk', 2, ['count' => 2]));
 
@@ -443,7 +443,7 @@ it('shows the connection fields only for s3 or while files are on s3', function 
 });
 
 it('lets the storage go back to local while files are on s3, without testing the connection', function () {
-    config(['media.disk' => 's3']);
+    config(['hata.media.disk' => 's3']);
     $test = fakeConnectionTest(['ok' => false, 'step' => 'credentials', 'message' => 'refused']);
     Media::factory()->create(['disk' => 's3']);
 
@@ -463,18 +463,18 @@ it('accepts public and s3 as the storage and rejects local', function () {
 });
 
 it('loads the storage as public unless the disk is s3', function () {
-    config(['media.disk' => 'local']);
+    config(['hata.media.disk' => 'local']);
     storageTab()->assertSet('form.media_storage', 'public');
 
-    config(['media.disk' => 'public']);
+    config(['hata.media.disk' => 'public']);
     storageTab()->assertSet('form.media_storage', 'public');
 
-    config(['media.disk' => 's3']);
+    config(['hata.media.disk' => 's3']);
     storageTab()->assertSet('form.media_storage', 's3');
 });
 
 describe('direct serving status', function () {
-    beforeEach(fn () => config(['media.disk' => 'public']));
+    beforeEach(fn () => config(['hata.media.disk' => 'public']));
 
     it('shows the status line and the right button for each state', function (string $state, bool $linked, bool $confirmed, bool $create, bool $check) {
         DirectServing::fake(linked: $linked, confirmed: $confirmed, state: $state);
@@ -497,7 +497,7 @@ describe('direct serving status', function () {
     });
 
     it('hides the status while the saved storage is not this server', function () {
-        config(['media.disk' => 's3']);
+        config(['hata.media.disk' => 's3']);
         DirectServing::fake(state: 'link_missing');
 
         storageTab()->assertDontSeeHtml('data-test="direct-status-link_missing"');

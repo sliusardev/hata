@@ -48,7 +48,7 @@ test('running it again keeps permissions that administrators assigned', function
 });
 
 test('the database seeder creates the initial super admin from the configuration', function () {
-    config(['admin.initial_admin' => [
+    config(['hata.admin.initial_admin' => [
         'name' => 'Owner',
         'email' => 'Owner@Example.com',
         'password' => 'secret-password',
@@ -64,7 +64,7 @@ test('the database seeder creates the initial super admin from the configuration
 });
 
 test('the database seeder creates no user when no initial admin is configured', function () {
-    config(['admin.initial_admin' => ['name' => null, 'email' => null, 'password' => null]]);
+    config(['hata.admin.initial_admin' => ['name' => null, 'email' => null, 'password' => null]]);
 
     $this->seed(DatabaseSeeder::class);
 

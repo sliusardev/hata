@@ -18,7 +18,7 @@ use Spatie\Permission\PermissionRegistrar;
 beforeEach(function () {
     Storage::fake('local');
     seedRolesAndPermissions();
-    config(['media.optimize.enabled' => true, 'queue.default' => 'sync']);
+    config(['hata.media.optimize.enabled' => true, 'queue.default' => 'sync']);
     $this->actor = User::factory()->withPermissions(['admin.access', 'media.view', 'media.edit'])->create();
     $this->actingAs($this->actor);
 });
@@ -55,7 +55,7 @@ it('shows the candidate count and a start button', function () {
 });
 
 it('links to the media settings when optimization is off', function () {
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     $this->get(route('admin.media.optimize'))
         ->assertOk()
@@ -175,7 +175,7 @@ it('does not force the browser mode on a reload when a queue is available', func
 });
 
 it('shows a toast when optimization is off', function () {
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     Livewire::test('hata::admin.media.optimize')
         ->call('start')
@@ -220,7 +220,7 @@ it('offers to start over when the settings changed', function () {
     pageCandidate();
     Livewire::test('hata::admin.media.optimize')->call('start');
 
-    config(['media.optimize.quality' => 61]);
+    config(['hata.media.optimize.quality' => 61]);
 
     Livewire::test('hata::admin.media.optimize')
         ->assertSee(__('hata::media.optimize.stale_heading'))
@@ -276,7 +276,7 @@ it('polls with keep-alive while running, so a background tab keeps the run going
 
 it('does not show a candidate count while optimization is off', function () {
     pageCandidate();
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     $this->get(route('admin.media.optimize'))
         ->assertOk()
@@ -290,7 +290,7 @@ it('pauses a running run once optimization is turned off', function (string $que
     pageCandidate();
     $component = Livewire::test('hata::admin.media.optimize')->call('start');
 
-    config(['media.optimize.enabled' => false]);
+    config(['hata.media.optimize.enabled' => false]);
 
     $component->call('tick')->assertSee(__('hata::media.optimize.status.paused'));
 

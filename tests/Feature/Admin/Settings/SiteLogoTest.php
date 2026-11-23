@@ -52,7 +52,7 @@ test('choosing a logo through the picker binding stores the id, records the usag
 
     $setting = Setting::query()->where('key', 'logo_light')->firstOrFail();
     expect($setting->value)->toBe($media->id)
-        ->and(config('admin.logo.light'))->toBe($media->id)
+        ->and(config('hata.admin.logo.light'))->toBe($media->id)
         ->and(MediaUsage::query()->where('media_id', $media->id)->where('field', 'logo_light')->where('usable_id', $setting->id)->count())->toBe(1)
         ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.logo.chosen'));
 });
@@ -102,7 +102,7 @@ test('a refused id puts the stored logo back in the field', function () {
         ->assertHasErrors('logoLight')
         ->assertSet('logoLight', $media->id);
 
-    expect(config('admin.logo.light'))->toBe($media->id);
+    expect(config('hata.admin.logo.light'))->toBe($media->id);
 });
 
 test('opening the picker on an empty slot (the picker echoing the empty value) changes nothing', function (mixed $empty) {
@@ -143,7 +143,7 @@ test('settings.edit without media.view cannot take a library file as a logo, but
         ->and(Setting::query()->where('key', 'logo_dark')->exists())->toBeFalse();
 
     app(SetLogo::class)->handle($actor, 'light', $media->id);
-    expect(config('admin.logo.light'))->toBe($media->id);
+    expect(config('hata.admin.logo.light'))->toBe($media->id);
 });
 
 test('removing a logo unlinks it, keeps the file and drops the usage', function () {
@@ -230,7 +230,7 @@ test('deleting the logo file in the library clears the setting', function () {
     app(DeleteMedia::class)->handle($actor, $media);
 
     expect(Setting::count())->toBe(0)
-        ->and(config('admin.logo.light'))->toBeNull()
+        ->and(config('hata.admin.logo.light'))->toBeNull()
         ->and(SiteLogo::isCustom())->toBeFalse()
         ->and(app(SiteSettings::class)->has('logo_light'))->toBeFalse();
 });
@@ -244,7 +244,7 @@ test('deleting a folder that holds the logo file clears the setting', function (
 
     app(DeleteFolder::class)->handle($actor, $folder);
 
-    expect(Setting::count())->toBe(0)->and(config('admin.logo.dark'))->toBeNull();
+    expect(Setting::count())->toBe(0)->and(config('hata.admin.logo.dark'))->toBeNull();
 });
 
 test('a delete that fails after the logo was forgotten leaves the setting, the cache and the files intact', function () {
@@ -262,7 +262,7 @@ test('a delete that fails after the logo was forgotten leaves the setting, the c
     expect(fn () => app(DeleteMedia::class)->handle($actor, $media))->toThrow(RuntimeException::class);
 
     expect(Setting::query()->where('key', 'logo_light')->value('value'))->toBe($media->id)
-        ->and(config('admin.logo.light'))->toBe($media->id)
+        ->and(config('hata.admin.logo.light'))->toBe($media->id)
         ->and(app(SiteSettings::class)->stored()['logo_light'])->toBe($media->id)
         ->and(MediaUsage::count())->toBe(1)
         ->and(Media::find($media->id))->not->toBeNull();

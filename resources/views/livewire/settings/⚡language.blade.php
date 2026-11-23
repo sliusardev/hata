@@ -24,7 +24,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::settings.language.title')] cla
     public function updateLocale(): void
     {
         $validated = $this->validate([
-            'locale' => ['required', 'string', Rule::in(array_keys(config('app.available_locales')))],
+            'locale' => ['required', 'string', Rule::in(array_keys(config('hata.admin.interface_locales')))],
         ]);
 
         Auth::user()->update(['locale' => $validated['locale']]);
@@ -45,7 +45,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::settings.language.title')] cla
     <x-hata::settings.layout :heading="__('hata::settings.language.heading')" :subheading="__('hata::settings.language.description')">
         <form wire:submit="updateLocale" class="my-6 w-full space-y-6">
             <flux:select wire:model="locale" :label="__('hata::settings.language.label')">
-                @foreach (config('app.available_locales') as $code => $name)
+                @foreach (config('hata.admin.interface_locales') as $code => $name)
                     <flux:select.option :value="$code" wire:key="locale-{{ $code }}">{{ $name }}</flux:select.option>
                 @endforeach
             </flux:select>

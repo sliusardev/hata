@@ -235,7 +235,7 @@ new class extends Component {
         $this->authorize('viewAny', Media::class);
 
         $this->target = preg_match('/^[A-Za-z0-9_.:-]{1,100}$/', $target) === 1 ? $target : '';
-        $this->altLocale = array_key_exists($locale, (array) config('app.available_locales')) ? $locale : '';
+        $this->altLocale = array_key_exists($locale, (array) config('hata.admin.interface_locales')) ? $locale : '';
         $this->picked = [];
         $this->lastUnpicked = null;
         $this->tab = 'library';
@@ -738,7 +738,7 @@ new class extends Component {
                     $uploaderConfig = $this->uploaderConfig;
                     $acceptance = $this->acceptance();
                     $focused = $this->focused;
-                    $locales = (array) config('app.available_locales');
+                    $locales = (array) config('hata.admin.interface_locales');
                     $primaryLocale = Hata\Models\Media::primaryAltLocale();
                 @endphp
 

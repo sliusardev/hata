@@ -430,7 +430,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
      */
     public function logoIsMissing(string $variant): bool
     {
-        return is_int(config("admin.logo.{$variant}")) && $this->chosenLogos[$variant] === null;
+        return is_int(config("hata.admin.logo.{$variant}")) && $this->chosenLogos[$variant] === null;
     }
 
     /**
@@ -487,7 +487,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
 
         $property = $variant === 'light' ? 'logoLight' : 'logoDark';
         $value = $this->{$property};
-        $stored = config("admin.logo.{$variant}");
+        $stored = config("hata.admin.logo.{$variant}");
         $stored = is_int($stored) ? $stored : null;
 
         // The picker echoes its value when it opens, so an empty value on an empty slot, or the stored id, is no change.
@@ -602,7 +602,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
     #[Computed]
     public function optimizationCard(): array
     {
-        if (! config('media.optimize.enabled')) {
+        if (! config('hata.media.optimize.enabled')) {
             return ['enabled' => false, 'run' => null, 'count' => 0, 'saving' => ''];
         }
 
@@ -752,7 +752,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
     #[Computed]
     public function filesOnOtherDisk(): int
     {
-        $disk = (string) config('media.disk');
+        $disk = (string) config('hata.media.disk');
 
         if (! in_array($disk, MoveMediaToDisk::TARGETS, true)) {
             return 0;
@@ -1137,7 +1137,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
             </flux:radio.group>
             <flux:error name="form.media_storage" />
 
-            @if (MediaDisks::publishes((string) config('media.disk')))
+            @if (MediaDisks::publishes((string) config('hata.media.disk')))
                 @php($directState = $this->directState)
                 <div class="flex flex-wrap items-center gap-3" x-data="{ checking: false }" x-on:media-direct-checked.window="$wire.$refresh()" data-test="direct-status-{{ $directState }}">
                     <flux:text @class(['max-w-prose', 'text-amber-600 dark:text-amber-400' => in_array($directState, ['link_missing', 'unreachable'], true)])>{{ __('hata::site_settings.media.storage.direct.'.$directState, ['url' => app(DirectServing::class)->probeUrl()]) }}</flux:text>
@@ -1155,7 +1155,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
                     <flux:callout.text>
                         {{ trans_choice('hata::site_settings.media.storage.other_disk', $this->filesOnOtherDisk, ['count' => $this->filesOnOtherDisk]) }}
                         @can('moveToDisk', Media::class)
-                            <flux:link :href="route('admin.media.move')" wire:navigate data-test="move-files-link">{{ __('hata::site_settings.media.storage.move_link', ['storage' => __('hata::site_settings.media.storage.'.config('media.disk'))]) }}</flux:link>
+                            <flux:link :href="route('admin.media.move')" wire:navigate data-test="move-files-link">{{ __('hata::site_settings.media.storage.move_link', ['storage' => __('hata::site_settings.media.storage.'.config('hata.media.disk'))]) }}</flux:link>
                         @endcan
                     </flux:callout.text>
                 </flux:callout>

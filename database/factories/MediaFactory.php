@@ -30,7 +30,7 @@ class MediaFactory extends Factory
 
         return [
             'key' => $key,
-            'disk' => config('media.disk', 'local'),
+            'disk' => config('hata.media.disk', 'local'),
             'path' => 'media/'.now()->format('Y/m').'/'.$key.'.webp',
             'name' => $slug.'.webp',
             'kind' => MediaKind::Image,

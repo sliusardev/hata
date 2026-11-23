@@ -21,7 +21,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::media.move.title')] class exte
     {
         $run = $this->run;
 
-        return $run !== null && $run->status !== 'done' ? $run->target : (string) config('media.disk');
+        return $run !== null && $run->status !== 'done' ? $run->target : (string) config('hata.media.disk');
     }
 
     /**

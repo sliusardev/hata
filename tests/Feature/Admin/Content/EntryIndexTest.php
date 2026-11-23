@@ -325,7 +325,7 @@ test('restoring from the trash tab needs pages.edit', function () {
     $this->actingAs(contentViewer(['pages.delete']));
     entryList(['tab' => 'trash'])->call('restore', $entry->id)->assertForbidden();
 
-    $removal = Entry::withTrashed()->find($entry->id)->deleted_at->addDays(30)->tz(config('admin.timezone'))->isoFormat('LL');
+    $removal = Entry::withTrashed()->find($entry->id)->deleted_at->addDays(30)->tz(config('hata.admin.timezone'))->isoFormat('LL');
 
     $this->actingAs(contentViewer(['pages.edit']));
     entryList(['tab' => 'trash'])

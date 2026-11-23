@@ -29,7 +29,7 @@ class MediaDetailsForm extends Form
         $this->title = $media->title ?? '';
         $this->alt = [];
 
-        foreach (array_keys((array) config('app.available_locales')) as $locale) {
+        foreach (array_keys((array) config('hata.admin.interface_locales')) as $locale) {
             $this->alt[(string) $locale] = $media->altFor((string) $locale, fallback: false);
         }
 

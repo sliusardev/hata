@@ -121,7 +121,7 @@ final class EntryInput
             return null;
         }
 
-        return Date::parse($value, (string) config('admin.timezone'))->utc()->toImmutable();
+        return Date::parse($value, (string) config('hata.admin.timezone'))->utc()->toImmutable();
     }
 
     /**

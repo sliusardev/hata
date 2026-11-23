@@ -33,7 +33,7 @@ class SetLogo
         }
 
         // Without media.view a file can't be browsed, so only the logo already in place may be kept.
-        if (config("admin.logo.{$variant}") !== $mediaId) {
+        if (config("hata.admin.logo.{$variant}") !== $mediaId) {
             Gate::forUser($actor)->authorize('viewAny', Media::class);
         }
 

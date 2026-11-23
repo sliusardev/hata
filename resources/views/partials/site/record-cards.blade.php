@@ -15,7 +15,7 @@
                     <h2 class="text-lg font-semibold leading-snug text-zinc-900 group-hover:underline dark:text-white">{{ $record->title }}</h2>
                 </a>
                 @if ($record->published_at !== null)
-                    <time datetime="{{ $record->published_at->toDateString() }}" class="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">{{ $record->published_at->tz(config('admin.timezone'))->isoFormat('LL') }}</time>
+                    <time datetime="{{ $record->published_at->toDateString() }}" class="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">{{ $record->published_at->tz(config('hata.admin.timezone'))->isoFormat('LL') }}</time>
                 @endif
                 @if (filled($record->excerpt))
                     <p class="mt-2 text-zinc-600 dark:text-zinc-300">{{ $record->excerpt }}</p>

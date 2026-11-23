@@ -225,7 +225,7 @@ describe('preview', function () {
     });
 
     it('names the date of a scheduled page in the site\'s timezone', function () {
-        config(['admin.timezone' => 'Pacific/Auckland']);
+        config(['hata.admin.timezone' => 'Pacific/Auckland']);
         $scheduled = Entry::factory()->page()->scheduled()->inLocale('uk')->create(['slug' => 'soon', 'path' => 'soon']);
         browseAs(pageEditor());
 

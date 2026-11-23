@@ -84,8 +84,8 @@ it('saves alt text per language and the title', function () {
 
 it('shows the primary alt text and folds the other languages into translations', function () {
     config([
-        'content.interface_default' => 'uk',
-        'app.available_locales' => ['en' => 'English', 'uk' => 'Українська', 'pl' => 'Polski', 'de' => 'Deutsch'],
+        'hata.content.interface_default' => 'uk',
+        'hata.admin.interface_locales' => ['en' => 'English', 'uk' => 'Українська', 'pl' => 'Polski', 'de' => 'Deutsch'],
     ]);
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create(['alt' => ['uk' => 'Каша в мисці', 'pl' => 'Kaszka w misce']]);
@@ -113,7 +113,7 @@ it('opens the full file in a new tab from the preview and the open button', func
 });
 
 it('shows no translations block with a single language', function () {
-    config(['content.interface_default' => 'en', 'app.available_locales' => ['en' => 'English']]);
+    config(['hata.content.interface_default' => 'en', 'hata.admin.interface_locales' => ['en' => 'English']]);
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create(['alt' => ['en' => 'Bowl']]);
 
@@ -256,7 +256,7 @@ it('shows the panel line for an upload the server was too short of memory to opt
 });
 
 it('says which format a file was uploaded as without a kept original', function () {
-    config(['media.optimize.keep_originals' => false]);
+    config(['hata.media.optimize.keep_originals' => false]);
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.upload'])->create());
     $media = app(UploadMedia::class)->handle(auth()->user(), uploadedImage('photo.jpg', makeImage('jpg', 400, 300)));
 

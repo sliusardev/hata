@@ -89,10 +89,10 @@ final class ColorScheme
     public static function current(): self
     {
         return self::resolve(
-            (string) config('admin.colors.scheme'),
-            config('admin.colors.accent'),
-            config('admin.colors.gray'),
-            (bool) config('admin.colors.tint_sidebar'),
+            (string) config('hata.admin.colors.scheme'),
+            config('hata.admin.colors.accent'),
+            config('hata.admin.colors.gray'),
+            (bool) config('hata.admin.colors.tint_sidebar'),
         );
     }
 

@@ -35,7 +35,7 @@ matches nothing while no type is registered). Keys follow the permission segment
 that is already registered (`InvalidArgumentException`). The bases are not checked there: `assertValidBases()` checks
 every registered type's base in every language of the catalogue (about 130 `base()` calls per type), which would be
 paid on every request, since the registry is built on each one; a wrong base is a developer's mistake that
-`make:content-type` (its own checks), `content:check` and a test over the site's `config/content.php` catch.
+`make:content-type` (its own checks), `content:check` and a test over the site's `config/hata.php` catch.
 `register()` also
 registers the type's `view`, `create`, `edit` and `delete` (`ContentTypes::ACTIONS`) with `PermissionRegistry`, so
 a type registered at any time (a module's, or a test's) is seen by `permissions:sync` and the role matrix.
@@ -46,7 +46,7 @@ from `boot()`: the admin routes' `{type}` pattern (`pattern()`) is built when th
 another provider boots, and a type registered after that has no admin pages (and the route cache keeps the pattern it
 was built with).
 
-`App\Providers\ContentServiceProvider` binds the singleton and registers the classes listed in `config/content.php`
+`App\Providers\ContentServiceProvider` binds the singleton and registers the classes listed in `config/hata.php`
 → `types`, in that order (each made by the container): `PagesType` (key `pages`, hierarchical, no base, no fields) and
 `PostsType` (key `posts`, flat, base `posts` in every language, one field: `Gallery::make('gallery')`, per language)
 in the kit. The list holds class names only, so the config cache keeps it and a request pays nothing for it; a type's
@@ -98,7 +98,7 @@ names are cleared.
 
 A registered type can be switched off without removing it: Site settings → Content types (`SetContentTypeActive`,
 `settings.edit`; decision 68). The keys that are off are the site setting `content_disabled_types` (config
-`content.disabled_types`), read at call time by `ContentTypes::disabledKeys()`, `isActive($key)` and `active()`
+`hata.content.disabled_types`), read at call time by `ContentTypes::disabledKeys()`, `isActive($key)` and `active()`
 (`all()` still returns every registered type). A type whose `required()` returns true is always on (`PagesType`).
 
 While a type is off: the sidebar leaves it out (`active()`), its admin pages answer 404 (the list, the create and the
@@ -114,7 +114,7 @@ request already loads.
 
 `php artisan make:content-type Posts` (`App\Console\Commands\MakeContentType` over
 `App\Support\Content\ContentTypeGenerator`) writes `app/Support/Content/Types/PostsType.php`, adds the class to
-`config/content.php` → `types` (with its `use` line), and adds the type's lines to every language's `content.php`
+`config/hata.php` → `content.types` (with its `use` line), and adds the type's lines to every language's `content.php`
 (`types.<key>`: `label`, `plural`, `description`, `new`, `create`) and `permissions.php` (`groups.<key>`,
 `items.<key>.*`), which are the site's own files (a site type has the empty prefix). The lines are English in every language, built from the name, to be translated by the developer.
 
@@ -145,7 +145,7 @@ other failure midway (a file that cannot be written) puts every changed file bac
 lines, run `permissions:sync`, give the permissions to roles, and rebuild the config and route caches if they are
 cached. The command only writes files; it runs no migration and writes nothing to the database.
 
-`config/content.php` → `trash_days` (30): how long a trashed record is kept (`PruneEntryTrash`).
+`config/hata.php` → `hata.content.trash_days` (30): how long a trashed record is kept (`PruneEntryTrash`).
 
 ## Fields
 
@@ -321,7 +321,7 @@ box shows a skeleton; if it fails, a message asks to reload.
 | `author_id` | nullable, one of `EntryAuthors`, or the record's current author (who may have lost the permission since) |
 | `image_id` | nullable, `MediaSelection('image')` |
 | `status` | required, `draft` or `published` (the stored status; a future date with `published` schedules) |
-| `published_at` | nullable date, read in the site's display timezone (`admin.timezone`) and returned in UTC (decision 38) |
+| `published_at` | nullable date, read in the site's display timezone (`hata.admin.timezone`) and returned in UTC (decision 38) |
 | `excerpt` / `seo_title` / `seo_description` | at most 1000 / 255 / 500; trimmed, empty becomes null |
 | `body` | nullable string of at most `EntryInput::BODY_MAX_BYTES` (1 000 000 bytes, under the sanitizer's cut), so a long body is a field error, never cut |
 | `fields.<name>` | each field's own `rules()` |
@@ -417,7 +417,7 @@ parent).
 | `RestoreEntry::handle($actor, $entry): Entry` | `restore` (`edit`) | restores the record and the descendants carrying exactly its `deleted_at` (trashed with it); a child trashed earlier on its own keeps its own time and stays. Two trash actions within the same second share a timestamp, so they restore together. A record below the top level whose parent is still in the trash (or gone) becomes top level: the slug gets a suffix when that path is taken or reserved (`suggest()`), and `move(..., keepOldPaths: false)` carries its descendants' paths along without redirects; the parent restored later comes back without it. When another request takes the suggested path before the write (the unique index refuses it), the writes roll back to their savepoint and a fresh suggestion is tried once; a second refusal is a `ProtectedActionException` (`content.entry.restore_conflict`) and nothing is restored. A live record is returned unchanged |
 | `DeleteEntry::handle($actor, $entry): void` | `forceDelete` (`delete`) | only a trashed record (`ProtectedActionException`, `content.entry.not_trashed`); removes it and every trashed record under its path (same type and language), whenever each was trashed. Only trashed rows are touched |
 | `EmptyEntryTrash::handle($actor, $type, $locales): int` | the type's `delete` | deletes for good every trashed record of the type in those languages, 200 per chunk, a transaction per chunk (`purge()`); the list's "Empty the trash" |
-| `PruneEntryTrash::handle(): int` | none (decision 16) | deletes for good what was trashed more than `content.trash_days` days ago, with every trashed record under it (even one trashed after the cut-off), 200 records per chunk, a transaction per chunk |
+| `PruneEntryTrash::handle(): int` | none (decision 16) | deletes for good what was trashed more than `hata.content.trash_days` days ago, with every trashed record under it (even one trashed after the cut-off), 200 records per chunk, a transaction per chunk |
 
 `DeleteEntry::purge($records)` (trashed records loaded with `id`, `type`, `locale` and `path`) is the removal both
 share, without authorization: it loads the records with every trashed record under their paths with
@@ -614,7 +614,7 @@ error instead of creating a record outside the group. Save calls
   fields) and the excerpt; a "Details" card with `localFields()` when the type has any; the "Search engines" card with a
   live preview (address; title: the SEO title alone, else the title, " - " and the site name, the rule of
   `Entry::documentTitle()`; description falling back to the excerpt) and the SEO title and description.
-- **Right column**: "Publication" (status Draft/Published, date and time as `datetime-local` in `admin.timezone` with
+- **Right column**: "Publication" (status Draft/Published, date and time as `datetime-local` in `hata.admin.timezone` with
   the timezone named under it; a hint when Published with a future date, and when Published without a date); a user
   without the type's `edit` sees the status fixed to Draft with a line that an editor publishes it. "Language and
   translations" (hidden on a site with one language): the record's language (the select, or the fixed row), `n of
@@ -805,7 +805,7 @@ lists the stored ones (in every language, trashed ones included) and fails when 
 - `partials/site/language-switcher.blade.php`: a `<details>` with plain links, no JavaScript; each active language links
   to the translation when it is among the alternates, else to that language's home (`ContentLocales::route('home', [],
   $code)`); the current language links to the current page and carries `aria-current`. Absent with one language.
-- `site/entry.blade.php`: the preview strip ("Draft", or "Scheduled for <date and time in `admin.timezone`>", a note that
+- `site/entry.blade.php`: the preview strip ("Draft", or "Scheduled for <date and time in `hata.admin.timezone`>", a note that
   visitors do not see the page yet, and an "Edit" link), the title as `<h1>`, a small "Edit" link for an editor on a
   published page (guests see neither), the image (current URL, `width`/`height`, the file's alt in the page's
   language), and the body in `.rich-text-content` (the editor's typography: headings, lists, quotes, code, rules, images
@@ -900,7 +900,7 @@ page and the terms on a record's page, a trashed and a deleted term, everything 
 query counts of a list and a term page.
 `tests/Feature/Content/GalleryFieldTest.php`: a gallery field on the public page (the picked order, images only) and no
 media query for an empty one, with the fixture type. The site's own types need no tests: `Tests\TestCase` runs every
-test with the pages type alone, whatever `config/content.php` lists (and drops those types' permissions from the role
+test with the pages type alone, whatever `config/hata.php` lists (and drops those types' permissions from the role
 defaults), so adding a type never changes a test's result; a test that needs another type registers a fixture.
 `tests/Feature/Console/CheckContentAddressesTest.php`: `content:check` passing, and listing the pages at and under
 another type's base.

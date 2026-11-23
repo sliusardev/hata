@@ -34,7 +34,7 @@ it('filters by kind and ignores an unknown type', function () {
 });
 
 it('reads the month in the site timezone as a utc range', function () {
-    config(['admin.timezone' => 'Europe/Kyiv']);
+    config(['hata.admin.timezone' => 'Europe/Kyiv']);
 
     [$start, $end] = MediaFilters::monthRange('2026-03');
 

@@ -67,7 +67,7 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * The suite tests the content mechanism, not the site's own list of types: whatever `config/content.php` lists,
+     * The suite tests the content mechanism, not the site's own list of types: whatever `config/hata.php` lists,
      * tests run with the pages type alone (and register a fixture type when they need another), so adding a type
      * to the site never changes a test's result and needs no test of its own.
      */
@@ -82,10 +82,10 @@ abstract class TestCase extends BaseTestCase
         $ownsPermission = fn (string $permission): bool => in_array(explode('.', $permission)[0], $siteTypes, true);
 
         config([
-            'content.types' => [PagesType::class],
-            'permissions.roles' => array_map(
+            'hata.content.types' => [PagesType::class],
+            'hata.permissions.roles' => array_map(
                 fn (array $permissions): array => array_values(array_filter($permissions, fn (string $permission): bool => ! $ownsPermission($permission))),
-                (array) config('permissions.roles'),
+                (array) config('hata.permissions.roles'),
             ),
         ]);
 

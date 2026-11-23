@@ -3,7 +3,7 @@
 namespace Hata\Support\Localization;
 
 /**
- * One language of the catalogue (config/languages.php).
+ * One language of the catalogue (config/internal/languages.php).
  */
 final readonly class Language
 {
@@ -39,10 +39,10 @@ final readonly class Language
 
     /**
      * Whether the admin and the sign-in pages are translated into this language (a lang/<code>/ folder listed
-     * in `app.available_locales`).
+     * in `hata.admin.interface_locales`).
      */
     public function hasInterface(): bool
     {
-        return array_key_exists($this->code, (array) config('app.available_locales'));
+        return array_key_exists($this->code, (array) config('hata.admin.interface_locales'));
     }
 }

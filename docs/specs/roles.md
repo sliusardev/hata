@@ -14,7 +14,7 @@ Components: `resources/views/pages/admin/roles/`. The create and edit pages exte
 
 ## Permissions
 
-- **Registry:** `config/permissions.php` → `groups` (`resource => [actions]`, name `resource.action`). Modules extend it with `app(PermissionRegistry::class)->register('pages', [...])`.
+- **Registry:** `config/internal/permissions.php` → `groups` (`resource => [actions]`, name `resource.action`). Modules extend it with `app(PermissionRegistry::class)->register('pages', [...])`.
 - **Permissions:** `admin.access`, `users.view|create|edit|delete`, `roles.view|create|edit|delete`, `settings.edit` (see [site settings](site-settings.md)), `media.view|upload|edit|delete` (see [media](media.md)), and per content type `<type>.view|create|edit|delete`, today `pages.view|create|edit|delete` (registered by `ContentTypes::register()`, not in the config file; see [content](content.md)).
 - **Sync:** `php artisan permissions:sync` creates missing permissions and lists stale ones; `--prune` deletes them. It also clears the Spatie cache.
 - **Labels:** `permissions.groups.<resource>`, `permissions.items.<resource>.<action>` in the translations of the registering owner: Hata's own groups and kit types in `hata::permissions` (`resources/lang/*/permissions.php`), a site's or module's in its own `permissions` (or `shop::permissions` for a package, passed to `PermissionRegistry::register($group, $actions, $prefix)`). A group's label prefix is that of its first registration, a permission's that of the registration that added it; `groupLabel()`/`permissionLabel()` fall back to the site's `permissions.*` when the owner has no line. A test checks every registered permission has a label in every language through the key the registry builds.
@@ -29,10 +29,10 @@ Components: `resources/views/pages/admin/roles/`. The create and edit pages exte
 | `editor` | `admin.access`, the four `media.*` and the four `pages.*` permissions | |
 | `author` | `admin.access` | |
 
-**Reserved permissions** (`config/permissions.php` → `reserved`, currently `maintenance.run`): `*` in a role's defaults does not grant them (`RoleSeeder` subtracts the list when it expands `*`). They are listed in the registry, the matrix and `permissions:sync` like any permission, so a super admin can give one to a role on purpose; rule 5 keeps everyone else from granting what they don't have.
+**Reserved permissions** (`config/internal/permissions.php` → `reserved`, currently `maintenance.run`): `*` in a role's defaults does not grant them (`RoleSeeder` subtracts the list when it expands `*`). They are listed in the registry, the matrix and `permissions:sync` like any permission, so a super admin can give one to a role on purpose; rule 5 keeps everyone else from granting what they don't have.
 
 - Created by `RoleSeeder` (from `DatabaseSeeder`) with `is_system = true`. Reseeding only adds permissions, never removes them.
-- Default permissions are in `config/permissions.php` → `roles`. Names are translated via `roles.names.<name>`.
+- Default permissions are in `config/internal/permissions.php` → `roles`. Names are translated via `roles.names.<name>`.
 - The `App\Models\Role` model (extends Spatie's) adds `label` and `is_system`. `displayName()` returns the translation for system roles and `label` for custom ones.
 
 ## List

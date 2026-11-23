@@ -27,15 +27,15 @@ test('it ignores keys that are not settings', function () {
 test('without a stored row the media config keeps its default', function () {
     app(SiteSettings::class)->apply();
 
-    expect(config('media.optimize.quality'))->toBe(80);
+    expect(config('hata.media.optimize.quality'))->toBe(80);
 });
 
 test('stored media settings reach config as real bools and ints', function () {
     app(SiteSettings::class)->put(['media_strip_exif' => false, 'media_max_side' => 0, 'media_quality' => 65]);
 
-    expect(config('media.optimize.strip_exif'))->toBeFalse()
-        ->and(config('media.optimize.max_side'))->toBeNull()
-        ->and(config('media.optimize.quality'))->toBe(65);
+    expect(config('hata.media.optimize.strip_exif'))->toBeFalse()
+        ->and(config('hata.media.optimize.max_side'))->toBeNull()
+        ->and(config('hata.media.optimize.quality'))->toBe(65);
 });
 
 test('a queued job sees settings changed after the worker booted, and removed ones revert', function () {
@@ -47,12 +47,12 @@ test('a queued job sees settings changed after the worker booted, and removed on
     Setting::query()->updateOrCreate(['key' => 'media_quality'], ['value' => 70]);
     Cache::forget(SiteSettings::CACHE_KEY);
 
-    expect(config('media.optimize.quality'))->toBe(65);
+    expect(config('hata.media.optimize.quality'))->toBe(65);
 
     event(new JobProcessing('database', new SyncJob(app(), '{}', 'database', 'default')));
 
-    expect(config('media.optimize.quality'))->toBe(70)
-        ->and(config('media.optimize.keep_originals'))->toBeTrue();
+    expect(config('hata.media.optimize.quality'))->toBe(70)
+        ->and(config('hata.media.optimize.keep_originals'))->toBeTrue();
 });
 
 test('a job on the sync connection keeps the settings of the request it runs in', function () {
@@ -63,7 +63,7 @@ test('a job on the sync connection keeps the settings of the request it runs in'
     Cache::forget(SiteSettings::CACHE_KEY);
 
     dispatch(function () {
-        Cache::put('seen', config('media.optimize.quality'));
+        Cache::put('seen', config('hata.media.optimize.quality'));
     })->onConnection('sync');
 
     expect(Cache::get('seen'))->toBe(65)

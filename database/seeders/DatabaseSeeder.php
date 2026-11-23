@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
     private function createInitialAdmin(CreateSuperAdmin $createSuperAdmin): void
     {
         /** @var array{name: string|null, email: string|null, password: string|null} $admin */
-        $admin = config('admin.initial_admin');
+        $admin = config('hata.admin.initial_admin');
 
         if (blank($admin['email']) || blank($admin['password'])) {
             return;

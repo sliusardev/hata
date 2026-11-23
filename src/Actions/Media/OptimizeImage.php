@@ -51,7 +51,7 @@ class OptimizeImage
         $raster = in_array($mime, self::RASTER, true);
         $size = $raster ? $this->dimensions($contents, $mime) : null;
         [$width, $height] = $size ?? [null, null];
-        $enabled = (bool) config('media.optimize.enabled');
+        $enabled = (bool) config('hata.media.optimize.enabled');
         $mustConvert = in_array($mime, self::MUST_CONVERT, true);
         $imageEdits = ImageEdits::fromArray($edits);
         $imageEdits = $imageEdits?->isEmpty() ? null : $imageEdits;
@@ -75,10 +75,10 @@ class OptimizeImage
 
         $format = $this->targetFormat($mime, $enabled);
         $quality = $this->quality();
-        $maxSide = config('media.optimize.max_side');
+        $maxSide = config('hata.media.optimize.max_side');
         $scaled = $enabled && is_int($maxSide) && $maxSide > 0 && ($imageEdits !== null || max($size) > $maxSide);
 
-        $capture = new CaptureThumbnail($this->thumbSide(), $this->quality(), strip: (bool) config('media.optimize.strip_exif'), memory: $this->memory);
+        $capture = new CaptureThumbnail($this->thumbSide(), $this->quality(), strip: (bool) config('hata.media.optimize.strip_exif'), memory: $this->memory);
 
         try {
             $image = Image::fromBytes($contents)->orient();
@@ -108,7 +108,7 @@ class OptimizeImage
             && $imageEdits === null
             && ! $scaled
             && strlen($output) >= strlen($contents)
-            && ! (config('media.optimize.strip_exif') && $this->hasMetadata($contents, $mime));
+            && ! (config('hata.media.optimize.strip_exif') && $this->hasMetadata($contents, $mime));
 
         if ($keepInput) {
             return new OptimizedImage($contents, $mime, $this->extensionFor($mime), $width, $height, optimized: true, fingerprint: $this->fingerprint(), thumbnail: $thumbnail);
@@ -150,7 +150,7 @@ class OptimizeImage
      */
     private function thumbSide(): int
     {
-        return max(1, (int) config('media.thumb_side'));
+        return max(1, (int) config('hata.media.thumb_side'));
     }
 
     /**
@@ -158,14 +158,14 @@ class OptimizeImage
      */
     public function fingerprint(): string
     {
-        $maxSide = config('media.optimize.max_side');
+        $maxSide = config('hata.media.optimize.max_side');
 
         return sprintf(
             '%s:%s:%d:exif%d',
-            config('media.optimize.format'),
+            config('hata.media.optimize.format'),
             is_int($maxSide) && $maxSide > 0 ? $maxSide : 'none',
-            config('media.optimize.quality'),
-            config('media.optimize.strip_exif') ? 0 : 1,
+            config('hata.media.optimize.quality'),
+            config('hata.media.optimize.strip_exif') ? 0 : 1,
         );
     }
 
@@ -175,7 +175,7 @@ class OptimizeImage
      */
     private function targetFormat(string $mime, bool $enabled): string
     {
-        $format = (string) config('media.optimize.format');
+        $format = (string) config('hata.media.optimize.format');
 
         if (! $enabled) {
             return in_array($mime, self::MUST_CONVERT, true) ? 'webp' : 'original';
@@ -262,7 +262,7 @@ class OptimizeImage
      */
     private function quality(): int
     {
-        return max(1, min(100, (int) config('media.optimize.quality')));
+        return max(1, min(100, (int) config('hata.media.optimize.quality')));
     }
 
     /**
@@ -290,7 +290,7 @@ class OptimizeImage
      */
     private function stripped(PendingImage $image): PendingImage
     {
-        if (! config('media.optimize.strip_exif')) {
+        if (! config('hata.media.optimize.strip_exif')) {
             return $image;
         }
 

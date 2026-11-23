@@ -240,8 +240,8 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                                 @endforelse
                             </div>
                         </flux:table.cell>
-                        <flux:table.cell class="max-lg:hidden">{{ config('app.available_locales')[$user->locale ?? app(Hata\Support\Localization\ContentLocales::class)->interfaceDefault()] ?? '—' }}</flux:table.cell>
-                        <flux:table.cell class="max-lg:hidden">{{ $user->created_at?->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
+                        <flux:table.cell class="max-lg:hidden">{{ config('hata.admin.interface_locales')[$user->locale ?? app(Hata\Support\Localization\ContentLocales::class)->interfaceDefault()] ?? '—' }}</flux:table.cell>
+                        <flux:table.cell class="max-lg:hidden">{{ $user->created_at?->tz(config('hata.admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
                         <flux:table.cell align="end">
                             <x-hata::admin.row-actions data-test="user-actions-{{ $user->id }}">
                                 @if ($this->canEdit($user))

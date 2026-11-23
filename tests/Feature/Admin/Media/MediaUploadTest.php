@@ -136,7 +136,7 @@ it('passes the server upload cap to the uploader', function (?int $cap) {
 ]);
 
 it('turns browser resizing off when optimization is off', function (bool $optimize, bool $clientResize, bool $expected) {
-    config(['media.optimize.enabled' => $optimize, 'media.optimize.client_resize' => $clientResize]);
+    config(['hata.media.optimize.enabled' => $optimize, 'hata.media.optimize.client_resize' => $clientResize]);
     $this->actingAs(mediaUploader());
 
     $config = Livewire::test('hata::admin.media.index')->instance()->uploaderConfig;

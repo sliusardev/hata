@@ -51,7 +51,7 @@ class ContentLocales
     {
         $entries = [];
 
-        foreach ((array) config('content.locales') as $entry) {
+        foreach ((array) config('hata.content.locales') as $entry) {
             $code = is_array($entry) ? ($entry['code'] ?? null) : null;
 
             if (! is_string($code) || isset($entries[$code]) || ! $this->catalog->has($code)) {
@@ -61,7 +61,7 @@ class ContentLocales
             $entries[$code] = ['code' => $code, 'active' => (bool) ($entry['active'] ?? false)];
         }
 
-        $default = config('content.default_locale');
+        $default = config('hata.content.default_locale');
 
         if (! is_string($default) || ! isset($entries[$default])) {
             $default = match (true) {
@@ -164,7 +164,7 @@ class ContentLocales
      */
     public function interfaceDefault(): string
     {
-        return (string) (config('content.interface_default') ?? config('app.locale'));
+        return (string) (config('hata.content.interface_default') ?? config('app.locale'));
     }
 
     /**
@@ -244,7 +244,7 @@ class ContentLocales
      */
     public function language(string $code): Language
     {
-        $name = (string) (config('app.available_locales')[$code] ?? $code);
+        $name = (string) (config('hata.admin.interface_locales')[$code] ?? $code);
 
         return $this->catalog->find($code) ?? new Language($code, $name, $name);
     }

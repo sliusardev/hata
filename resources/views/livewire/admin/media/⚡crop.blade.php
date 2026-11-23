@@ -143,9 +143,9 @@ new #[Layout('hata::layouts.focus')] #[Title('hata::media.crop.title')] class ex
     #[Computed]
     public function maxSide(): ?int
     {
-        $maxSide = config('media.optimize.max_side');
+        $maxSide = config('hata.media.optimize.max_side');
 
-        return config('media.optimize.enabled') && is_int($maxSide) && $maxSide > 0 ? $maxSide : null;
+        return config('hata.media.optimize.enabled') && is_int($maxSide) && $maxSide > 0 ? $maxSide : null;
     }
 
     /**

@@ -62,15 +62,15 @@ it('saves the media settings and applies them to config', function () {
         ->assertHasNoErrors()
         ->assertRedirect(route('admin.settings.edit', ['tab' => 'media']));
 
-    expect(config('media.optimize.max_side'))->toBe(2560)
-        ->and(config('media.optimize.quality'))->toBe(70)
-        ->and(config('media.optimize.format'))->toBe('original')
-        ->and(config('media.optimize.strip_exif'))->toBeFalse()
-        ->and(config('media.optimize.client_resize'))->toBeFalse()
-        ->and(config('media.optimize.keep_originals'))->toBeFalse()
-        ->and(config('media.optimize.enabled'))->toBeTrue()
-        ->and(config('media.limits.image_mb'))->toBe(40)
-        ->and(config('media.limits.document_mb'))->toBe(25);
+    expect(config('hata.media.optimize.max_side'))->toBe(2560)
+        ->and(config('hata.media.optimize.quality'))->toBe(70)
+        ->and(config('hata.media.optimize.format'))->toBe('original')
+        ->and(config('hata.media.optimize.strip_exif'))->toBeFalse()
+        ->and(config('hata.media.optimize.client_resize'))->toBeFalse()
+        ->and(config('hata.media.optimize.keep_originals'))->toBeFalse()
+        ->and(config('hata.media.optimize.enabled'))->toBeTrue()
+        ->and(config('hata.media.limits.image_mb'))->toBe(40)
+        ->and(config('hata.media.limits.document_mb'))->toBe(25);
 
     Livewire::withQueryParams(['tab' => 'media'])
         ->test('hata::admin.settings.edit')
@@ -78,7 +78,7 @@ it('saves the media settings and applies them to config', function () {
         ->call('save')
         ->assertHasNoErrors();
 
-    expect(config('media.optimize.max_side'))->toBeNull();
+    expect(config('hata.media.optimize.max_side'))->toBeNull();
 
     Livewire::withQueryParams(['tab' => 'media'])
         ->test('hata::admin.settings.edit')
@@ -131,7 +131,7 @@ it('lets untouched limits pass on a server with a low cap', function () {
         ->call('save')
         ->assertHasNoErrors();
 
-    expect(config('media.optimize.quality'))->toBe(65);
+    expect(config('hata.media.optimize.quality'))->toBe(65);
 });
 
 it('checks a changed limit against a low cap', function () {
@@ -146,7 +146,7 @@ it('checks a changed limit against a low cap', function () {
         ->call('save')
         ->assertHasNoErrors();
 
-    expect(config('media.limits.image_mb'))->toBe(1);
+    expect(config('hata.media.limits.image_mb'))->toBe(1);
 });
 
 describe('optimize existing card', function () {
@@ -194,7 +194,7 @@ describe('optimize existing card', function () {
     });
 
     it('shows no counts while optimization is stored as off', function () {
-        config(['media.optimize.enabled' => false]);
+        config(['hata.media.optimize.enabled' => false]);
         Media::factory()->image()->create(['optimized_with' => null]);
 
         Livewire::withQueryParams(['tab' => 'media'])

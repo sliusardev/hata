@@ -350,7 +350,7 @@ test('trashing and deleting need the type\'s delete, restoring its edit', functi
 });
 
 test('pruning deletes what was trashed more than the configured days ago, with everything in the trash under it', function () {
-    expect(config('content.trash_days'))->toBe(30);
+    expect(config('hata.content.trash_days'))->toBe(30);
 
     [$old, $oldChild, $oldGrandchild] = trashTree('old');
     [$recent, $recentChild] = trashTree('recent');

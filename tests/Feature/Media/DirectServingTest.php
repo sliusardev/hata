@@ -255,7 +255,7 @@ it('keeps svg and documents on the app route even when direct', function () {
 
 it('builds the urls of many public rasters without a query per url', function (string $state) {
     linkPublicDiskInTempDir(link: $state !== 'link_missing');
-    config(['media.disk' => 'public', 'cache.default' => 'database']);
+    config(['hata.media.disk' => 'public', 'cache.default' => 'database']);
     Storage::fake('local');
 
     if ($state !== 'link_missing' && $state !== 'unchecked') {

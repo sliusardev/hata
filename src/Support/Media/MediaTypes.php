@@ -152,8 +152,8 @@ final class MediaTypes
     public static function limitBytes(MediaKind $kind): int
     {
         $megabytes = $kind === MediaKind::Image
-            ? config('media.limits.image_mb')
-            : config('media.limits.document_mb');
+            ? config('hata.media.limits.image_mb')
+            : config('hata.media.limits.document_mb');
 
         return (int) $megabytes * 1024 * 1024;
     }

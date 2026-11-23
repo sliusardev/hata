@@ -35,8 +35,8 @@ see what the command printed and who ran what.
 
 ## Permission
 
-- `maintenance.run` (group `maintenance` in `config/permissions.php`). It is **reserved**
-  (`permissions.reserved`): the `*` of the `admin` role's defaults does not grant it (see the roles spec), so
+- `maintenance.run` (group `maintenance` in `config/internal/permissions.php`). It is **reserved**
+  (`hata.permissions.reserved`): the `*` of the `admin` role's defaults does not grant it (see the roles spec), so
   by default only a super admin has it (through `Gate::before`). A super admin can tick it for a role in the
   matrix; an admin cannot (rule 5: you grant only what you have).
 

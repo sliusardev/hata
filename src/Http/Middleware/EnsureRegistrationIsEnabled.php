@@ -18,7 +18,7 @@ class EnsureRegistrationIsEnabled
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('register', 'register.store') && ! config('admin.registration_enabled')) {
+        if ($request->routeIs('register', 'register.store') && ! config('hata.admin.registration_enabled')) {
             abort(404);
         }
 
