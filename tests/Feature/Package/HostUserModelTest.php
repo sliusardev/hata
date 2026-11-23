@@ -1,29 +1,16 @@
 <?php
 
 use App\Models\Member;
+use App\Models\UnguardedMember;
 use App\Models\User;
 use Hata\Hata;
-use Illuminate\Database\Schema\Blueprint;
+use Hata\Policies\UserPolicy;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 
 it('uses the model configured as the auth user', function () {
-    Schema::create('members', function (Blueprint $table) {
-        $table->id();
-        $table->string('name');
-        $table->string('email')->unique();
-        $table->timestamp('email_verified_at')->nullable();
-        $table->string('password');
-        $table->string('locale', 12)->nullable();
-        $table->string('search_index')->nullable();
-        $table->text('two_factor_secret')->nullable();
-        $table->text('two_factor_recovery_codes')->nullable();
-        $table->timestamp('two_factor_confirmed_at')->nullable();
-        $table->rememberToken();
-        $table->timestamps();
-    });
     config(['auth.providers.users.model' => Member::class]);
 
     User::factory()->create(['name' => 'Workbench Person']);
@@ -55,8 +42,6 @@ it('explains a user model without the hata trait', function () {
 });
 
 it('keeps the host\'s own fillable and casts', function () {
-    Schema::table('users', fn (Blueprint $table) => $table->string('nickname')->nullable());
-
     $user = User::create(['name' => 'Host Person', 'email' => 'host@example.test', 'password' => 'secret-password', 'locale' => 'uk', 'nickname' => 'x']);
 
     expect($user->fresh())
@@ -65,4 +50,28 @@ it('keeps the host\'s own fillable and casts', function () {
         ->and($user->getCasts())->toMatchArray(['nickname' => 'string', 'password' => 'hashed', 'email_verified_at' => 'datetime'])
         ->and($user->getHidden())->toContain('password', 'two_factor_secret', 'search_index')
         ->and(Hash::check('secret-password', $user->password))->toBeTrue();
+});
+
+it('leaves an unguarded host model fillable everywhere', function () {
+    $member = UnguardedMember::create(['name' => 'Open Person', 'email' => 'open@example.test', 'password' => 'secret-password', 'title' => 'Editor']);
+
+    expect($member->getFillable())->toBe([])
+        ->and($member->fresh()?->title)->toBe('Editor');
+});
+
+it('decides the users pages with hata\'s policy over a policy laravel guesses for the host model', function () {
+    // workbench/app/Policies/UserPolicy.php denies everything and is where Laravel guesses a policy for App\Models\User
+    expect(Gate::getPolicyFor(User::class))->toBeInstanceOf(UserPolicy::class);
+
+    $actor = User::factory()->withPermissions(['admin.access', 'users.view', 'users.edit'])->create();
+    $other = User::factory()->create();
+
+    $this->actingAs($actor)->get(route('admin.users.index'))->assertOk();
+    $this->actingAs($actor)->get(route('admin.users.edit', $other))->assertOk()->assertSee($other->email);
+});
+
+it('answers 404 for the edit page of a user that does not exist', function () {
+    $actor = User::factory()->withPermissions(['admin.access', 'users.view', 'users.edit'])->create();
+
+    $this->actingAs($actor)->get(route('admin.users.edit', 999999))->assertNotFound();
 });

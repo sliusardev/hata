@@ -38,7 +38,10 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.edit.title')] class exte
      */
     public function mount(mixed $user, AccessRules $rules): void
     {
-        $user = $user instanceof AdminUser ? $user : Hata::userModel()::findOrFail($user);
+        if (! $user instanceof AdminUser) {
+            $model = Hata::userModel();
+            $user = (new $model)->resolveRouteBinding($user) ?? abort(404);
+        }
 
         $this->authorize('update', $user);
 

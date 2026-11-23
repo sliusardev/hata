@@ -284,12 +284,19 @@ class HataServiceProvider extends ServiceProvider
 
     /**
      * Let super admins pass every authorization check. Returning null for everyone else lets the regular permission
-     * checks decide. The user model lives in the host, where Laravel would not guess its policy: the policy is
-     * registered for the interface (the Gate matches a model that implements it), so the model's class is not read
-     * at boot, where a host that has not added the trait yet (before `hata:install`) would fail every command.
+     * checks decide. The user model lives in the host, where Laravel would not guess Hata's policy for it, and where
+     * a policy Laravel does guess (`App\Policies\UserPolicy`) would otherwise win over a match by interface: so the
+     * configured class gets an exact mapping, and the interface stays as the fallback for a class configured later.
+     * Neither throws, so a host that has not added the trait yet (before `hata:install`) still boots.
      */
     private function configureAuthorization(): void
     {
+        $model = config('auth.providers.users.model');
+
+        if (is_string($model) && is_subclass_of($model, AdminUser::class)) {
+            Gate::policy($model, UserPolicy::class);
+        }
+
         Gate::policy(AdminUser::class, UserPolicy::class);
 
         Gate::before(

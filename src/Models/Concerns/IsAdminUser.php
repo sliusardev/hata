@@ -25,11 +25,18 @@ trait IsAdminUser
     use HasRoles, HasSearchIndex, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
-     * Hata's attributes on top of the host's: a cast the host declares itself for the same column wins.
+     * Hata's attributes on top of the host's: a cast the host declares itself for the same column wins. Runs after
+     * Eloquent's own initializers (the model's traits come first), so the host's `#[Fillable]`, `#[Guarded]` and
+     * `#[Unguarded]` are already applied.
      */
     public function initializeIsAdminUser(): void
     {
-        $this->mergeFillable(['name', 'email', 'password', 'locale']);
+        // A host that is unguarded (`$guarded = []`, no fillable) already fills every column: a fillable list would
+        // turn that into "only these".
+        if ($this->getFillable() !== [] || $this->guarded !== []) {
+            $this->mergeFillable(['name', 'email', 'password', 'locale']);
+        }
+
         $this->mergeHidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'search_index']);
         $this->mergeCasts(array_diff_key([
             'email_verified_at' => 'datetime',
