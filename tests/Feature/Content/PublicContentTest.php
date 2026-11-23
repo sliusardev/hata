@@ -196,17 +196,19 @@ describe('pages', function () {
         // process serves every request, so a component an earlier test rendered is forgotten by hand.
         app('livewire')->flushState();
 
-        $html = $this->get('/about')->assertOk()->getContent();
+        try {
+            $html = $this->get('/about')->assertOk()->getContent();
 
-        expect($html)->not->toContain('wire:')
-            ->and($html)->not->toMatch('/<script[^>]*\bsrc=/i')
-            ->and($html)->not->toMatch('/livewire/i')
-            ->and($html)->not->toContain('type="module"')
-            ->and($html)->toContain('rich-text-content')
-            ->and($html)->toContain(Vite::asset('resources/css/site.css'))
-            ->and($html)->not->toContain(Vite::asset('resources/css/app.css'));
-
-        File::deleteDirectory($public);
+            expect($html)->not->toContain('wire:')
+                ->and($html)->not->toMatch('/<script[^>]*\bsrc=/i')
+                ->and($html)->not->toMatch('/livewire/i')
+                ->and($html)->not->toContain('type="module"')
+                ->and($html)->toContain('rich-text-content')
+                ->and($html)->toContain(Vite::asset('resources/css/site.css'))
+                ->and($html)->not->toContain(Vite::asset('resources/css/app.css'));
+        } finally {
+            File::deleteDirectory($public);
+        }
     });
 });
 

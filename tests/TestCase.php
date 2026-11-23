@@ -54,6 +54,13 @@ abstract class TestCase extends BaseTestCase
         $app->useDatabasePath(dirname(__DIR__).'/workbench/database');
 
         $app['config']->set('auth.providers.users.model', User::class);
+
+        // Laravel 13's skeleton hardens these and Testbench's does not: sessions hold JSON only and the cache
+        // unserializes no objects, so code that would break on a real site breaks here too.
+        $app['config']->set([
+            'session.serialization' => 'json',
+            'cache.serializable_classes' => false,
+        ]);
     }
 
     /**

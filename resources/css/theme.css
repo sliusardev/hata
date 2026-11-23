@@ -1,6 +1,6 @@
 /*
  * The theme both stylesheets share: the admin (app.css) and the public site (site.css). Color schemes override these
- * variables at run time (partials/color-scheme, App\Support\ColorScheme).
+ * variables at run time (partials/color-scheme, Hata\Support\ColorScheme).
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -23,7 +23,7 @@
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
 
-    /* Sidebar and header surface; color schemes tint them (App\Support\ColorScheme). */
+    /* Sidebar and header surface; color schemes tint them (Hata\Support\ColorScheme). */
     --color-sidebar: var(--color-zinc-50);
     --color-sidebar-border: var(--color-zinc-200);
 }

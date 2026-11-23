@@ -2,7 +2,7 @@
  * The Tiptap editor behind <x-admin.rich-text>. Loaded with import() by the richText Alpine component, so Vite
  * puts Tiptap in its own chunk that only pages with an editor download.
  *
- * The schema allows exactly what the server keeps (App\Support\Content\BodySanitizer): paragraphs, h2-h4, bold,
+ * The schema allows exactly what the server keeps (Hata\Support\Content\BodySanitizer): paragraphs, h2-h4, bold,
  * italic, underline, strike, inline code, links (href, and target only as _blank), bullet and numbered lists,
  * blockquote, line breaks, horizontal rules, code blocks and images of the media library. Anything else that is
  * pasted is reduced to that by the schema (an h1 becomes a paragraph, an image without data-media-id is dropped).
