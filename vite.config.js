@@ -12,6 +12,9 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/passkeys.js',
             ],
+            publicDirectory: '.',
+            buildDirectory: 'dist',
+            hotFile: 'hot',
             refresh: true,
             fonts: [
                 bunny('Instrument Sans', {
@@ -21,6 +24,13 @@ export default defineConfig({
         }),
         tailwindcss(),
     ]),
+    base: '/vendor/hata/',
+    publicDir: 'resources/static',
+    build: {
+        outDir: 'dist',
+        emptyOutDir: true,
+        manifest: true,
+    },
     server: {
         cors: true,
         watch: {

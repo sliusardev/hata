@@ -7,8 +7,9 @@
 
 @include('partials.favicons')
 
-@fonts
+@hataFonts
 
-@vite(['resources/css/app.css', 'resources/js/app.js'])
+@hataAssets(['resources/css/app.css', 'resources/js/app.js'])
+{{ app(Hata\Support\Admin\AdminAssets::class)->tags() }}
 @include('partials.color-scheme')
 @fluxAppearance

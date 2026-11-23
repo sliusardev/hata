@@ -1,5 +1,5 @@
 @assets
-@vite('resources/js/passkeys.js')
+@hataAssets(['resources/js/passkeys.js'])
 @endassets
 
 <div

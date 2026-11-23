@@ -20,6 +20,8 @@ use Hata\Models\Role;
 use Hata\Policies\UserPolicy;
 use Hata\Providers\ContentServiceProvider;
 use Hata\Providers\FortifyServiceProvider;
+use Hata\Support\Admin\AdminAssets;
+use Hata\Support\Assets\HataAssets;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\LanguageCatalog;
 use Hata\Support\Media\DirectServing;
@@ -35,6 +37,7 @@ use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Lang;
@@ -79,6 +82,7 @@ class HataServiceProvider extends ServiceProvider
         $this->app->singleton(SiteSettings::class);
         $this->app->singleton(DirectServing::class);
         $this->app->singleton(ContentLocales::class);
+        $this->app->singleton(AdminAssets::class);
 
         $this->registerLocalizedRoutes();
         $this->registerFluxOverrides();
@@ -96,6 +100,7 @@ class HataServiceProvider extends ServiceProvider
         $this->configureTranslations();
         $this->configureAuthorization();
         $this->configureViews();
+        $this->configureAssets();
         $this->configureMiddleware();
         $this->configureRoutes();
 
@@ -301,6 +306,21 @@ class HataServiceProvider extends ServiceProvider
     {
         View::prependLocation(Hata::path('resources/views'));
         Livewire::addLocation(viewPath: Hata::path('resources/views/components'));
+    }
+
+    /**
+     * The built admin and site assets are static files: published to `public/vendor/hata`, which Laravel's skeleton
+     * refreshes on every `composer update` through the `laravel-assets` tag. Tags come from Hata's own Vite instance.
+     */
+    private function configureAssets(): void
+    {
+        $this->publishes(
+            [Hata::path('dist') => public_path(HataAssets::DIRECTORY)],
+            ['laravel-assets', 'hata-assets'],
+        );
+
+        Blade::directive('hataAssets', fn (string $entries): string => '<?php echo \\'.HataAssets::class."::tags({$entries}); ?>");
+        Blade::directive('hataFonts', fn (): string => '<?php echo \\'.HataAssets::class.'::fonts(); ?>');
     }
 
     /**

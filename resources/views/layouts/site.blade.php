@@ -23,9 +23,9 @@
 
         @include('partials.favicons')
 
-        @fonts
+        @hataFonts
 
-        @vite('resources/css/site.css')
+        @hataAssets(['resources/css/site.css'])
         @include('partials.color-scheme')
 
         {{-- Dark mode as the admin sets it (Flux's stored choice, else the system's), without loading Flux. --}}

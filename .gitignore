@@ -1,8 +1,5 @@
 /.phpunit.cache
 /node_modules
-/public/build
-/public/fonts-manifest.dev.json
-/public/hot
 /public/storage
 /storage
 /bootstrap
@@ -38,3 +35,4 @@ yarn-error.log
 /opencode.json
 /opencode.jsonc
 .DS_Store
+/hot

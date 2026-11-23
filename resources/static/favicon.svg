@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+    <style>.mark{color:#171717}@media (prefers-color-scheme:dark){.mark{color:#fafafa}}</style>
+    <g class="mark" fill="currentColor">
+        <path d="M4.5 20.5 25 3.8M35.5 20.5 15 3.8" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/>
+        <path fill-rule="evenodd" d="M20 12.5 31.5 21.8V34.5a2 2 0 0 1-2 2h-19a2 2 0 0 1-2-2V21.8L20 12.5Zm-4 13h3.2v3.2H16v-3.2Zm4.8 0H24v3.2h-3.2v-3.2ZM16 30.3h3.2v3.2H16v-3.2Zm4.8 0H24v3.2h-3.2v-3.2Z"/>
+    </g>
+</svg>
