@@ -4,6 +4,7 @@ namespace Hata;
 
 use App\Models\User;
 use Closure;
+use Composer\InstalledVersions;
 use Hata\Console\Commands\CheckContentAddresses;
 use Hata\Console\Commands\CreateAdmin;
 use Hata\Console\Commands\MakeContentType;
@@ -73,6 +74,7 @@ class HataServiceProvider extends ServiceProvider
             $this->mergeConfig($file);
         }
 
+        $this->mergeSpatiePermissionDefaults();
         $this->configurePackages();
 
         $this->app->singleton(
@@ -143,6 +145,30 @@ class HataServiceProvider extends ServiceProvider
         }
 
         $config->set($file, array_merge(require Hata::path("config/{$file}.php"), (array) $config->get($file, [])));
+    }
+
+    /**
+     * Gives spatie/laravel-permission its whole default config when the site has not published one (or only part of
+     * it). Spatie's own provider merges its file one level deep, so a host `permission` array that holds just
+     * `models.role` (which Hata sets below) would hide spatie's other `models` and every other key, and the
+     * PermissionRegistrar would fail to build. Merging here, in register(), is independent of provider order: if
+     * spatie registered first, its defaults are already there and this changes nothing. Keys the host sets win.
+     */
+    private function mergeSpatiePermissionDefaults(): void
+    {
+        $config = $this->app->make('config');
+
+        if ($this->app instanceof CachesConfiguration && $this->app->configurationIsCached() && $config->has('permission.models.permission')) {
+            return;
+        }
+
+        $path = InstalledVersions::getInstallPath('spatie/laravel-permission');
+
+        if ($path === null || ! is_file($file = $path.'/config/permission.php')) {
+            return;
+        }
+
+        $config->set('permission', array_replace_recursive(require $file, (array) $config->get('permission', [])));
     }
 
     /**
