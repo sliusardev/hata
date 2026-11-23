@@ -15,79 +15,16 @@
             @endphp
 
             <flux:sidebar.nav class="gap-6 px-3 py-5">
-                @can('admin.access')
-                    <flux:sidebar.group :heading="__('hata::navigation.platform')" :class="$groupClasses">
-                        <flux:sidebar.item icon="home" :icon:variant="request()->routeIs('admin.dashboard') ? 'solid' : 'outline'" :href="route('admin.dashboard')" :current="request()->routeIs('admin.dashboard')" wire:navigate>
-                            {{ __('hata::navigation.dashboard') }}
-                        </flux:sidebar.item>
+                @foreach (app(Hata\Support\Admin\AdminMenu::class)->for(auth()->user()) as $group)
+                    <flux:sidebar.group :heading="__($group['label'])" :class="$groupClasses">
+                        @foreach ($group['items'] as $item)
+                            @php $isCurrent = $item->isCurrent(); @endphp
+                            <flux:sidebar.item :icon="$item->icon" :icon:variant="$isCurrent ? 'solid' : 'outline'" :href="$item->url()" :current="$isCurrent" wire:navigate wire:key="nav-{{ $item->key }}">
+                                {{ __($item->label) }}
+                            </flux:sidebar.item>
+                        @endforeach
                     </flux:sidebar.group>
-
-                    @php
-                        // Each type, followed by the taxonomies that classify it (a taxonomy shows once, under its first type).
-                        $registry = app(Hata\Support\Content\ContentTypes::class);
-                        $contentTypes = [];
-
-                        foreach ($registry->active() as $contentType) {
-                            if ($contentType->isTaxonomy()) {
-                                continue;
-                            }
-
-                            $contentTypes[$contentType->key()] = $contentType;
-
-                            foreach ($registry->taxonomiesOf($contentType->key()) as $taxonomy) {
-                                $contentTypes[$taxonomy->key()] ??= $taxonomy;
-                            }
-                        }
-
-                        $contentTypes = array_filter($contentTypes, fn ($contentType) => auth()->user()->can('viewAny', [Hata\Models\Entry::class, $contentType->key()]));
-                    @endphp
-                    @if ($contentTypes !== [] || auth()->user()->can('media.view'))
-                        <flux:sidebar.group :heading="__('hata::navigation.content')" :class="$groupClasses">
-                            @foreach ($contentTypes as $contentType)
-                                @php $isCurrent = request()->routeIs('admin.content.*') && request()->route('type') === $contentType->key(); @endphp
-                                <flux:sidebar.item :icon="$contentType->icon()" :icon:variant="$isCurrent ? 'solid' : 'outline'" :href="route('admin.content.index', $contentType->key())" :current="$isCurrent" wire:navigate wire:key="nav-content-{{ $contentType->key() }}">
-                                    {{ $contentType->pluralLabel() }}
-                                </flux:sidebar.item>
-                            @endforeach
-                            @can('media.view')
-                                <flux:sidebar.item icon="photo" :icon:variant="request()->routeIs('admin.media.*') ? 'solid' : 'outline'" :href="route('admin.media.index')" :current="request()->routeIs('admin.media.*')" wire:navigate>
-                                    {{ __('hata::navigation.media') }}
-                                </flux:sidebar.item>
-                            @endcan
-                        </flux:sidebar.group>
-                    @endif
-
-                    @canany(['users.view', 'roles.view', 'settings.edit', 'maintenance.run'])
-                        <flux:sidebar.group :heading="__('hata::navigation.administration')" :class="$groupClasses">
-                            @can('users.view')
-                                <flux:sidebar.item icon="users" :icon:variant="request()->routeIs('admin.users.*') ? 'solid' : 'outline'" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>
-                                    {{ __('hata::navigation.users') }}
-                                </flux:sidebar.item>
-                            @endcan
-                            @can('roles.view')
-                                <flux:sidebar.item icon="shield-check" :icon:variant="request()->routeIs('admin.roles.*') ? 'solid' : 'outline'" :href="route('admin.roles.index')" :current="request()->routeIs('admin.roles.*')" wire:navigate>
-                                    {{ __('hata::navigation.roles') }}
-                                </flux:sidebar.item>
-                            @endcan
-                            @can('settings.edit')
-                                <flux:sidebar.item icon="adjustments-horizontal" :icon:variant="request()->routeIs('admin.settings.*') ? 'solid' : 'outline'" :href="route('admin.settings.edit')" :current="request()->routeIs('admin.settings.*')" wire:navigate>
-                                    {{ __('hata::navigation.site_settings') }}
-                                </flux:sidebar.item>
-                            @endcan
-                            @can('maintenance.run')
-                                <flux:sidebar.item icon="wrench-screwdriver" :icon:variant="request()->routeIs('admin.maintenance') ? 'solid' : 'outline'" :href="route('admin.maintenance')" :current="request()->routeIs('admin.maintenance')" wire:navigate>
-                                    {{ __('hata::navigation.maintenance') }}
-                                </flux:sidebar.item>
-                            @endcan
-                        </flux:sidebar.group>
-                    @endcanany
-                @endcan
-
-                <flux:sidebar.group :heading="__('hata::navigation.account')" :class="$groupClasses">
-                    <flux:sidebar.item icon="user-circle" :icon:variant="request()->routeIs('profile.edit', 'language.edit', 'security.edit', 'appearance.edit') ? 'solid' : 'outline'" :href="route('profile.edit')" :current="request()->routeIs('profile.edit', 'language.edit', 'security.edit', 'appearance.edit')" wire:navigate>
-                        {{ __('hata::navigation.my_profile') }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
+                @endforeach
             </flux:sidebar.nav>
 
             <flux:spacer />

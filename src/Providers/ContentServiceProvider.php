@@ -2,10 +2,15 @@
 
 namespace Hata\Providers;
 
+use Hata\Contracts\AdminUser;
+use Hata\Models\Entry;
+use Hata\Support\Admin\AdminMenu;
+use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Content\ContentType;
 use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\Types\PagesType;
 use Hata\Support\Permissions\PermissionRegistry;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class ContentServiceProvider extends ServiceProvider
@@ -37,5 +42,53 @@ class ContentServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->app->make(ContentTypes::class);
+
+        $this->app->make(AdminMenu::class)->lazy(fn (): array => $this->menuItems());
+    }
+
+    /**
+     * The sidebar's content items: each active type, then the taxonomies that classify it (a taxonomy shows once,
+     * nested under its first type). Worked out per render, because the registry and the on/off switch can change
+     * after boot; a type shows to those who may list it.
+     *
+     * @return list<AdminMenuItem>
+     */
+    private function menuItems(): array
+    {
+        $registry = $this->app->make(ContentTypes::class);
+        $placed = [];
+
+        foreach ($registry->active() as $type) {
+            if ($type->isTaxonomy()) {
+                continue;
+            }
+
+            $placed[$type->key()] = [$type, null];
+
+            foreach ($registry->taxonomiesOf($type->key()) as $taxonomy) {
+                $placed[$taxonomy->key()] ??= [$taxonomy, $type->key()];
+            }
+        }
+
+        $items = [];
+        $order = 100;
+
+        foreach ($placed as [$type, $parent]) {
+            $items[] = new AdminMenuItem(
+                key: 'content.'.$type->key(),
+                label: $type->pluralLabel(),
+                icon: $type->icon(),
+                route: 'admin.content.index',
+                permission: fn (AdminUser $user): bool => Gate::forUser($user)->allows('admin.access')
+                    && Gate::forUser($user)->allows('viewAny', [Entry::class, $type->key()]),
+                group: 'content',
+                order: $order++,
+                activePattern: 'admin.content.*',
+                parent: $parent === null ? null : 'content.'.$parent,
+                routeParameters: ['type' => $type->key()],
+            );
+        }
+
+        return $items;
     }
 }

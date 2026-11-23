@@ -25,6 +25,8 @@ use Hata\Policies\UserPolicy;
 use Hata\Providers\ContentServiceProvider;
 use Hata\Providers\FortifyServiceProvider;
 use Hata\Support\Admin\AdminAssets;
+use Hata\Support\Admin\AdminMenu;
+use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Assets\HataAssets;
 use Hata\Support\Assets\HataVite;
 use Hata\Support\Config\HataConfig;
@@ -92,6 +94,7 @@ class HataServiceProvider extends ServiceProvider
         $this->app->singleton(DirectServing::class);
         $this->app->singleton(ContentLocales::class);
         $this->app->singleton(AdminAssets::class);
+        $this->app->singleton(AdminMenu::class);
         $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
             $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
         ));
@@ -116,6 +119,7 @@ class HataServiceProvider extends ServiceProvider
         $this->configureAssets();
         $this->configureMiddleware();
         $this->configureRoutes();
+        $this->registerAdminMenu();
 
         $this->loadMigrationsFrom(Hata::path('database/migrations'));
 
@@ -137,6 +141,30 @@ class HataServiceProvider extends ServiceProvider
 
         // A Livewire component on a public page keeps the page's content language on its update requests.
         Livewire::addPersistentMiddleware(SetContentLocale::class);
+    }
+
+    /**
+     * Hata's own sidebar sections, in the order and with the permissions the sidebar always had. The admin-only
+     * items need `admin.access` as well, as the whole admin part of the sidebar did; the content types come from
+     * `ContentServiceProvider`.
+     */
+    private function registerAdminMenu(): void
+    {
+        $menu = $this->app->make(AdminMenu::class);
+        $admin = fn (?string $permission = null): Closure => fn (AdminUser $user): bool => Gate::forUser($user)->allows('admin.access')
+            && ($permission === null || Gate::forUser($user)->allows($permission));
+
+        $menu->group('platform', 'hata::navigation.platform', 10)
+            ->group('content', 'hata::navigation.content', 100)
+            ->group('administration', 'hata::navigation.administration', 200)
+            ->group('account', 'hata::navigation.account', 300)
+            ->add(new AdminMenuItem('dashboard', 'hata::navigation.dashboard', 'home', 'admin.dashboard', $admin(), 'platform'))
+            ->add(new AdminMenuItem('media', 'hata::navigation.media', 'photo', 'admin.media.index', $admin('media.view'), 'content', 900, 'admin.media.*'))
+            ->add(new AdminMenuItem('users', 'hata::navigation.users', 'users', 'admin.users.index', $admin('users.view'), 'administration', 10, 'admin.users.*'))
+            ->add(new AdminMenuItem('roles', 'hata::navigation.roles', 'shield-check', 'admin.roles.index', $admin('roles.view'), 'administration', 20, 'admin.roles.*'))
+            ->add(new AdminMenuItem('settings', 'hata::navigation.site_settings', 'adjustments-horizontal', 'admin.settings.edit', $admin('settings.edit'), 'administration', 30, 'admin.settings.*'))
+            ->add(new AdminMenuItem('maintenance', 'hata::navigation.maintenance', 'wrench-screwdriver', 'admin.maintenance', $admin('maintenance.run'), 'administration', 40))
+            ->add(new AdminMenuItem('profile', 'hata::navigation.my_profile', 'user-circle', 'profile.edit', null, 'account', 10, 'profile.edit|language.edit|security.edit|appearance.edit'));
     }
 
     /**
