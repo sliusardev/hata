@@ -39,17 +39,6 @@ class UploadMedia
     }
 
     /**
-     * Store a file without an actor (`uploaded_by` stays null), with the same checks, optimization and storing as `handle()`.
-     * Only for code that runs outside a request, such as the migration that imports the old logos.
-     *
-     * @throws MediaUploadException
-     */
-    public function import(UploadedFile $file, ?MediaFolder $folder = null): Media
-    {
-        return $this->store(null, $file, $folder, null, null);
-    }
-
-    /**
      * @throws MediaUploadException
      */
     private function store(?int $uploadedBy, UploadedFile $file, ?MediaFolder $folder, ?int $pickedSize, ?string $pickedExtension): Media

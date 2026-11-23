@@ -48,7 +48,7 @@ class SetLogo
 
     /**
      * Store the media id as the logo and record the usage, without any checks.
-     * Callers must have validated the id (`handle()`) or know the file (the import migration).
+     * Callers must have validated the id (`handle()`).
      */
     public function assign(string $variant, int $mediaId): void
     {

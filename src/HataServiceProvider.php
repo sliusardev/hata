@@ -17,7 +17,10 @@ use Hata\Http\Middleware\EnsureRegistrationIsEnabled;
 use Hata\Http\Middleware\LookUpContent;
 use Hata\Http\Middleware\SetContentLocale;
 use Hata\Http\Middleware\SetLocale;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
 use Hata\Models\Role;
+use Hata\Models\Setting;
 use Hata\Policies\UserPolicy;
 use Hata\Providers\ContentServiceProvider;
 use Hata\Providers\FortifyServiceProvider;
@@ -37,6 +40,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Foundation\CachesRoutes;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Queue\Events\JobProcessing;
@@ -94,6 +98,7 @@ class HataServiceProvider extends ServiceProvider
 
         $this->registerLocalizedRoutes();
         $this->registerFluxOverrides();
+        $this->registerMorphMap();
 
         $this->app->register(ContentServiceProvider::class);
         $this->app->register(FortifyServiceProvider::class);
@@ -132,6 +137,19 @@ class HataServiceProvider extends ServiceProvider
 
         // A Livewire component on a public page keeps the page's content language on its update requests.
         Livewire::addPersistentMiddleware(SetContentLocale::class);
+    }
+
+    /**
+     * Hata's models stored in a `*_type` column (`media_usages.usable_type`) get short names, so the database never
+     * holds a `Hata\…` class name. Not enforced: the host's own polymorphic models keep their class names.
+     */
+    private function registerMorphMap(): void
+    {
+        Relation::morphMap([
+            'entry' => Entry::class,
+            'entry_group' => EntryGroup::class,
+            'setting' => Setting::class,
+        ]);
     }
 
     /**

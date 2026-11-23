@@ -2,8 +2,9 @@ providers:
   - Hata\HataServiceProvider
   - App\Providers\WorkbenchServiceProvider
 
-# Hata's migrations create every table the suite needs (users included), so Testbench's default ones stay out.
-migrations: false
+# Laravel's own migrations (users, cache, jobs) are the host's: Testbench loads its copies of them, and Hata's
+# migrations (loaded by its provider) sort after them.
+migrations: true
 
 workbench:
   health: true

@@ -27,14 +27,21 @@ return new class extends Migration
             $table->unsignedInteger('width')->nullable();
             $table->unsignedInteger('height')->nullable();
             $table->unsignedBigInteger('original_size')->nullable();
+            $table->string('uploaded_extension', 10)->nullable();
             $table->string('optimized_with')->nullable();
+            $table->string('optimize_failure', 20)->nullable();
+            $table->boolean('animated')->default(false);
             $table->json('edits')->nullable();
+            $table->unsignedInteger('version')->default(1);
             $table->string('title')->nullable();
             $table->json('alt')->nullable();
             $table->text('search_index')->nullable();
             $table->timestamps();
 
             $table->index('created_at');
+            // A folder's files, newest first, and the per-folder counts are read on every library request. MySQL
+            // indexes the foreign key by itself, SQLite does not, and neither covers the date order.
+            $table->index(['folder_id', 'created_at', 'id'], 'media_folder_listing_index');
         });
     }
 

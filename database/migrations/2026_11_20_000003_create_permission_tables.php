@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * spatie/laravel-permission's tables, with Hata's `label` and `is_system` on roles.
      */
     public function up(): void
     {
@@ -42,7 +42,9 @@ return new class extends Migration
                 $table->index($columnNames['team_foreign_key'], 'roles_team_foreign_key_index');
             }
             $table->string('name');
+            $table->string('label')->nullable();
             $table->string('guard_name');
+            $table->boolean('is_system')->default(false);
             $table->timestamps();
             if ($teams || config('permission.testing')) {
                 $table->unique([$columnNames['team_foreign_key'], 'name', 'guard_name']);

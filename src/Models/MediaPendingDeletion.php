@@ -2,10 +2,10 @@
 
 namespace Hata\Models;
 
-use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * A replaced object on a cloud disk, kept until `delete_after` so pages rendered before the change (and CDN caches)
@@ -16,9 +16,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $id
  * @property string $disk
  * @property string $path
- * @property CarbonImmutable $delete_after
- * @property CarbonImmutable|null $created_at
- * @property CarbonImmutable|null $updated_at
+ * @property Carbon $delete_after
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 #[Fillable(['disk', 'path', 'delete_after'])]
 class MediaPendingDeletion extends Model
@@ -47,7 +47,7 @@ class MediaPendingDeletion extends Model
             return;
         }
 
-        $now = now();
+        $now = now()->toImmutable();
         $deleteAfter ??= $now->addDays(self::KEEP_DAYS);
 
         static::query()->insert(array_map(fn (string $path): array => [

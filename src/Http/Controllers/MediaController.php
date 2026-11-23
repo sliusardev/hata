@@ -82,7 +82,7 @@ class MediaController extends Controller
      */
     private function signedUrl(Media $media, string $path, string $mime, string $disposition): string
     {
-        $signedAt = now()->startOfHour();
+        $signedAt = now()->toImmutable()->startOfHour();
 
         return Storage::disk($media->disk)->temporaryUrl($path, $signedAt->addHours(2), [
             'ResponseContentDisposition' => $disposition,

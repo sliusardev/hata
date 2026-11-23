@@ -2,41 +2,14 @@
 
 namespace App\Providers;
 
-use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Date;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Validation\Rules\Password;
 
 /**
- * The test host's own defaults, as a site's AppServiceProvider sets them (they are the host's decisions, not Hata's).
+ * The test host's own provider. It sets none of the starter kit's defaults (`Date::use(CarbonImmutable)`,
+ * `Password::defaults()`, `DB::prohibitDestructiveCommands()`): they are a site's decisions, and the suite runs with
+ * Laravel's untouched ones to prove Hata does not depend on them.
  */
 class WorkbenchServiceProvider extends ServiceProvider
 {
-    public function boot(): void
-    {
-        $this->configureDefaults();
-    }
-
-    /**
-     * Configure default behaviors for production-ready applications.
-     */
-    protected function configureDefaults(): void
-    {
-        Date::use(CarbonImmutable::class);
-
-        DB::prohibitDestructiveCommands(
-            app()->isProduction(),
-        );
-
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
-    }
+    //
 }

@@ -124,3 +124,14 @@ it('keeps the rows and tries again later when the disk does not delete the objec
     $this->disk->assertExists('media/2026/11/stuck-v1.webp');
     expect($pending->fresh()->delete_after->isAfter(now()->addHours(23)))->toBeTrue();
 });
+
+it('schedules a deletion for a week from now and stamps it with the current time', function () {
+    $this->freezeTime();
+
+    MediaPendingDeletion::schedule('s3', ['media/2026/11/c-v1.webp']);
+
+    $row = MediaPendingDeletion::query()->sole();
+
+    expect($row->created_at->getTimestamp())->toBe(now()->getTimestamp())
+        ->and($row->delete_after->getTimestamp())->toBe(now()->addDays(MediaPendingDeletion::KEEP_DAYS)->getTimestamp());
+});

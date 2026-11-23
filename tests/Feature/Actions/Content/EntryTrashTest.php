@@ -287,8 +287,8 @@ test('deleting for good removes every trashed record under the page, their redir
         ->and(Entry::withTrashed()->pluck('id')->all())->toBe([$translation->id])
         ->and(EntryRedirect::query()->count())->toBe(0)
         ->and(EntryGroup::query()->pluck('id')->sort()->values()->all())->toBe([$child->entry_group_id])
-        ->and(MediaUsage::query()->get()->map(fn (MediaUsage $usage): string => class_basename($usage->usable_type).':'.$usage->field)->sort()->values()->all())
-        ->toBe(['Entry:image', 'EntryGroup:shared.photos'])
+        ->and(MediaUsage::query()->get()->map(fn (MediaUsage $usage): string => $usage->usable_type.':'.$usage->field)->sort()->values()->all())
+        ->toBe(['entry:image', 'entry_group:shared.photos'])
         ->and(MediaUsage::query()->where('usable_id', $translation->id)->where('field', 'image')->exists())->toBeTrue();
 });
 

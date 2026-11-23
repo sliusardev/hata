@@ -7,10 +7,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Laravel Passkeys' table (Fortify's passkey sign-in). Skipped when the site already published and ran the
+     * package's own migration.
      */
     public function up(): void
     {
+        if (Schema::hasTable('passkeys')) {
+            return;
+        }
+
         Schema::create('passkeys', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
