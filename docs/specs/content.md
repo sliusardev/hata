@@ -114,11 +114,14 @@ request already loads.
 
 ### Adding a type
 
-`php artisan make:content-type Posts` (`App\Console\Commands\MakeContentType` over
-`App\Support\Content\ContentTypeGenerator`) writes `app/Support/Content/Types/PostsType.php`, adds the class to
-`config/hata.php` → `content.types` (with its `use` line), and adds the type's lines to every language's `content.php`
-(`types.<key>`: `label`, `plural`, `description`, `new`, `create`) and `permissions.php` (`groups.<key>`,
-`items.<key>.*`), which are the site's own files (a site type has the empty prefix). The lines are English in every language, built from the name, to be translated by the developer.
+`php artisan make:content-type Posts` (`Hata\Console\Commands\MakeContentType` over
+`Hata\Support\Content\ContentTypeGenerator`) writes into the site: the class `app/ContentTypes/PostsType.php`
+(namespace `App\ContentTypes`, no `translationPrefix()` override), the class name in the site's published
+`config/hata.php` → `content.types` (with its `use` line; when the site has no published config it is published
+first, with Hata's kit types in the list, because a published list replaces the default one as a whole), and the
+type's lines in the site's `lang/<locale>/content.php` (`types.<key>`: `label`, `plural`, `description`, `new`,
+`create`) and `permissions.php` (`groups.<key>`, `items.<key>.*`) for every locale of `hata.admin.interface_locales`
+(a missing file is created). The lines are English in every language, built from the name, to be translated by the developer.
 
 A field's label is `content.fields.<name>` in the site's translations when it exists, else Hata's `hata::content.fields.<name>` (`Field::labelText()` tries the site's key first), so a site line relabels a field of any type, kit types included; `->label('key')` names a key explicitly.
 

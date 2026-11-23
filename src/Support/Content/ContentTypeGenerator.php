@@ -17,8 +17,10 @@ use InvalidArgumentException;
 use Throwable;
 
 /**
- * Writes a new content type: its class, its entry in `config/hata.php` → `content.types`, and its lines in every
- * language's `content.php` and `permissions.php` (English text in each, to be translated).
+ * Writes a new content type into the site: its class (`app/ContentTypes`), its entry in the site's
+ * `config/hata.php` → `content.types` (the file is published first when the site has none, and keeps Hata's own
+ * types in its list), and its lines in the site's `lang/<locale>/content.php` and `permissions.php` for every
+ * interface language (English text in each, to be translated; a missing file is created).
  *
  * The config and language files are edited as text, by the shape Pint gives them (a top-level `'section' => [`
  * closed by `],` at the same indent; the type list is the `types` section inside the `content` one). A file that has another shape is left alone,
@@ -26,7 +28,7 @@ use Throwable;
  */
 class ContentTypeGenerator
 {
-    private const string TYPES_NAMESPACE = 'Hata\\Support\\Content\\Types';
+    private const string TYPES_NAMESPACE = 'App\\ContentTypes';
 
     private readonly string $typesPath;
 
@@ -43,9 +45,9 @@ class ContentTypeGenerator
         ?string $langPath = null,
         ?string $configFile = null,
     ) {
-        $this->typesPath = $typesPath ?? Hata::path('src/Support/Content/Types');
-        $this->langPath = $langPath ?? Hata::path('resources/lang');
-        $this->configFile = $configFile ?? Hata::path('config/hata.php');
+        $this->typesPath = $typesPath ?? app_path('ContentTypes');
+        $this->langPath = $langPath ?? lang_path();
+        $this->configFile = $configFile ?? config_path('hata.php');
     }
 
     /**
@@ -75,10 +77,12 @@ class ContentTypeGenerator
         $edits = $this->edits($key, $class, Str::singular($plural), $plural, $hierarchical);
 
         $originals = [];
+        $created = [];
         $updated = [];
         $manual = [];
 
         try {
+            $this->ensureFiles($edits, $created);
             File::ensureDirectoryExists($this->typesPath);
             File::put($classFile, $this->classSource($class, $key, $base, $hierarchical, $icon));
 
@@ -96,13 +100,17 @@ class ContentTypeGenerator
 
             File::delete($classFile);
 
+            foreach ($created as $file) {
+                File::delete($file);
+            }
+
             throw $exception;
         }
 
         /** @var class-string $fqcn */
         $fqcn = self::TYPES_NAMESPACE.'\\'.$class;
 
-        return new GeneratedContentType($key, $fqcn, $classFile, $updated, $manual);
+        return new GeneratedContentType($key, $fqcn, $classFile, $updated, $manual, $created);
     }
 
     /**
@@ -226,7 +234,9 @@ class ContentTypeGenerator
         $group = '        '.$this->pair($key, Str::ucfirst($plural))."\n";
         $items = $this->permissionLines($key, $plural);
 
-        foreach (File::isDirectory($this->langPath) ? File::directories($this->langPath) : [] as $directory) {
+        foreach (array_keys((array) config('hata.admin.interface_locales')) as $locale) {
+            $directory = $this->langPath.'/'.$locale;
+
             $edits[] = [
                 'file' => $directory.'/content.php',
                 'lines' => "'types' => [\n{$content}],\n",
@@ -247,6 +257,34 @@ class ContentTypeGenerator
         }
 
         return $edits;
+    }
+
+    /**
+     * Publishes the site's config when it has none (the file the `hata-config` tag copies) and creates the language
+     * files that are missing, with the sections the edits add to. Every file made is listed in `$created`.
+     *
+     * @param  list<array{file: string, ...}>  $edits
+     * @param  list<string>  $created
+     */
+    private function ensureFiles(array $edits, array &$created): void
+    {
+        if (! File::exists($this->configFile)) {
+            File::ensureDirectoryExists(dirname($this->configFile));
+            File::copy(Hata::path('config/hata.php'), $this->configFile);
+            $created[] = $this->configFile;
+        }
+
+        foreach ($edits as $edit) {
+            if (File::exists($edit['file']) || $edit['file'] === $this->configFile) {
+                continue;
+            }
+
+            $sections = basename($edit['file']) === 'permissions.php' ? ['groups', 'items'] : ['types'];
+
+            File::ensureDirectoryExists(dirname($edit['file']));
+            File::put($edit['file'], "<?php\n\nreturn [\n".implode('', array_map(fn (string $section): string => "    '{$section}' => [\n    ],\n", $sections))."];\n");
+            $created[] = $edit['file'];
+        }
     }
 
     private function contentLines(string $key, string $singular, string $plural, bool $hierarchical): string

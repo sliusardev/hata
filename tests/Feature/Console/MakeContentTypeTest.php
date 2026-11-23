@@ -1,12 +1,19 @@
 <?php
 
+use App\ContentTypes\CaseStudiesType;
+use App\ContentTypes\RecipesType;
+use App\Models\User;
 use Hata\Hata;
 use Hata\Models\Entry;
+use Hata\Support\Admin\AdminMenu;
+use Hata\Support\Config\HataConfig;
 use Hata\Support\Content\ContentType;
 use Hata\Support\Content\ContentTypeGenerator;
 use Hata\Support\Content\ContentTypes;
-use Hata\Support\Content\Types\CaseStudiesType;
-use Hata\Support\Content\Types\RecipesType;
+use Hata\Support\Content\Types\CategoriesType;
+use Hata\Support\Content\Types\PagesType;
+use Hata\Support\Content\Types\PostsType;
+use Hata\Support\Content\Types\TagsType;
 use Hata\Support\Localization\LanguageCatalog;
 use Hata\Support\Localization\ReservedSlugs;
 use Hata\Support\Permissions\PermissionRegistry;
@@ -35,7 +42,7 @@ beforeEach(function () {
         $app->make(ReservedSlugs::class),
         $app->make(LanguageCatalog::class),
         $app->make(PermissionRegistry::class),
-        $this->root.'/types',
+        $this->root.'/app/ContentTypes',
         $this->root.'/lang',
         $this->root.'/config/hata.php',
     ));
@@ -44,6 +51,14 @@ beforeEach(function () {
 afterEach(function () {
     File::deleteDirectory($this->root);
 });
+
+/** Classes of the same name come from a new temp folder in every test, and a class loads once. */
+function loadGenerated(string $root, string $class): void
+{
+    if (! class_exists("App\\ContentTypes\\{$class}", false)) {
+        require "{$root}/app/ContentTypes/{$class}.php";
+    }
+}
 
 function generatedFiles(string $root): array
 {
@@ -63,7 +78,7 @@ test('it writes a flat type with its config entry and its lines in every languag
         ->expectsOutputToContain('Content type [recipes] created.')
         ->assertSuccessful();
 
-    require $this->root.'/types/RecipesType.php';
+    loadGenerated($this->root, 'RecipesType');
     $type = new RecipesType;
 
     expect($type)->toBeInstanceOf(ContentType::class)
@@ -76,7 +91,7 @@ test('it writes a flat type with its config entry and its lines in every languag
         ->and((new ContentTypes)->register($type)->find('recipes'))->toBe($type);
 
     expect((require $this->root.'/config/hata.php')['content']['types'])
-        ->toBe([...(require Hata::path('config/hata.php'))['content']['types'], 'Hata\Support\Content\Types\RecipesType']);
+        ->toBe([...(require Hata::path('config/hata.php'))['content']['types'], 'App\ContentTypes\RecipesType']);
 
     foreach (['en', 'uk'] as $locale) {
         $content = require "{$this->root}/lang/{$locale}/content.php";
@@ -105,7 +120,7 @@ test('it takes the key from a name of several words and applies the options', fu
     $this->artisan('make:content-type', ['name' => 'CaseStudiesType', '--tree' => true, '--base' => 'cases', '--icon' => 'briefcase'])
         ->assertSuccessful();
 
-    require $this->root.'/types/CaseStudiesType.php';
+    loadGenerated($this->root, 'CaseStudiesType');
     $type = new CaseStudiesType;
 
     expect($type->key())->toBe('case-studies')
@@ -125,7 +140,7 @@ test('it takes the key from a name of several words and applies the options', fu
 test('it takes the key from the option', function () {
     $this->artisan('make:content-type', ['name' => 'News', '--key' => 'articles'])->assertSuccessful();
 
-    expect(File::get($this->root.'/types/NewsType.php'))->toContain("return 'articles';")
+    expect(File::get($this->root.'/app/ContentTypes/NewsType.php'))->toContain("return 'articles';")
         ->and((require $this->root.'/lang/uk/permissions.php')['groups'])->toHaveKey('articles');
 });
 
@@ -155,9 +170,9 @@ test('it keeps an acronym one word and makes the default base of an underscored 
     $this->artisan('make:content-type', ['name' => 'FAQs'])->assertSuccessful();
     $this->artisan('make:content-type', ['name' => 'Notes', '--key' => 'blog_notes'])->assertSuccessful();
 
-    expect(File::get($this->root.'/types/FAQsType.php'))->toContain("return 'faqs';")
+    expect(File::get($this->root.'/app/ContentTypes/FAQsType.php'))->toContain("return 'faqs';")
         ->and((require $this->root.'/lang/en/content.php')['types']['faqs']['plural'])->toBe('Faqs')
-        ->and(File::get($this->root.'/types/NotesType.php'))->toContain("return 'blog_notes';")->toContain("return 'blog-notes';");
+        ->and(File::get($this->root.'/app/ContentTypes/NotesType.php'))->toContain("return 'blog_notes';")->toContain("return 'blog-notes';");
 });
 
 test('it keeps the imports of the config in sorted order', function () {
@@ -169,8 +184,8 @@ test('it keeps the imports of the config in sorted order', function () {
     $sorted = $imports[0];
     sort($sorted);
 
-    expect($imports[0])->toBe($sorted)->toContain('use Hata\\Support\\Content\\Types\\ArticlesType;')
-        ->and((require $this->root.'/config/hata.php')['content']['types'])->toBe([...(require Hata::path('config/hata.php'))['content']['types'], 'Hata\Support\Content\Types\ArticlesType']);
+    expect($imports[0])->toBe($sorted)->toContain('use App\\ContentTypes\\ArticlesType;')
+        ->and((require $this->root.'/config/hata.php')['content']['types'])->toBe([...(require Hata::path('config/hata.php'))['content']['types'], 'App\ContentTypes\ArticlesType']);
 });
 
 test('it refuses a base that is the address of an existing page, trashed or not', function (bool $trashed) {
@@ -215,14 +230,14 @@ test('it puts every file back when one cannot be written', function () {
 })->skip(fn (): bool => function_exists('posix_geteuid') && posix_geteuid() === 0, 'root may write a read-only file');
 
 test('it refuses to overwrite an existing class file', function () {
-    File::ensureDirectoryExists($this->root.'/types');
-    File::put($this->root.'/types/ReviewsType.php', '<?php // mine');
+    File::ensureDirectoryExists($this->root.'/app/ContentTypes');
+    File::put($this->root.'/app/ContentTypes/ReviewsType.php', '<?php // mine');
 
     $this->artisan('make:content-type', ['name' => 'Reviews'])
         ->expectsOutputToContain('already exists')
         ->assertFailed();
 
-    expect(File::get($this->root.'/types/ReviewsType.php'))->toBe('<?php // mine');
+    expect(File::get($this->root.'/app/ContentTypes/ReviewsType.php'))->toBe('<?php // mine');
 });
 
 test('it leaves a file of another shape alone and prints its lines to add by hand', function () {
@@ -236,4 +251,91 @@ test('it leaves a file of another shape alone and prints its lines to add by han
     expect(File::get($this->root.'/lang/uk/content.php'))->toBe("<?php\n\nreturn ['types' => []];\n")
         ->and((require $this->root.'/lang/en/content.php')['types'])->toHaveKey('reviews')
         ->and((require $this->root.'/lang/uk/permissions.php')['items'])->toHaveKey('reviews');
+});
+
+test('it writes the class into the site\'s app/ContentTypes', function () {
+    $this->artisan('make:content-type', ['name' => 'Recipes'])->assertSuccessful();
+
+    $source = File::get($this->root.'/app/ContentTypes/RecipesType.php');
+
+    expect($source)->toContain('namespace App\\ContentTypes;')
+        ->toContain('class RecipesType extends ContentType')
+        ->not->toContain('translationPrefix');
+});
+
+test('it adds the class to the site\'s published hata config and keeps the kit types', function () {
+    $this->artisan('make:content-type', ['name' => 'Recipes'])->assertSuccessful();
+
+    $types = (require $this->root.'/config/hata.php')['content']['types'];
+
+    expect($types)->toContain(PagesType::class, PostsType::class, CategoriesType::class, TagsType::class)
+        ->and(end($types))->toBe('App\ContentTypes\RecipesType');
+
+    $merged = HataConfig::merge(HataConfig::defaults(), require $this->root.'/config/hata.php');
+
+    expect($merged['content']['types'])->toBe($types);
+});
+
+test('it publishes the hata config first when the site has none', function () {
+    File::delete($this->root.'/config/hata.php');
+
+    $this->artisan('make:content-type', ['name' => 'Recipes'])
+        ->expectsOutputToContain('published')
+        ->assertSuccessful();
+
+    expect(File::get($this->root.'/config/hata.php'))->toContain('Hata\\Support\\Content\\Types\\PagesType')
+        ->and((require $this->root.'/config/hata.php')['content']['types'])->toContain('App\ContentTypes\RecipesType', PagesType::class);
+});
+
+test('it writes labels into the site\'s lang files, creating them', function () {
+    File::deleteDirectory($this->root.'/lang');
+
+    $this->artisan('make:content-type', ['name' => 'Recipes'])->assertSuccessful();
+
+    foreach (array_keys(config('hata.admin.interface_locales')) as $locale) {
+        expect((require "{$this->root}/lang/{$locale}/content.php")['types']['recipes']['label'])->toBe('Recipe')
+            ->and((require "{$this->root}/lang/{$locale}/permissions.php")['groups']['recipes'])->toBe('Recipes')
+            ->and((require "{$this->root}/lang/{$locale}/permissions.php")['items']['recipes']['view'])->toBe('View recipes');
+    }
+});
+
+test('it removes the files it made when a later one fails', function () {
+    File::deleteDirectory($this->root.'/lang');
+    File::delete($this->root.'/config/hata.php');
+    File::put($this->root.'/lang', 'not a directory');
+
+    $this->artisan('make:content-type', ['name' => 'Recipes'])->assertFailed();
+
+    expect(File::exists($this->root.'/config/hata.php'))->toBeFalse()
+        ->and(File::exists($this->root.'/app/ContentTypes/RecipesType.php'))->toBeFalse();
+});
+
+test('it labels a generated type from the site\'s translations at runtime', function () {
+    $this->artisan('make:content-type', ['name' => 'Recipes'])->assertSuccessful();
+
+    loadGenerated($this->root, 'RecipesType');
+    app('translator')->getLoader()->addPath($this->root.'/lang');
+    app()->setLocale('en');
+
+    $type = new RecipesType;
+    $registry = app(PermissionRegistry::class);
+    $registry->register('recipes', ContentTypes::ACTIONS, $type->translationPrefix().'permissions');
+
+    expect($type->label())->toBe('Recipe')
+        ->and($registry->groupLabel('recipes'))->toBe('Recipes')
+        ->and($registry->permissionLabel('recipes.view'))->toBe('View recipes');
+});
+
+test('a generated type appears in the admin menu once registered', function () {
+    $this->artisan('make:content-type', ['name' => 'Recipes'])->assertSuccessful();
+
+    loadGenerated($this->root, 'RecipesType');
+    app('translator')->getLoader()->addPath($this->root.'/lang');
+    app(ContentTypes::class)->register(new RecipesType);
+    seedRolesAndPermissions();
+
+    $user = User::factory()->withPermissions(['admin.access', 'recipes.view'])->create();
+    $items = app(AdminMenu::class)->for($user)['content']['items'];
+
+    expect(collect($items)->pluck('key')->all())->toContain('content.recipes');
 });

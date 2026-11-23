@@ -2,7 +2,6 @@
 
 namespace Hata\Console\Commands;
 
-use Hata\Hata;
 use Hata\Support\Content\ContentTypeGenerator;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -48,6 +47,10 @@ class MakeContentType extends Command
         $this->components->info("Content type [{$type->key}] created.");
         $this->components->twoColumnDetail($this->relative($type->classFile), 'created');
 
+        foreach ($type->created as $file) {
+            $this->components->twoColumnDetail($this->relative($file), basename($file) === 'hata.php' ? 'published' : 'created');
+        }
+
         foreach ($type->updated as $file) {
             $this->components->twoColumnDetail($this->relative($file), 'updated');
         }
@@ -69,6 +72,6 @@ class MakeContentType extends Command
 
     private function relative(string $path): string
     {
-        return str_starts_with($path, Hata::path().'/') ? substr($path, strlen(Hata::path()) + 1) : $path;
+        return str_starts_with($path, base_path().'/') ? substr($path, strlen(base_path()) + 1) : $path;
     }
 }
