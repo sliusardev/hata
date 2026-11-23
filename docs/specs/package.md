@@ -204,10 +204,16 @@ register through it.
 
 ## Developing Hata
 
-- The package is at `/Users/vitalii/Herd/hata`; the demo `/Users/vitalii/Herd/hata-demo` requires it through a
-  `path` repository with `symlink: true` (`sliusardev/hata: *@dev`) and is served by Herd at https://hata.test.
-  PHP, views and translations show at once; after `npm run build` (which rewrites `dist/`, commit it with the source
-  change) run `php artisan vendor:publish --tag=hata-assets --force` in the demo.
+- The package is at `/Users/vitalii/Herd/hata`; the demo `/Users/vitalii/Herd/hata-demo` requires `sliusardev/hata:
+  ^0.1` from Packagist like a client site (since 2026-11-24) and is served by Herd at https://hata.test. A change
+  reaches it after a release: push `main`, an annotated tag `vX.Y.Z` pushed to GitHub (Packagist updates through the
+  GitHub hook), then `composer update sliusardev/hata` in the demo. For unreleased work a `path` repository with
+  `symlink: true` (`*@dev`) may be added there for a while. `npm run build` rewrites `dist/`; commit it with the
+  source change.
+- Shipped files: plain ASCII names only (no Livewire `⚡` prefix: macOS's `unzip` cannot extract UTF-8 names from the
+  release zip and Composer's fallback needs `php-zip`; create components with `make:livewire --emoji=false`),
+  guarded by `tests/Feature/Package/PackageFilesTest.php`; nothing runtime code reads may sit in an export-ignored
+  path (`.gitattributes`).
 - `php artisan migrate:fresh --seed` in the demo rebuilds it with the `ADMIN_*` super admin (the user runs database
   writes there).
 - Tests: `composer test` (Pint, PHPStan level 7, Pest on Testbench). Suites `Unit`, `Feature`, `AdminPath`, `Install`.

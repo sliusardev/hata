@@ -10,7 +10,7 @@ Settings for the whole site that an administrator changes in the admin panel ins
 |---|---|---|---|
 | Site settings | `/admin/settings` | `admin.settings.edit` | `settings.edit` |
 
-Component: `resources/views/livewire/admin/settings/⚡edit.blade.php`, form object `Hata\Livewire\Forms\SiteSettingsForm`. The navigation item "Site settings" (Administration group) is shown only with `settings.edit`. The `admin` system role gets the permission through `*`.
+Component: `resources/views/livewire/admin/settings/edit.blade.php`, form object `Hata\Livewire\Forms\SiteSettingsForm`. The navigation item "Site settings" (Administration group) is shown only with `settings.edit`. The `admin` system role gets the permission through `*`.
 
 ## Storage
 

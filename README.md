@@ -317,16 +317,32 @@ Hata's). The full list:
 
 ## Developing Hata
 
-This repository is the package; `/Users/vitalii/Herd/hata-demo` is the app to look at it in a browser. The demo
-requires Hata through a path repository with a symlink:
+This repository is the package; `/Users/vitalii/Herd/hata-demo` is the app to look at it in a browser, served by Herd
+at https://hata.test. The demo installs Hata exactly like a client site, `sliusardev/hata: ^0.1` from Packagist, so a
+change reaches it only after a release: push `main`, tag it (`git tag -a v0.1.4 -m "…" && git push origin v0.1.4`;
+while `0.x`, a fix raises the last number, a breaking change the middle one), then `composer update sliusardev/hata`
+in the demo. To look at unreleased work there, add a path repository for a while and drop it again before committing
+the demo:
 
 ```json
 "repositories": [{"name": "hata", "type": "path", "url": "../hata", "options": {"symlink": true}}],
 "require": {"sliusardev/hata": "*@dev"}
 ```
 
-Herd serves it at https://hata.test. PHP, views and translations show there at once. `php artisan migrate:fresh --seed`
-in the demo rebuilds it with the `ADMIN_*` super admin from its `.env`.
+`php artisan migrate:fresh --seed` in the demo rebuilds it with the `ADMIN_*` super admin from its `.env`.
+
+### Rules for the files Hata ships
+
+A site receives Hata as a zip archive from GitHub, so every file must survive any unzip:
+
+- **Plain ASCII file names only.** No Livewire `⚡` prefix on component files (Livewire finds `name.blade.php` and
+  `⚡name.blade.php` alike), no Cyrillic or other non-ASCII names. macOS's `unzip` cannot extract UTF-8 names, and
+  Composer's fallback needs `php-zip`, which some hosts lack. Create components with
+  `php vendor/bin/testbench make:livewire … --emoji=false`, or rename the file. `PackageFilesTest` fails on any
+  non-ASCII name under `src`, `config`, `database`, `resources`, `routes`, `stubs` or `dist`.
+- **Nothing a site needs may sit in an export-ignored path** (`.gitattributes`: `tests`, `workbench`, `docs`,
+  `resources/css`, `resources/js`, the build and tool configs). Runtime code reads only `src`, `config`, `database`,
+  `resources/{views,lang,lang-framework,static,boost}`, `routes`, `stubs` and `dist`.
 
 ```bash
 composer test           # Pint (check), PHPStan level 7, Pest on Orchestra Testbench (SQLite in memory)

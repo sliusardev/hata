@@ -20,7 +20,7 @@ it('renders an admin page through the hata livewire namespace', function () {
         ->assertSee('data-test="logout-button"', escape: false);
 
     expect(app('livewire.finder')->resolveSingleFileComponentPath('hata::admin.users.index'))
-        ->toBe(Hata::path('resources/views/livewire/admin/users/⚡index.blade.php'));
+        ->toBe(Hata::path('resources/views/livewire/admin/users/index.blade.php'));
 });
 
 it('renders hata\'s anonymous components and layouts under the hata prefix', function () {

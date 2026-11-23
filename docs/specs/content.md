@@ -589,7 +589,7 @@ error instead of creating a record outside the group. Save calls
   gets the fixed language row with the reason instead (one `exists` query, only on a hierarchical type of a
   multilingual site). Choosing and unlinking translations are immediate actions of their own, apart from Save and
   without a reload: the translation picker (`<livewire:translation-picker>`,
-  `resources/views/components/⚡translation-picker.blade.php`, a component of its own, so typing in its search
+  `resources/views/livewire/translation-picker.blade.php`, a component of its own, so typing in its search
   renders only the dialog and costs two queries, not the form's) opens on `choose-translation` (`choose($locale)`,
   404 for a language the group has or the site lacks) with a search over the live records of the type in that
   language outside the group (one query while it is open; 20 listed, with a line when there are more), `pick($id)`
