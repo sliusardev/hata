@@ -61,6 +61,13 @@ class HataServiceProvider extends ServiceProvider
     private const array CONFIG_CACHE_COMMANDS = ['config:cache', 'optimize'];
 
     /**
+     * The layouts (`resources/views/layouts`) that are also Blade components, `<x-hata::layouts.…>`.
+     *
+     * @var list<string>
+     */
+    public const array LAYOUTS = ['app', 'app.header', 'app.sidebar', 'auth', 'auth.card', 'auth.simple', 'auth.split', 'focus', 'site'];
+
+    /**
      * The configuration files of the package, merged under their own keys (interim: one `hata` key later).
      *
      * @var list<string>
@@ -324,12 +331,13 @@ class HataServiceProvider extends ServiceProvider
     }
 
     /**
-     * Everything is under `hata`, so nothing is added to the host's own view paths or Livewire locations:
+     * Everything is under `hata`, so nothing is added to the host's own view paths, anonymous component paths or
+     * Livewire locations, and no unprefixed component name (welcome, layouts.app) can ever resolve to Hata:
      *
      * - views `hata::…` (`resources/views`; a site overrides one in `resources/views/vendor/hata`);
      * - anonymous Blade components `<x-hata::…>`, which Blade finds as the views `hata::components.…`;
-     * - the layouts as components, `<x-hata::layouts.app>`: Blade looks a name it did not find among the components
-     *   up in the anonymous component paths of its prefix, here the views folder itself (after a site's overrides);
+     * - the layouts as components, `<x-hata::layouts.app>`: each is an alias of the view of the same name (LAYOUTS),
+     *   so a site's override of the view is the component too;
      * - Livewire SFC pages and components `hata::…` (`resources/views/livewire`). The namespace is set on Livewire's
      *   finder directly: Livewire only (re)writes the namespaces listed in its `component_namespaces` config, which
      *   holds no `hata`, so the provider order does not matter. Full pages name their layout (`hata::layouts.app`).
@@ -339,13 +347,9 @@ class HataServiceProvider extends ServiceProvider
         $this->loadViewsFrom(Hata::path('resources/views'), 'hata');
 
         $this->callAfterResolving(BladeCompiler::class, function (BladeCompiler $blade): void {
-            foreach ((array) config('view.paths', []) as $path) {
-                if (is_dir($override = $path.'/vendor/hata')) {
-                    $blade->anonymousComponentPath($override, 'hata');
-                }
+            foreach (self::LAYOUTS as $layout) {
+                $blade->component("hata::layouts.{$layout}", "hata::layouts.{$layout}");
             }
-
-            $blade->anonymousComponentPath(Hata::path('resources/views'), 'hata');
         });
 
         Livewire::addNamespace('hata', viewPath: Hata::path('resources/views/livewire'));

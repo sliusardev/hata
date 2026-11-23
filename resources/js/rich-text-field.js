@@ -1,5 +1,5 @@
 /**
- * Alpine component of <x-admin.rich-text>: the toolbar state, the link form and the image alt field around a
+ * Alpine component of <x-hata::admin.rich-text>: the toolbar state, the link form and the image alt field around a
  * Tiptap editor. Tiptap itself (./rich-text.js) is imported on init, so it is a separate chunk.
  *
  * The editor writes its HTML into the bound Livewire property without a request ($wire.set(name, html, false)),

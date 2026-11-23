@@ -1,5 +1,5 @@
 /**
- * The Tiptap editor behind <x-admin.rich-text>. Loaded with import() by the richText Alpine component, so Vite
+ * The Tiptap editor behind <x-hata::admin.rich-text>. Loaded with import() by the richText Alpine component, so Vite
  * puts Tiptap in its own chunk that only pages with an editor download.
  *
  * The schema allows exactly what the server keeps (Hata\Support\Content\BodySanitizer): paragraphs, h2-h4, bold,

@@ -1,5 +1,5 @@
 /*
- * Body text: the rich text editor (Tiptap, <x-admin.rich-text>) and the public page (site/entry) use the same rules.
+ * Body text: the rich text editor (Tiptap, <x-hata::admin.rich-text>) and the public page (site/entry) use the same rules.
  * Zinc and accent variables only, so color schemes and dark mode reach it.
  */
 .rich-text-content {
