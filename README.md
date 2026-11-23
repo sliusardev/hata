@@ -21,34 +21,27 @@ and spatie/laravel-permission as dependencies.
 
 ## Installing
 
-### 1. Give Composer access to the private repository
+### 1. Require Hata and run the installer
 
-Hata lives in the private GitHub repository `sliusardev/hata`. In the site's `composer.json`:
+Hata is open source (MIT) in the public GitHub repository `sliusardev/hata`. On a fresh Laravel 13 app
+(`laravel new site`, no starter kit), with the database configured in `.env`:
+
+```bash
+composer require sliusardev/hata:^0.1
+php artisan hata:install
+```
+
+If Composer cannot find the package (it is not listed on Packagist yet), add the repository to the site's
+`composer.json` first; it is public, so no token or SSH key is needed:
 
 ```json
 "repositories": [
-    {"type": "vcs", "url": "git@github.com:sliusardev/hata.git"}
+    {"type": "vcs", "url": "https://github.com/sliusardev/hata"}
 ]
 ```
 
-With SSH access to GitHub (a deploy key on the server) that is enough. Otherwise use the HTTPS URL
-`https://github.com/sliusardev/hata.git` and a token: create a fine-grained GitHub token with access to the
-`sliusardev/hata` repository only and the permission **Contents: read-only**, then
-
-```bash
-composer config github-oauth.github.com <token>   # writes auth.json; keep it out of git (Laravel's .gitignore has it)
-```
-
-On a server or in CI, pass it as `COMPOSER_AUTH='{"github-oauth": {"github.com": "<token>"}}'` instead.
-
-### 2. Require Hata and run the installer
-
-On a fresh Laravel 13 app (`laravel new site`, no starter kit), with the database configured in `.env`:
-
-```bash
-composer require sliusardev/hata:dev-main    # until the first tagged release; then a version constraint
-php artisan hata:install
-```
+Hata follows semantic versioning; while it is `0.x`, a breaking change raises the minor version, so `^0.1` takes the
+fixes of `0.1.*` and never a breaking release.
 
 To create the first super admin without prompts, set `ADMIN_NAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`
 (remove the password after the install), or pass `--name`, `--email` and `--password`. `--no-migrate` skips the
@@ -357,3 +350,7 @@ DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_DATABASE=hata_testing DB_USERNAME=root 
 
 GitHub Actions runs Pint and PHPStan, checks that `npm run build` leaves `dist/` unchanged (PHP 8.5), and runs the
 suite on PHP 8.4 and 8.5 against SQLite and MySQL 8, on pushes to `main` and on pull requests.
+
+## License
+
+Hata is open-source software licensed under the [MIT license](LICENSE).

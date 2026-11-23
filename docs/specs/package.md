@@ -8,12 +8,11 @@ same as a guide with examples.
 
 ## Distribution
 
-- Private GitHub repository `sliusardev/hata`, `license: proprietary`. A site adds
-  `repositories: [{"type": "vcs", "url": "git@github.com:sliusardev/hata.git"}]` (or
-  `https://github.com/sliusardev/hata.git`) to its `composer.json` and gives Composer a read-only fine-grained GitHub
-  token (repository access: `sliusardev/hata` only; permission Contents: read) in the site's `auth.json`
-  (`composer config github-oauth.github.com <token>`, never committed) or in `COMPOSER_AUTH` on the server or in CI.
-- Versions: no tags yet (`0.x` from the first client site on), so a site requires `dev-main` until then.
+- Public GitHub repository `sliusardev/hata`, `license: MIT` (decision 73). A site requires `sliusardev/hata:^0.1`;
+  until the package is listed on Packagist it also adds `repositories: [{"type": "vcs", "url":
+  "https://github.com/sliusardev/hata"}]` to its `composer.json` (no token or SSH key needed).
+- Versions: semantic versioning from `v0.1.0` (2026-11-24). While Hata is `0.x`, a breaking change raises the minor
+  version, so a site's `^0.1` takes only the fixes of `0.1.*`.
 - Requirements: PHP `^8.4` with `intl`, Laravel `^13.17`, GD or Imagick. `livewire/flux` is pinned to `~2.21.0`
   because Flux's CSS is compiled into Hata's assets; a site gets a newer Flux minor only with a Hata release built on
   it. No Flux Pro.

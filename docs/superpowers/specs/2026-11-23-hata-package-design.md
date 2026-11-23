@@ -91,7 +91,7 @@ What a client site will add on top of Hata (the user's words: "своі типи
 
 - Composer `sliusardev/hata` (the GitHub repository `sliusardev/hata`, already pushed). PHP namespace `Hata\`;
   view, translation, Livewire and Blade-component namespace `hata`; config key `hata`.
-- **Private repository** (the user's decision). A site installs Hata through
+- **Private repository** (the user's decision; *superseded on 2026-11-24 by decision 73: the repository is public under MIT and needs no token*). A site installs Hata through
   `repositories: [{type: vcs, url: git@github.com:sliusardev/hata.git}]` (or the HTTPS URL) and a read-only
   fine-grained GitHub token in the site's `auth.json` / `COMPOSER_AUTH`. The README documents this; `license` is
   `proprietary`. Making it public later needs no code change. `hata-shop` will be distributed the same way.
