@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Roles;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Role;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,7 @@ class CreateRole
      *
      * @throws ProtectedActionException
      */
-    public function handle(User $actor, array $data): Role
+    public function handle(AdminUser $actor, array $data): Role
     {
         Gate::forUser($actor)->authorize('create', Role::class);
 

@@ -2,8 +2,8 @@
 
 namespace Hata\Livewire\Forms;
 
-use App\Models\User;
 use Hata\Concerns\ProfileValidationRules;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Role;
 use Hata\Support\Localization\ContentLocales;
 use Illuminate\Validation\Rule;
@@ -31,7 +31,7 @@ class UserForm extends Form
 
     public bool $email_verified = false;
 
-    public function fillFromUser(User $user): void
+    public function fillFromUser(AdminUser $user): void
     {
         $this->name = $user->name;
         $this->email = $user->email;
@@ -67,7 +67,7 @@ class UserForm extends Form
      *
      * @return array{name: string, email: string, locale: string, password: string|null, roles?: list<int>}
      */
-    public function validateForUpdate(User $user, bool $includeRoles): array
+    public function validateForUpdate(AdminUser $user, bool $includeRoles): array
     {
         /** @var array{name: string, email: string, password?: string|null, locale: string, roles?: array<int, int|string>} $validated */
         $validated = $this->validate([
@@ -92,7 +92,7 @@ class UserForm extends Form
     /**
      * @return array<string, mixed>
      */
-    private function sharedRules(?User $user): array
+    private function sharedRules(?AdminUser $user): array
     {
         return [
             'name' => $this->nameRules(),

@@ -2,7 +2,7 @@
 
 namespace Tests\Fixtures;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Contracts\UsesMedia;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,7 +21,7 @@ class MediaUsingModel extends Model implements UsesMedia
         return 'Fixture '.$this->getKey().' / '.$field;
     }
 
-    public function mediaUsageUrl(string $field, ?User $viewer): ?string
+    public function mediaUsageUrl(string $field, ?AdminUser $viewer): ?string
     {
         return $viewer === null ? null : 'https://example.test/fixtures/'.$this->getKey();
     }

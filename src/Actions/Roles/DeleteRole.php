@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Roles;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Role;
 use Hata\Support\Permissions\AccessRules;
@@ -16,7 +16,7 @@ class DeleteRole
     /**
      * @throws ProtectedActionException
      */
-    public function handle(User $actor, Role $role): void
+    public function handle(AdminUser $actor, Role $role): void
     {
         Gate::forUser($actor)->authorize('delete', $role);
 

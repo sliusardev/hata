@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\MediaKind;
 use Hata\Exceptions\MediaUploadException;
 use Hata\Exceptions\MediaWriteException;
@@ -31,7 +31,7 @@ class UploadMedia
      * @throws MediaUploadException
      * @throws AuthorizationException
      */
-    public function handle(User $actor, UploadedFile $file, ?MediaFolder $folder = null, ?int $pickedSize = null, ?string $pickedExtension = null): Media
+    public function handle(AdminUser $actor, UploadedFile $file, ?MediaFolder $folder = null, ?int $pickedSize = null, ?string $pickedExtension = null): Media
     {
         Gate::forUser($actor)->authorize('create', Media::class);
 

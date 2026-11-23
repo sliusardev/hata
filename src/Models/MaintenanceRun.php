@@ -2,15 +2,17 @@
 
 namespace Hata\Models;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Database\Factories\MaintenanceRunFactory;
 use Hata\Enums\MaintenanceAction;
 use Hata\Enums\MaintenanceStatus;
+use Hata\Hata;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Carbon;
 
 /**
@@ -71,11 +73,11 @@ class MaintenanceRun extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Authenticatable&AdminUser, $this>
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Hata::userModel());
     }
 
     /**

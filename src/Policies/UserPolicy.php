@@ -2,7 +2,7 @@
 
 namespace Hata\Policies;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 
 /**
  * Permission checks for managing users. Protection rules that also bind super admins
@@ -10,27 +10,27 @@ use App\Models\User;
  */
 class UserPolicy
 {
-    public function viewAny(User $actor): bool
+    public function viewAny(AdminUser $actor): bool
     {
         return $actor->can('users.view');
     }
 
-    public function view(User $actor, User $user): bool
+    public function view(AdminUser $actor, AdminUser $user): bool
     {
         return $actor->can('users.view');
     }
 
-    public function create(User $actor): bool
+    public function create(AdminUser $actor): bool
     {
         return $actor->can('users.create');
     }
 
-    public function update(User $actor, User $user): bool
+    public function update(AdminUser $actor, AdminUser $user): bool
     {
         return $actor->can('users.edit');
     }
 
-    public function delete(User $actor, User $user): bool
+    public function delete(AdminUser $actor, AdminUser $user): bool
     {
         return $actor->can('users.delete');
     }

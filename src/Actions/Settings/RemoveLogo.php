@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Settings;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\MediaUsage;
 use Hata\Models\Setting;
 use Hata\Support\Settings\SiteLogo;
@@ -18,7 +18,7 @@ class RemoveLogo
     /**
      * Stop using the light or dark logo. The file stays in the library; the other logo (or the default mark) takes its place.
      */
-    public function handle(User $actor, string $variant): void
+    public function handle(AdminUser $actor, string $variant): void
     {
         Gate::forUser($actor)->authorize('settings.edit');
 

@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
 use Hata\Models\Entry;
 use Hata\Models\EntryGroup;
@@ -37,7 +37,7 @@ class CreateEntry
      *
      * @throws ValidationException
      */
-    public function handle(User $actor, ContentType $type, string $locale, array $data, ?Entry $source = null): Entry
+    public function handle(AdminUser $actor, ContentType $type, string $locale, array $data, ?Entry $source = null): Entry
     {
         Gate::forUser($actor)->authorize('create', [Entry::class, $type->key()]);
 

@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
@@ -29,7 +29,7 @@ class BulkEntries
      * @param  list<int>  $ids
      * @return int How many records were set.
      */
-    public function setStatus(User $actor, ContentType $type, array $ids, EntryStatus $status): int
+    public function setStatus(AdminUser $actor, ContentType $type, array $ids, EntryStatus $status): int
     {
         $entries = Entry::query()->ofType($type->key())->whereKey($ids)->get(['id', 'type', 'status', 'published_at', 'deleted_at']);
 
@@ -47,7 +47,7 @@ class BulkEntries
      * @param  list<int>  $ids
      * @return int How many records went to the trash, those under the picked ones included.
      */
-    public function trash(User $actor, ContentType $type, array $ids): int
+    public function trash(AdminUser $actor, ContentType $type, array $ids): int
     {
         $count = 0;
 
@@ -72,7 +72,7 @@ class BulkEntries
      * @param  list<int>  $ids
      * @return array{restored: int, failed: list<string>} The count, and the message of every refusal.
      */
-    public function restore(User $actor, ContentType $type, array $ids): array
+    public function restore(AdminUser $actor, ContentType $type, array $ids): array
     {
         $restored = 0;
         $failed = [];
@@ -102,7 +102,7 @@ class BulkEntries
      * @param  list<int>  $ids
      * @return int How many records were deleted, those under the picked ones included.
      */
-    public function delete(User $actor, ContentType $type, array $ids): int
+    public function delete(AdminUser $actor, ContentType $type, array $ids): int
     {
         Gate::forUser($actor)->authorize($type->permission('delete'));
 

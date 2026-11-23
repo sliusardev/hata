@@ -2,7 +2,7 @@
 
 namespace Hata\Models;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Contracts\UsesMedia;
 use Hata\Database\Factories\EntryGroupFactory;
 use Hata\Support\Content\ContentTypes;
@@ -102,7 +102,7 @@ class EntryGroup extends Model implements UsesMedia
         ]);
     }
 
-    public function mediaUsageUrl(string $field, ?User $viewer): ?string
+    public function mediaUsageUrl(string $field, ?AdminUser $viewer): ?string
     {
         return $this->representative()?->mediaUsageUrl($field, $viewer);
     }

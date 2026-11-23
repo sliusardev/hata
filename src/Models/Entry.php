@@ -2,11 +2,12 @@
 
 namespace Hata\Models;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Contracts\UsesMedia;
 use Hata\Database\Factories\EntryFactory;
 use Hata\Enums\EntryState;
 use Hata\Enums\EntryStatus;
+use Hata\Hata;
 use Hata\Models\Concerns\HasSearchIndex;
 use Hata\Support\Content\BodySanitizer;
 use Hata\Support\Content\ContentType;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 
@@ -106,11 +108,11 @@ class Entry extends Model implements UsesMedia
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Authenticatable&AdminUser, $this>
      */
     public function author(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'author_id');
+        return $this->belongsTo(Hata::userModel(), 'author_id');
     }
 
     /**
@@ -402,7 +404,7 @@ class Entry extends Model implements UsesMedia
     /**
      * The record's edit page (read-only while it is in the trash), for a viewer who may view the type.
      */
-    public function mediaUsageUrl(string $field, ?User $viewer): ?string
+    public function mediaUsageUrl(string $field, ?AdminUser $viewer): ?string
     {
         // A type that is switched off has no admin pages to link to.
         if ($viewer === null || ! app(ContentTypes::class)->isActive($this->type) || ! Gate::forUser($viewer)->allows('view', $this)) {

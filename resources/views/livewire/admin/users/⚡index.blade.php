@@ -3,7 +3,8 @@
 use Hata\Actions\Users\DeleteUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Role;
-use App\Models\User;
+use Hata\Contracts\AdminUser;
+use Hata\Hata;
 use Hata\Support\Permissions\AccessRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
@@ -41,7 +42,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
 
     public function mount(): void
     {
-        $this->authorize('viewAny', User::class);
+        $this->authorize('viewAny', Hata::userModel());
     }
 
     public function updatedSearch(): void
@@ -71,7 +72,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     }
 
     /**
-     * @return LengthAwarePaginator<int, User>
+     * @return LengthAwarePaginator<int, AdminUser>
      */
     #[Computed]
     public function users(): LengthAwarePaginator
@@ -79,7 +80,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
         $sortBy = in_array($this->sortBy, self::SORTABLE, true) ? $this->sortBy : 'created_at';
         $direction = $this->sortDirection === 'asc' ? 'asc' : 'desc';
 
-        return User::query()
+        return Hata::userModel()::query()
             ->with('roles')
             ->search($this->search)
             ->when($this->role !== '', fn ($query) => $query->whereHas('roles', fn ($roles) => $roles->whereKey((int) $this->role)))
@@ -100,16 +101,16 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     #[Computed]
     public function hasAnyUsers(): bool
     {
-        return User::query()->exists();
+        return Hata::userModel()::query()->exists();
     }
 
-    public function canEdit(User $user): bool
+    public function canEdit(AdminUser $user): bool
     {
         return Auth::user()->can('update', $user)
             && app(AccessRules::class)->userUpdateDenial(Auth::user(), $user) === null;
     }
 
-    public function canDelete(User $user): bool
+    public function canDelete(AdminUser $user): bool
     {
         return Auth::user()->can('delete', $user)
             && app(AccessRules::class)->userDeletionDenial(Auth::user(), $user, $this->superAdminCount) === null;
@@ -125,14 +126,14 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     }
 
     #[Computed]
-    public function deletingUser(): ?User
+    public function deletingUser(): ?AdminUser
     {
-        return $this->deletingUserId ? User::find($this->deletingUserId) : null;
+        return $this->deletingUserId ? Hata::userModel()::find($this->deletingUserId) : null;
     }
 
     public function confirmDelete(int $userId): void
     {
-        $user = User::findOrFail($userId);
+        $user = Hata::userModel()::findOrFail($userId);
 
         $this->authorize('delete', $user);
 
@@ -142,7 +143,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
 
     public function deleteUser(DeleteUser $deleteUser): void
     {
-        $user = User::findOrFail($this->deletingUserId);
+        $user = Hata::userModel()::findOrFail($this->deletingUserId);
 
         $this->authorize('delete', $user);
 
@@ -167,7 +168,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
             <flux:subheading>{{ __('hata::users.index.description') }}</flux:subheading>
         </div>
 
-        @can('create', App\Models\User::class)
+        @can('create', \Hata\Hata::userModel())
             <flux:button variant="primary" icon="plus" :href="route('admin.users.create')" wire:navigate>
                 {{ __('hata::users.index.create') }}
             </flux:button>
@@ -240,7 +241,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                                 @endforelse
                             </div>
                         </flux:table.cell>
-                        <flux:table.cell class="max-lg:hidden">{{ config('hata.admin.interface_locales')[$user->locale ?? app(Hata\Support\Localization\ContentLocales::class)->interfaceDefault()] ?? '—' }}</flux:table.cell>
+                        <flux:table.cell class="max-lg:hidden">{{ config('hata.admin.interface_locales')[$user->locale ?? app(\Hata\Support\Localization\ContentLocales::class)->interfaceDefault()] ?? '—' }}</flux:table.cell>
                         <flux:table.cell class="max-lg:hidden">{{ $user->created_at?->tz(config('hata.admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
                         <flux:table.cell align="end">
                             <x-hata::admin.row-actions data-test="user-actions-{{ $user->id }}">

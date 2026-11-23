@@ -2,7 +2,6 @@
 
 namespace Hata\Livewire\Admin;
 
-use App\Models\User;
 use Flux\Flux;
 use Hata\Actions\Content\BulkEntries;
 use Hata\Actions\Content\DeleteEntry;
@@ -11,6 +10,7 @@ use Hata\Actions\Content\PruneEntryTrash;
 use Hata\Actions\Content\RestoreEntry;
 use Hata\Actions\Content\SetEntryStatus;
 use Hata\Actions\Content\TrashEntry;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
@@ -554,11 +554,11 @@ abstract class EntryListPage extends Component
         $this->forgetList();
     }
 
-    protected function actor(): User
+    protected function actor(): AdminUser
     {
         $user = Auth::user();
 
-        abort_unless($user instanceof User, 403);
+        abort_unless($user instanceof AdminUser, 403);
 
         return $user;
     }

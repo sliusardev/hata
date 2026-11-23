@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Entry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,7 @@ class TrashEntry
      *
      * @return int How many records were trashed; 0 when the record already was.
      */
-    public function handle(User $actor, Entry $entry): int
+    public function handle(AdminUser $actor, Entry $entry): int
     {
         Gate::forUser($actor)->authorize('delete', $entry);
 

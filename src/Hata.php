@@ -2,6 +2,11 @@
 
 namespace Hata;
 
+use Hata\Contracts\AdminUser;
+use Hata\Models\Concerns\IsAdminUser;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use LogicException;
+
 /**
  * Static helpers of the package.
  */
@@ -17,5 +22,30 @@ final class Hata
         $root = dirname(__DIR__);
 
         return $relative === '' ? $root : $root.'/'.ltrim($relative, '/');
+    }
+
+    /**
+     * The host's user model class (`auth.providers.users.model`). Hata never names the host's class: it queries,
+     * creates and relates users through this.
+     *
+     * @return class-string<Authenticatable&AdminUser>
+     *
+     * @throws LogicException When the configured class is not an Eloquent user that implements `AdminUser`.
+     */
+    public static function userModel(): string
+    {
+        $model = config('auth.providers.users.model');
+
+        if (! is_string($model) || ! is_subclass_of($model, AdminUser::class) || ! is_subclass_of($model, Authenticatable::class)) {
+            throw new LogicException(sprintf(
+                'The user model [%s] (config auth.providers.users.model) must extend %s, implement %s and use the %s trait.',
+                is_string($model) ? $model : get_debug_type($model),
+                Authenticatable::class,
+                AdminUser::class,
+                IsAdminUser::class,
+            ));
+        }
+
+        return $model;
     }
 }

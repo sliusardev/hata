@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Hata\Models\MediaFolder;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +15,7 @@ class DeleteFolder
     /**
      * @return array{folders: int, files: int}
      */
-    public function handle(User $actor, MediaFolder $folder): array
+    public function handle(AdminUser $actor, MediaFolder $folder): array
     {
         Gate::forUser($actor)->authorize('deleteFolders', Media::class);
 

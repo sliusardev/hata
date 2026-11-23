@@ -2,8 +2,8 @@
 
 namespace Hata\Database\Seeders;
 
-use App\Models\User;
 use Hata\Actions\Users\CreateSuperAdmin;
+use Hata\Hata;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
@@ -37,7 +37,7 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        if (User::query()->where('email', Str::lower($admin['email']))->exists()) {
+        if (Hata::userModel()::query()->where('email', Str::lower($admin['email']))->exists()) {
             return;
         }
 

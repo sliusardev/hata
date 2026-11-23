@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
 use Hata\Support\Content\EntryPaths;
@@ -26,7 +26,7 @@ class RestoreEntry
      *
      * @throws ProtectedActionException when other requests keep taking the record's new top-level path
      */
-    public function handle(User $actor, Entry $entry): Entry
+    public function handle(AdminUser $actor, Entry $entry): Entry
     {
         Gate::forUser($actor)->authorize('restore', $entry);
 

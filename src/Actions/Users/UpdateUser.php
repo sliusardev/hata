@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Users;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Support\Permissions\AccessRules;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +23,7 @@ class UpdateUser
      *
      * @throws ProtectedActionException
      */
-    public function handle(User $actor, User $user, array $data): User
+    public function handle(AdminUser $actor, AdminUser $user, array $data): AdminUser
     {
         Gate::forUser($actor)->authorize('update', $user);
 
@@ -31,7 +31,7 @@ class UpdateUser
             throw ProtectedActionException::because($denial);
         }
 
-        return DB::transaction(function () use ($actor, $user, $data): User {
+        return DB::transaction(function () use ($actor, $user, $data): AdminUser {
             $user->fill([
                 'name' => $data['name'],
                 'email' => Str::lower($data['email']),

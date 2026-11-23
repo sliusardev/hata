@@ -2,9 +2,12 @@
 
 namespace Hata\Support\Permissions;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\SystemRole;
+use Hata\Hata;
 use Hata\Models\Role;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\Permission\Models\Permission;
 
 /**
@@ -21,7 +24,7 @@ class AccessRules
      * Only super admins handle the super-admin role (rule 2). Everyone else may only assign
      * roles whose permissions they all have themselves (rule 5).
      */
-    public function canAssignRole(User $actor, Role $role): bool
+    public function canAssignRole(AdminUser $actor, Role $role): bool
     {
         if ($actor->isSuperAdmin()) {
             return true;
@@ -39,7 +42,7 @@ class AccessRules
     /**
      * Whether the actor may add the permission to a role (rule 5).
      */
-    public function canGrantPermission(User $actor, string $permission): bool
+    public function canGrantPermission(AdminUser $actor, string $permission): bool
     {
         return $actor->isSuperAdmin() || in_array($permission, $this->permissionNamesOf($actor), true);
     }
@@ -47,13 +50,13 @@ class AccessRules
     /**
      * Whether the user is the only remaining super admin (rule 3).
      */
-    public function isLastSuperAdmin(User $user): bool
+    public function isLastSuperAdmin(AdminUser $user): bool
     {
         if (! $user->isSuperAdmin()) {
             return false;
         }
 
-        return User::role(SystemRole::SuperAdmin->value)->whereKeyNot($user->getKey())->doesntExist();
+        return $this->superAdmins()->whereKeyNot($user->getKey())->doesntExist();
     }
 
     /**
@@ -61,7 +64,7 @@ class AccessRules
      */
     public function superAdminCount(): int
     {
-        return User::role(SystemRole::SuperAdmin->value)->count();
+        return $this->superAdmins()->count();
     }
 
     /**
@@ -70,7 +73,7 @@ class AccessRules
      * Only super admins edit super admins: changing their email or password would let
      * anyone else take over the account (follows from rule 2).
      */
-    public function userUpdateDenial(User $actor, User $user): ?string
+    public function userUpdateDenial(AdminUser $actor, AdminUser $user): ?string
     {
         return $user->isSuperAdmin() && ! $actor->isSuperAdmin()
             ? 'hata::users.errors.cannot_manage_super_admin'
@@ -83,14 +86,14 @@ class AccessRules
      * A list that asks for many users passes $superAdminCount (counted once), so the "last super admin" rule
      * costs no query per row; without it the rule asks the database.
      */
-    public function userDeletionDenial(User $actor, User $user, ?int $superAdminCount = null): ?string
+    public function userDeletionDenial(AdminUser $actor, AdminUser $user, ?int $superAdminCount = null): ?string
     {
         $isLastSuperAdmin = $superAdminCount === null
             ? $this->isLastSuperAdmin($user)
             : $user->isSuperAdmin() && $superAdminCount <= 1;
 
         return match (true) {
-            $actor->is($user) => 'hata::users.errors.cannot_delete_self',
+            $actor->getKey() === $user->getKey() => 'hata::users.errors.cannot_delete_self',
             $isLastSuperAdmin => 'hata::users.errors.cannot_delete_last_super_admin',
             $user->isSuperAdmin() && ! $actor->isSuperAdmin() => 'hata::users.errors.cannot_manage_super_admin',
             default => null,
@@ -124,8 +127,19 @@ class AccessRules
     /**
      * @return array<int, string>
      */
-    private function permissionNamesOf(User $user): array
+    private function permissionNamesOf(AdminUser $user): array
     {
         return $user->getAllPermissions()->map(fn (Permission $permission): string => $permission->name)->all();
+    }
+
+    /**
+     * The super admins, by their role (as spatie's `role()` scope, which static analysis cannot see on the host's
+     * model).
+     *
+     * @return Builder<Authenticatable&AdminUser>
+     */
+    private function superAdmins(): Builder
+    {
+        return Hata::userModel()::query()->whereHas('roles', fn (Builder $roles) => $roles->where('name', SystemRole::SuperAdmin->value));
     }
 }

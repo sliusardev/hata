@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
 use Hata\Models\EntryGroup;
@@ -20,7 +20,7 @@ class LinkTranslations
      * @throws ProtectedActionException when the records are of different types, already linked, in the trash, or
      *                                  the group already has a record in that language (in the trash too)
      */
-    public function handle(User $actor, Entry $entry, Entry $other): void
+    public function handle(AdminUser $actor, Entry $entry, Entry $other): void
     {
         Gate::forUser($actor)->authorize('update', $entry);
         Gate::forUser($actor)->authorize('update', $other);

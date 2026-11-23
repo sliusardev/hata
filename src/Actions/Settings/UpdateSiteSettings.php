@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Settings;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Exceptions\StorageSettingsException;
 use Hata\Livewire\Forms\SiteSettingsForm;
@@ -24,7 +24,7 @@ class UpdateSiteSettings
      *
      * @throws ProtectedActionException|StorageSettingsException
      */
-    public function handle(User $actor, array $data): void
+    public function handle(AdminUser $actor, array $data): void
     {
         Gate::forUser($actor)->authorize('settings.edit');
 

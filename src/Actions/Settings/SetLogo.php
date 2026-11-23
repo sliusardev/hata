@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Settings;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Hata\Models\MediaUsage;
 use Hata\Models\Setting;
@@ -24,7 +24,7 @@ class SetLogo
      *
      * @throws ValidationException when the file is missing, not an image or not a logo format (error key `media`)
      */
-    public function handle(User $actor, string $variant, int $mediaId): void
+    public function handle(AdminUser $actor, string $variant, int $mediaId): void
     {
         Gate::forUser($actor)->authorize('settings.edit');
 

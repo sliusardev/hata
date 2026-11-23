@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Entry;
 use Hata\Support\Content\ContentType;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,7 +23,7 @@ class EmptyEntryTrash
      * @param  list<string>  $locales
      * @return int How many records were removed.
      */
-    public function handle(User $actor, ContentType $type, array $locales): int
+    public function handle(AdminUser $actor, ContentType $type, array $locales): int
     {
         Gate::forUser($actor)->authorize($type->permission('delete'));
 

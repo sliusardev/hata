@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Settings;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Support\Content\ContentTypes;
 use Hata\Support\Settings\SiteSettings;
@@ -19,7 +19,7 @@ class SetContentTypeActive
      *
      * @throws ProtectedActionException for a type that is not registered or that the site cannot do without
      */
-    public function handle(User $actor, string $key, bool $active): void
+    public function handle(AdminUser $actor, string $key, bool $active): void
     {
         Gate::forUser($actor)->authorize('settings.edit');
 

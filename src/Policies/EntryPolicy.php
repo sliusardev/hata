@@ -2,7 +2,7 @@
 
 namespace Hata\Policies;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Entry;
 
 /**
@@ -12,37 +12,37 @@ use Hata\Models\Entry;
  */
 class EntryPolicy
 {
-    public function viewAny(User $actor, string $type): bool
+    public function viewAny(AdminUser $actor, string $type): bool
     {
         return $actor->canAny(["{$type}.view", "{$type}.edit", "{$type}.create"]);
     }
 
-    public function view(User $actor, Entry $entry): bool
+    public function view(AdminUser $actor, Entry $entry): bool
     {
         return $this->viewAny($actor, $entry->type);
     }
 
-    public function create(User $actor, string $type): bool
+    public function create(AdminUser $actor, string $type): bool
     {
         return $actor->can("{$type}.create");
     }
 
-    public function update(User $actor, Entry $entry): bool
+    public function update(AdminUser $actor, Entry $entry): bool
     {
         return $actor->can("{$entry->type}.edit");
     }
 
-    public function delete(User $actor, Entry $entry): bool
+    public function delete(AdminUser $actor, Entry $entry): bool
     {
         return $actor->can("{$entry->type}.delete");
     }
 
-    public function restore(User $actor, Entry $entry): bool
+    public function restore(AdminUser $actor, Entry $entry): bool
     {
         return $actor->can("{$entry->type}.edit");
     }
 
-    public function forceDelete(User $actor, Entry $entry): bool
+    public function forceDelete(AdminUser $actor, Entry $entry): bool
     {
         return $actor->can("{$entry->type}.delete");
     }
@@ -50,7 +50,7 @@ class EntryPolicy
     /**
      * Opening a draft or scheduled record at its address.
      */
-    public function preview(User $actor, Entry $entry): bool
+    public function preview(AdminUser $actor, Entry $entry): bool
     {
         return $actor->can("{$entry->type}.edit");
     }

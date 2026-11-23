@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\MediaKind;
 use Hata\Enums\MoveOutcome;
 use Hata\Exceptions\MediaChangedException;
@@ -82,7 +82,7 @@ class MoveMediaToDisk extends MediaBatchEngine
      *
      * @throws InvalidArgumentException when the disk isn't a media disk or isn't configured
      */
-    public function start(User $actor, string $target): DiskMoveRun
+    public function start(AdminUser $actor, string $target): DiskMoveRun
     {
         Gate::forUser($actor)->authorize('moveToDisk', Media::class);
 

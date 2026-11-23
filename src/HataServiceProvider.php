@@ -2,7 +2,6 @@
 
 namespace Hata;
 
-use App\Models\User;
 use Closure;
 use Composer\InstalledVersions;
 use Hata\Console\Commands\CheckContentAddresses;
@@ -13,6 +12,7 @@ use Hata\Console\Commands\OptimizeMedia;
 use Hata\Console\Commands\PruneContentTrash;
 use Hata\Console\Commands\PruneMediaDeletions;
 use Hata\Console\Commands\SyncPermissions;
+use Hata\Contracts\AdminUser;
 use Hata\Http\Middleware\EnsureRegistrationIsEnabled;
 use Hata\Http\Middleware\LookUpContent;
 use Hata\Http\Middleware\SetContentLocale;
@@ -284,14 +284,16 @@ class HataServiceProvider extends ServiceProvider
 
     /**
      * Let super admins pass every authorization check. Returning null for everyone else lets the regular permission
-     * checks decide. The user model lives in the host, where Laravel would not guess its policy.
+     * checks decide. The user model lives in the host, where Laravel would not guess its policy: the policy is
+     * registered for the interface (the Gate matches a model that implements it), so the model's class is not read
+     * at boot, where a host that has not added the trait yet (before `hata:install`) would fail every command.
      */
     private function configureAuthorization(): void
     {
-        Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(AdminUser::class, UserPolicy::class);
 
         Gate::before(
-            fn (User $user): ?bool => $user->isSuperAdmin() ? true : null,
+            fn (mixed $user): ?bool => $user instanceof AdminUser && $user->isSuperAdmin() ? true : null,
         );
     }
 

@@ -6,7 +6,7 @@ use Hata\Exceptions\OptimizationDisabledException;
 use Hata\Jobs\OptimizeExistingMediaBatch;
 use Hata\Livewire\Admin\MediaBatchPage;
 use Hata\Models\Media;
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -40,7 +40,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::media.optimize.title')] class 
         $this->authorize('optimize', Media::class);
     }
 
-    protected function startRun(User $actor): bool
+    protected function startRun(AdminUser $actor): bool
     {
         try {
             $this->engine()->start($actor);

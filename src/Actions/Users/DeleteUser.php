@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Users;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Support\Permissions\AccessRules;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +15,7 @@ class DeleteUser
     /**
      * @throws ProtectedActionException
      */
-    public function handle(User $actor, User $user): void
+    public function handle(AdminUser $actor, AdminUser $user): void
     {
         Gate::forUser($actor)->authorize('delete', $user);
 

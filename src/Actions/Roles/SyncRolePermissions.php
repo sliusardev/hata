@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Roles;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Role;
 use Hata\Support\Permissions\AccessRules;
@@ -26,7 +26,7 @@ class SyncRolePermissions
      *
      * @throws ProtectedActionException
      */
-    public function handle(User $actor, Role $role, array $permissions): Role
+    public function handle(AdminUser $actor, Role $role, array $permissions): Role
     {
         if ($denial = $this->rules->roleUpdateDenial($role)) {
             throw ProtectedActionException::because($denial);

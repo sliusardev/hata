@@ -2,8 +2,9 @@
 
 namespace Hata\Actions\Users;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\SystemRole;
+use Hata\Hata;
 use Hata\Models\Role;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,15 +18,15 @@ class CreateSuperAdmin
     /**
      * @param  array{name: string, email: string, password: string}  $data  Validated input.
      */
-    public function handle(array $data): User
+    public function handle(array $data): AdminUser
     {
-        return DB::transaction(function () use ($data): User {
+        return DB::transaction(function () use ($data): AdminUser {
             $role = Role::firstOrCreate(
                 ['name' => SystemRole::SuperAdmin->value, 'guard_name' => 'web'],
                 ['is_system' => true],
             );
 
-            $user = new User([
+            $user = new (Hata::userModel())([
                 'name' => $data['name'],
                 'email' => Str::lower($data['email']),
                 'password' => $data['password'],

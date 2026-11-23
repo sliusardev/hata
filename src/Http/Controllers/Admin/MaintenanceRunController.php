@@ -2,8 +2,8 @@
 
 namespace Hata\Http\Controllers\Admin;
 
-use App\Models\User;
 use Hata\Actions\Maintenance\RunMaintenanceAction;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\MaintenanceAction;
 use Hata\Enums\MaintenanceStatus;
 use Hata\Exceptions\MaintenanceException;
@@ -38,7 +38,7 @@ class MaintenanceRunController extends Controller
         $action = MaintenanceAction::from($data['action']);
         $actor = $request->user();
 
-        abort_unless($actor instanceof User, 403);
+        abort_unless($actor instanceof AdminUser, 403);
 
         try {
             $run = $runMaintenanceAction->handle($actor, $action, $action === MaintenanceAction::Seed ? ($data['seeder'] ?? '') : null);

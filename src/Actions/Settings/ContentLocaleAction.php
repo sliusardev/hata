@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Settings;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\LanguageCatalog;
 use Hata\Support\Settings\SiteSettings;
@@ -21,7 +21,7 @@ abstract class ContentLocaleAction
         protected readonly LanguageCatalog $catalog,
     ) {}
 
-    protected function authorize(User $actor): void
+    protected function authorize(AdminUser $actor): void
     {
         Gate::forUser($actor)->authorize('settings.edit');
     }

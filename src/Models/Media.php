@@ -2,10 +2,11 @@
 
 namespace Hata\Models;
 
-use App\Models\User;
 use Hata\Actions\Media\OptimizeImage;
+use Hata\Contracts\AdminUser;
 use Hata\Database\Factories\MediaFactory;
 use Hata\Enums\MediaKind;
+use Hata\Hata;
 use Hata\Models\Concerns\HasSearchIndex;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Media\DirectServing;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
@@ -113,11 +115,11 @@ class Media extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Authenticatable&AdminUser, $this>
      */
     public function uploader(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'uploaded_by');
+        return $this->belongsTo(Hata::userModel(), 'uploaded_by');
     }
 
     /**

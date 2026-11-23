@@ -2,8 +2,6 @@
 
 namespace Hata\Contracts;
 
-use App\Models\User;
-
 /**
  * A model that references media files through `media_usages`.
  */
@@ -17,7 +15,7 @@ interface UsesMedia
     /**
      * Where the viewer can open the place that uses the media, or null when there is no such page or the viewer may not open it.
      */
-    public function mediaUsageUrl(string $field, ?User $viewer): ?string;
+    public function mediaUsageUrl(string $field, ?AdminUser $viewer): ?string;
 
     /**
      * Clear the field's reference to a media file that is about to be deleted.

@@ -2,7 +2,7 @@
 
 namespace Hata\Policies;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 
 /**
@@ -10,27 +10,27 @@ use Hata\Models\Media;
  */
 class MediaPolicy
 {
-    public function viewAny(User $actor): bool
+    public function viewAny(AdminUser $actor): bool
     {
         return $actor->can('media.view');
     }
 
-    public function create(User $actor): bool
+    public function create(AdminUser $actor): bool
     {
         return $actor->can('media.upload');
     }
 
-    public function update(User $actor, Media $media): bool
+    public function update(AdminUser $actor, Media $media): bool
     {
         return $actor->can('media.edit');
     }
 
-    public function delete(User $actor, Media $media): bool
+    public function delete(AdminUser $actor, Media $media): bool
     {
         return $actor->can('media.delete');
     }
 
-    public function manageFolders(User $actor): bool
+    public function manageFolders(AdminUser $actor): bool
     {
         return $actor->can('media.edit');
     }
@@ -38,7 +38,7 @@ class MediaPolicy
     /**
      * Run the optimization of existing files.
      */
-    public function optimize(User $actor): bool
+    public function optimize(AdminUser $actor): bool
     {
         return $actor->can('media.edit');
     }
@@ -46,12 +46,12 @@ class MediaPolicy
     /**
      * Move files between the local disk and the cloud disk.
      */
-    public function moveToDisk(User $actor): bool
+    public function moveToDisk(AdminUser $actor): bool
     {
         return $actor->can('media.edit');
     }
 
-    public function deleteFolders(User $actor): bool
+    public function deleteFolders(AdminUser $actor): bool
     {
         return $actor->can('media.edit') && $actor->can('media.delete');
     }

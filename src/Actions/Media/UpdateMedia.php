@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -12,7 +12,7 @@ class UpdateMedia
     /**
      * @param  array{title?: ?string, alt?: array<string, string>, folder_id?: ?int}  $data
      */
-    public function handle(User $actor, Media $media, array $data): Media
+    public function handle(AdminUser $actor, Media $media, array $data): Media
     {
         Gate::forUser($actor)->authorize('update', $media);
 

@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Users;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Role;
 use Hata\Support\Permissions\AccessRules;
@@ -22,7 +22,7 @@ class SyncUserRoles
      *
      * @throws ProtectedActionException
      */
-    public function handle(User $actor, User $user, array $roleIds): User
+    public function handle(AdminUser $actor, AdminUser $user, array $roleIds): AdminUser
     {
         $currentIds = $user->roles()->pluck('id')->map(fn (mixed $id): int => (int) $id)->all();
         $targetIds = array_values(array_unique(array_map('intval', $roleIds)));
@@ -34,7 +34,7 @@ class SyncUserRoles
             return $user;
         }
 
-        if ($actor->is($user)) {
+        if ($actor->getKey() === $user->getKey()) {
             throw ProtectedActionException::because('hata::users.errors.cannot_change_own_roles');
         }
 
@@ -56,6 +56,8 @@ class SyncUserRoles
 
         DB::transaction(fn () => $user->syncRoles(Role::whereKey($targetIds)->get()));
 
-        return $user->load('roles');
+        $user->load('roles');
+
+        return $user;
     }
 }

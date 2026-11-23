@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Hata\Models\MediaFolder;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -19,7 +19,7 @@ class MoveFolder
      *
      * @throws ValidationException
      */
-    public function handle(User $actor, MediaFolder $folder, ?MediaFolder $target): MediaFolder
+    public function handle(AdminUser $actor, MediaFolder $folder, ?MediaFolder $target): MediaFolder
     {
         Gate::forUser($actor)->authorize('manageFolders', Media::class);
 

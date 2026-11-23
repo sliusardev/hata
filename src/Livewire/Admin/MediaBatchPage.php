@@ -2,8 +2,8 @@
 
 namespace Hata\Livewire\Admin;
 
-use App\Models\User;
 use Hata\Actions\Media\MediaBatchEngine;
+use Hata\Contracts\AdminUser;
 use Hata\Support\Media\MediaBatchRun;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -52,7 +52,7 @@ abstract class MediaBatchPage extends Component
     /**
      * Start a fresh run as the actor; false when it was refused (the page has told the user why).
      */
-    abstract protected function startRun(User $actor): bool;
+    abstract protected function startRun(AdminUser $actor): bool;
 
     /**
      * Queue the first batch of the run.
@@ -174,11 +174,11 @@ abstract class MediaBatchPage extends Component
         }
     }
 
-    protected function actor(): User
+    protected function actor(): AdminUser
     {
         $user = Auth::user();
 
-        abort_unless($user instanceof User, 403);
+        abort_unless($user instanceof AdminUser, 403);
 
         return $user;
     }

@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Settings;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ContentLocaleException;
 
 class SetContentLocaleActive extends ContentLocaleAction
@@ -13,7 +13,7 @@ class SetContentLocaleActive extends ContentLocaleAction
      *
      * @throws ContentLocaleException
      */
-    public function handle(User $actor, string $code, bool $active): void
+    public function handle(AdminUser $actor, string $code, bool $active): void
     {
         $this->authorize($actor);
 

@@ -16,7 +16,7 @@ use Hata\Exceptions\MediaUploadException;
 use Hata\Livewire\Forms\MediaDetailsForm;
 use Hata\Models\Media;
 use Hata\Models\MediaFolder;
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Support\Media\MediaFilters;
 use Hata\Support\Media\MediaIds;
 use Hata\Support\Media\StoreUploadedMedia;
@@ -1398,11 +1398,11 @@ new #[Layout('hata::layouts.app')] #[Title('hata::media.index.title')] class ext
         );
     }
 
-    private function actor(): User
+    private function actor(): AdminUser
     {
         $user = Auth::user();
 
-        abort_unless($user instanceof User, 403);
+        abort_unless($user instanceof AdminUser, 403);
 
         return $user;
     }

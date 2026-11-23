@@ -4,7 +4,7 @@ use Hata\Actions\Media\MoveMediaToDisk;
 use Hata\Jobs\MoveMediaBatch;
 use Hata\Livewire\Admin\MediaBatchPage;
 use Hata\Models\Media;
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -51,7 +51,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::media.move.title')] class exte
     /**
      * A new move goes to the configured storage (the target the page counts candidates against).
      */
-    protected function startRun(User $actor): bool
+    protected function startRun(AdminUser $actor): bool
     {
         try {
             $this->engine()->start($actor, $this->target);

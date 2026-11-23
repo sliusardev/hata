@@ -2,9 +2,11 @@
 
 namespace Hata\Support\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\SystemRole;
+use Hata\Hata;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 /**
  * The users who may be a record's author: those who may create the type (directly or through a role), and
@@ -15,14 +17,14 @@ use Illuminate\Database\Eloquent\Builder;
 final class EntryAuthors
 {
     /**
-     * @return Builder<User>
+     * @return Builder<Authenticatable&AdminUser>
      */
     public static function query(ContentType $type): Builder
     {
         $permission = $type->permission('create');
         $named = fn (Builder $query) => $query->where('name', $permission);
 
-        return User::query()->where(fn (Builder $query) => $query
+        return Hata::userModel()::query()->where(fn (Builder $query) => $query
             ->whereHas('permissions', $named)
             ->orWhereHas('roles', fn (Builder $roles) => $roles
                 ->where('name', SystemRole::SuperAdmin->value)

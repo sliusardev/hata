@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Hata\Models\MediaUsage;
 use Hata\Support\Media\MediaDisks;
@@ -22,7 +22,7 @@ class DeleteMedia
      * @param  iterable<Media>|Media  $media
      * @return int Number of deleted rows.
      */
-    public function handle(User $actor, iterable|Media $media): int
+    public function handle(AdminUser $actor, iterable|Media $media): int
     {
         $items = $media instanceof Media ? [$media] : array_values([...$media]);
 

@@ -2,8 +2,8 @@
 
 namespace Hata\Actions\Fortify;
 
-use App\Models\User;
 use Hata\Concerns\PasswordValidationRules;
+use Hata\Contracts\AdminUser;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
 
@@ -16,7 +16,7 @@ class ResetUserPassword implements ResetsUserPasswords
      *
      * @param  array<string, string>  $input
      */
-    public function reset(User $user, array $input): void
+    public function reset(AdminUser $user, array $input): void
     {
         Validator::make($input, [
             'password' => $this->passwordRules(),

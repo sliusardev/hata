@@ -2,8 +2,8 @@
 
 namespace Hata\Http\Controllers;
 
-use App\Models\User;
 use Hata\Actions\Media\ZipMedia;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Hata\Support\Media\MediaIds;
 use Illuminate\Http\Request;
@@ -19,7 +19,7 @@ class MediaZipController extends Controller
     public function __invoke(Request $request, ZipMedia $zipMedia): BinaryFileResponse
     {
         $actor = $request->user();
-        abort_unless($actor instanceof User, 403);
+        abort_unless($actor instanceof AdminUser, 403);
 
         // Without the zip extension there is no archive to build. class_exists() can't be faked,
         // so this branch is only exercised on a PHP without zip (see MediaZipTest).

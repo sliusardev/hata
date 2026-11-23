@@ -2,10 +2,10 @@
 
 namespace Hata\Actions\Maintenance;
 
-use App\Models\User;
 use ArrayObject;
 use Hata\Actions\Media\MoveMediaToDisk;
 use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\MaintenanceAction;
 use Hata\Enums\MaintenanceStatus;
 use Hata\Exceptions\MaintenanceException;
@@ -53,7 +53,7 @@ class RunMaintenanceAction
      *                              the list, a media batch holds cache locks the action would wipe, or the
      *                              journal table is missing and the action is not the migration
      */
-    public function handle(User $actor, MaintenanceAction $action, ?string $seeder = null): MaintenanceRun
+    public function handle(AdminUser $actor, MaintenanceAction $action, ?string $seeder = null): MaintenanceRun
     {
         Gate::forUser($actor)->authorize('maintenance.run');
 
@@ -119,7 +119,7 @@ class RunMaintenanceAction
      * that has been running for STALE_MINUTES is taken for dead and released first; a run that really takes
      * longer loses its lock then, which is accepted.
      */
-    private function start(User $actor, MaintenanceAction $action, ?string $parameter, bool $save): MaintenanceRun
+    private function start(AdminUser $actor, MaintenanceAction $action, ?string $parameter, bool $save): MaintenanceRun
     {
         $run = new MaintenanceRun([
             'user_id' => $actor->id,

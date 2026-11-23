@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Hata\Models\MediaFolder;
 use Illuminate\Support\Facades\Gate;
@@ -11,7 +11,7 @@ class RenameFolder
 {
     public function __construct(private FolderNameValidator $names) {}
 
-    public function handle(User $actor, MediaFolder $folder, string $name): MediaFolder
+    public function handle(AdminUser $actor, MediaFolder $folder, string $name): MediaFolder
     {
         Gate::forUser($actor)->authorize('manageFolders', Media::class);
 

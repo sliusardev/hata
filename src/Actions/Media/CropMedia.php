@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\MediaEditException;
 use Hata\Models\Media;
 use Hata\Support\Media\MediaSource;
@@ -29,7 +29,7 @@ class CropMedia
      *
      * @throws ValidationException
      */
-    public function handle(User $actor, Media $media, array $input, bool $asCopy = false): Media
+    public function handle(AdminUser $actor, Media $media, array $input, bool $asCopy = false): Media
     {
         $asCopy
             ? Gate::forUser($actor)->authorize('create', Media::class)
@@ -68,7 +68,7 @@ class CropMedia
     /**
      * @param  array<string, mixed>  $edits
      */
-    private function copy(User $actor, Media $media, MediaSource $source, array $edits, bool $keepEdits): Media
+    private function copy(AdminUser $actor, Media $media, MediaSource $source, array $edits, bool $keepEdits): Media
     {
         $copy = new Media([
             'folder_id' => $media->folder_id,

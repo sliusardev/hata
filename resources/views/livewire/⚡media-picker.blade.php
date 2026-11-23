@@ -3,7 +3,7 @@
 use Hata\Actions\Media\UpdateMedia;
 use Hata\Models\Media;
 use Hata\Models\MediaFolder;
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Support\Media\MediaAcceptance;
 use Hata\Support\Media\MediaFilters;
 use Hata\Support\Media\MediaIds;
@@ -657,11 +657,11 @@ new class extends Component {
         return MediaIds::normalize([$value]);
     }
 
-    private function actor(): User
+    private function actor(): AdminUser
     {
         $user = Auth::user();
 
-        abort_unless($user instanceof User, 403);
+        abort_unless($user instanceof AdminUser, 403);
 
         return $user;
     }

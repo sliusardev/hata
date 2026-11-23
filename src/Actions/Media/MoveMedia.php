@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Hata\Models\MediaFolder;
 use Illuminate\Support\Facades\Gate;
@@ -15,7 +15,7 @@ class MoveMedia
      *
      * @param  iterable<Media>|Media  $media
      */
-    public function handle(User $actor, iterable|Media $media, ?MediaFolder $folder): void
+    public function handle(AdminUser $actor, iterable|Media $media, ?MediaFolder $folder): void
     {
         $items = $media instanceof Media ? [$media] : [...$media];
 

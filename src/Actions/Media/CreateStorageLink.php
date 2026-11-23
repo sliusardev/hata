@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\StorageLinkException;
 use Hata\Support\Media\DirectServing;
 use Illuminate\Support\Facades\Artisan;
@@ -20,7 +20,7 @@ class CreateStorageLink
      *
      * @throws StorageLinkException when the link could not be created
      */
-    public function handle(User $actor): void
+    public function handle(AdminUser $actor): void
     {
         Gate::forUser($actor)->authorize('settings.edit');
 

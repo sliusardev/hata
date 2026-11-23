@@ -4,7 +4,7 @@ use Hata\Actions\Media\CropMedia;
 use Hata\Exceptions\MediaChangedException;
 use Hata\Exceptions\MediaWriteException;
 use Hata\Models\Media;
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Support\Media\ImageEdits;
 use Hata\Support\Media\MediaSource;
 use Hata\Support\Media\MemoryGuard;
@@ -357,11 +357,11 @@ new #[Layout('hata::layouts.focus')] #[Title('hata::media.crop.title')] class ex
         return ['w' => max(1, $width), 'h' => max(1, $height)];
     }
 
-    private function actor(): User
+    private function actor(): AdminUser
     {
         $user = Auth::user();
 
-        abort_unless($user instanceof User, 403);
+        abort_unless($user instanceof AdminUser, 403);
 
         return $user;
     }

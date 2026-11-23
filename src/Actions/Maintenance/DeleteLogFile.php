@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Maintenance;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\MaintenanceException;
 use Hata\Support\Maintenance\LogFiles;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +17,7 @@ class DeleteLogFile
     /**
      * @throws MaintenanceException when the file is not one the logs folder lists, or can't be deleted
      */
-    public function handle(User $actor, string $name): void
+    public function handle(AdminUser $actor, string $name): void
     {
         Gate::forUser($actor)->authorize('maintenance.run');
 

@@ -2,7 +2,7 @@
 
 namespace Hata\Policies;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Role;
 use Hata\Support\Permissions\AccessRules;
 
@@ -14,27 +14,27 @@ class RolePolicy
 {
     public function __construct(private AccessRules $rules) {}
 
-    public function viewAny(User $actor): bool
+    public function viewAny(AdminUser $actor): bool
     {
         return $actor->can('roles.view');
     }
 
-    public function view(User $actor, Role $role): bool
+    public function view(AdminUser $actor, Role $role): bool
     {
         return $actor->can('roles.view') || $actor->can('roles.edit');
     }
 
-    public function create(User $actor): bool
+    public function create(AdminUser $actor): bool
     {
         return $actor->can('roles.create');
     }
 
-    public function update(User $actor, Role $role): bool
+    public function update(AdminUser $actor, Role $role): bool
     {
         return $actor->can('roles.edit');
     }
 
-    public function delete(User $actor, Role $role): bool
+    public function delete(AdminUser $actor, Role $role): bool
     {
         return $actor->can('roles.delete');
     }
@@ -42,7 +42,7 @@ class RolePolicy
     /**
      * Whether the actor may assign the role to users (rules 2 and 5).
      */
-    public function assign(User $actor, Role $role): bool
+    public function assign(AdminUser $actor, Role $role): bool
     {
         return $this->rules->canAssignRole($actor, $role);
     }

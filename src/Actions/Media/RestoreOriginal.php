@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Hata\Support\Media\MediaSource;
 use Illuminate\Support\Facades\Gate;
@@ -18,7 +18,7 @@ class RestoreOriginal
      *
      * @throws ValidationException when no original file is kept
      */
-    public function handle(User $actor, Media $media): Media
+    public function handle(AdminUser $actor, Media $media): Media
     {
         Gate::forUser($actor)->authorize('update', $media);
 

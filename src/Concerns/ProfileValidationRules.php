@@ -2,7 +2,7 @@
 
 namespace Hata\Concerns;
 
-use App\Models\User;
+use Hata\Hata;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
@@ -45,8 +45,8 @@ trait ProfileValidationRules
             'email',
             'max:255',
             $userId === null
-                ? Rule::unique(User::class)
-                : Rule::unique(User::class)->ignore($userId),
+                ? Rule::unique(Hata::userModel())
+                : Rule::unique(Hata::userModel())->ignore($userId),
         ];
     }
 }

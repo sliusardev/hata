@@ -5,7 +5,8 @@ use Hata\Actions\Users\UpdateUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Livewire\Forms\UserForm;
 use Hata\Models\Role;
-use App\Models\User;
+use Hata\Contracts\AdminUser;
+use Hata\Hata;
 use Hata\Support\Permissions\AccessRules;
 use Hata\Support\Toast;
 use Flux\Flux;
@@ -17,15 +18,28 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Layout('hata::layouts.app')] #[Title('hata::users.edit.title')] class extends Component {
+    /**
+     * Untyped on purpose: Livewire resolves a typed public property named like a route parameter from the container,
+     * and an interface cannot be built. `mount()` sets the host's model.
+     *
+     * @var AdminUser
+     */
     #[Locked]
-    public User $user;
+    public $user;
 
     public UserForm $form;
 
     public bool $showDeleteModal = false;
 
-    public function mount(User $user, AccessRules $rules): void
+    /**
+     * From the route the user comes as its raw key (a test may pass the model): Livewire binds a route model only to
+     * a class type (an interface or a union is resolved from the container instead), and the user's class is the
+     * host's (`Hata::userModel()`).
+     */
+    public function mount(mixed $user, AccessRules $rules): void
     {
+        $user = $user instanceof AdminUser ? $user : Hata::userModel()::findOrFail($user);
+
         $this->authorize('update', $user);
 
         abort_if($rules->userUpdateDenial(Auth::user(), $user) !== null, 403);

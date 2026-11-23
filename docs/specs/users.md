@@ -53,8 +53,25 @@ Livewire Form object `App\Livewire\Forms\UserForm`, shared partial `partials/adm
 | `SyncUserRoles` | the caller authorizes | not your own roles (4), last super admin keeps the role (3), super-admin role only by a super admin (2), only roles whose permissions you all have (5) |
 | `CreateSuperAdmin` | none (CLI and seeder) | — |
 
-Each action takes `User $actor` plus validated data and runs in a transaction. A violation throws `ProtectedActionException` with a translated message. The rules themselves are in `App\Support\Permissions\AccessRules`, and the permission checks are in `App\Policies\UserPolicy`.
+Each action takes `AdminUser $actor` plus validated data and runs in a transaction. A violation throws `ProtectedActionException` with a translated message. The rules themselves are in `Hata\Support\Permissions\AccessRules`, and the permission checks are in `Hata\Policies\UserPolicy`.
+
+## The user model
+
+The site owns its `User` model and `auth.providers.users.model`; Hata never names the class. The host's model is
+
+```php
+class User extends Authenticatable implements AdminUser   // Hata\Contracts\AdminUser
+{
+    use HasFactory, IsAdminUser, Notifiable;                 // Hata\Models\Concerns\IsAdminUser
+}
+```
+
+- `AdminUser` extends `HasLocalePreference` and Fortify's `PasskeyUser` and declares `isSuperAdmin()` and `initials()`; it is the type Hata takes and returns for users (`Authenticatable&AdminUser` in Eloquent generics).
+- `IsAdminUser` brings `HasRoles`, `HasSearchIndex`, `PasskeyAuthenticatable`, `TwoFactorAuthenticatable`, `preferredLocale()` and the methods above, and adds Hata's fillable (`name, email, password, locale`), hidden (password, 2FA secrets, remember token, `search_index`) and casts (`email_verified_at`, `password` hashed) in `initializeIsAdminUser()` on top of the host's own; a cast the host declares for the same column wins.
+- `Hata::userModel()` returns the configured class and throws a `LogicException` naming `IsAdminUser` when it does not extend `Illuminate\Foundation\Auth\User` and implement `AdminUser`. Queries, creation and relations (`Entry::author`, `Media::uploader`, `MaintenanceRun::user`) go through it.
+- `UserPolicy` is registered for the `AdminUser` interface (the Gate matches any class implementing it), so boot never reads the model class. The edit page receives the route's raw key and finds the user through `Hata::userModel()`, since Livewire binds route models only to a class type.
+- Hata's columns on `users` (2FA, `locale`, `search_index`) come from its own `add_*_to_users_table` migrations.
 
 ## Tests
 
-`tests/Feature/Actions/Users/*` (protection rules), `tests/Feature/Admin/Users/*` (pages, access, search, filter, sorting, URL, N+1).
+`tests/Feature/Actions/Users/*` (protection rules), `tests/Feature/Admin/Users/*` (pages, access, search, filter, sorting, URL, N+1), `tests/Feature/Package/HostUserModelTest.php` (the configured model, the missing trait, the host's own fillable and casts).

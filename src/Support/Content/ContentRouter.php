@@ -2,7 +2,7 @@
 
 namespace Hata\Support\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Entry;
 use Hata\Models\EntryRedirect;
 use Hata\Support\Localization\ContentLocales;
@@ -88,7 +88,7 @@ class ContentRouter
      * all of them for a viewer who may edit the type; none on a
      * one-language site) and one for its image when it has one.
      */
-    public function resolve(string $locale, string $path, ?User $viewer, ?ContentLookup $lookup = null): ?ContentMatch
+    public function resolve(string $locale, string $path, ?AdminUser $viewer, ?ContentLookup $lookup = null): ?ContentMatch
     {
         $lookup ??= $this->lookup($locale, $path);
 
@@ -176,7 +176,7 @@ class ContentRouter
         return $found->sortBy(fn (Entry $entry): int|false => array_search($entry->type, $types, true))->first();
     }
 
-    private function mayPreview(Entry $entry, ?User $viewer): bool
+    private function mayPreview(Entry $entry, ?AdminUser $viewer): bool
     {
         return $viewer !== null && Gate::forUser($viewer)->allows('preview', $entry);
     }

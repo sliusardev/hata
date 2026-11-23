@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\MediaKind;
 use Hata\Exceptions\MediaUploadException;
 use Hata\Models\Media;
@@ -27,7 +27,7 @@ class ReplaceMediaFile
      *
      * @throws MediaUploadException
      */
-    public function handle(User $actor, Media $media, UploadedFile $file, ?int $pickedSize = null, ?string $pickedExtension = null): Media
+    public function handle(AdminUser $actor, Media $media, UploadedFile $file, ?int $pickedSize = null, ?string $pickedExtension = null): Media
     {
         Gate::forUser($actor)->authorize('update', $media);
 

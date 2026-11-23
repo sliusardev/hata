@@ -2,7 +2,7 @@
 
 namespace Hata\Models;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Contracts\UsesMedia;
 use Hata\Support\Settings\SiteLogo;
 use Hata\Support\Settings\SiteSettings;
@@ -39,7 +39,7 @@ class Setting extends Model implements UsesMedia
         return $field === 'logo_dark' ? __('hata::site_settings.logo.usage_dark') : __('hata::site_settings.logo.usage_light');
     }
 
-    public function mediaUsageUrl(string $field, ?User $viewer): ?string
+    public function mediaUsageUrl(string $field, ?AdminUser $viewer): ?string
     {
         return $viewer?->can('settings.edit') ? route('admin.settings.edit', ['tab' => 'logo']) : null;
     }

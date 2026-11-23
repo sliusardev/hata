@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -27,7 +27,7 @@ class ZipMedia
      * @param  iterable<Media>  $media
      * @return string|null Path of the archive, or null when none of the files could be read.
      */
-    public function handle(User $actor, iterable $media): ?string
+    public function handle(AdminUser $actor, iterable $media): ?string
     {
         Gate::forUser($actor)->authorize('viewAny', Media::class);
 

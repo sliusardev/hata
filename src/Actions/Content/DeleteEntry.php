@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
 use Hata\Models\EntryGroup;
@@ -23,7 +23,7 @@ class DeleteEntry
      *
      * @throws ProtectedActionException when the record is not in the trash
      */
-    public function handle(User $actor, Entry $entry): void
+    public function handle(AdminUser $actor, Entry $entry): void
     {
         Gate::forUser($actor)->authorize('forceDelete', $entry);
 

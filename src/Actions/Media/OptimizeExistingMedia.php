@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\OptimizeOutcome;
 use Hata\Exceptions\MediaChangedException;
 use Hata\Exceptions\OptimizationDisabledException;
@@ -40,7 +40,7 @@ class OptimizeExistingMedia extends MediaBatchEngine
      *
      * @throws OptimizationDisabledException when image optimization is off
      */
-    public function start(User $actor): OptimizationRun
+    public function start(AdminUser $actor): OptimizationRun
     {
         Gate::forUser($actor)->authorize('optimize', Media::class);
 

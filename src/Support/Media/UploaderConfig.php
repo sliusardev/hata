@@ -2,7 +2,7 @@
 
 namespace Hata\Support\Media;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\MediaKind;
 use Hata\Models\Media;
 
@@ -17,7 +17,7 @@ final class UploaderConfig
      * @param  list<string>|null  $extensions  Extensions the browser may pick; null means every library extension.
      * @return array<string, mixed>
      */
-    public static function for(User $actor, ?array $extensions = null): array
+    public static function for(AdminUser $actor, ?array $extensions = null): array
     {
         return [
             'canUpload' => $actor->can('create', Media::class),

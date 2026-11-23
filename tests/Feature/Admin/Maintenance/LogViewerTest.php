@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Hata\Actions\Maintenance\DeleteLogFile;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\MaintenanceException;
 use Hata\Hata;
 use Hata\Support\Maintenance\LogFiles;
@@ -371,7 +372,7 @@ describe('page', function () {
         $key = app(LogFiles::class)->find('laravel.log')['key'];
         app()->bind(DeleteLogFile::class, fn () => new class(app(LogFiles::class)) extends DeleteLogFile
         {
-            public function handle(User $actor, string $name): void
+            public function handle(AdminUser $actor, string $name): void
             {
                 throw MaintenanceException::logFileNotDeleted();
             }

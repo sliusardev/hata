@@ -2,7 +2,7 @@
 
 namespace Hata\Models;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Contracts\UsesMedia;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -86,7 +86,7 @@ class MediaUsage extends Model
     /**
      * Where the viewer can open the place, or null.
      */
-    public function url(?User $viewer): ?string
+    public function url(?AdminUser $viewer): ?string
     {
         return $this->usesMedia()?->mediaUsageUrl($this->field, $viewer);
     }

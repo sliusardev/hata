@@ -4,7 +4,8 @@ use Hata\Actions\Users\CreateUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Livewire\Forms\UserForm;
 use Hata\Models\Role;
-use App\Models\User;
+use Hata\Contracts\AdminUser;
+use Hata\Hata;
 use Hata\Support\Toast;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -17,9 +18,9 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.create.title')] class ex
 
     public function mount(): void
     {
-        $this->authorize('create', User::class);
+        $this->authorize('create', Hata::userModel());
 
-        $this->form->locale = app(Hata\Support\Localization\ContentLocales::class)->interfaceDefault();
+        $this->form->locale = app(\Hata\Support\Localization\ContentLocales::class)->interfaceDefault();
     }
 
     /**
@@ -36,7 +37,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.create.title')] class ex
 
     public function save(CreateUser $createUser): void
     {
-        $this->authorize('create', User::class);
+        $this->authorize('create', Hata::userModel());
 
         $data = $this->form->validateForCreate();
 

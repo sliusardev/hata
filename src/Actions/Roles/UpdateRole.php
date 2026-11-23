@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Roles;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Role;
 use Hata\Support\Permissions\AccessRules;
@@ -23,7 +23,7 @@ class UpdateRole
      *
      * @throws ProtectedActionException
      */
-    public function handle(User $actor, Role $role, array $data): Role
+    public function handle(AdminUser $actor, Role $role, array $data): Role
     {
         Gate::forUser($actor)->authorize('update', $role);
 

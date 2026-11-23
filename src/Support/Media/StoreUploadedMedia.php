@@ -2,8 +2,8 @@
 
 namespace Hata\Support\Media;
 
-use App\Models\User;
 use Hata\Actions\Media\UploadMedia;
+use Hata\Contracts\AdminUser;
 use Hata\Exceptions\MediaUploadException;
 use Hata\Models\Media;
 use Hata\Models\MediaFolder;
@@ -26,7 +26,7 @@ class StoreUploadedMedia
      * @return array{ok: bool, id?: int, name?: string, meta?: string, error?: string}
      */
     public function handle(
-        User $actor,
+        AdminUser $actor,
         TemporaryUploadedFile $file,
         ?int $folderId,
         ?int $pickedSize,

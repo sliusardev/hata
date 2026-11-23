@@ -2,7 +2,7 @@
 
 namespace Hata\Actions\Content;
 
-use App\Models\User;
+use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
@@ -17,7 +17,7 @@ class SetEntryStatus
      *
      * @throws ProtectedActionException when the record is in the trash
      */
-    public function handle(User $actor, Entry $entry, EntryStatus $status): Entry
+    public function handle(AdminUser $actor, Entry $entry, EntryStatus $status): Entry
     {
         Gate::forUser($actor)->authorize('update', $entry);
 
