@@ -1,10 +1,15 @@
 <?php
 
 use App\Models\User;
+use Hata\Actions\Users\CreateSuperAdmin;
+use Hata\Database\Seeders\HataSeeder;
 use Hata\Hata;
 use Hata\Support\Assets\HataAssets;
 use Hata\Support\Install\HostPaths;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -135,4 +140,75 @@ it('asks for the super admin on an interactive console and never invents a passw
         ->assertSuccessful();
 
     expect(User::query()->count())->toBe(0);
+});
+
+/**
+ * The host's user model as it is loaded before the install edits it: no AdminUser, no IsAdminUser.
+ */
+function useHostUserBeforeTheEdit(): void
+{
+    config(['auth.providers.users.model' => (new class extends Authenticatable
+    {
+        protected $table = 'users';
+    })::class]);
+}
+
+it('seeds in a new process when this process holds the user model from before the edit', function () {
+    useHostUserBeforeTheEdit();
+    Process::fake();
+
+    $this->artisan('hata:install', ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'])
+        ->doesntExpectOutputToContain('do by hand')
+        ->assertSuccessful();
+
+    Process::assertRanTimes(fn (PendingProcess $process) => $process->command === [
+        PHP_BINARY, 'artisan', 'db:seed', '--class='.HataSeeder::class, '--force', '--no-interaction',
+    ]
+        && $process->path === base_path()
+        && $process->environment === ['ADMIN_NAME' => 'Owner', 'ADMIN_EMAIL' => 'owner@example.test', 'ADMIN_PASSWORD' => 'secret-password'], 1);
+});
+
+it('fails when the seeding process fails, and still reports every step', function () {
+    useHostUserBeforeTheEdit();
+    Process::fake(['*' => Process::result(errorOutput: 'SQLSTATE: no such table', exitCode: 1)]);
+
+    $this->artisan('hata:install', ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'])
+        ->expectsOutputToContain('SQLSTATE: no such table')
+        ->expectsOutputToContain('Storage link')
+        ->assertFailed();
+});
+
+it('fails when the seeder throws, and still reports every step', function () {
+    $this->app->bind(HataSeeder::class, fn () => new class extends HataSeeder
+    {
+        public function run(CreateSuperAdmin $createSuperAdmin): void
+        {
+            throw new RuntimeException('The seeder broke');
+        }
+    });
+
+    $this->artisan('hata:install', ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'])
+        ->expectsOutputToContain('The seeder broke')
+        ->expectsOutputToContain('Storage link')
+        ->assertFailed();
+});
+
+it('says an existing user who is not a super admin was not changed', function () {
+    User::factory()->create(['email' => 'owner@example.test']);
+
+    $this->artisan('hata:install', ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'])
+        ->expectsOutputToContain('exists, not changed (not a super admin)')
+        ->assertSuccessful();
+
+    expect(User::query()->sole()->hasRole('super-admin'))->toBeFalse();
+});
+
+it('keeps a welcome view whose route was removed earlier', function () {
+    File::put($this->host.'/routes/web.php', "<?php\n");
+
+    $this->artisan('hata:install', ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'])
+        ->expectsOutputToContain('kept (route removed earlier)')
+        ->assertSuccessful();
+
+    expect(File::exists($this->host.'/resources/views/welcome.blade.php'))->toBeTrue();
 });

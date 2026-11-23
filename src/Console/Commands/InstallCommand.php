@@ -25,6 +25,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use LogicException;
 use Symfony\Component\Console\Output\BufferedOutput;
+use Throwable;
 
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\text;
@@ -55,6 +56,10 @@ class InstallCommand extends Command
 
     private const string FAILED = 'failed';
 
+    private const string KEPT_VIEW = 'kept (route removed earlier)';
+
+    private const string NOT_CHANGED = 'exists, not changed (not a super admin)';
+
     /**
      * @var list<array{label: string, status: string, lines: string}>
      */
@@ -77,19 +82,27 @@ class InstallCommand extends Command
             ? $this->laravel->make(HostPaths::class)
             : HostPaths::forApplication();
 
-        $this->editHostFiles($files, $paths);
-        $this->publishConfig($paths);
-        $this->publishAssets();
-        $migrated = $this->migrate();
+        try {
+            $this->editHostFiles($files, $paths);
+            $this->publishConfig($paths);
+            $this->publishAssets();
 
-        if ($migrated) {
-            $this->seed();
+            if ($this->migrate()) {
+                $this->seed();
+            }
+
+            $this->linkStorage();
+        } catch (Throwable $exception) {
+            // the steps done so far are still reported
+            $this->step('Install', self::FAILED, $exception->getMessage());
+        } finally {
+            $this->report();
         }
 
-        $this->linkStorage();
-        $this->report();
-
-        return $migrated ? self::SUCCESS : self::FAILURE;
+        // a deploy that runs the installer must stop when a step failed; steps left to do by hand do not fail it
+        return array_any($this->steps, fn (array $step): bool => $step['status'] === self::FAILED)
+            ? self::FAILURE
+            : self::SUCCESS;
     }
 
     private function editHostFiles(HostFiles $files, HostPaths $paths): void
@@ -106,7 +119,11 @@ class InstallCommand extends Command
             $deleted = $welcome->status === HostFileStatus::Changed
                 && File::exists($paths->welcomeView)
                 && File::delete($paths->welcomeView);
-            $this->step("Welcome view ({$paths->relative($paths->welcomeView)})", $deleted ? self::DONE : self::ALREADY_DONE);
+            $this->step("Welcome view ({$paths->relative($paths->welcomeView)})", match (true) {
+                $deleted => self::DONE,
+                File::exists($paths->welcomeView) => self::KEPT_VIEW,
+                default => self::ALREADY_DONE,
+            });
         }
 
         $this->fileStep("Host defaults ({$paths->relative($paths->appServiceProvider)})", $files->addHostDefaults($paths->appServiceProvider));
@@ -210,7 +227,11 @@ class InstallCommand extends Command
         $this->step('Permissions and roles', self::DONE);
 
         if ($admin !== null && $this->userExists($admin['email'])) {
-            $this->step("Super admin ({$admin['email']})", $existed ? self::ALREADY_DONE : self::DONE);
+            $this->step("Super admin ({$admin['email']})", match (true) {
+                ! $existed => self::DONE,
+                $this->isSuperAdmin($admin['email']) => self::ALREADY_DONE,
+                default => self::NOT_CHANGED,
+            });
         }
     }
 
@@ -226,6 +247,8 @@ class InstallCommand extends Command
 
         try {
             $this->laravel->make(HataSeeder::class)->setContainer($this->laravel)->__invoke();
+        } catch (Throwable $exception) {
+            return [false, $exception->getMessage()];
         } finally {
             config(['hata.admin.initial_admin' => $configured]);
         }
@@ -329,11 +352,22 @@ class InstallCommand extends Command
 
     private function superAdminExists(): bool
     {
+        return $this->superAdminRole()?->users()->exists() ?? false;
+    }
+
+    private function isSuperAdmin(string $email): bool
+    {
+        return $this->superAdminRole()?->users()->where('email', Str::lower($email))->exists() ?? false;
+    }
+
+    /**
+     * Users are checked through the role, so the query works with the host's model before the edit (see `seed()`).
+     */
+    private function superAdminRole(): ?Role
+    {
         return Role::query()
             ->where(['name' => SystemRole::SuperAdmin->value, 'guard_name' => 'web'])
-            ->first()
-            ?->users()
-            ->exists() ?? false;
+            ->first();
     }
 
     /**
@@ -393,6 +427,7 @@ class InstallCommand extends Command
                 self::DONE => '<fg=green>done</>',
                 self::BY_HAND => '<fg=yellow>do by hand</>',
                 self::FAILED => '<fg=red>failed</>',
+                self::NOT_CHANGED, self::KEPT_VIEW => '<fg=yellow>'.$step['status'].'</>',
                 default => '<fg=gray>'.$step['status'].'</>',
             });
         }
