@@ -34,7 +34,7 @@ it('opens the details of a file', function () {
         'height' => 1707,
     ]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSet('selectedId', $media->id)
         ->assertSeeHtml('data-test="media-details"')
@@ -48,7 +48,7 @@ it('opens the details of a file', function () {
 it('ignores a file id that does not exist', function () {
     $this->actingAs(mediaEditor());
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', 999_999)
         ->assertSet('selectedId', null)
         ->assertDontSeeHtml('data-test="media-details"');
@@ -57,7 +57,7 @@ it('ignores a file id that does not exist', function () {
 it('does not let the client set the open file directly', function () {
     $this->actingAs(mediaEditor());
 
-    Livewire::test('pages::admin.media.index')->set('selectedId', 5);
+    Livewire::test('hata::admin.media.index')->set('selectedId', 5);
 })->throws(CannotUpdateLockedPropertyException::class);
 
 it('saves alt text per language and the title', function () {
@@ -65,7 +65,7 @@ it('saves alt text per language and the title', function () {
     $folder = MediaFolder::factory()->create();
     $media = Media::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->set('details.alt.uk', 'Осінній Київ')
         ->set('details.alt.en', 'Autumn Kyiv')
@@ -90,7 +90,7 @@ it('shows the primary alt text and folds the other languages into translations',
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create(['alt' => ['uk' => 'Каша в мисці', 'pl' => 'Kaszka w misce']]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSet('details.alt.uk', 'Каша в мисці')
         ->assertSet('details.alt.de', '')
@@ -105,7 +105,7 @@ it('opens the full file in a new tab from the preview and the open button', func
     $media = Media::factory()->create();
     $url = e($media->url());
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtmlInOrder(['href="'.$url.'"', 'target="_blank"', 'data-test="media-details-preview"'])
         ->assertSeeHtmlInOrder(['data-test="media-details-preview"', 'href="'.$url.'"', 'target="_blank"', 'data-test="media-details-open"'])
@@ -117,7 +117,7 @@ it('shows no translations block with a single language', function () {
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create(['alt' => ['en' => 'Bowl']]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtml('id="alt-en"')
         ->assertDontSeeHtml('data-test="alt-translations"');
@@ -127,7 +127,7 @@ it('shows a field error for an invalid title', function () {
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->set('details.title', str_repeat('a', 256))
         ->call('saveDetails')
@@ -140,7 +140,7 @@ it('refuses to save details without media.edit', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
     $media = Media::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertDontSeeHtml('data-test="media-details-save"')
         ->set('details.title', 'Changed')
@@ -154,7 +154,7 @@ it('asks before discarding unsaved changes when another file is opened', functio
     $this->actingAs(mediaEditor());
     [$first, $second] = Media::factory()->count(2)->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $first->id)
         ->set('details.title', 'Unsaved')
         ->call('select', $second->id)
@@ -172,7 +172,7 @@ it('asks before deleting and deletes after confirming', function () {
     $media = mediaWithFiles(['name' => 'price-list.pdf']);
     MediaUsage::query()->create(['media_id' => $media->id, 'usable_type' => User::class, 'usable_id' => 1, 'field' => 'cover']);
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->call('confirmDelete', $media->id)
         ->assertSet('showDeleteModal', true)
@@ -195,7 +195,7 @@ it('hides delete without media.delete', function () {
     $this->actingAs(mediaEditor([]));
     $media = Media::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertDontSeeHtml('data-test="media-details-delete"')
         ->call('confirmDelete', $media->id)
@@ -213,14 +213,14 @@ it('shows the optimization result', function () {
         'optimized_with' => 'webp:2560:80:exif0',
     ]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSee('18.4 MB → 164 KB (−99%)')
         ->assertDontSee(__('media.details.not_optimized'));
 
     app()->setLocale('uk');
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSee('18,4 MB → 164 KB (−99%)');
 });
@@ -231,7 +231,7 @@ it('says why an image was not optimized', function () {
     $unreadable = Media::factory()->image()->create(['optimized_with' => null, 'optimize_failure' => 'unreadable']);
     $animated = Media::factory()->create(['name' => 'spinner.gif', 'mime' => 'image/gif', 'optimized_with' => null, 'optimize_failure' => null]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $tooLarge->id)
         ->assertSee(__('media.details.not_optimized'))
         ->assertDontSee(__('media.details.unreadable'))
@@ -250,7 +250,7 @@ it('shows the panel line for an upload the server was too short of memory to opt
 
     expect($media->optimize_failure)->toBe('too_large');
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSee(__('media.details.not_optimized'));
 });
@@ -263,7 +263,7 @@ it('says which format a file was uploaded as without a kept original', function 
     expect($media->original_path)->toBeNull()
         ->and($media->extension())->toBe('WEBP');
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSee(__('media.details.type_converted', ['type' => 'WEBP', 'original' => 'JPG']));
 });
@@ -273,7 +273,7 @@ it('clears a pending confirmation when the dialog is cancelled', function () {
     $media = Media::factory()->create();
     $folder = MediaFolder::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('confirmDelete', $media->id)
         ->call('cancelPending')
         ->assertSet('deletingIds', [])
@@ -292,7 +292,7 @@ it('shows the file url in a selectable field with a copy fallback for plain http
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtml('value="'.e($media->appUrl()).'"')
         ->assertSeeHtml('data-test="media-details-copy"')
@@ -304,7 +304,7 @@ it('points Download at the app route with the download flag', function () {
     $this->actingAs(mediaEditor());
     $media = Media::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtml('href="'.e($media->appUrl().'?download=1').'"');
 });

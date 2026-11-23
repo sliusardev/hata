@@ -2,13 +2,13 @@
     A term (a category, a tag) on the public site: its name, its description and the public records filed under it.
     Receives $entry (the term), $records (a simple paginator), $preview, $languageOff and $editUrl.
 --}}
-@extends('layouts.site', [
+@extends('hata::layouts.site', [
     'pageTitle' => $entry->documentTitle(),
     'noindex' => $preview,
 ])
 
 @section('strip')
-    @include('partials.site.preview-strip')
+    @include('hata::partials.site.preview-strip')
 @endsection
 
 @section('content')
@@ -27,5 +27,5 @@
         <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-300">{{ $entry->excerpt }}</p>
     @endif
 
-    @include('partials.site.record-cards', ['records' => $records])
+    @include('hata::partials.site.record-cards', ['records' => $records])
 @endsection

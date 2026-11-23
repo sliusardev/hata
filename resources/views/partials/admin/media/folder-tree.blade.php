@@ -234,7 +234,7 @@
                 <span class="text-xs text-zinc-400 tabular-nums">{{ $row['folder']->media_count }}</span>
             </div>
             @if ($canManageFolders)
-                @include('partials.admin.media.folder-menu', [
+                @include('hata::partials.admin.media.folder-menu', [
                     'folderId' => $id,
                     'testId' => 'media-folder-actions-'.$id,
                     'stop' => true,

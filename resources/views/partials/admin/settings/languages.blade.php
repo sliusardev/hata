@@ -62,12 +62,12 @@
 
                 <div class="flex w-8 justify-end">
                     @unless ($row['default'])
-                        <x-admin.row-actions data-test="language-actions-{{ $language->code }}">
+                        <x-hata::admin.row-actions data-test="language-actions-{{ $language->code }}">
                             @if ($row['active'])
                                 <flux:menu.item icon="star" wire:click="confirmLanguage('default', '{{ $language->code }}')">{{ __('site_settings.languages.make_default') }}</flux:menu.item>
                             @endif
                             <flux:menu.item icon="trash" variant="danger" wire:click="confirmLanguage('remove', '{{ $language->code }}')">{{ __('site_settings.languages.remove') }}</flux:menu.item>
-                        </x-admin.row-actions>
+                        </x-hata::admin.row-actions>
                     @endunless
                 </div>
             </li>

@@ -66,7 +66,7 @@ it('links to the media settings when optimization is off', function () {
 it('processes files in the browser when there is no queue', function () {
     $media = pageCandidate();
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->assertSee(__('media.optimize.status.running'))
         ->call('tick')
@@ -81,7 +81,7 @@ it('dispatches the job and leaves processing to the queue', function () {
     Queue::fake();
     $media = pageCandidate();
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->call('tick')
         ->assertSet('browserFallback', false)
@@ -98,7 +98,7 @@ it('continues in the browser when the queue does not pick the run up', function 
     Queue::fake();
     $media = pageCandidate();
 
-    $component = Livewire::test('pages::admin.media.optimize')->call('start');
+    $component = Livewire::test('hata::admin.media.optimize')->call('start');
 
     $this->travel(31)->seconds();
 
@@ -114,7 +114,7 @@ it('does not fall back while a queue batch holds the lock', function () {
     Queue::fake();
     $media = pageCandidate();
 
-    $component = Livewire::test('pages::admin.media.optimize')->call('start');
+    $component = Livewire::test('hata::admin.media.optimize')->call('start');
     $this->travel(31)->seconds();
     $lock = Cache::lock(OptimizeExistingMedia::LOCK, 60);
     $lock->get();
@@ -143,7 +143,7 @@ it('explains the fallback while the run is still going', function () {
         }
     });
 
-    $component = Livewire::test('pages::admin.media.optimize')
+    $component = Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->call('tick')
         ->assertDontSee(__('media.batch.fallback'))
@@ -171,13 +171,13 @@ it('does not force the browser mode on a reload when a queue is available', func
     $run->driver = 'browser';
     app(OptimizationRunStore::class)->save($run);
 
-    Livewire::test('pages::admin.media.optimize')->assertSet('browserFallback', false);
+    Livewire::test('hata::admin.media.optimize')->assertSet('browserFallback', false);
 });
 
 it('shows a toast when optimization is off', function () {
     config(['media.optimize.enabled' => false]);
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->assertDispatched('toast-show');
 
@@ -190,7 +190,7 @@ it('refuses every action once media.edit is gone', function (string $action) {
     $engine->startWithoutActor();
     $before = app(OptimizationRunStore::class)->get()->toArray();
 
-    $component = Livewire::test('pages::admin.media.optimize');
+    $component = Livewire::test('hata::admin.media.optimize');
     $this->actor->syncPermissions(['admin.access', 'media.view']);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->actor->refresh();
@@ -203,7 +203,7 @@ it('refuses every action once media.edit is gone', function (string $action) {
 it('pauses and resumes', function () {
     pageCandidate();
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->call('pause')
         ->assertSee(__('media.batch.resume'))
@@ -211,18 +211,18 @@ it('pauses and resumes', function () {
 
     expect(app(OptimizationRunStore::class)->get()->processed())->toBe(0);
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('resume')
         ->assertSee(__('media.optimize.status.running'));
 });
 
 it('offers to start over when the settings changed', function () {
     pageCandidate();
-    Livewire::test('pages::admin.media.optimize')->call('start');
+    Livewire::test('hata::admin.media.optimize')->call('start');
 
     config(['media.optimize.quality' => 61]);
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->assertSee(__('media.optimize.stale_heading'))
         ->assertSee(__('media.optimize.start_over'))
         ->call('startOver')
@@ -232,7 +232,7 @@ it('offers to start over when the settings changed', function () {
 it('stops the run and clears its progress', function () {
     pageCandidate();
 
-    Livewire::test('pages::admin.media.optimize')->call('start')->call('stop');
+    Livewire::test('hata::admin.media.optimize')->call('start')->call('stop');
 
     expect(app(OptimizationRunStore::class)->get())->toBeNull();
 });
@@ -241,7 +241,7 @@ it('offers a new run after one is done when files were skipped', function () {
     $media = pageCandidate();
     Storage::disk('local')->delete($media->path);
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->call('tick')
         ->assertSee(__('media.optimize.done_heading'))
@@ -252,13 +252,13 @@ it('does not start without media.edit', function () {
     pageCandidate();
     $viewer = User::factory()->withPermissions(['admin.access', 'media.view'])->create();
 
-    Livewire::actingAs($viewer)->test('pages::admin.media.optimize')->assertForbidden();
+    Livewire::actingAs($viewer)->test('hata::admin.media.optimize')->assertForbidden();
 });
 
 it('asks before stopping', function () {
     pageCandidate();
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->set('showStopModal', true)
         ->assertSee(__('media.optimize.stop_heading'));
@@ -267,7 +267,7 @@ it('asks before stopping', function () {
 it('polls with keep-alive while running, so a background tab keeps the run going', function () {
     pageCandidate();
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->assertSeeHtml('wire:poll.2s.keep-alive="tick"')
         ->call('pause')
@@ -288,7 +288,7 @@ it('pauses a running run once optimization is turned off', function (string $que
     config(['queue.default' => $queue]);
     Queue::fake();
     pageCandidate();
-    $component = Livewire::test('pages::admin.media.optimize')->call('start');
+    $component = Livewire::test('hata::admin.media.optimize')->call('start');
 
     config(['media.optimize.enabled' => false]);
 
@@ -303,7 +303,7 @@ it('pluralizes the progress by the total', function (string $locale) {
     Queue::fake();
     pageCandidate();
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->call('start')
         ->assertSee(trans_choice('media.batch.progress', 1, ['processed' => 0, 'total' => 1]));
 
@@ -329,7 +329,7 @@ it('lists a file changed during the run as skipped', function () {
     $run->record(Media::query()->firstOrFail(), OptimizeOutcome::Changed, 10, 10);
     app(OptimizationRunStore::class)->save($run);
 
-    Livewire::test('pages::admin.media.optimize')
+    Livewire::test('hata::admin.media.optimize')
         ->assertSee(trans_choice('media.optimize.skipped_reasons.changed', 1, ['count' => 1]))
         ->assertSee(__('media.optimize.outcomes.changed'));
 });

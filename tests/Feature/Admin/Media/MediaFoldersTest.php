@@ -20,7 +20,7 @@ it('creates, renames and refuses duplicate folders', function () {
     $this->actingAs(folderManager());
     $parent = MediaFolder::factory()->create(['name' => 'Marketing']);
 
-    $component = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+    $component = Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->call('createFolder', 'Banners')
         ->assertHasNoErrors();
 
@@ -49,7 +49,7 @@ it('hides folder management without media.edit', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
     $folder = MediaFolder::factory()->create();
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $folder->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $folder->id])
         ->assertDontSeeHtml('data-test="media-new-folder"')
         ->assertDontSeeHtml('data-test="media-folder-actions"')
         ->call('createFolder', 'Nope')
@@ -63,7 +63,7 @@ it('requires typing the folder name when it holds more than 10 files', function 
     $folder = MediaFolder::factory()->create(['name' => 'Archive']);
     Media::factory()->count(11)->inFolder($folder)->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('confirmFolderDelete', $folder->id)
         ->assertSet('showFolderDeleteModal', true)
         ->assertSee(__('media.folders.delete.type_name', ['name' => 'Archive']))
@@ -83,7 +83,7 @@ it('deletes a folder with everything inside after confirmation', function () {
     Media::factory()->count(10)->inFolder($folder)->create();
     $outside = Media::factory()->create();
 
-    $component = Livewire::test('pages::admin.media.index', ['folder' => (string) $child->id])
+    $component = Livewire::test('hata::admin.media.index', ['folder' => (string) $child->id])
         ->call('confirmFolderDelete', $folder->id)
         ->assertSee(__('media.folders.delete.summary', [
             'files' => trans_choice('media.index.file_count', 11),
@@ -110,7 +110,7 @@ it('refuses to delete a folder without media.delete', function () {
     $this->actingAs(folderManager([]));
     $folder = MediaFolder::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('confirmFolderDelete', $folder->id)
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger')
         ->assertSet('showFolderDeleteModal', false);
@@ -124,7 +124,7 @@ it('shows a forbidden toast instead of a 403 when a dialog may not open', functi
     $media = Media::factory()->create();
     $argument = ['confirmDelete' => $media->id, 'openNewFolder' => null][$method] ?? $folder->id;
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call($method, ...array_filter([$argument]))
         ->assertOk()
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger')
@@ -142,7 +142,7 @@ it('moves files by drop', function () {
     [$first, $second] = Media::factory()->count(2)->create();
     $untouched = Media::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('moveTo', [$first->id, $second->id], $folder->id)
         ->assertDispatched('toast-show');
 
@@ -150,7 +150,7 @@ it('moves files by drop', function () {
         ->and($second->refresh()->folder_id)->toBe($folder->id)
         ->and($untouched->refresh()->folder_id)->toBeNull();
 
-    Livewire::test('pages::admin.media.index')->call('moveTo', [$first->id], null);
+    Livewire::test('hata::admin.media.index')->call('moveTo', [$first->id], null);
 
     expect($first->refresh()->folder_id)->toBeNull();
 });
@@ -160,7 +160,7 @@ it('refuses to move files without media.edit', function () {
     $folder = MediaFolder::factory()->create();
     $media = Media::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('moveTo', [$media->id], $folder->id)
         ->assertDispatched('toast-show');
 
@@ -172,7 +172,7 @@ it('takes the dropped files out of the selection', function () {
     $folder = MediaFolder::factory()->create();
     [$moved, $kept] = Media::factory()->count(2)->create()->all();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->set('selected', [$moved->id, $kept->id])
         ->call('moveTo', [(string) $moved->id], $folder->id)
         ->assertSet('selected', [$kept->id]);
@@ -183,7 +183,7 @@ it('moves a folder through the page and updates the tree order', function () {
     $a = MediaFolder::factory()->create(['name' => 'A']);
     $b = MediaFolder::factory()->create(['name' => 'B']);
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $b->id, $a->id)
         ->assertHasNoErrors();
 
@@ -201,7 +201,7 @@ it('shows a danger toast when a folder is moved into its descendant', function (
     $a = MediaFolder::factory()->create();
     $b = MediaFolder::factory()->create(['parent_id' => $a->id]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $a->id, $b->id)
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
             && ($params['slots']['text'] ?? null) === __('media.errors.folder_into_itself'));
@@ -215,7 +215,7 @@ it('shows a danger toast when the target already has a folder with that name', f
     MediaFolder::factory()->create(['parent_id' => $target->id, 'name' => 'Same']);
     $moving = MediaFolder::factory()->create(['name' => 'Same']);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $moving->id, $target->id)
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
             && ($params['slots']['text'] ?? null) === __('media.errors.folder_exists'));
@@ -228,7 +228,7 @@ it('does not show a success toast when a folder is moved to its current parent',
     $parent = MediaFolder::factory()->create();
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $child->id, $parent->id)
         ->assertNotDispatched('toast-show');
 
@@ -240,7 +240,7 @@ it('renders chevrons for parents, full-name titles and draggable folders only wi
     $parent = MediaFolder::factory()->create(['name' => 'Parent folder']);
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id, 'name' => 'Child']);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->assertSeeHtml('data-test="media-folder-toggle-'.$parent->id.'"')
         ->assertDontSeeHtml('data-test="media-folder-toggle-'.$child->id.'"')
         ->assertSeeHtml('title="Parent folder"')
@@ -248,7 +248,7 @@ it('renders chevrons for parents, full-name titles and draggable folders only wi
 
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->assertDontSeeHtml('draggable="true"')
         ->assertSeeHtml('title="Parent folder"');
 });
@@ -258,7 +258,7 @@ it('ignores a missing folder or target when moving a folder', function () {
     $parent = MediaFolder::factory()->create();
     $a = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $a->id, 9999)
         ->call('moveFolder', 9999, null)
         ->assertHasNoErrors()
@@ -272,7 +272,7 @@ it('refuses a crafted folder move without media.edit', function () {
     $a = MediaFolder::factory()->create();
     $b = MediaFolder::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $a->id, $b->id)
         ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger');
 
@@ -284,7 +284,7 @@ it('expands the target after a folder is moved into it', function () {
     $a = MediaFolder::factory()->create();
     $b = MediaFolder::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('moveFolder', $a->id, $b->id)
         ->assertSet('expandFolderId', $b->id)
         ->call('moveFolder', $a->id, null)
@@ -304,7 +304,7 @@ it('moves a folder from the dialog without offering the folder or its descendant
     $child = MediaFolder::factory()->create(['parent_id' => $a->id, 'name' => 'Child']);
     $other = MediaFolder::factory()->create(['name' => 'Omega']);
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->call('openMoveFolder', $a->id)
         ->assertSet('showMoveFolderModal', true);
 
@@ -328,7 +328,7 @@ it('marks the current parent in the move dialog and does not move without a choi
     $parent = MediaFolder::factory()->create(['name' => 'Parent']);
     $a = MediaFolder::factory()->create(['parent_id' => $parent->id, 'name' => 'Alpha']);
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->call('openMoveFolder', $a->id)
         ->assertSee('Now in: Parent')
         ->assertSeeHtml('data-test="media-folder-move-'.$parent->id.'"')
@@ -348,7 +348,7 @@ it('forgets the folder being moved when the dialog is cancelled', function () {
     $this->actingAs(folderManager());
     $a = MediaFolder::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('openMoveFolder', $a->id)
         ->call('cancelPending')
         ->assertSet('movingFolderId', null)
@@ -359,7 +359,7 @@ it('does not open the move dialog without media.edit', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
     $a = MediaFolder::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('openMoveFolder', $a->id)
         ->assertSet('showMoveFolderModal', false);
 });
@@ -373,7 +373,7 @@ it('lists the direct subfolders of the open folder by name with their counts', f
     Media::factory()->count(2)->inFolder($alpha)->create();
     Media::factory()->inFolder($parent)->create();
 
-    $component = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id]);
+    $component = Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id]);
     $tiles = $component->get('subfolders');
 
     expect($tiles->pluck('name')->all())->toBe(['Alpha', 'Zeta'])
@@ -392,10 +392,10 @@ it('shows no subfolder tiles for all files, no folder or while a filter is activ
     $parent = MediaFolder::factory()->create();
     MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
-    expect(Livewire::test('pages::admin.media.index')->get('subfolders'))->toBeEmpty()
-        ->and(Livewire::test('pages::admin.media.index', ['folder' => 'none'])->get('subfolders'))->toBeEmpty();
+    expect(Livewire::test('hata::admin.media.index')->get('subfolders'))->toBeEmpty()
+        ->and(Livewire::test('hata::admin.media.index', ['folder' => 'none'])->get('subfolders'))->toBeEmpty();
 
-    $open = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id]);
+    $open = Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id]);
     expect($open->get('subfolders'))->toHaveCount(1);
 
     foreach ([['search', 'x'], ['type', 'image'], ['month', '2026-01'], ['unused', true]] as [$property, $value]) {
@@ -409,7 +409,7 @@ it('shows the tiles instead of the empty state in a folder that only has subfold
     $parent = MediaFolder::factory()->create();
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id, 'name' => 'Banners']);
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->assertSee('Banners')
         ->assertSee(__('media.index.subfolders.no_files'))
         ->assertDontSee(__('media.index.empty.title'))
@@ -424,7 +424,7 @@ it('opens a subfolder from its tile', function () {
     $parent = MediaFolder::factory()->create();
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->set('folder', (string) $child->id)
         ->assertSet('folder', (string) $child->id);
 });
@@ -434,7 +434,7 @@ it('expands the open folder in the tree after a subfolder is created in it', fun
     $parent = MediaFolder::factory()->create();
     $other = MediaFolder::factory()->create();
 
-    $component = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+    $component = Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->assertSet('expandFolderId', null)
         ->call('createFolder', 'Banners')
         ->assertSet('expandFolderId', $parent->id)
@@ -443,7 +443,7 @@ it('expands the open folder in the tree after a subfolder is created in it', fun
 
     $component->set('folder', (string) $other->id)->assertSet('expandFolderId', null);
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->call('createFolder', 'Banners')
         ->assertSet('expandFolderId', null);
 });

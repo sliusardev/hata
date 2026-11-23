@@ -87,14 +87,14 @@
                 </flux:table.cell>
                 <flux:table.cell class="whitespace-nowrap max-lg:hidden">{{ $item->created_at?->tz(config('admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
                 <flux:table.cell align="end">
-                    <x-admin.row-actions data-test="media-actions-{{ $item->id }}">
+                    <x-hata::admin.row-actions data-test="media-actions-{{ $item->id }}">
                         <flux:menu.item icon="information-circle" x-on:click="$wire.select({{ $item->id }}, true)">{{ __('media.details.heading') }}</flux:menu.item>
                         <flux:menu.item icon="arrow-top-right-on-square" :href="$item->url()" target="_blank">{{ __('media.index.open') }}</flux:menu.item>
                         <flux:menu.item icon="arrow-down-tray" :href="$item->appUrl().'?download=1'">{{ __('media.details.download') }}</flux:menu.item>
                         @can('delete', $item)
                             <flux:menu.item icon="trash" variant="danger" x-on:click="$wire.confirmDelete({{ $item->id }})">{{ __('common.actions.delete') }}</flux:menu.item>
                         @endcan
-                    </x-admin.row-actions>
+                    </x-hata::admin.row-actions>
                 </flux:table.cell>
             </flux:table.row>
         @endforeach

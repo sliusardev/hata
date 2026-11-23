@@ -2,14 +2,14 @@
     Dialogs of the media library page: discard unsaved details, delete files, the folder name form, delete a folder.
     Rendered inside the page component, so it reads the component's state directly.
 --}}
-<x-confirm-modal
+<x-hata::confirm-modal
     wire:model.self="showDiscardModal"
     :heading="__('media.details.unsaved.heading')"
     :confirm-label="__('media.details.unsaved.discard')"
     confirm-action="discardChanges"
 >
     {{ __('media.details.unsaved.body', ['name' => $this->selectedMedia?->name]) }}
-</x-confirm-modal>
+</x-hata::confirm-modal>
 
 @php
     $deleting = $this->deletingMedia;
@@ -17,7 +17,7 @@
     $deletingUsedFiles = $deleting->filter(fn ($media) => $media->usages->isNotEmpty())->count();
 @endphp
 
-<x-confirm-modal
+<x-hata::confirm-modal
     wire:model.self="showDeleteModal"
     wire:close="cancelPending"
     :heading="$deleting->count() > 1 ? __('media.delete.heading_many') : __('media.delete.heading')"
@@ -54,7 +54,7 @@
             </div>
         </x-slot:extra>
     @endif
-</x-confirm-modal>
+</x-hata::confirm-modal>
 
 <flux:modal wire:model.self="showFolderModal" class="max-w-md md:min-w-md">
     <form wire:submit="saveFolder" class="space-y-6">
@@ -183,7 +183,7 @@
     $needsName = $summary !== null && $summary['files'] > 10;
 @endphp
 
-<x-confirm-modal
+<x-hata::confirm-modal
     wire:model.self="showFolderDeleteModal"
     wire:close="cancelPending"
     :heading="__('media.folders.delete.heading', ['name' => $deletingFolder?->name])"
@@ -216,14 +216,14 @@
             </div>
         </x-slot:extra>
     @endif
-</x-confirm-modal>
+</x-hata::confirm-modal>
 
 @php
     $replaceTarget = $this->replacingId === null ? null : Hata\Models\Media::query()->withCount('usages')->find($this->replacingId);
     $restoreTarget = $this->restoringId === null ? null : Hata\Models\Media::query()->withCount('usages')->find($this->restoringId);
 @endphp
 
-<x-confirm-modal
+<x-hata::confirm-modal
     wire:model.self="showReplaceModal"
     wire:close="cancelPending"
     :heading="__('media.replace.heading', ['name' => $replaceTarget?->name])"
@@ -234,9 +234,9 @@
     @if ($replaceTarget)
         {{ trans_choice('media.crop.confirm.body', $replaceTarget->usages_count) }}
     @endif
-</x-confirm-modal>
+</x-hata::confirm-modal>
 
-<x-confirm-modal
+<x-hata::confirm-modal
     wire:model.self="showRestoreModal"
     wire:close="cancelPending"
     :heading="__('media.restore.heading', ['name' => $restoreTarget?->name])"
@@ -247,4 +247,4 @@
     @if ($restoreTarget)
         {{ trans_choice('media.crop.confirm.body', $restoreTarget->usages_count) }}
     @endif
-</x-confirm-modal>
+</x-hata::confirm-modal>

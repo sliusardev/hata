@@ -67,10 +67,10 @@ test('a type that is off has no admin pages, no menu item and no public address'
 
     $this->get('/products/chair')->assertNotFound();
     $this->get(route('admin.dashboard'))->assertDontSee('Products');
-    Livewire::test('pages::admin.content.index', ['type' => 'products'])->assertNotFound();
-    Livewire::test('pages::admin.content.create', ['type' => 'products'])->assertNotFound();
-    Livewire::test('pages::admin.content.edit', ['type' => 'products', 'entry' => $product])->assertNotFound();
-    Livewire::test('pages::admin.content.index', ['type' => 'pages'])->assertOk();
+    Livewire::test('hata::admin.content.index', ['type' => 'products'])->assertNotFound();
+    Livewire::test('hata::admin.content.create', ['type' => 'products'])->assertNotFound();
+    Livewire::test('hata::admin.content.edit', ['type' => 'products', 'entry' => $product])->assertNotFound();
+    Livewire::test('hata::admin.content.index', ['type' => 'pages'])->assertOk();
 });
 
 test('the base of a type that is off stays reserved, and the media library still names its records without a link', function () {
@@ -82,7 +82,7 @@ test('the base of a type that is off stays reserved, and the media library still
     app(SetContentTypeActive::class)->handle($admin, 'products', false);
 
     Livewire::withQueryParams(['locale' => 'en'])
-        ->test('pages::admin.content.create', ['type' => 'pages'])
+        ->test('hata::admin.content.create', ['type' => 'pages'])
         ->set('form.title', 'Products')
         ->set('form.slug', 'products')
         ->call('save')
@@ -97,7 +97,7 @@ test('the settings tab lists the types and switches them, asking before switchin
     Entry::factory()->count(2)->create(['type' => 'products']);
 
     $page = Livewire::withQueryParams(['tab' => 'content'])
-        ->test('pages::admin.settings.edit')
+        ->test('hata::admin.settings.edit')
         ->assertSeeHtml('data-test="content-type-pages" data-active="true"')
         ->assertSeeHtml('data-test="content-type-products" data-active="true"')
         ->assertDontSeeHtml('data-test="content-type-switch-pages"')
@@ -114,7 +114,7 @@ test('the settings tab lists the types and switches them, asking before switchin
         ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('site_settings.content.messages.turned_off', ['type' => 'Products']));
 
     Livewire::withQueryParams(['tab' => 'content'])
-        ->test('pages::admin.settings.edit')
+        ->test('hata::admin.settings.edit')
         ->assertSeeHtml('data-test="content-type-products" data-active="false"')
         ->call('toggleContentType', 'products')
         ->assertSet('showContentTypeModal', false)
@@ -125,7 +125,7 @@ test('the settings tab lists the types and switches them, asking before switchin
 
 test('switching a type needs settings.edit on the page too', function () {
     $this->actingAs(typesAdmin());
-    $page = Livewire::withQueryParams(['tab' => 'content'])->test('pages::admin.settings.edit');
+    $page = Livewire::withQueryParams(['tab' => 'content'])->test('hata::admin.settings.edit');
 
     $this->actingAs(User::factory()->withRole('editor')->create());
 

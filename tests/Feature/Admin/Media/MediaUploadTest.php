@@ -30,7 +30,7 @@ function mediaUploader(): User
 it('stores an uploaded file through the component and returns its tile data', function () {
     $this->actingAs(mediaUploader());
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->assertSeeHtml('data-test="media-upload"')
         ->set('upload', livewireUpload('Hero photo.jpg', makeImage('jpg', 1200, 800)))
         ->set('uploadPickedSize', 9_000_000)
@@ -57,7 +57,7 @@ it('stores an uploaded file through the component and returns its tile data', fu
 it('returns the error text for a rejected file', function () {
     $this->actingAs(mediaUploader());
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->set('upload', livewireUpload('x.psd', '8BPS fake photoshop file'))
         ->call('storeUpload');
 
@@ -71,7 +71,7 @@ it('stores uploads in the folder that was open when the file was queued', functi
     $this->actingAs(mediaUploader());
     [$open, $queuedIn] = MediaFolder::factory()->count(2)->create()->all();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->set('folder', (string) $open->id)
         ->set('upload', livewireUpload('a.jpg', makeImage()))
         ->set('uploadFolderId', $queuedIn->id)
@@ -85,7 +85,7 @@ it('stores uploads queued outside a folder without a folder', function () {
     $this->actingAs(mediaUploader());
     $open = MediaFolder::factory()->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->set('folder', (string) $open->id)
         ->set('upload', livewireUpload('a.jpg', makeImage()))
         ->set('uploadFolderId', null)
@@ -97,7 +97,7 @@ it('stores uploads queued outside a folder without a folder', function () {
 it('refuses an upload into a folder that no longer exists', function () {
     $this->actingAs(mediaUploader());
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->set('upload', livewireUpload('a.jpg', makeImage()))
         ->set('uploadFolderId', 999_999)
         ->call('storeUpload');
@@ -109,12 +109,12 @@ it('refuses an upload into a folder that no longer exists', function () {
 it('is forbidden to upload without media.upload', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->assertDontSeeHtml('data-test="media-upload"')
         ->call('_startUpload', 'upload', [['name' => 'a.jpg', 'size' => 100, 'type' => 'image/jpeg']], false)
         ->assertForbidden();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('storeUpload')
         ->assertForbidden();
 
@@ -127,7 +127,7 @@ it('passes the server upload cap to the uploader', function (?int $cap) {
     app()->instance(ServerCapabilities::class, $capabilities);
     $this->actingAs(mediaUploader());
 
-    $config = Livewire::test('pages::admin.media.index')->instance()->uploaderConfig;
+    $config = Livewire::test('hata::admin.media.index')->instance()->uploaderConfig;
 
     expect($config)->toHaveKey('uploadCap', $cap);
 })->with([
@@ -139,7 +139,7 @@ it('turns browser resizing off when optimization is off', function (bool $optimi
     config(['media.optimize.enabled' => $optimize, 'media.optimize.client_resize' => $clientResize]);
     $this->actingAs(mediaUploader());
 
-    $config = Livewire::test('pages::admin.media.index')->instance()->uploaderConfig;
+    $config = Livewire::test('hata::admin.media.index')->instance()->uploaderConfig;
 
     expect($config['clientResize'])->toBe($expected);
 })->with([

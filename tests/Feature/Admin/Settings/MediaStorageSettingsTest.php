@@ -71,7 +71,7 @@ function s3FormInput(array $overrides = []): array
 
 function storageTab(): Testable
 {
-    return Livewire::withQueryParams(['tab' => 'media'])->test('pages::admin.settings.edit');
+    return Livewire::withQueryParams(['tab' => 'media'])->test('hata::admin.settings.edit');
 }
 
 it('maps the storage settings onto config and rebuilds the s3 disk', function () {

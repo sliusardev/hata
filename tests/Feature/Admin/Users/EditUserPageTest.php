@@ -32,7 +32,7 @@ test('it updates a user without changing the password', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
     $user = User::factory()->withRole('author')->create(['password' => 'old-password']);
 
-    Livewire::test('pages::admin.users.edit', ['user' => $user])
+    Livewire::test('hata::admin.users.edit', ['user' => $user])
         ->assertSet('form.name', $user->name)
         ->set('form.name', 'Updated Name')
         ->set('form.roles', [(string) Role::findByName('editor')->id])
@@ -50,7 +50,7 @@ test('it updates the password when one is entered', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
     $user = User::factory()->create();
 
-    Livewire::test('pages::admin.users.edit', ['user' => $user])
+    Livewire::test('hata::admin.users.edit', ['user' => $user])
         ->set('form.password', 'brand-new-password')
         ->set('form.password_confirmation', 'brand-new-password')
         ->call('save')
@@ -63,7 +63,7 @@ test('the roles block is locked on the own account and roles stay unchanged', fu
     $actor = User::factory()->withRole('admin')->create();
     $this->actingAs($actor);
 
-    Livewire::test('pages::admin.users.edit', ['user' => $actor])
+    Livewire::test('hata::admin.users.edit', ['user' => $actor])
         ->assertSee(__('users.form.own_roles_locked'))
         ->set('form.roles', [(string) Role::findByName('author')->id])
         ->set('form.name', 'Self Renamed')
@@ -78,7 +78,7 @@ test('it deletes the user from the edit page', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
     $user = User::factory()->create();
 
-    Livewire::test('pages::admin.users.edit', ['user' => $user])
+    Livewire::test('hata::admin.users.edit', ['user' => $user])
         ->call('deleteUser')
         ->assertRedirect(route('admin.users.index'));
 
@@ -89,6 +89,6 @@ test('the delete button is hidden on the own account', function () {
     $actor = User::factory()->withRole('admin')->create();
     $this->actingAs($actor);
 
-    Livewire::test('pages::admin.users.edit', ['user' => $actor])
+    Livewire::test('hata::admin.users.edit', ['user' => $actor])
         ->assertDontSeeHtml('data-test="delete-user-button"');
 });

@@ -109,7 +109,7 @@ it('shows the usage label and link in the details panel and the delete dialog', 
     $label = 'Fixture '.$usable->id.' / logo';
     $href = 'https://example.test/fixtures/'.$usable->id;
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtml('href="'.$href.'"')
         ->assertSee($label)

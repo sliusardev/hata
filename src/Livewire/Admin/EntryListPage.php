@@ -31,7 +31,7 @@ use Throwable;
 
 /**
  * The list of one content type's records: tabs, search, the language filter, sorting,
- * the row actions, bulk selection and the trash. The page `pages::admin.content.index` extends it and holds the
+ * the row actions, bulk selection and the trash. The page `hata::admin.content.index` extends it and holds the
  * markup (decision 32: a class, so PHPStan analyses it).
  *
  * @property-read ContentType $contentType

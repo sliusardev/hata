@@ -22,7 +22,7 @@ function richTextConfig(string $html): array
 it('binds to the wire:model property without putting wire:model on the page', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
 
-    $view = $this->blade('<x-admin.rich-text wire:model="form.body" label="Body" locale="uk" :images="[12 => \'/storage/media/a.webp\']" />');
+    $view = $this->blade('<x-hata::admin.rich-text wire:model="form.body" label="Body" locale="uk" :images="[12 => \'/storage/media/a.webp\']" />');
 
     $view->assertDontSee('wire:model', false)
         ->assertSee('wire:ignore', false)
@@ -44,7 +44,7 @@ it('binds to the wire:model property without putting wire:model on the page', fu
 it('offers images only with media.view', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
 
-    $this->blade('<x-admin.rich-text wire:model="form.body" />')
+    $this->blade('<x-hata::admin.rich-text wire:model="form.body" />')
         ->assertSee('data-test="rich-text-bold"', false)
         ->assertDontSee('data-test="rich-text-image"', false);
 });
@@ -52,7 +52,7 @@ it('offers images only with media.view', function () {
 it('shows no toolbar and does not listen for picks when read-only', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
 
-    $view = $this->blade('<x-admin.rich-text wire:model="form.body" :readonly="true" />');
+    $view = $this->blade('<x-hata::admin.rich-text wire:model="form.body" :readonly="true" />');
 
     $view->assertDontSee('role="toolbar"', false)
         ->assertDontSee('media-picker:picked', false)

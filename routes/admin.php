@@ -22,31 +22,31 @@ Route::middleware(['auth', 'verified', 'can:admin.access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::view('/', 'dashboard')->name('dashboard');
+        Route::view('/', 'hata::dashboard')->name('dashboard');
 
         $contentTypes = app(ContentTypes::class)->pattern();
-        Route::livewire('content/{type}', 'pages::admin.content.index')->where('type', $contentTypes)->name('content.index');
-        Route::livewire('content/{type}/create', 'pages::admin.content.create')->where('type', $contentTypes)->name('content.create');
-        Route::livewire('content/{type}/{entry}/edit', 'pages::admin.content.edit')->where('type', $contentTypes)->whereNumber('entry')->withTrashed()->name('content.edit');
+        Route::livewire('content/{type}', 'hata::admin.content.index')->where('type', $contentTypes)->name('content.index');
+        Route::livewire('content/{type}/create', 'hata::admin.content.create')->where('type', $contentTypes)->name('content.create');
+        Route::livewire('content/{type}/{entry}/edit', 'hata::admin.content.edit')->where('type', $contentTypes)->whereNumber('entry')->withTrashed()->name('content.edit');
 
-        Route::livewire('media', 'pages::admin.media.index')->name('media.index');
+        Route::livewire('media', 'hata::admin.media.index')->name('media.index');
         Route::get('media/zip', MediaZipController::class)->middleware('can:media.view')->name('media.zip');
-        Route::livewire('media/optimize', 'pages::admin.media.optimize')->middleware('can:media.edit')->name('media.optimize');
-        Route::livewire('media/move', 'pages::admin.media.move')->middleware('can:media.edit')->name('media.move');
+        Route::livewire('media/optimize', 'hata::admin.media.optimize')->middleware('can:media.edit')->name('media.optimize');
+        Route::livewire('media/move', 'hata::admin.media.move')->middleware('can:media.edit')->name('media.move');
         Route::post('media/direct-check', MediaDirectCheckController::class)->middleware('can:settings.edit')->name('media.direct-check');
-        Route::livewire('media/{media}/crop', 'pages::admin.media.crop')->middleware('can:update,media')->name('media.crop');
+        Route::livewire('media/{media}/crop', 'hata::admin.media.crop')->middleware('can:update,media')->name('media.crop');
         Route::get('media/{media}/source', MediaSourcePreviewController::class)->middleware('can:update,media')->name('media.source');
 
-        Route::livewire('users', 'pages::admin.users.index')->name('users.index');
-        Route::livewire('users/create', 'pages::admin.users.create')->name('users.create');
-        Route::livewire('users/{user}/edit', 'pages::admin.users.edit')->name('users.edit');
+        Route::livewire('users', 'hata::admin.users.index')->name('users.index');
+        Route::livewire('users/create', 'hata::admin.users.create')->name('users.create');
+        Route::livewire('users/{user}/edit', 'hata::admin.users.edit')->name('users.edit');
 
-        Route::livewire('roles', 'pages::admin.roles.index')->name('roles.index');
-        Route::livewire('roles/create', 'pages::admin.roles.create')->name('roles.create');
-        Route::livewire('roles/{role}/edit', 'pages::admin.roles.edit')->name('roles.edit');
+        Route::livewire('roles', 'hata::admin.roles.index')->name('roles.index');
+        Route::livewire('roles/create', 'hata::admin.roles.create')->name('roles.create');
+        Route::livewire('roles/{role}/edit', 'hata::admin.roles.edit')->name('roles.edit');
 
-        Route::livewire('settings', 'pages::admin.settings.edit')->name('settings.edit');
-        Route::livewire('maintenance', 'pages::admin.maintenance.index')->middleware('can:maintenance.run')->name('maintenance');
+        Route::livewire('settings', 'hata::admin.settings.edit')->name('settings.edit');
+        Route::livewire('maintenance', 'hata::admin.maintenance.index')->middleware('can:maintenance.run')->name('maintenance');
         Route::post('maintenance/run', MaintenanceRunController::class)->middleware('can:maintenance.run')->name('maintenance.run');
         Route::get('maintenance/logs/{key}', MaintenanceLogChunkController::class)->where('key', '[a-f0-9]{32}')->middleware('can:maintenance.run')->name('maintenance.logs.chunk');
     });

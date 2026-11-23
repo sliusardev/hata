@@ -2,9 +2,9 @@
     Shared confirmation dialog for destructive actions in the admin panel.
 
     Usage:
-    <x-confirm-modal wire:model.self="showDeleteModal" :heading="..." :confirm-label="..." confirm-action="deleteUser">
+    <x-hata::confirm-modal wire:model.self="showDeleteModal" :heading="..." :confirm-label="..." confirm-action="deleteUser">
         Body text
-    </x-confirm-modal>
+    </x-hata::confirm-modal>
 
     Optional: an `extra` slot for content below the text (lists, inputs), and `confirm-disabled`,
     an Alpine expression that disables the confirm button while it is true.

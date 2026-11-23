@@ -1,13 +1,13 @@
 {{--
     Rich text editor (Tiptap) bound to a Livewire property:
-    <x-admin.rich-text wire:model="form.body" :label="__('…')" :images="$bodyImages" :locale="$entry->locale" :readonly="false" />
+    <x-hata::admin.rich-text wire:model="form.body" :label="__('…')" :images="$bodyImages" :locale="$entry->locale" :readonly="false" />
 
     - The editor writes the HTML into the property without a request (debounced, and again before any Livewire action
       of the component), '' for an empty document; it never reads the property back after loading.
     - `images`: id => current URL of every image in the body, so the editor can show them (the body stores only ids).
     - `locale`: the content language, whose alt text the media picker hands back with a chosen image.
     - The image button needs media.view and one detached media picker on the page:
-      <livewire:media-picker detached accept="image" />
+      <livewire:hata::media-picker detached accept="image" />
     - The editor lives in wire:ignore: a re-render of the component never resets it or takes the focus.
 --}}
 @props([

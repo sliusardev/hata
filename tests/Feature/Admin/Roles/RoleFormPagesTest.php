@@ -23,7 +23,7 @@ describe('create', function () {
     test('it generates the technical name from the label until it is edited', function () {
         $this->actingAs(User::factory()->withRole('admin')->create());
 
-        Livewire::test('pages::admin.roles.create')
+        Livewire::test('hata::admin.roles.create')
             ->set('form.label', 'Головний редактор')
             ->assertSet('form.name', 'golovnii-redaktor')
             ->set('form.name', 'chief')
@@ -34,7 +34,7 @@ describe('create', function () {
     test('it creates a role and redirects to the list with a message', function () {
         $this->actingAs(User::factory()->withRole('admin')->create());
 
-        Livewire::test('pages::admin.roles.create')
+        Livewire::test('hata::admin.roles.create')
             ->set('form.label', 'Moderator')
             ->set('form.permissions', ['admin.access', 'users.view'])
             ->call('save')
@@ -50,7 +50,7 @@ describe('create', function () {
     test('it validates the label and technical name', function (string $name) {
         $this->actingAs(User::factory()->withRole('admin')->create());
 
-        Livewire::test('pages::admin.roles.create')
+        Livewire::test('hata::admin.roles.create')
             ->set('form.label', 'Something')
             ->set('form.name', $name)
             ->call('save')
@@ -60,7 +60,7 @@ describe('create', function () {
     test('it requires a label', function () {
         $this->actingAs(User::factory()->withRole('admin')->create());
 
-        Livewire::test('pages::admin.roles.create')
+        Livewire::test('hata::admin.roles.create')
             ->set('form.name', 'valid-name')
             ->call('save')
             ->assertHasErrors(['form.label' => 'required']);
@@ -69,7 +69,7 @@ describe('create', function () {
     test('select all only checks permissions the actor may grant', function () {
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'roles.create', 'users.view'])->create());
 
-        Livewire::test('pages::admin.roles.create')
+        Livewire::test('hata::admin.roles.create')
             ->call('selectGroup', 'users')
             ->assertSet('form.permissions', ['users.view'])
             ->call('clearGroup', 'users')
@@ -88,7 +88,7 @@ describe('edit', function () {
     test('it opens in view mode with roles.view only', function () {
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'roles.view'])->create());
 
-        Livewire::test('pages::admin.roles.edit', ['role' => Role::findByName('editor')])
+        Livewire::test('hata::admin.roles.edit', ['role' => Role::findByName('editor')])
             ->assertSee(__('roles.edit.read_only'))
             ->assertDontSeeHtml('data-test="save-role-button"')
             ->call('save')
@@ -99,7 +99,7 @@ describe('edit', function () {
         $this->actingAs(User::factory()->withRole('admin')->create());
         $editor = Role::findByName('editor');
 
-        Livewire::test('pages::admin.roles.edit', ['role' => $editor])
+        Livewire::test('hata::admin.roles.edit', ['role' => $editor])
             ->call('selectGroup', 'users')
             ->call('save')
             ->assertHasNoErrors()
@@ -112,7 +112,7 @@ describe('edit', function () {
     test('the super-admin role is shown as having every permission and cannot be saved', function () {
         $this->actingAs(User::factory()->withRole('super-admin')->create());
 
-        Livewire::test('pages::admin.roles.edit', ['role' => Role::findByName('super-admin')])
+        Livewire::test('hata::admin.roles.edit', ['role' => Role::findByName('super-admin')])
             ->assertSee(__('roles.form.super_admin_heading'))
             ->assertDontSeeHtml('data-test="save-role-button"')
             ->call('save')
@@ -123,7 +123,7 @@ describe('edit', function () {
         $this->actingAs(User::factory()->withRole('admin')->create());
         $role = Role::create(['name' => 'moderator', 'label' => 'Moderator', 'guard_name' => 'web']);
 
-        Livewire::test('pages::admin.roles.edit', ['role' => $role])
+        Livewire::test('hata::admin.roles.edit', ['role' => $role])
             ->call('deleteRole')
             ->assertRedirect(route('admin.roles.index'));
 

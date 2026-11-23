@@ -45,12 +45,12 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        Fortify::loginView(fn () => view('pages::auth.login'));
-        Fortify::twoFactorChallengeView(fn () => view('pages::auth.two-factor-challenge'));
-        Fortify::confirmPasswordView(fn () => view('pages::auth.confirm-password'));
-        Fortify::registerView(fn () => view('pages::auth.register'));
-        Fortify::resetPasswordView(fn () => view('pages::auth.reset-password'));
-        Fortify::requestPasswordResetLinkView(fn () => view('pages::auth.forgot-password'));
+        Fortify::loginView(fn () => view('hata::auth.login'));
+        Fortify::twoFactorChallengeView(fn () => view('hata::auth.two-factor-challenge'));
+        Fortify::confirmPasswordView(fn () => view('hata::auth.confirm-password'));
+        Fortify::registerView(fn () => view('hata::auth.register'));
+        Fortify::resetPasswordView(fn () => view('hata::auth.reset-password'));
+        Fortify::requestPasswordResetLinkView(fn () => view('hata::auth.forgot-password'));
     }
 
     /**

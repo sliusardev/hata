@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
     <head>
-        @include('partials.head')
+        @include('hata::partials.head')
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:header container class="border-b border-sidebar-border bg-sidebar">
             <flux:sidebar.toggle class="lg:hidden mr-2" icon="bars-2" inset="left" />
 
-            <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
+            <x-hata::app-logo href="{{ route('dashboard') }}" wire:navigate />
 
             <flux:navbar class="-mb-px max-lg:hidden">
                 @can('admin.access')
@@ -43,13 +43,13 @@
                 </flux:tooltip>
             </flux:navbar>
 
-            <x-desktop-user-menu />
+            <x-hata::desktop-user-menu />
         </flux:header>
 
         <!-- Mobile Menu -->
         <flux:sidebar collapsible="mobile" sticky class="lg:hidden border-e border-sidebar-border bg-sidebar">
             <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+                <x-hata::app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
             </flux:sidebar.header>
 
@@ -83,7 +83,7 @@
             </flux:toast.group>
         @endpersist
 
-        <x-flash-toast />
+        <x-hata::flash-toast />
 
         @fluxScripts
     </body>

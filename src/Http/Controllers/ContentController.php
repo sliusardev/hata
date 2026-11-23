@@ -79,7 +79,7 @@ class ContentController extends Controller
 
         $type = $entry->type();
 
-        $response = response()->view($type->isTaxonomy() ? 'site.term' : 'site.entry', [
+        $response = response()->view($type->isTaxonomy() ? 'hata::site.term' : 'hata::site.entry', [
             'entry' => $entry,
             'records' => $type->isTaxonomy() ? $this->filedUnder($entry) : null,
             'terms' => $this->termsOf($entry),
@@ -115,7 +115,7 @@ class ContentController extends Controller
 
         $this->locales->useAlternates($alternates);
 
-        return response()->view('site.list', [
+        return response()->view('hata::site.list', [
             'type' => $type,
             'records' => $this->page(Entry::query()->ofType($type->key())->where('locale', $locale)),
         ]);

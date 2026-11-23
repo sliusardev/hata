@@ -281,7 +281,7 @@ describe('page', function () {
     it('lists the files on the logs tab only', function () {
         logFile('laravel-2026-11-14.log', str_repeat('x', 2048));
 
-        Livewire::actingAs(logReader())->test('pages::admin.maintenance.index')
+        Livewire::actingAs(logReader())->test('hata::admin.maintenance.index')
             ->assertDontSee('laravel-2026-11-14.log')
             ->set('tab', 'logs')
             ->assertSee('laravel-2026-11-14.log')
@@ -291,14 +291,14 @@ describe('page', function () {
     });
 
     it('shows an empty state without files', function () {
-        Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+        Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->assertSee(__('maintenance.logs.empty_title'))
             ->assertDontSeeHtml('data-test="maintenance-logs"');
     });
 
     it('opens a file in the viewer without putting its content into the page', function () {
         logFile('laravel.log', "secret line of the log\n");
-        $page = Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('pages::admin.maintenance.index');
+        $page = Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('hata::admin.maintenance.index');
 
         $page->call('openLog', app(LogFiles::class)->all()[0]['key'])
             ->assertSet('file', 'laravel.log')
@@ -313,15 +313,15 @@ describe('page', function () {
     it('opens the file named in the address and falls back to the list for one that is gone', function () {
         logFile('laravel.log');
 
-        Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+        Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->assertSet('file', 'laravel.log')
             ->assertSeeHtml('data-test="maintenance-log-viewer"');
 
-        Livewire::withQueryParams(['tab' => 'logs', 'file' => '../.env'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+        Livewire::withQueryParams(['tab' => 'logs', 'file' => '../.env'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->assertSet('file', '')
             ->assertSeeHtml('data-test="maintenance-logs"');
 
-        Livewire::withQueryParams(['file' => 'laravel.log'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+        Livewire::withQueryParams(['file' => 'laravel.log'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->assertSet('file', '')
             ->assertSet('tab', 'actions');
     });
@@ -329,7 +329,7 @@ describe('page', function () {
     it('ignores an unknown key', function () {
         logFile('laravel.log');
 
-        Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+        Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->call('openLog', 'nope')
             ->assertSet('file', '')
             ->call('confirmDeleteLog', '../.env')
@@ -341,7 +341,7 @@ describe('page', function () {
         $other = logFile('other.log');
         $key = app(LogFiles::class)->find('laravel.log')['key'];
 
-        Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+        Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->call('confirmDeleteLog', $key)
             ->assertSet('showDeleteLogModal', true)
             ->assertSee(__('maintenance.logs.delete.confirm', ['name' => 'laravel.log']))
@@ -358,7 +358,7 @@ describe('page', function () {
         $path = logFile('laravel.log');
         $key = app(LogFiles::class)->find('laravel.log')['key'];
 
-        $page = Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+        $page = Livewire::withQueryParams(['tab' => 'logs'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->call('confirmDeleteLog', $key);
 
         File::delete($path);
@@ -377,7 +377,7 @@ describe('page', function () {
             }
         });
 
-        Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('pages::admin.maintenance.index')
+        Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('hata::admin.maintenance.index')
             ->call('confirmDeleteLog', $key)
             ->call('deleteLog')
             ->assertSet('file', 'laravel.log')
@@ -387,7 +387,7 @@ describe('page', function () {
     it('returns to the list for good when the open file disappeared', function () {
         $path = logFile('laravel.log');
         $key = app(LogFiles::class)->find('laravel.log')['key'];
-        $page = Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('pages::admin.maintenance.index');
+        $page = Livewire::withQueryParams(['tab' => 'logs', 'file' => 'laravel.log'])->actingAs(logReader())->test('hata::admin.maintenance.index');
 
         File::delete($path);
         $page->call('confirmDeleteLog', $key)->assertSet('file', '')->assertSet('showDeleteLogModal', false);
@@ -410,7 +410,7 @@ describe('page', function () {
         };
         app()->instance(LogFiles::class, $files);
 
-        Livewire::actingAs(logReader())->test('pages::admin.maintenance.index')->set('tab', 'journal');
+        Livewire::actingAs(logReader())->test('hata::admin.maintenance.index')->set('tab', 'journal');
 
         expect($files->listed)->toBe(0);
     });

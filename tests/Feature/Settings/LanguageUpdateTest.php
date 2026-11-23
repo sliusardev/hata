@@ -18,7 +18,7 @@ test('language can be updated', function () {
     $user = User::factory()->create(['locale' => 'en']);
     $this->actingAs($user);
 
-    $response = Livewire::test('pages::settings.language')
+    $response = Livewire::test('hata::settings.language')
         ->set('locale', 'uk')
         ->call('updateLocale');
 
@@ -31,7 +31,7 @@ test('the interface switches to the new language right after saving', function (
     $user = User::factory()->create(['locale' => 'en']);
     $this->actingAs($user);
 
-    Livewire::test('pages::settings.language')->set('locale', 'uk')->call('updateLocale');
+    Livewire::test('hata::settings.language')->set('locale', 'uk')->call('updateLocale');
 
     $this->get(route('language.edit'))
         ->assertOk()
@@ -44,7 +44,7 @@ test('language must be one of the available locales', function () {
     $user = User::factory()->create(['locale' => 'en']);
     $this->actingAs($user);
 
-    $response = Livewire::test('pages::settings.language')
+    $response = Livewire::test('hata::settings.language')
         ->set('locale', 'xx')
         ->call('updateLocale');
 

@@ -22,7 +22,7 @@ it('gives every subfolder tile and tree row a folder menu with media.edit', func
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
     foreach (['grid', 'list'] as $view) {
-        Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id, 'view' => $view])
+        Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id, 'view' => $view])
             ->assertSeeHtml('data-test="media-subfolder-actions-'.$child->id.'"')
             ->assertSeeHtml('data-test="media-folder-actions-'.$child->id.'"')
             ->assertSeeHtml('data-test="media-folder-actions-'.$parent->id.'"')
@@ -37,7 +37,7 @@ it('hides the folder menus without media.edit', function () {
     $parent = MediaFolder::factory()->create();
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->assertSeeHtml('data-test="media-subfolder-'.$child->id.'"')
         ->assertDontSeeHtml('data-test="media-subfolder-actions-'.$child->id.'"')
         ->assertDontSeeHtml('data-test="media-folder-actions-'.$child->id.'"')
@@ -49,7 +49,7 @@ it('leaves out delete in the folder menus without media.delete', function () {
     $parent = MediaFolder::factory()->create();
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->assertSeeHtml('data-test="media-subfolder-actions-'.$child->id.'"')
         ->assertSeeHtml('openRenameFolder('.$child->id.')')
         ->assertDontSeeHtml('confirmFolderDelete');
@@ -60,7 +60,7 @@ it('deletes a subfolder from its tile and keeps the open folder open', function 
     $parent = MediaFolder::factory()->create();
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])
         ->call('confirmFolderDelete', $child->id)
         ->assertSet('showFolderDeleteModal', true)
         ->call('deleteFolder')
@@ -77,7 +77,7 @@ it('closes the details when the folder changes and the file is not in the new on
     [$inside, $outside] = MediaFolder::factory()->count(2)->create();
     $file = Media::factory()->inFolder($inside)->create();
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $inside->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $inside->id])
         ->call('select', $file->id)
         ->set('folder', (string) $outside->id)
         ->assertSet('selectedId', null)
@@ -89,7 +89,7 @@ it('keeps the details open when the file is still shown', function () {
     $folder = MediaFolder::factory()->create();
     $file = Media::factory()->inFolder($folder)->create(['name' => 'hero-banner.webp']);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $file->id)
         ->set('search', 'hero')
         ->assertSet('selectedId', $file->id)
@@ -101,7 +101,7 @@ it('closes the details when a filter excludes the file', function () {
     $this->actingAs(menuUser(['media.edit']));
     $file = Media::factory()->create(['name' => 'hero-banner.webp']);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $file->id)
         ->set('search', 'zzz-nothing')
         ->assertSet('selectedId', null);
@@ -112,14 +112,14 @@ it('closes the details when the file is moved out of the open folder', function 
     [$open, $other] = MediaFolder::factory()->count(2)->create();
     $file = Media::factory()->inFolder($open)->create();
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $open->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $open->id])
         ->call('select', $file->id)
         ->call('moveTo', [$file->id], $other->id)
         ->assertSet('selectedId', null);
 
     $kept = Media::factory()->inFolder($open)->create();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $kept->id)
         ->call('moveTo', [$kept->id], $other->id)
         ->assertSet('selectedId', $kept->id);
@@ -130,7 +130,7 @@ it('asks before closing details with unsaved changes when the file leaves view',
     [$inside, $outside] = MediaFolder::factory()->count(2)->create();
     $file = Media::factory()->inFolder($inside)->create();
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $inside->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $inside->id])
         ->call('select', $file->id)
         ->set('details.title', 'Unsaved')
         ->set('folder', (string) $outside->id)
@@ -147,7 +147,7 @@ it('closes the details after saving a folder change that takes the file out of t
     [$open, $other] = MediaFolder::factory()->count(2)->create();
     $file = Media::factory()->inFolder($open)->create();
 
-    Livewire::test('pages::admin.media.index', ['folder' => (string) $open->id])
+    Livewire::test('hata::admin.media.index', ['folder' => (string) $open->id])
         ->call('select', $file->id)
         ->set('details.folder_id', (string) $other->id)
         ->call('saveDetails')
@@ -161,7 +161,7 @@ it('keeps dirty details open silently when a search excludes the file', function
     $this->actingAs(menuUser(['media.edit']));
     $file = Media::factory()->create(['name' => 'hero-banner.webp']);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $file->id)
         ->set('details.title', 'Unsaved')
         ->set('search', 'zzz-nothing')
@@ -174,7 +174,7 @@ it('drags subfolder tiles by their open control, not the wrapper holding the men
     $parent = MediaFolder::factory()->create();
     $child = MediaFolder::factory()->create(['parent_id' => $parent->id]);
 
-    $html = Livewire::test('pages::admin.media.index', ['folder' => (string) $parent->id])->html();
+    $html = Livewire::test('hata::admin.media.index', ['folder' => (string) $parent->id])->html();
 
     expect($html)->toContain('data-test="media-subfolder-open-'.$child->id.'"');
     preg_match('/<div[^>]*data-test="media-subfolder-'.$child->id.'"[^>]*>/s', $html, $wrapper);

@@ -45,7 +45,7 @@ it('replaces the open file after confirmation', function () {
     MediaUsage::query()->create(['media_id' => $media->id, 'usable_type' => User::class, 'usable_id' => 1, 'field' => 'cover']);
     $url = $media->url();
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->set('replacement', replacementFile('Fresh photo.jpg', makeImage('jpg', 1000, 700)))
         ->set('replacementPickedSize', 5_000_000)
@@ -75,7 +75,7 @@ it('refuses a replacement of another kind with a toast and keeps the file', func
     $media = replaceTarget();
     $before = Storage::disk('local')->get($media->path);
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->set('replacement', replacementFile('doc.pdf', "%PDF-1.4\n%%EOF"))
         ->call('confirmReplace')
@@ -94,7 +94,7 @@ it('refuses a replacement of another kind with a toast and keeps the file', func
 it('restores the original after confirmation', function () {
     $media = replaceTarget(makeImage('jpg', 900, 600));
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtml('data-test="media-details-restore"')
         ->call('confirmRestore')
@@ -112,7 +112,7 @@ it('shows a danger toast when the original file is gone', function () {
     $media = replaceTarget(makeImage('jpg', 900, 600));
     Storage::disk('local')->delete((string) $media->original_path);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->call('confirmRestore')
         ->call('restoreConfirmed')
@@ -126,7 +126,7 @@ it('reports and shows a danger toast when restoring fails unexpectedly', functio
     $this->mock(RestoreOriginal::class)->shouldReceive('handle')->andThrow(new RuntimeException('disk error'));
     Exceptions::fake();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->call('confirmRestore')
         ->call('restoreConfirmed')
@@ -138,7 +138,7 @@ it('reports and shows a danger toast when restoring fails unexpectedly', functio
 it('hides restore without an original', function () {
     $media = replaceTarget();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtml('data-test="media-details-replace"')
         ->assertDontSeeHtml('data-test="media-details-restore"')
@@ -151,7 +151,7 @@ it('hides replace, restore and crop without media.edit', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
     $media = replaceTarget(makeImage('jpg', 900, 600));
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtml('data-test="media-details"')
         ->assertDontSeeHtml('data-test="media-details-replace"')
@@ -167,7 +167,7 @@ it('refuses a replacement upload without media.edit', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.upload'])->create());
     $media = replaceTarget();
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->call('_startUpload', 'replacement', [['name' => 'x.jpg', 'size' => 10, 'type' => 'image/jpeg']], false)
         ->assertForbidden();
@@ -176,7 +176,7 @@ it('refuses a replacement upload without media.edit', function () {
 it('forgets the pending replace or restore on cancel', function () {
     $media = replaceTarget(makeImage('jpg', 900, 600));
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->set('replacement', replacementFile('x.jpg', makeImage()))
         ->call('confirmReplace')
@@ -201,7 +201,7 @@ it('says the file was changed meanwhile when a replace or restore loses the race
     $danger = fn (string $event, array $params): bool => ($params['dataset']['variant'] ?? null) === 'danger'
         && ($params['slots']['text'] ?? null) === __('media.errors.changed_meanwhile');
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->set('replacement', replacementFile('Fresh photo.jpg', makeImage('jpg', 1000, 700)))
         ->call('confirmReplace')
@@ -209,7 +209,7 @@ it('says the file was changed meanwhile when a replace or restore loses the race
         ->assertReturned(['ok' => false, 'error' => __('media.errors.changed_meanwhile')])
         ->assertDispatched('toast-show', $danger);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->call('confirmRestore')
         ->call('restoreConfirmed')

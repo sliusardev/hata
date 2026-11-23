@@ -66,7 +66,7 @@
                     'relative aspect-square overflow-hidden rounded-lg bg-zinc-100 ring-1 ring-black/5 ring-inset transition dark:bg-white/5 dark:ring-white/10',
                     'group-hover:ring-zinc-300 dark:group-hover:ring-white/20',
                 ])>
-                    @include('partials.admin.media.thumb', ['item' => $item])
+                    @include('hata::partials.admin.media.thumb', ['item' => $item])
 
                     @if ($isPicked)
                         <div class="absolute end-2 top-2 flex size-6 items-center justify-center rounded-full bg-zinc-800 text-white ring-2 ring-white dark:bg-white dark:text-zinc-800 dark:ring-zinc-900" data-test="media-tile-picked">

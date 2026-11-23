@@ -170,7 +170,7 @@ it('lists cloud files in the picker with direct thumbnails', function () {
     $media = cloudUploadedPhoto($this->actor);
     $this->actingAs($this->actor);
 
-    Livewire::test('media-picker', ['accept' => 'image'])
+    Livewire::test('hata::media-picker', ['accept' => 'image'])
         ->call('openPicker')
         ->assertSee($media->name)
         ->call('pick', $media->id)

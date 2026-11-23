@@ -1,0 +1,69 @@
+<?php
+
+use Hata\Concerns\ProfileValidationRules;
+use Flux\Flux;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
+use Livewire\Component;
+
+new #[Layout('hata::layouts.app')] #[Title('settings.profile.title')] class extends Component {
+    use ProfileValidationRules;
+
+    public string $name = '';
+    public string $email = '';
+
+    /**
+     * Mount the component.
+     */
+    public function mount(): void
+    {
+        $this->name = Auth::user()->name;
+        $this->email = Auth::user()->email;
+    }
+
+    /**
+     * Update the profile information for the currently authenticated user.
+     */
+    public function updateProfileInformation(): void
+    {
+        $user = Auth::user();
+
+        $validated = $this->validate($this->profileRules($user->id));
+
+        $user->fill($validated);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        Flux::toast(variant: 'success', text: __('settings.profile.saved'));
+    }
+}; ?>
+
+<section class="w-full">
+    @include('hata::partials.settings-heading')
+
+    <flux:heading level="2" class="sr-only">{{ __('settings.profile.title') }}</flux:heading>
+
+    <x-hata::settings.layout :heading="__('settings.profile.heading')" :subheading="__('settings.profile.description')">
+        <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
+            <flux:input wire:model="name" :label="__('common.fields.name')" type="text" required autofocus autocomplete="name" />
+
+            <flux:input wire:model="email" :label="__('common.fields.email')" type="email" required autocomplete="email" />
+
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-end">
+                    <flux:button variant="primary" type="submit" class="w-full" data-test="update-profile-button">
+                        {{ __('common.actions.save') }}
+                    </flux:button>
+                </div>
+
+            </div>
+        </form>
+
+        <livewire:hata::settings.delete-user-form />
+    </x-hata::settings.layout>
+</section>

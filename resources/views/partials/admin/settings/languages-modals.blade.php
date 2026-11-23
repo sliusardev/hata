@@ -53,7 +53,7 @@
     </div>
 </flux:modal>
 
-<x-confirm-modal
+<x-hata::confirm-modal
     wire:model.self="showLanguageModal"
     :heading="$confirmLanguage ? __('site_settings.languages.confirm.'.$languageAction.'.heading', ['language' => $confirmLanguage->name]) : ''"
     :confirm-label="$confirmLanguage ? __('site_settings.languages.confirm.'.$languageAction.'.submit') : ''"
@@ -78,4 +78,4 @@
             />
         </x-slot:extra>
     @endif
-</x-confirm-modal>
+</x-hata::confirm-modal>

@@ -29,7 +29,7 @@ function pickerUser(array $extra = []): User
  */
 function testPicker(array $props = []): Testable
 {
-    return Livewire::test('media-picker', [
+    return Livewire::test('hata::media-picker', [
         'accept' => 'image',
         'extensions' => ['png', 'jpg', 'jpeg', 'webp', 'svg'],
         'label' => 'Logo',
@@ -403,7 +403,7 @@ class MediaPickerTestParent extends Component
     {
         return <<<'BLADE'
             <div>
-                <livewire:media-picker wire:model.live="logo" accept="image" :multiple="$multiple" />
+                <livewire:hata::media-picker wire:model.live="logo" accept="image" :multiple="$multiple" />
             </div>
             BLADE;
     }
@@ -420,7 +420,7 @@ function childPickerSnapshot(Testable $parent): array
 
     return collect($matches[1])
         ->map(fn (string $encoded): array => json_decode(htmlspecialchars_decode($encoded, ENT_QUOTES), true))
-        ->firstOrFail(fn (array $snapshot): bool => $snapshot['memo']['name'] === 'media-picker');
+        ->firstOrFail(fn (array $snapshot): bool => $snapshot['memo']['name'] === 'hata::media-picker');
 }
 
 /**
@@ -480,7 +480,7 @@ it('ties its label to the field group', function () {
  */
 function testDetachedPicker(array $props = []): Testable
 {
-    return Livewire::test('media-picker', ['detached' => true, 'accept' => 'image', ...$props]);
+    return Livewire::test('hata::media-picker', ['detached' => true, 'accept' => 'image', ...$props]);
 }
 
 it('renders only the modal in detached mode, listening for the open event', function () {

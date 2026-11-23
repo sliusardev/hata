@@ -22,7 +22,7 @@ test('it is displayed with the users.create permission', function () {
 test('it creates a user and redirects to the list with a message', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
 
-    Livewire::test('pages::admin.users.create')
+    Livewire::test('hata::admin.users.create')
         ->assertSet('form.locale', 'en')
         ->set('form.name', 'Олена')
         ->set('form.email', 'olena@example.com')
@@ -47,7 +47,7 @@ test('it validates the form with translated messages', function () {
     app()->setLocale('uk');
     User::factory()->create(['email' => 'taken@example.com']);
 
-    Livewire::test('pages::admin.users.create')
+    Livewire::test('hata::admin.users.create')
         ->set('form.name', '')
         ->set('form.email', 'taken@example.com')
         ->set('form.password', 'secret-password')
@@ -67,7 +67,7 @@ test('it validates the form with translated messages', function () {
 test('roles the actor cannot assign are disabled with an explanation', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
 
-    Livewire::test('pages::admin.users.create')
+    Livewire::test('hata::admin.users.create')
         ->assertSee(__('users.form.role_unavailable'))
         ->tap(function ($component): void {
             $options = collect($component->instance()->roleOptions)->mapWithKeys(fn (array $option): array => [$option['role']->name => $option['assignable']]);
@@ -79,7 +79,7 @@ test('roles the actor cannot assign are disabled with an explanation', function 
 test('assigning a forbidden role shows the protection error', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
 
-    Livewire::test('pages::admin.users.create')
+    Livewire::test('hata::admin.users.create')
         ->set('form.name', 'Someone')
         ->set('form.email', 'someone@example.com')
         ->set('form.password', 'secret-password')

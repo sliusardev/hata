@@ -6,7 +6,7 @@ namespace Hata\Support;
  * Toast notifications that survive a redirect.
  *
  * Flux::toast() only reaches the browser within the current Livewire request. Use this
- * helper before redirecting; the <x-flash-toast /> component in the layouts shows it.
+ * helper before redirecting; the <x-hata::flash-toast /> component in the layouts shows it.
  */
 class Toast
 {

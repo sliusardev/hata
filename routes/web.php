@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 | Public pages, in every content language: the default one at these addresses, the others under /<code>/.
 */
 Route::localized(function () {
-    Route::view('/', 'welcome')->name('home');
+    Route::view('/', 'hata::welcome')->name('home');
 });
 
 /*

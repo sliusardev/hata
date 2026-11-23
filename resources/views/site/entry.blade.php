@@ -2,13 +2,13 @@
     A content record on the public site: title, image and body. The type's own fields are not printed here.
     Receives $entry (with its image loaded), $body (rendered), $galleries (field name => images), $terms (taxonomy key => the record's terms), $preview, $languageOff (the page's language is switched off) and $editUrl (null without the type's edit).
 --}}
-@extends('layouts.site', [
+@extends('hata::layouts.site', [
     'pageTitle' => $entry->documentTitle(),
     'noindex' => $preview,
 ])
 
 @section('strip')
-    @include('partials.site.preview-strip')
+    @include('hata::partials.site.preview-strip')
 @endsection
 
 @section('content')

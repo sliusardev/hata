@@ -39,12 +39,12 @@ function formEditor(): User
  */
 function createForm(array $query = ['locale' => 'en'], string $type = 'pages'): Testable
 {
-    return Livewire::withQueryParams($query)->test('pages::admin.content.create', ['type' => $type]);
+    return Livewire::withQueryParams($query)->test('hata::admin.content.create', ['type' => $type]);
 }
 
 function editForm(Entry $entry): Testable
 {
-    return Livewire::test('pages::admin.content.edit', ['type' => $entry->type, 'entry' => $entry]);
+    return Livewire::test('hata::admin.content.edit', ['type' => $entry->type, 'entry' => $entry]);
 }
 
 test('a page is created through the form', function () {
@@ -530,7 +530,7 @@ test('the editor gets the body images and the page mounts one detached picker', 
     $page = Entry::factory()->create(['body' => '<p>a</p><img data-media-id="'.$image->id.'" alt="">']);
 
     editForm($page)
-        ->assertSeeLivewire('media-picker')
+        ->assertSeeLivewire('hata::media-picker')
         ->assertSee(Str::afterLast($image->url(), '/'), false);
 
     $html = $this->get(route('admin.content.edit', ['type' => 'pages', 'entry' => $page->id]))->getContent();

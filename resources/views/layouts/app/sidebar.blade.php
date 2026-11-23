@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
     <head>
-        @include('partials.head')
+        @include('hata::partials.head')
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:sidebar sticky collapsible="mobile" class="gap-0! border-e border-sidebar-border bg-sidebar p-0!">
             <flux:sidebar.header class="h-16 shrink-0 border-b border-sidebar-border px-4">
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+                <x-hata::app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
@@ -99,7 +99,7 @@
             </flux:sidebar.nav>
 
             <div class="hidden border-t border-sidebar-border p-3 lg:block">
-                <x-desktop-user-menu :name="auth()->user()->name" />
+                <x-hata::desktop-user-menu :name="auth()->user()->name" />
             </div>
         </flux:sidebar>
 
@@ -166,8 +166,8 @@
             </flux:toast.group>
         @endpersist
 
-        <x-flash-toast />
-        @include('partials.media-direct-probe')
+        <x-hata::flash-toast />
+        @include('hata::partials.media-direct-probe')
 
         @fluxScripts
     </body>

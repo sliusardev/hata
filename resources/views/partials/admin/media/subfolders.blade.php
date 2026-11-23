@@ -77,7 +77,7 @@
                 </div>
             </div>
             @if ($canMove)
-                @include('partials.admin.media.folder-menu', ['folderId' => $subfolder->id, 'testId' => 'media-subfolder-actions-'.$subfolder->id, 'stop' => true, 'class' => 'pe-1.5'])
+                @include('hata::partials.admin.media.folder-menu', ['folderId' => $subfolder->id, 'testId' => 'media-subfolder-actions-'.$subfolder->id, 'stop' => true, 'class' => 'pe-1.5'])
             @endif
         </div>
     @endforeach

@@ -61,7 +61,7 @@ it('renders the default mark, not an image with a dead URL, when both logos are 
     Storage::disk('local')->delete($light->path);
     SiteLogo::flush();
 
-    expect(view('components.site-logo')->render())->not->toContain('<img');
+    expect(view('hata::components.site-logo')->render())->not->toContain('<img');
 });
 
 it('trusts the row on a cloud disk without asking the disk whether the file exists', function () {

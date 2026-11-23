@@ -87,7 +87,7 @@
                 @if ($multilingual && ($entry !== null || $present->isNotEmpty()))
                     {{-- The languages of the page at a glance, each a link to that translation. --}}
                     <div class="mt-2" data-test="header-translations">
-                        @include('partials.admin.content.translation-chips', [
+                        @include('hata::partials.admin.content.translation-chips', [
                             'type' => $type,
                             'languages' => $languages,
                             'current' => $entry?->locale,
@@ -185,7 +185,7 @@
                     </flux:field>
 
                     @if ($contentType->supports('body'))
-                        <x-admin.rich-text wire:model="form.body" :label="__('content.form.body')" :images="$images" :locale="$locale" :readonly="$readOnly" />
+                        <x-hata::admin.rich-text wire:model="form.body" :label="__('content.form.body')" :images="$images" :locale="$locale" :readonly="$readOnly" />
                     @endif
 
                     <flux:textarea wire:model="form.excerpt" :label="__('content.form.excerpt')" :description:trailing="__('content.form.excerpt_hint')" :disabled="$readOnly" rows="3" resize="vertical" maxlength="1000" />
@@ -197,7 +197,7 @@
                         <div class="space-y-6">
                             @foreach ($localFields as $field)
                                 <div wire:key="field-{{ $field->name }}" data-test="field-{{ $field->name }}">
-                                    @include('partials.admin.content.fields.'.$field->view(), ['field' => $field, 'model' => 'form.fields.'.$field->name, 'readOnly' => $readOnly, 'images' => $images, 'locale' => $locale])
+                                    @include('hata::partials.admin.content.fields.'.$field->view(), ['field' => $field, 'model' => 'form.fields.'.$field->name, 'readOnly' => $readOnly, 'images' => $images, 'locale' => $locale])
                                 </div>
                             @endforeach
                         </div>
@@ -295,7 +295,7 @@
                             <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
                                 <flux:heading class="mb-3 text-xs font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">{{ __('content.translations.title') }}</flux:heading>
 
-                                @include('partials.admin.content.translations-list', [
+                                @include('hata::partials.admin.content.translations-list', [
                                     'entry' => $entry,
                                     'type' => $type,
                                     'locale' => $entry?->locale ?? $locale,
@@ -320,7 +320,7 @@
                 @endif
 
                 @foreach ($this->taxonomies as $taxonomy)
-                    @include('partials.admin.content.terms-card', [
+                    @include('hata::partials.admin.content.terms-card', [
                         'taxonomy' => $taxonomy,
                         'options' => $this->termOptions[$taxonomy->key()] ?? [],
                         // A typed name makes a term: only with the right to create in that taxonomy.
@@ -340,7 +340,7 @@
                         <div class="space-y-6 p-5">
                             @foreach ($sharedFields as $field)
                                 <div wire:key="field-{{ $field->name }}" data-test="field-{{ $field->name }}">
-                                    @include('partials.admin.content.fields.'.$field->view(), ['field' => $field, 'model' => 'form.fields.'.$field->name, 'readOnly' => $readOnly || $sharedLocked, 'images' => $images, 'locale' => $locale])
+                                    @include('hata::partials.admin.content.fields.'.$field->view(), ['field' => $field, 'model' => 'form.fields.'.$field->name, 'readOnly' => $readOnly || $sharedLocked, 'images' => $images, 'locale' => $locale])
                                 </div>
                             @endforeach
                         </div>
@@ -351,9 +351,9 @@
                 <div class="{{ $card }} space-y-3 p-5">
                     <flux:heading level="2">{{ __('content.form.image.title') }}</flux:heading>
                     @if ($readOnly)
-                        @include('partials.admin.content.fields.read-only-media', ['label' => __('content.form.image.title'), 'ids' => $form->image_id !== null ? [$form->image_id] : []])
+                        @include('hata::partials.admin.content.fields.read-only-media', ['label' => __('content.form.image.title'), 'ids' => $form->image_id !== null ? [$form->image_id] : []])
                     @else
-                        <livewire:media-picker wire:model="form.image_id" accept="image" key="entry-image-picker" />
+                        <livewire:hata::media-picker wire:model="form.image_id" accept="image" key="entry-image-picker" />
                         <flux:error name="form.image_id" />
                     @endif
                     <flux:text class="text-xs">{{ __('content.form.image.hint') }}</flux:text>
@@ -412,7 +412,7 @@
     </form>
 
     @if ($entry !== null && ! $readOnly && $abilities['delete'])
-        <x-confirm-modal
+        <x-hata::confirm-modal
             wire:model.self="showTrashModal"
             :heading="__('content.list.trash.title')"
             :confirm-label="__('content.list.trash.submit')"
@@ -423,7 +423,7 @@
             @else
                 {{ trans_choice('content.list.trash.confirm', (int) config('content.trash_days'), ['title' => $entry->title]) }}
             @endif
-        </x-confirm-modal>
+        </x-hata::confirm-modal>
     @endif
 
     @if ($entry !== null && ! $readOnly && $multilingual)
@@ -431,20 +431,20 @@
             $unlinkTarget = $this->unlinkId > 0 ? $this->unlinkTarget($this->unlinkId) : null;
         @endphp
 
-        <livewire:translation-picker :type="$type" :entry-id="$entry->id" key="translation-picker" />
+        <livewire:hata::translation-picker :type="$type" :entry-id="$entry->id" key="translation-picker" />
 
-        <x-confirm-modal
+        <x-hata::confirm-modal
             wire:model.self="showUnlinkModal"
             :heading="__('content.link.unlink_title')"
             :confirm-label="__('content.link.unlink')"
             confirm-action="unlink"
         >
             {{ __('content.link.unlink_confirm', ['title' => $unlinkTarget?->title ?? '']) }}
-        </x-confirm-modal>
+        </x-hata::confirm-modal>
     @endif
 
     @unless ($readOnly)
-        <livewire:media-picker detached accept="image" key="entry-detached-picker" />
+        <livewire:hata::media-picker detached accept="image" key="entry-detached-picker" />
 
         <flux:modal name="leave-entry-form" class="max-w-md md:min-w-md">
             <div class="space-y-6">

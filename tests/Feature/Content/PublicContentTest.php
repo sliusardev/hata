@@ -673,9 +673,9 @@ describe('admin links', function () {
         $draft = Entry::factory()->page()->draft()->inLocale('uk')->create(['title' => 'Чернетка', 'slug' => 'draft', 'path' => 'draft']);
         browseAs($editor = pageEditor());
 
-        Livewire::withQueryParams(['locale' => 'uk'])->test('pages::admin.content.index', ['type' => 'pages'])
+        Livewire::withQueryParams(['locale' => 'uk'])->test('hata::admin.content.index', ['type' => 'pages'])
             ->assertSeeHtml('href="'.$about->url().'"');
-        Livewire::test('pages::admin.content.edit', ['type' => 'pages', 'entry' => $draft])
+        Livewire::test('hata::admin.content.edit', ['type' => 'pages', 'entry' => $draft])
             ->assertSee(__('content.form.preview'))
             ->assertSeeHtml('href="'.$draft->url().'"');
 

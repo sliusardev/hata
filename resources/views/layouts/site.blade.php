@@ -21,12 +21,12 @@
             <meta name="robots" content="noindex">
         @endif
 
-        @include('partials.favicons')
+        @include('hata::partials.favicons')
 
         @hataFonts
 
         @hataAssets(['resources/css/site.css'])
-        @include('partials.color-scheme')
+        @include('hata::partials.color-scheme')
 
         {{-- Dark mode as the admin sets it (Flux's stored choice, else the system's), without loading Flux. --}}
         <style>:root.dark { color-scheme: dark; }</style>
@@ -40,7 +40,7 @@
             })();
         </script>
 
-        @include('partials.hreflang')
+        @include('hata::partials.hreflang')
     </head>
     <body class="min-h-screen bg-white font-sans text-zinc-800 antialiased dark:bg-zinc-900 dark:text-zinc-200">
         @yield('strip')
@@ -49,13 +49,13 @@
             <div class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
                 <a href="{{ $contentLocales->route('home') }}" class="flex min-w-0 items-center gap-2 font-semibold text-zinc-900 dark:text-white">
                     @if (Hata\Support\Settings\SiteLogo::isCustom())
-                        <x-site-logo class="h-8" />
+                        <x-hata::site-logo class="h-8" />
                     @else
                         <span class="truncate">{{ config('app.name', 'Laravel') }}</span>
                     @endif
                 </a>
 
-                @include('partials.site.language-switcher')
+                @include('hata::partials.site.language-switcher')
             </div>
         </header>
 

@@ -100,7 +100,7 @@ it('filters by folder, no folder, type, month, unused and search', function (str
         })(),
     };
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->assertSee($hidden)
         ->set($params)
         ->assertSee($visible)
@@ -112,7 +112,7 @@ it('falls back to all files when the open folder no longer exists', function () 
     Media::factory()->create(['name' => 'anywhere.webp']);
 
     Livewire::withQueryParams(['folder' => '999'])
-        ->test('pages::admin.media.index')
+        ->test('hata::admin.media.index')
         ->assertSet('folder', null)
         ->assertSee('anywhere.webp');
 });
@@ -121,7 +121,7 @@ it('shows 40 tiles and more on demand', function () {
     $this->actingAs(mediaViewer());
     Media::factory()->count(45)->create();
 
-    $component = Livewire::test('pages::admin.media.index');
+    $component = Livewire::test('hata::admin.media.index');
     expect(substr_count($component->html(), 'data-test="media-tile"'))->toBe(40);
 
     $component->call('showMore');
@@ -131,13 +131,13 @@ it('shows 40 tiles and more on demand', function () {
 it('refuses a grid limit set from the client', function () {
     $this->actingAs(mediaViewer());
 
-    Livewire::test('pages::admin.media.index')->set('gridLimit', 1_000_000_000);
+    Livewire::test('hata::admin.media.index')->set('gridLimit', 1_000_000_000);
 })->throws(CannotUpdateLockedPropertyException::class);
 
 it('never grows the grid past its cap', function () {
     $this->actingAs(mediaViewer());
 
-    $component = Livewire::test('pages::admin.media.index');
+    $component = Livewire::test('hata::admin.media.index');
 
     foreach (range(1, 15) as $ignored) {
         $component->call('showMore');
@@ -150,7 +150,7 @@ it('tells the user to switch to the list once the grid reached its cap', functio
     $this->actingAs(mediaViewer());
     Media::factory()->count(401)->create();
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->assertDontSeeHtml('data-test="media-grid-capped"');
 
     foreach (range(1, 9) as $ignored) {
@@ -187,7 +187,7 @@ it('sorts the list by size', function () {
     Media::factory()->create(['name' => 'small.webp', 'size' => 100_000]);
     Media::factory()->create(['name' => 'medium.webp', 'size' => 200_000]);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->set('view', 'list')
         ->call('sort', 'size')
         ->assertSeeInOrder(['small.webp', 'medium.webp', 'large.webp'])
@@ -201,7 +201,7 @@ it('keeps filters in the url', function () {
     Media::factory()->image()->create(['name' => 'photo.webp']);
 
     Livewire::withQueryParams(['type' => 'document'])
-        ->test('pages::admin.media.index')
+        ->test('hata::admin.media.index')
         ->assertSet('type', 'document')
         ->assertSee('price-list.pdf')
         ->assertDontSee('photo.webp');
@@ -214,7 +214,7 @@ it('does not run a query per tile', function (string $view) {
     $countQueries = function () use ($view): int {
         DB::flushQueryLog();
         DB::enableQueryLog();
-        Livewire::withQueryParams(['view' => $view])->test('pages::admin.media.index');
+        Livewire::withQueryParams(['view' => $view])->test('hata::admin.media.index');
         DB::disableQueryLog();
 
         return count(DB::getQueryLog());
@@ -235,10 +235,10 @@ it('drags the tile, not its thumbnail image, so the uploader does not take it fo
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.edit'])->create());
     Media::factory()->create(['thumb_path' => 'media/thumbs/x.webp']);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->assertSeeHtmlInOrder(['draggable="true"', 'loading="lazy" draggable="false"']);
 
-    Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
+    Livewire::withQueryParams(['view' => 'list'])->test('hata::admin.media.index')
         ->assertSeeHtml('loading="lazy" draggable="false"');
 });
 
@@ -246,7 +246,7 @@ it('marks the open and the selected files in the grid and the list', function ()
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.edit'])->create());
     [$open, $picked, $other] = Media::factory()->count(3)->create(['thumb_path' => 'media/thumbs/x.webp'])->all();
 
-    $grid = Livewire::test('pages::admin.media.index')
+    $grid = Livewire::test('hata::admin.media.index')
         ->call('select', $open->id)
         ->set('selected', [$picked->id])
         ->html();
@@ -261,7 +261,7 @@ it('marks the open and the selected files in the grid and the list', function ()
         ->and($active($grid, $other, 'data-media-id'))->toBeFalse()
         ->and($grid)->toContain('outline-accent');
 
-    $list = Livewire::withQueryParams(['view' => 'list'])->test('pages::admin.media.index')
+    $list = Livewire::withQueryParams(['view' => 'list'])->test('hata::admin.media.index')
         ->call('select', $open->id)
         ->html();
 
@@ -272,7 +272,7 @@ it('keeps the outline of the open tile when it has focus', function () {
     $this->actingAs(mediaViewer());
     $media = Media::factory()->create();
 
-    $html = Livewire::test('pages::admin.media.index')->call('select', $media->id)->html();
+    $html = Livewire::test('hata::admin.media.index')->call('select', $media->id)->html();
 
     preg_match('/<button[^>]*data-media-id="'.$media->id.'"[^>]*>/', $html, $tile);
 
@@ -292,7 +292,7 @@ it('shows the stable app url in the details panel even for a direct cloud file',
 
     expect($media->url())->toStartWith('https://cdn.example.test/');
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $media->id)
         ->assertSeeHtml('value="'.$media->appUrl().'"')
         ->assertDontSeeHtml('value="'.$media->url().'"');

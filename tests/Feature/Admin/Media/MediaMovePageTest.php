@@ -73,7 +73,7 @@ it('says when nothing is left to move', function () {
 it('moves files in the browser when there is no queue', function () {
     $media = movePageCandidate();
 
-    Livewire::test('pages::admin.media.move')
+    Livewire::test('hata::admin.media.move')
         ->call('start')
         ->assertSee(__('media.move.status.running'))
         ->call('tick')
@@ -89,7 +89,7 @@ it('dispatches the job and leaves the move to the queue', function () {
     Queue::fake();
     $media = movePageCandidate();
 
-    Livewire::test('pages::admin.media.move')
+    Livewire::test('hata::admin.media.move')
         ->call('start')
         ->call('tick')
         ->assertSet('browserFallback', false)
@@ -104,7 +104,7 @@ it('continues in the browser when the queue does not pick the move up, unless a 
     Queue::fake();
     $media = movePageCandidate();
 
-    $component = Livewire::test('pages::admin.media.move')->call('start');
+    $component = Livewire::test('hata::admin.media.move')->call('start');
     $this->travel(31)->seconds();
 
     $lock = Cache::lock(MoveMediaToDisk::LOCK, 60);
@@ -122,7 +122,7 @@ it('continues in the browser when the queue does not pick the move up, unless a 
 it('pauses, resumes and stops the move', function () {
     movePageCandidate();
 
-    $component = Livewire::test('pages::admin.media.move')
+    $component = Livewire::test('hata::admin.media.move')
         ->call('start')
         ->call('pause')
         ->assertSee(__('media.batch.resume'));
@@ -138,7 +138,7 @@ it('lists failed files after the run', function () {
     $media = movePageCandidate();
     Storage::disk('local')->delete($media->path);
 
-    Livewire::test('pages::admin.media.move')
+    Livewire::test('hata::admin.media.move')
         ->call('start')
         ->call('tick')
         ->assertSee(__('media.move.outcomes.missing'))
@@ -150,7 +150,7 @@ it('offers a new move to the configured storage after a finished move to the oth
     $media = Media::factory()->create(['disk' => 's3', 'size' => 4]);
     Storage::disk('s3')->put($media->path, 'data');
 
-    $component = Livewire::test('pages::admin.media.move')->call('start')->call('tick')
+    $component = Livewire::test('hata::admin.media.move')->call('start')->call('tick')
         ->assertSee(__('media.move.status.done'));
     expect($media->fresh()->disk)->toBe('public');
 
@@ -174,7 +174,7 @@ it('offers no move while the private local mode from .env is in effect', functio
         ->assertOk()
         ->assertSee(__('media.move.none'));
 
-    Livewire::test('pages::admin.media.move')
+    Livewire::test('hata::admin.media.move')
         ->assertSet('candidateCount', 0)
         ->call('start');
 

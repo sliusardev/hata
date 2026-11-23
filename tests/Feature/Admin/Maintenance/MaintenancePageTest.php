@@ -111,7 +111,7 @@ describe('access', function () {
         $this->actingAs($user);
 
         $this->get(route('admin.maintenance'))->assertForbidden();
-        Livewire::test('pages::admin.maintenance.index')->assertForbidden();
+        Livewire::test('hata::admin.maintenance.index')->assertForbidden();
         runMaintenance('clear_caches', as: $user)->assertForbidden();
 
         expect($fake->calls)->toBe([])->and(MaintenanceRun::count())->toBe(0);
@@ -155,7 +155,7 @@ describe('access', function () {
 
 describe('migrations', function () {
     it('says everything is applied and offers nothing to run', function () {
-        Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')
+        Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')
             ->assertSeeHtml('data-test="maintenance-nothing-pending"')
             ->assertDontSeeHtml('data-test="maintenance-run-migrate"')
             ->call('confirm', 'migrate')
@@ -166,7 +166,7 @@ describe('migrations', function () {
         $name = pendingMigration();
         $fake = fakeArtisan(['exit_code' => 0, 'output' => "INFO  Running migrations.\n{$name} ... DONE"]);
 
-        Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')
+        Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')
             ->assertSee($name)
             ->assertSeeHtml('data-test="maintenance-pending-count"')
             ->call('confirm', 'migrate')
@@ -190,7 +190,7 @@ describe('migrations', function () {
             ->and(session('maintenance.last_run'))->toBe($run->id);
 
         // The page the redirect lands on shows the run.
-        Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')
+        Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')
             ->assertSet('lastRunId', $run->id)
             ->assertSeeHtml('data-test="maintenance-last-result"')
             ->assertSee('Running migrations.')
@@ -215,7 +215,7 @@ describe('migrations', function () {
         $actor = maintainer();
         Schema::drop('maintenance_runs');
 
-        Livewire::actingAs($actor)->test('pages::admin.maintenance.index')->assertOk()->set('tab', 'journal')->assertOk();
+        Livewire::actingAs($actor)->test('hata::admin.maintenance.index')->assertOk()->set('tab', 'journal')->assertOk();
 
         runMaintenance('clear_caches', as: $actor)
             ->assertRedirect(route('admin.maintenance'))
@@ -242,7 +242,7 @@ describe('seeders', function () {
     it('runs the chosen seeder by its full class name', function () {
         $fake = fakeArtisan();
 
-        Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')
+        Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')
             ->assertSet('seeder', 'DatabaseSeeder')
             ->set('seeder', 'DemoSeeder')
             ->call('confirm', 'seed')
@@ -262,7 +262,7 @@ describe('seeders', function () {
         $fake = fakeArtisan();
         $actor = maintainer();
 
-        Livewire::actingAs($actor)->test('pages::admin.maintenance.index')
+        Livewire::actingAs($actor)->test('hata::admin.maintenance.index')
             ->set('seeder', $tampered)
             ->call('confirm', 'seed')
             ->assertSet('showConfirmModal', false);
@@ -384,7 +384,7 @@ describe('caches', function () {
     });
 
     it('warns more strongly about rebuilding in a local environment', function () {
-        $page = Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index');
+        $page = Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index');
 
         $page->call('confirm', 'rebuild_caches')->assertDontSeeHtml('data-test="maintenance-local-warning"');
 
@@ -397,7 +397,7 @@ describe('running and the journal', function () {
     it('refuses an action that is not on the list', function (string $action) {
         $fake = fakeArtisan();
 
-        Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')
+        Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')
             ->call('confirm', $action)
             ->assertSet('showConfirmModal', false);
 
@@ -418,7 +418,7 @@ describe('running and the journal', function () {
             ->exit_code->toBe(1)
             ->slot->toBeNull();
 
-        Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')
+        Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')
             ->assertSee('SQLSTATE[42S01]')
             ->assertSee(MaintenanceStatus::Failed->label());
     });
@@ -494,7 +494,7 @@ describe('running and the journal', function () {
             'output' => 'Seeder exploded',
         ]);
 
-        Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')
+        Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')
             ->assertDontSee('Olena')
             ->set('tab', 'journal')
             ->assertSeeHtml('data-test="maintenance-journal-tab"')
@@ -526,7 +526,7 @@ describe('running and the journal', function () {
         $queries = function (string $tab): Collection {
             DB::flushQueryLog();
             DB::enableQueryLog();
-            Livewire::withQueryParams(['tab' => $tab])->actingAs(maintainer())->test('pages::admin.maintenance.index');
+            Livewire::withQueryParams(['tab' => $tab])->actingAs(maintainer())->test('hata::admin.maintenance.index');
             DB::disableQueryLog();
 
             return collect(DB::getQueryLog())->pluck('query');
@@ -535,7 +535,7 @@ describe('running and the journal', function () {
         expect($queries('actions')->filter(fn (string $query): bool => str_contains($query, 'maintenance_runs')))->toBeEmpty()
             ->and($queries('journal')->filter(fn (string $query): bool => str_contains($query, '"migrations"') || str_contains($query, '`migrations`')))->toBeEmpty();
 
-        Livewire::withQueryParams(['tab' => 'database'])->actingAs(maintainer())->test('pages::admin.maintenance.index')
+        Livewire::withQueryParams(['tab' => 'database'])->actingAs(maintainer())->test('hata::admin.maintenance.index')
             ->assertSet('tab', 'actions')
             ->assertSeeHtml('data-test="maintenance-migrate"');
     });
@@ -543,7 +543,7 @@ describe('running and the journal', function () {
     it('does not load outputs for the journal list', function () {
         MaintenanceRun::factory()->count(3)->create(['output' => 'big output']);
 
-        $runs = Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')->set('tab', 'journal')->instance()->runs;
+        $runs = Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')->set('tab', 'journal')->instance()->runs;
 
         expect($runs->first()->getAttributes())->not->toHaveKey('output');
     });

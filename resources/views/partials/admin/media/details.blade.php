@@ -214,7 +214,7 @@
                 <span x-show="replacing" x-cloak role="status" class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('media.replace.working') }}</span>
             @endif
             <flux:spacer />
-            <x-admin.row-actions :label="__('media.details.actions')" data-test="media-details-actions">
+            <x-hata::admin.row-actions :label="__('media.details.actions')" data-test="media-details-actions">
                 @if ($canEdit && $media->offersEditing())
                     <flux:menu.item icon="scissors" :href="route('admin.media.crop', $media)" wire:navigate data-test="media-details-crop">
                         {{ __('media.details.crop') }}
@@ -238,7 +238,7 @@
                         {{ __('common.actions.delete') }}
                     </flux:menu.item>
                 @endcan
-            </x-admin.row-actions>
+            </x-hata::admin.row-actions>
         </div>
     </form>
 </aside>

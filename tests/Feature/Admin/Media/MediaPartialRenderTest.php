@@ -50,7 +50,7 @@ it('renders only the files and the details panel when a tile is opened', functio
     $folder = MediaFolder::factory()->create();
     $media = Media::factory()->inFolder($folder)->create(['name' => 'opened.webp']);
 
-    $component = Livewire::test('pages::admin.media.index');
+    $component = Livewire::test('hata::admin.media.index');
     $queries = queriesOf($component, 'select', $media->id, true);
 
     expect($component->effects)->not->toHaveKey('html')
@@ -74,7 +74,7 @@ it('renders only the files and the details panel when a tile is opened', functio
 it('renders nothing when the open tile is clicked again', function () {
     $media = Media::factory()->create();
 
-    $component = Livewire::test('pages::admin.media.index')->call('select', $media->id)->call('select', $media->id, true);
+    $component = Livewire::test('hata::admin.media.index')->call('select', $media->id)->call('select', $media->id, true);
 
     expect($component->effects)->not->toHaveKey('html')
         ->and($component->effects)->not->toHaveKey('islandFragments');
@@ -84,7 +84,7 @@ it('renders only the files and the bulk bar when tiles are picked', function (st
     [$one, $two] = Media::factory()->count(2)->create();
     $params = array_map(fn (mixed $param): mixed => $param === 'ids' ? [$one->id, $two->id] : ($param === 'id' ? $one->id : $param), $params);
 
-    $component = Livewire::test('pages::admin.media.index')->call($method, ...$params);
+    $component = Livewire::test('hata::admin.media.index')->call($method, ...$params);
 
     expect($component->effects)->not->toHaveKey('html')
         ->and(renderedIslands($component))->toBe(['bulk', 'files'])
@@ -98,7 +98,7 @@ it('renders only the files and the bulk bar when tiles are picked', function (st
 it('renders only the files for "Show more"', function () {
     Media::factory()->count(45)->create();
 
-    $component = Livewire::test('pages::admin.media.index')->call('showMore', true);
+    $component = Livewire::test('hata::admin.media.index')->call('showMore', true);
 
     expect($component->effects)->not->toHaveKey('html')
         ->and(renderedIslands($component))->toBe(['files'])
@@ -109,7 +109,7 @@ it('narrows the list view too: opening a row, a checkbox and a sort on the first
     Media::factory()->count(30)->create();
     $media = Media::query()->latest('id')->firstOrFail();
 
-    $component = Livewire::test('pages::admin.media.index')->set('view', 'list')->call('select', $media->id, true);
+    $component = Livewire::test('hata::admin.media.index')->set('view', 'list')->call('select', $media->id, true);
 
     expect($component->effects)->not->toHaveKey('html')
         ->and(renderedIslands($component))->toBe(['details', 'files']);
@@ -136,7 +136,7 @@ it('counts no files when a narrowed action renders an empty folder', function ()
     MediaFolder::factory()->create(['parent_id' => $folder->id]);
     Media::factory()->create();
 
-    $component = Livewire::withQueryParams(['folder' => (string) $folder->id])->test('pages::admin.media.index');
+    $component = Livewire::withQueryParams(['folder' => (string) $folder->id])->test('hata::admin.media.index');
     $queries = queriesOf($component, 'selectBox', [], false, true);
 
     expect($component->effects)->not->toHaveKey('html')
@@ -147,7 +147,7 @@ it('counts no files when a narrowed action renders an empty folder', function ()
 it('uses no wire: actions inside the islands, so Livewire never scopes a request to one', function () {
     [$media, $other] = Media::factory()->count(2)->create(['original_path' => 'media/originals/o.jpg']);
     $plain = Media::factory()->document()->create();
-    $page = fn () => Livewire::test('pages::admin.media.index');
+    $page = fn () => Livewire::test('hata::admin.media.index');
 
     $islands = implode("\n", [
         ...$page()->call('toggleSelected', $media->id)->call('toggleSelected', $other->id, true)->effects['islandFragments'],
@@ -168,7 +168,7 @@ it('uses no wire: actions inside the islands, so Livewire never scopes a request
 it('renders the whole page when the same actions are called without the flag', function () {
     $media = Media::factory()->create(['name' => 'plain.webp']);
 
-    $component = Livewire::test('pages::admin.media.index')->call('select', $media->id);
+    $component = Livewire::test('hata::admin.media.index')->call('select', $media->id);
 
     expect($component->effects)->toHaveKey('html')
         ->and($component->effects)->not->toHaveKey('islandFragments');
@@ -181,7 +181,7 @@ it('renders the whole page when the same actions are called without the flag', f
 it('renders the whole page when opening a file has to ask about unsaved changes', function () {
     [$open, $other] = Media::factory()->count(2)->create();
 
-    $component = Livewire::test('pages::admin.media.index')
+    $component = Livewire::test('hata::admin.media.index')
         ->call('select', $open->id)
         ->set('details.title', 'Unsaved')
         ->call('select', $other->id, true);
@@ -195,7 +195,7 @@ it('renders the whole page when a narrowed action comes with a property update',
     Media::factory()->create(['name' => 'filtered-out.webp']);
 
     // A search typed just before the click: it changes the file count and tiles outside the islands.
-    $component = Livewire::test('pages::admin.media.index');
+    $component = Livewire::test('hata::admin.media.index');
     $component->update(
         calls: [['method' => 'select', 'params' => [$media->id, true], 'path' => '']],
         updates: ['search' => 'kept'],
@@ -210,7 +210,7 @@ it('renders the whole page when a narrowed action shares a request with another 
     $media = Media::factory()->create();
 
     // The delete dialog lives outside the islands, so the second call must reach it.
-    $component = Livewire::test('pages::admin.media.index');
+    $component = Livewire::test('hata::admin.media.index');
     $component->update(calls: [
         ['method' => 'toggleSelected', 'params' => [$media->id, true], 'path' => ''],
         ['method' => 'confirmBulkDelete', 'params' => [], 'path' => ''],
@@ -226,7 +226,7 @@ it('renders the whole page for an action Livewire marks as coming from an island
     $island = ['island' => ['name' => 'details', 'mode' => 'morph']];
 
     // Nothing inside the islands sends this mark; if something ever does, Livewire must not render the island alone.
-    $component = Livewire::test('pages::admin.media.index')->call('select', $media->id);
+    $component = Livewire::test('hata::admin.media.index')->call('select', $media->id);
     $component->update(calls: [['method' => 'confirmDelete', 'params' => [$media->id], 'path' => '', 'metadata' => $island]]);
 
     expect($component->effects)->toHaveKey('html')
@@ -239,7 +239,7 @@ it('still renders the page for an action that shares a request with an upload st
     $file = UploadedFile::fake()->createWithContent('queued.jpg', makeImage('jpg', 300, 200));
 
     // A tile click held back while the queue's request was in flight goes out together with the next one.
-    $component = Livewire::test('pages::admin.media.index')->set('upload', $file);
+    $component = Livewire::test('hata::admin.media.index')->set('upload', $file);
     $component->update(calls: [
         ['method' => 'storeUpload', 'params' => [true], 'path' => ''],
         ['method' => 'select', 'params' => [$media->id, true], 'path' => ''],
@@ -252,7 +252,7 @@ it('still renders the page for an action that shares a request with an upload st
 it('stores a queued upload without rendering the page, and renders it when asked to', function () {
     $file = fn (string $name): UploadedFile => UploadedFile::fake()->createWithContent($name, makeImage('jpg', 300, 200));
 
-    $deferred = Livewire::test('pages::admin.media.index')->set('upload', $file('first.jpg'))->call('storeUpload', true);
+    $deferred = Livewire::test('hata::admin.media.index')->set('upload', $file('first.jpg'))->call('storeUpload', true);
 
     expect($deferred->effects)->not->toHaveKey('html')
         ->and($deferred->effects['returns'][0]['ok'])->toBeTrue()
@@ -261,7 +261,7 @@ it('stores a queued upload without rendering the page, and renders it when asked
     // The refresh the queue sends afterwards shows the file.
     $deferred->call('$refresh')->assertSee('first.webp');
 
-    Livewire::test('pages::admin.media.index')->set('upload', $file('second.jpg'))->call('storeUpload')->assertSee('second.webp');
+    Livewire::test('hata::admin.media.index')->set('upload', $file('second.jpg'))->call('storeUpload')->assertSee('second.webp');
 });
 
 it('moves a selection into a folder with one update', function () {

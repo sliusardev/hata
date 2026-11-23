@@ -24,7 +24,7 @@ use Livewire\Attributes\On;
  * with Restore). Its language is changed with the form (applied on Save); its translations are linked and unlinked
  * at once, apart from the form.
  *
- * The page `pages::admin.content.edit` extends it and holds the markup (decision 32).
+ * The page `hata::admin.content.edit` extends it and holds the markup (decision 32).
  *
  * @property-read Entry $entry
  * @property-read Collection<int, Entry> $groupRecords

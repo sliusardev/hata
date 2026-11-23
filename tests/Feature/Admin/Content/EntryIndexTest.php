@@ -39,7 +39,7 @@ function contentViewer(array $permissions = []): User
  */
 function entryList(array $query = []): Testable
 {
-    return Livewire::withQueryParams($query)->test('pages::admin.content.index', ['type' => 'pages']);
+    return Livewire::withQueryParams($query)->test('hata::admin.content.index', ['type' => 'pages']);
 }
 
 test('guests are redirected to the login page', function () {
@@ -296,7 +296,7 @@ test('the create button needs pages.create, and the new form opens in the langua
     $this->actingAs(contentViewer(['pages.create']));
     entryList()->set('locale', 'uk')->assertSeeHtml($create);
 
-    Livewire::test('pages::admin.content.create', ['type' => 'pages'])->assertSet('locale', 'uk');
+    Livewire::test('hata::admin.content.create', ['type' => 'pages'])->assertSet('locale', 'uk');
 });
 
 test('trashing from the row needs pages.delete and takes the subpages along', function () {

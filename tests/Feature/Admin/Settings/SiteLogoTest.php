@@ -44,7 +44,7 @@ test('choosing a logo through the picker binding stores the id, records the usag
     $media = logoMedia();
 
     // The picker writes the chosen id into the bound property (null is what the parent holds without a logo).
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->assertSet('logoLight', null)
         ->set('logoLight', $media->id)
         ->assertHasNoErrors()
@@ -62,7 +62,7 @@ test('the page hands the picker the current logo and accepts the picker clearing
     $media = logoMedia();
     app(SetLogo::class)->handle(auth()->user(), 'dark', $media->id);
 
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->assertSet('logoDark', $media->id)
         ->assertSet('logoLight', null)
         ->assertSeeHtml('data-test="logo-preview-dark"')
@@ -83,7 +83,7 @@ test('a GIF, a document, a missing id or a tampered value is refused with a fiel
         'missing' => 987654,
     };
 
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->set('logoLight', $id)
         ->assertHasErrors('logoLight')
         ->assertSet('logoLight', null)
@@ -97,7 +97,7 @@ test('a refused id puts the stored logo back in the field', function () {
     $media = logoMedia();
     app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
 
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->set('logoLight', logoMedia('spinner.gif', 'image/gif')->id)
         ->assertHasErrors('logoLight')
         ->assertSet('logoLight', $media->id);
@@ -108,7 +108,7 @@ test('a refused id puts the stored logo back in the field', function () {
 test('opening the picker on an empty slot (the picker echoing the empty value) changes nothing', function (mixed $empty) {
     $this->actingAs(logoAdmin());
 
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->set('logoLight', $empty)
         ->assertNoRedirect()
         ->assertHasNoErrors();
@@ -121,7 +121,7 @@ test('choosing the logo that is already stored changes nothing', function () {
     $media = logoMedia();
     app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
 
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->set('logoLight', (string) $media->id)
         ->assertNoRedirect();
 
@@ -135,7 +135,7 @@ test('settings.edit without media.view cannot take a library file as a logo, but
     $actor = User::factory()->withPermissions(['admin.access', 'settings.edit'])->create();
     $this->actingAs($actor);
 
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->set('logoDark', $other->id)
         ->assertHasErrors('logoDark');
 
@@ -151,7 +151,7 @@ test('removing a logo unlinks it, keeps the file and drops the usage', function 
     $media = logoMedia();
     app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
 
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->call('removeLogo', 'light')
         ->assertRedirect(route('admin.settings.edit', ['tab' => 'logo']));
 
@@ -169,7 +169,7 @@ test('a logo whose file is gone shows a note with Remove in its slot, and Remove
     Storage::disk($media->disk)->delete($media->path);
     SiteLogo::flush();
 
-    $page = Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    $page = Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->assertSee(__('site_settings.logo.missing'))
         ->assertSeeHtml('data-test="logo-missing-dark"')
         ->assertDontSeeHtml('data-test="logo-missing-light"');
@@ -220,7 +220,7 @@ test('every auth layout shows the chosen logo', function (string $layout) {
     app(SetLogo::class)->handle(logoAdmin(), 'light', $media->id);
 
     expect(view($layout, ['slot' => ''])->render())->toContain(e($media->url()));
-})->with(['layouts.auth.simple', 'layouts.auth.card', 'layouts.auth.split']);
+})->with(['hata::layouts.auth.simple', 'hata::layouts.auth.card', 'hata::layouts.auth.split']);
 
 test('deleting the logo file in the library clears the setting', function () {
     $actor = logoAdmin();
@@ -292,12 +292,12 @@ test('the library details panel names the logo usage and links it only to users 
     $url = route('admin.settings.edit', ['tab' => 'logo']);
 
     $this->actingAs(User::factory()->withRole('admin')->create());
-    Livewire::test('pages::admin.media.index')->call('select', $media->id)
+    Livewire::test('hata::admin.media.index')->call('select', $media->id)
         ->assertSee(__('site_settings.logo.usage_dark'))
         ->assertSeeHtml('href="'.$url.'"');
 
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view'])->create());
-    Livewire::test('pages::admin.media.index')->call('select', $media->id)
+    Livewire::test('hata::admin.media.index')->call('select', $media->id)
         ->assertSee(__('site_settings.logo.usage_dark'))
         ->assertDontSeeHtml('href="'.$url.'"');
 });
@@ -305,7 +305,7 @@ test('the library details panel names the logo usage and links it only to users 
 test('without media.view the logo slots show the picker hint and no way to browse', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.edit'])->create());
 
-    Livewire::test('pages::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
         ->assertSeeHtml('data-test="media-picker-needs-access"')
         ->assertDontSeeHtml('data-test="media-picker-open"');
 });

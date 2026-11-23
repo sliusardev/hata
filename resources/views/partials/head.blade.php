@@ -5,11 +5,11 @@
     {{ filled($title ?? null) ? __($title).' - '.config('app.name', 'Laravel') : config('app.name', 'Laravel') }}
 </title>
 
-@include('partials.favicons')
+@include('hata::partials.favicons')
 
 @hataFonts
 
 @hataAssets(['resources/css/app.css', 'resources/js/app.js'])
 {{ app(Hata\Support\Admin\AdminAssets::class)->tags() }}
-@include('partials.color-scheme')
+@include('hata::partials.color-scheme')
 @fluxAppearance

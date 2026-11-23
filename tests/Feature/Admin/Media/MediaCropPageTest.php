@@ -83,7 +83,7 @@ it('seeds the cropper from stored edits', function () {
         'size' => ['w' => 800, 'h' => 600],
     ]])->save();
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->assertSet('edits.rotate', 90)
         ->assertSet('edits.flip_h', true)
         ->assertSet('edits.flip_v', false)
@@ -95,7 +95,7 @@ it('seeds the cropper from stored edits', function () {
 it('starts fresh when no original is kept', function () {
     $media = cropPageMedia(makeImage('webp', 800, 600));
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->assertSet('edits.rotate', 0)
         ->assertSet('edits.crop', null)
         ->assertSet('ratio', 'free')
@@ -108,7 +108,7 @@ it('applies the crop after confirmation and redirects to the library', function 
     MediaUsage::query()->create(['media_id' => $media->id, 'usable_type' => User::class, 'usable_id' => 1, 'field' => 'cover']);
     MediaUsage::query()->create(['media_id' => $media->id, 'usable_type' => User::class, 'usable_id' => 2, 'field' => 'cover']);
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('confirmApply')
         ->assertSet('showApplyModal', true)
@@ -130,7 +130,7 @@ it('applies the crop after confirmation and redirects to the library', function 
 it('shows an invalid crop as an error and stays on the page', function () {
     $media = cropPageMedia(makeImage('webp', 800, 600));
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('edits.crop', ['x' => 0.8, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('apply')
         ->assertHasErrors('crop')
@@ -143,7 +143,7 @@ it('saves a copy and leaves the source unchanged', function () {
     $media = cropPageMedia(makeImage('webp', 800, 600), attributes: ['name' => 'hero.webp']);
     $before = Storage::disk('local')->get($media->path);
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('saveCopy')
         ->assertHasNoErrors()
@@ -161,7 +161,7 @@ it('hides save as copy without media.upload', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'media.view', 'media.edit'])->create());
     $media = cropPageMedia(makeImage('webp', 800, 600));
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->assertDontSee(__('media.crop.save_copy'))
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('saveCopy')
@@ -174,7 +174,7 @@ it('hides save as copy without media.upload', function () {
 it('shows the result size', function () {
     $media = cropPageMedia(makeImage('webp', 2560, 1920), makeImage('jpg', 4000, 3000));
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->assertSee('2560 × 1920')
         ->set('edits.crop', ['x' => 0.25, 'y' => 0.25, 'w' => 0.5, 'h' => 0.5])
         ->assertSee('2000 × 1500')
@@ -188,7 +188,7 @@ it('shows the result size', function () {
 it('shows the size after the max-side scale, as the applied file will have it', function (?array $size, string $expected, bool $hint) {
     $media = cropPageMedia(makeImage('webp', 2560, 1707), makeImage('jpg', 3800, 2500));
 
-    $page = Livewire::test('pages::admin.media.crop', ['media' => $media])
+    $page = Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('width', $size[0] ?? null)
         ->set('height', $size[1] ?? null)
         ->assertSee($expected);
@@ -210,13 +210,13 @@ it('shows the uncapped size when max-side scaling is off', function () {
     config(['media.optimize.max_side' => 0]);
     $media = cropPageMedia(makeImage('webp', 2560, 1707), makeImage('jpg', 3800, 2500));
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])->assertSee('3800 × 2500');
+    Livewire::test('hata::admin.media.crop', ['media' => $media])->assertSee('3800 × 2500');
 });
 
 it('sets the social size with the social ratio', function () {
     $media = cropPageMedia(makeImage('webp', 2560, 1920));
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('ratio', 'social')
         ->assertSet('width', 1200)
         ->assertSet('height', 630)
@@ -231,7 +231,7 @@ it('links to the crop page from the details panel for editable images only', fun
     $image = cropPageMedia(makeImage('webp', 800, 600));
     $svg = cropPageMedia('<svg xmlns="http://www.w3.org/2000/svg"/>', attributes: ['mime' => 'image/svg+xml', 'name' => 'a.svg']);
 
-    Livewire::test('pages::admin.media.index')
+    Livewire::test('hata::admin.media.index')
         ->call('select', $image->id)
         ->assertSee(route('admin.media.crop', $image), escape: false)
         ->call('select', $svg->id)
@@ -242,7 +242,7 @@ it('explains when the image is too large to edit on this server', function () {
     app()->instance(MemoryGuard::class, new MemoryGuard(1024));
     $media = cropPageMedia(makeImage('webp', 800, 600));
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->assertSee(__('media.errors.too_large_to_edit'))
         ->assertDontSee(route('admin.media.source', $media), escape: false)
         ->assertDontSee(__('media.crop.apply'));
@@ -252,7 +252,7 @@ it('says the file was changed meanwhile when the crop loses the race', function 
     $media = cropPageMedia(makeImage('webp', 800, 600));
     $this->mock(CropMedia::class)->shouldReceive('handle')->andThrow(MediaChangedException::changed());
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('apply')
         ->assertHasErrors(['crop' => __('media.errors.changed_meanwhile')])
@@ -266,7 +266,7 @@ it('shows a storage error and keeps the file when the disk does not store the cr
     $failing->failWrites = true;
     Storage::set('local', $failing);
 
-    Livewire::test('pages::admin.media.crop', ['media' => $media])
+    Livewire::test('hata::admin.media.crop', ['media' => $media])
         ->set('edits.crop', ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 0.5])
         ->call('apply')
         ->assertHasErrors(['crop' => __('media.errors.storage_failed')])

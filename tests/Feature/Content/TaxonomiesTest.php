@@ -56,8 +56,8 @@ function post(string $title, array $attributes = []): Entry
 function postForm(?Entry $post = null, string $locale = 'en'): Testable
 {
     return $post === null
-        ? Livewire::withQueryParams(['locale' => $locale])->test('pages::admin.content.create', ['type' => 'posts'])
-        : Livewire::test('pages::admin.content.edit', ['type' => 'posts', 'entry' => $post]);
+        ? Livewire::withQueryParams(['locale' => $locale])->test('hata::admin.content.create', ['type' => 'posts'])
+        : Livewire::test('hata::admin.content.edit', ['type' => 'posts', 'entry' => $post]);
 }
 
 test('categories and tags are taxonomies of the posts and go on and off with them', function () {
@@ -86,7 +86,7 @@ test('a category is made on the common form without a body, an image or a status
     $news = term('categories', 'News');
 
     Livewire::withQueryParams(['locale' => 'en'])
-        ->test('pages::admin.content.create', ['type' => 'categories'])
+        ->test('hata::admin.content.create', ['type' => 'categories'])
         ->assertDontSee(__('content.form.publication.title'))
         ->assertDontSee(__('content.form.image.title'))
         ->assertDontSeeHtml('data-test="translation-callout"')
@@ -180,7 +180,7 @@ test('a translation and a record moved to another language take the terms that h
     expect($post->copyFor('uk')['terms'])->toBe([$novyny->id]);
 
     Livewire::withQueryParams(['from' => (string) $post->id, 'locale' => 'uk'])
-        ->test('pages::admin.content.create', ['type' => 'posts'])
+        ->test('hata::admin.content.create', ['type' => 'posts'])
         ->assertSet('form.terms', [(string) $novyny->id]);
 
     postForm($post)
@@ -221,7 +221,7 @@ test('the list of posts shows their terms and narrows to one, and the list of a 
     $both->terms()->sync([$news->id, $roofs->id]);
     $filed->terms()->sync([$news->id]);
 
-    Livewire::test('pages::admin.content.index', ['type' => 'posts'])
+    Livewire::test('hata::admin.content.index', ['type' => 'posts'])
         ->assertSeeHtml(['data-test="list-term-categories"', 'data-test="list-term-tags"'])
         ->assertSeeHtml('data-test="entry-terms-'.$filed->id.'"')
         ->assertSee(['News', 'Roofs'])
@@ -238,18 +238,18 @@ test('the list of posts shows their terms and narrows to one, and the list of a 
         ->assertSeeHtml($row($other));
 
     Livewire::withQueryParams(['term' => ['categories' => (string) $news->id]])
-        ->test('pages::admin.content.index', ['type' => 'posts'])
+        ->test('hata::admin.content.index', ['type' => 'posts'])
         ->assertSet('termFilter', ['categories' => (string) $news->id])
         ->assertDontSeeHtml($row($other));
 
-    Livewire::test('pages::admin.content.index', ['type' => 'categories'])
+    Livewire::test('hata::admin.content.index', ['type' => 'categories'])
         ->assertDontSeeHtml('data-test="list-term-')
         ->assertDontSeeHtml('data-test="tab-drafts"')
         ->assertDontSeeHtml('data-test="entry-state-'.$news->id.'"')
         ->assertSeeHtml('data-test="tab-trash"')
         ->assertSeeHtml('data-test="term-records-'.$news->id.'"');
 
-    Livewire::test('pages::admin.content.index', ['type' => 'pages'])->assertDontSeeHtml('data-test="list-term-');
+    Livewire::test('hata::admin.content.index', ['type' => 'pages'])->assertDontSeeHtml('data-test="list-term-');
 });
 
 test('the sidebar lists the taxonomies after their type', function () {
@@ -384,7 +384,7 @@ test('a taxonomy can leave its filter out of the list', function () {
     $post = post('Open day');
     $post->terms()->sync([$series->id]);
 
-    Livewire::test('pages::admin.content.index', ['type' => 'posts'])
+    Livewire::test('hata::admin.content.index', ['type' => 'posts'])
         ->assertSeeHtml(['data-test="list-term-categories"', 'data-test="list-term-tags"'])
         ->assertDontSeeHtml('data-test="list-term-series"')
         // The column still shows its terms; only the filter is gone, also from the address.
@@ -489,7 +489,7 @@ test('each taxonomy has its own limit of terms in the list filter', function () 
         term('tags', 'Tag '.$number);
     }
 
-    Livewire::test('pages::admin.content.index', ['type' => 'posts'])
+    Livewire::test('hata::admin.content.index', ['type' => 'posts'])
         ->assertSeeHtml(['data-test="list-term-categories"', 'data-test="list-term-tags"'])
         ->assertSee('Zebra');
 });

@@ -34,12 +34,12 @@ function translator(): User
 
 function translationForm(Entry $entry): Testable
 {
-    return Livewire::test('pages::admin.content.edit', ['type' => $entry->type, 'entry' => $entry]);
+    return Livewire::test('hata::admin.content.edit', ['type' => $entry->type, 'entry' => $entry]);
 }
 
 function translationPicker(Entry $entry): Testable
 {
-    return Livewire::test('translation-picker', ['type' => $entry->type, 'entryId' => $entry->id]);
+    return Livewire::test('hata::translation-picker', ['type' => $entry->type, 'entryId' => $entry->id]);
 }
 
 /**
@@ -336,7 +336,7 @@ test('a new translation is not offered a language its group has in the trash', f
     Entry::factory()->translationOf($page, 'pl')->create(['deleted_at' => now()]);
 
     Livewire::withQueryParams(['from' => (string) $page->id, 'locale' => 'uk'])
-        ->test('pages::admin.content.create', ['type' => 'pages'])
+        ->test('hata::admin.content.create', ['type' => 'pages'])
         ->assertDontSee('Polski (PL)')
         ->call('changeLocale', 'pl')
         ->assertReturned(null)

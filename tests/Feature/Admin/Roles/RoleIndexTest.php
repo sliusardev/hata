@@ -22,7 +22,7 @@ test('it lists roles with translated names, user and permission counts', functio
     User::factory()->count(2)->withRole('editor')->create();
     Role::create(['name' => 'moderator', 'label' => 'Moderator', 'guard_name' => 'web']);
 
-    Livewire::test('pages::admin.roles.index')
+    Livewire::test('hata::admin.roles.index')
         ->assertSee(__('roles.names.editor'))
         ->assertSee('Moderator')
         ->assertSee(__('roles.all_permissions'))
@@ -41,7 +41,7 @@ test('it counts users and permissions without a query per role', function () {
     }
 
     DB::enableQueryLog();
-    Livewire::test('pages::admin.roles.index');
+    Livewire::test('hata::admin.roles.index');
     $countQueries = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'role_has_permissions'));
 
     expect($countQueries->count())->toBeLessThanOrEqual(2);
@@ -59,7 +59,7 @@ test('the role name links to the role page', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access', 'roles.view'])->create());
     $editor = Role::findByName('editor');
 
-    Livewire::test('pages::admin.roles.index')
+    Livewire::test('hata::admin.roles.index')
         ->assertSeeHtml('data-test="edit-role-link-'.$editor->id.'"')
         ->assertSeeHtml('href="'.route('admin.roles.edit', $editor).'"');
 });
@@ -68,7 +68,7 @@ test('delete buttons are shown only for custom roles', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
     $custom = Role::create(['name' => 'moderator', 'guard_name' => 'web']);
 
-    Livewire::test('pages::admin.roles.index')
+    Livewire::test('hata::admin.roles.index')
         ->assertSeeHtml('data-test="delete-role-'.$custom->id.'"')
         ->assertDontSeeHtml('data-test="delete-role-'.Role::findByName('editor')->id.'"')
         ->assertDontSeeHtml('data-test="delete-role-'.Role::findByName('super-admin')->id.'"');
@@ -78,7 +78,7 @@ test('it deletes an unused custom role from the list', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
     $custom = Role::create(['name' => 'moderator', 'label' => 'Moderator', 'guard_name' => 'web']);
 
-    Livewire::test('pages::admin.roles.index')
+    Livewire::test('hata::admin.roles.index')
         ->call('confirmDelete', $custom->id)
         ->assertSee(__('roles.delete.confirm', ['name' => 'Moderator']))
         ->call('deleteRole')
@@ -92,7 +92,7 @@ test('the delete dialog explains how many users have the role', function () {
     $custom = Role::create(['name' => 'moderator', 'label' => 'Moderator', 'guard_name' => 'web']);
     User::factory()->count(3)->withRole('moderator')->create();
 
-    Livewire::test('pages::admin.roles.index')
+    Livewire::test('hata::admin.roles.index')
         ->call('confirmDelete', $custom->id)
         ->assertSee(__('roles.delete.in_use', ['name' => 'Moderator', 'users' => trans_choice('users.count', 3)]))
         ->assertDontSeeHtml('data-test="confirm-modal-button"');

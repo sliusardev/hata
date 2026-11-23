@@ -46,7 +46,6 @@ use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\View\Compilers\BladeCompiler;
 use Laravel\Fortify\Features;
@@ -206,10 +205,6 @@ class HataServiceProvider extends ServiceProvider
                     'confirmPassword' => true,
                 ]),
             ],
-            // Livewire's own provider registers these namespaces (and their view and Blade paths) from its config
-            // at boot, whichever provider boots first.
-            'livewire.component_namespaces.pages' => Hata::path('resources/views/pages'),
-            'livewire.component_namespaces.layouts' => Hata::path('resources/views/layouts'),
         ]);
     }
 
@@ -329,13 +324,31 @@ class HataServiceProvider extends ServiceProvider
     }
 
     /**
-     * The package's views come before the host's, so its anonymous Blade components (`components.*`) are found
-     * without a prefix too, and so are its Livewire components.
+     * Everything is under `hata`, so nothing is added to the host's own view paths or Livewire locations:
+     *
+     * - views `hata::…` (`resources/views`; a site overrides one in `resources/views/vendor/hata`);
+     * - anonymous Blade components `<x-hata::…>`, which Blade finds as the views `hata::components.…`;
+     * - the layouts as components, `<x-hata::layouts.app>`: Blade looks a name it did not find among the components
+     *   up in the anonymous component paths of its prefix, here the views folder itself (after a site's overrides);
+     * - Livewire SFC pages and components `hata::…` (`resources/views/livewire`). The namespace is set on Livewire's
+     *   finder directly: Livewire only (re)writes the namespaces listed in its `component_namespaces` config, which
+     *   holds no `hata`, so the provider order does not matter. Full pages name their layout (`hata::layouts.app`).
      */
     private function configureViews(): void
     {
-        View::prependLocation(Hata::path('resources/views'));
-        Livewire::addLocation(viewPath: Hata::path('resources/views/components'));
+        $this->loadViewsFrom(Hata::path('resources/views'), 'hata');
+
+        $this->callAfterResolving(BladeCompiler::class, function (BladeCompiler $blade): void {
+            foreach ((array) config('view.paths', []) as $path) {
+                if (is_dir($override = $path.'/vendor/hata')) {
+                    $blade->anonymousComponentPath($override, 'hata');
+                }
+            }
+
+            $blade->anonymousComponentPath(Hata::path('resources/views'), 'hata');
+        });
+
+        Livewire::addNamespace('hata', viewPath: Hata::path('resources/views/livewire'));
     }
 
     /**
