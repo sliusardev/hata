@@ -8,9 +8,9 @@ same as a guide with examples.
 
 ## Distribution
 
-- Public GitHub repository `sliusardev/hata`, `license: MIT` (decision 73). A site requires `sliusardev/hata:^0.1`;
-  until the package is listed on Packagist it also adds `repositories: [{"type": "vcs", "url":
-  "https://github.com/sliusardev/hata"}]` to its `composer.json` (no token or SSH key needed).
+- Public GitHub repository `sliusardev/hata`, `license: MIT` (decision 73). Listed on Packagist
+  (`https://packagist.org/packages/sliusardev/hata`, updated by the GitHub hook on every push and tag); a site
+  requires `sliusardev/hata:^0.1` with no `repositories` entry, token or SSH key.
 - Versions: semantic versioning from `v0.1.0` (2026-11-24). While Hata is `0.x`, a breaking change raises the minor
   version, so a site's `^0.1` takes only the fixes of `0.1.*`.
 - Requirements: PHP `^8.4` with `intl`, Laravel `^13.17`, GD or Imagick. `livewire/flux` is pinned to `~2.21.0`

@@ -31,14 +31,8 @@ composer require sliusardev/hata:^0.1
 php artisan hata:install
 ```
 
-If Composer cannot find the package (it is not listed on Packagist yet), add the repository to the site's
-`composer.json` first; it is public, so no token or SSH key is needed:
-
-```json
-"repositories": [
-    {"type": "vcs", "url": "https://github.com/sliusardev/hata"}
-]
-```
+Hata is listed on [Packagist](https://packagist.org/packages/sliusardev/hata), so no `repositories` entry, token or
+SSH key is needed.
 
 Hata follows semantic versioning; while it is `0.x`, a breaking change raises the minor version, so `^0.1` takes the
 fixes of `0.1.*` and never a breaking release.
