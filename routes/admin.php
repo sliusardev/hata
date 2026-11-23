@@ -5,6 +5,7 @@ use Hata\Http\Controllers\Admin\MaintenanceRunController;
 use Hata\Http\Controllers\Admin\MediaDirectCheckController;
 use Hata\Http\Controllers\MediaSourcePreviewController;
 use Hata\Http\Controllers\MediaZipController;
+use Hata\Support\Admin\AdminPath;
 use Hata\Support\Content\ContentTypes;
 use Illuminate\Support\Facades\Route;
 
@@ -13,13 +14,13 @@ use Illuminate\Support\Facades\Route;
 | Admin Routes
 |--------------------------------------------------------------------------
 |
-| Prefixed with /admin, named admin.*, and closed to users without the
+| Prefixed with the admin path (hata.admin.path, `admin` by default), named admin.*, and closed to users without the
 | admin.access permission. Each page also authorizes its own permission.
 |
 */
 
 Route::middleware(['auth', 'verified', 'can:admin.access'])
-    ->prefix('admin')
+    ->prefix(AdminPath::resolve())
     ->name('admin.')
     ->group(function () {
         Route::view('/', 'hata::dashboard')->name('dashboard');

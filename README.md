@@ -204,6 +204,14 @@ location ^~ /storage/media/ {
 
 The `try_files` fallback sends a request for a missing file to Laravel, so an address that was handed out before the link broke still answers. Without these rules browsers still cache the files, because the file names change with every edit.
 
+## Admin path
+
+The admin answers at `/admin` unless the site picks another path, so bots probing `/admin` find nothing. Set
+`HATA_ADMIN_PATH=cp-7f3k` in `.env` (one segment of lowercase letters, digits and hyphens; not a language code
+or an address another route uses, otherwise Hata refuses to start the routes and names the reason), then rebuild
+the route cache with `php artisan optimize`. The `/admin` slug is then free for content. It is config only, never
+a site setting, so a wrong value can't lock you out of the admin.
+
 ## Maintenance page
 
 `/admin/maintenance` runs a few service commands from the admin, for hosting where a console is inconvenient:

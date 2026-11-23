@@ -1,5 +1,7 @@
 # Site settings page
 
+> The admin address is `config('hata.admin.path')` (env `HATA_ADMIN_PATH`, default `admin`); `/admin` in this spec stands for it. Route names stay `admin.*`.
+
 Settings for the whole site that an administrator changes in the admin panel instead of editing `.env` (shared hosting often has no SSH).
 
 ## Page

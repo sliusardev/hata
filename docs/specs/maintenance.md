@@ -1,5 +1,7 @@
 # Maintenance page
 
+> The admin address is `config('hata.admin.path')` (env `HATA_ADMIN_PATH`, default `admin`); `/admin` in this spec stands for it. Route names stay `admin.*`.
+
 Service commands for after a deploy, run from the admin instead of a console, and the log files. Designs:
 `docs/superpowers/specs/2026-11-12-maintenance-page-design.md` (decision 54 in CLAUDE.md) and
 `docs/superpowers/specs/2026-11-14-log-viewer-design.md` (decision 55).

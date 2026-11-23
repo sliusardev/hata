@@ -1,5 +1,7 @@
 # Media library
 
+> The admin address is `config('hata.admin.path')` (env `HATA_ADMIN_PATH`, default `admin`); `/admin` in this spec stands for it. Route names stay `admin.*`.
+
 > **Status: Parts 1–6 are built** (2026-11-12): the library (grid/list, search and filters, folders with a collapsible tree, moving and drag and drop, uploads with browser resize and server optimization, details, bulk actions and ZIP download, served by route with ULID keys), crop, replace, restore original and versioned URLs (Part 2), optimizing existing files (Part 3: engine, queue job, `media:optimize`, the page, the settings card), the media picker and logos from the library (Part 4), and S3-compatible storage with direct CDN URLs and moving files between disks (Part 5), and local raster images served as static files by the web server (Part 6: `public` disk, `DirectServing`, probe, fallback route; design record `docs/superpowers/specs/2026-11-12-media-direct-local-design.md`). Approved mockup: https://claude.ai/artifact/4ht3hKQ37R8oawQZFBCoi4 (8 screens). Design records of Parts 3–5 are in `docs/superpowers/specs/`; this file is the current behaviour.
 
 A WordPress-like library of images and documents for pages, posts and themes. On top of WordPress: folders, crop, per-language alt text, "where is it used", automatic optimization on upload, and re-optimizing files already uploaded. It must work on shared hosting: no queue worker, no SSH on some hosts, PHP `memory_limit` 128 MB, GD only (Imagick may be missing).

@@ -1,5 +1,7 @@
 # Content
 
+> The admin address is `config('hata.admin.path')` (env `HATA_ADMIN_PATH`, default `admin`); `/admin` in this spec stands for it. Route names stay `admin.*`.
+
 Content types (pages, posts) with their extra fields, and taxonomies (categories, tags), which are content types too.
 This spec covers the registry, the record tables and models, the slug and path rules, the body sanitizer, the save
 actions, the trash, the admin list, the record form and the public pages. A short how-to for developers (adding a

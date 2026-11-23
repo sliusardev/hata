@@ -7,11 +7,13 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Fixtures\CustomAdminPathTestCase;
 use Tests\Fixtures\RecordingDisk;
 use Tests\TestCase;
 
 require_once __DIR__.'/fixtures/RecordingDisk.php';
 require_once __DIR__.'/fixtures/ProductsType.php';
+require_once __DIR__.'/fixtures/CustomAdminPathTestCase.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +29,11 @@ require_once __DIR__.'/fixtures/ProductsType.php';
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
+
+// An application whose admin path is set before Hata's routes load: a test file cannot change the case it runs on.
+pest()->extend(CustomAdminPathTestCase::class)
+    ->use(RefreshDatabase::class)
+    ->in('AdminPath');
 
 // Install tests build the schema themselves (as a host's `migrate` would), so they run without RefreshDatabase.
 pest()->extend(TestCase::class)

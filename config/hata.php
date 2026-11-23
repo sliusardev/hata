@@ -17,6 +17,21 @@ return [
 
         /*
         |--------------------------------------------------------------------------
+        | Admin Path
+        |--------------------------------------------------------------------------
+        |
+        | The address of the admin panel, one segment of lowercase letters, digits
+        | and hyphens (`cp-7f3k`), so the usual `/admin` is not probed by bots. It
+        | cannot be a content language code or the first segment of another route.
+        | Set it in .env as HATA_ADMIN_PATH and rebuild the route cache
+        | (`php artisan optimize`). Route names stay `admin.*`.
+        |
+        */
+
+        'path' => env('HATA_ADMIN_PATH', 'admin'),
+
+        /*
+        |--------------------------------------------------------------------------
         | Interface Languages
         |--------------------------------------------------------------------------
         |

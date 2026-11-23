@@ -1,5 +1,7 @@
 # Users page
 
+> The admin address is `config('hata.admin.path')` (env `HATA_ADMIN_PATH`, default `admin`); `/admin` in this spec stands for it. Route names stay `admin.*`.
+
 Managing users in the admin panel: list, create, edit, delete.
 
 ## Pages
