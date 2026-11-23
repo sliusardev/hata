@@ -186,3 +186,7 @@ component on a localized route through Livewire's update endpoint; service pages
   lost.
 - The redirect from the default language's prefix is decided before the language of the session is updated,
   so it never changes the remembered language.
+
+## Stored at install
+
+`HataSeeder` (so `hata:install` and `db:seed`) stores the content-language list once, while none is stored: the interface default of the moment as the only language, active and default (`content_locales`, `content_default_locale`, through `SiteSettings::put()`). It never overwrites a stored list. Without it the default content language would follow the interface default, so changing "Default language" in Site settings would move the site's content language. The fallback in `ContentLocales` stays for sites with nothing stored.
