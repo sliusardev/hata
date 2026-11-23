@@ -144,6 +144,7 @@ Short specs for each section of the site. Read the relevant one before changing 
 - [Content](docs/specs/content.md): content types and their fields, the type registry, the per-type permissions, records and translations, paths and redirects, the body sanitizer and editor, the trash, the admin list and form, the public pages (routing, preview, hreflang, the switcher, cost per view)
 - [Site settings page](docs/specs/site-settings.md): site name, languages, content types (on and off), timezone, registration, default role, email, logo, colors, media (optimization, storage/S3)
 - [Media library](docs/specs/media.md): files and folders, upload, image optimization, crop/replace, picker, storage (public disk served by the web server, S3-compatible), optimizing and moving existing files, permissions
+- [Admin menu](docs/specs/admin-menu.md): the sidebar registry (groups, items, lazy items, ordering, registration mistakes)
 - [Maintenance page](docs/specs/maintenance.md): migrations, seeders and cache commands from the admin, the run journal, the log viewer, the reserved `maintenance.run` permission
 
 ===

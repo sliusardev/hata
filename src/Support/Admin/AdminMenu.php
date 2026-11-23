@@ -5,14 +5,18 @@ namespace Hata\Support\Admin;
 use Closure;
 use Hata\Contracts\AdminUser;
 use Illuminate\Support\Facades\Log;
-use Throwable;
+use LogicException;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 /**
  * The registry of the admin sidebar: groups, and the items in them.
  *
  * Hata's own sections and a module's register in a provider's `boot()`; nothing is resolved until the sidebar
- * renders, so a route that does not exist (yet) cannot break the boot. An item whose route cannot be built is left
- * out, and logged as a warning in the local environment. Bound as a singleton.
+ * renders, so a route that does not exist (yet) cannot break the boot. A mistake in a registration (an item in a group
+ * that was never declared, a parent that does not exist or a parent cycle, a route that is not defined) throws a
+ * LogicException naming the item in the local and testing environments and when `app.debug` is on, so a module's own
+ * tests catch it; in production the item is skipped and a warning is logged. Other errors, such as a missing route
+ * parameter, are never swallowed. Bound as a singleton.
  */
 final class AdminMenu
 {
@@ -87,6 +91,12 @@ final class AdminMenu
             }
         }
 
+        foreach ($items as $item) {
+            if (! isset($this->groups[$item->group])) {
+                $this->problem($item, "its group [{$item->group}] was never declared with group()");
+            }
+        }
+
         $menu = [];
 
         foreach ($this->sortedGroups() as $groupKey => $group) {
@@ -131,9 +141,12 @@ final class AdminMenu
         $roots = [];
 
         foreach ($items as $item) {
-            if ($item->parent !== null && $item->parent !== $item->key && isset($items[$item->parent])) {
+            if ($item->parent === null) {
+                $roots[] = $item;
+            } elseif ($item->parent !== $item->key && isset($items[$item->parent])) {
                 $children[$item->parent][] = $item;
             } else {
+                $this->problem($item, "its parent [{$item->parent}] is not an item of the group [{$item->group}]");
                 $roots[] = $item;
             }
         }
@@ -153,6 +166,12 @@ final class AdminMenu
             $place($root, []);
         }
 
+        foreach ($items as $item) {
+            if (! in_array($item, $ordered, true)) {
+                $this->problem($item, 'it is part of a parent cycle');
+            }
+        }
+
         return $ordered;
     }
 
@@ -162,12 +181,24 @@ final class AdminMenu
             $item->url();
 
             return true;
-        } catch (Throwable $e) {
-            if (app()->isLocal()) {
-                Log::warning("The admin menu item [{$item->key}] was left out: its route [{$item->route}] cannot be built.", ['exception' => $e->getMessage()]);
-            }
+        } catch (RouteNotFoundException) {
+            $this->problem($item, "its route [{$item->route}] is not defined");
 
             return false;
         }
+    }
+
+    /**
+     * A registration mistake: thrown where a developer sees it, logged and skipped in production.
+     */
+    private function problem(AdminMenuItem $item, string $problem): void
+    {
+        $message = "The admin menu item [{$item->key}] is left out: {$problem}.";
+
+        if (app()->isLocal() || app()->environment('testing') || config('app.debug')) {
+            throw new LogicException($message);
+        }
+
+        Log::warning($message);
     }
 }

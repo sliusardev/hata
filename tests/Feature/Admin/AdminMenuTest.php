@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Hata\Models\Entry;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Content\ContentTypes;
@@ -8,7 +9,9 @@ use Hata\Support\Content\Types\CategoriesType;
 use Hata\Support\Content\Types\PostsType;
 use Hata\Support\Content\Types\TagsType;
 use Hata\Support\Settings\SiteSettings;
+use Illuminate\Routing\Exceptions\UrlGenerationException;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(fn () => seedRolesAndPermissions());
@@ -160,16 +163,125 @@ it('drops an empty group', function () {
         ->and(array_keys($groups))->toBe(['platform', 'account']);
 });
 
-it('skips an item whose route does not exist', function () {
+function inProduction(): void
+{
+    app()->detectEnvironment(fn (): string => 'production');
+    config(['app.debug' => false]);
+}
+
+it('throws for an item whose route is not defined outside production', function () {
+    app(AdminMenu::class)
+        ->group('shop', 'Shop', 50)
+        ->add(new AdminMenuItem('shop.ghost', 'Ghost', 'star', 'admin.shop.nowhere', null, 'shop'));
+    $user = User::factory()->withRole('super-admin')->create();
+
+    expect(fn () => app(AdminMenu::class)->for($user))
+        ->toThrow(LogicException::class, 'shop.ghost');
+});
+
+it('skips and logs an item whose route is not defined in production', function () {
+    inProduction();
+    Log::spy();
     app(AdminMenu::class)
         ->group('shop', 'Shop', 50)
         ->add(new AdminMenuItem('shop.ghost', 'Ghost', 'star', 'admin.shop.nowhere', null, 'shop'))
         ->add(new AdminMenuItem('shop.real', 'Real', 'star', 'admin.dashboard', null, 'shop'));
+    $user = User::factory()->withRole('super-admin')->create();
+
+    $items = app(AdminMenu::class)->for($user)['shop']['items'];
+
+    expect(collect($items)->pluck('key')->all())->toBe(['shop.real']);
+    Log::shouldHaveReceived('warning')->once()->withArgs(fn (string $message): bool => str_contains($message, 'shop.ghost'));
+});
+
+it('does not hide a wrong route parameter', function () {
+    app(AdminMenu::class)
+        ->group('shop', 'Shop', 50)
+        ->add(new AdminMenuItem('shop.bad', 'Bad', 'star', 'admin.content.index', null, 'shop'));
+    $user = User::factory()->withRole('super-admin')->create();
+
+    expect(fn () => app(AdminMenu::class)->for($user))->toThrow(UrlGenerationException::class);
+});
+
+it('throws for an item in a group that was never declared', function () {
+    app(AdminMenu::class)->add(new AdminMenuItem('shop.orders', 'Orders', 'star', 'admin.dashboard', null, 'shop'));
+    $user = User::factory()->withRole('super-admin')->create();
+
+    expect(fn () => app(AdminMenu::class)->for($user))->toThrow(LogicException::class, 'shop.orders');
+});
+
+it('throws for a parent that does not exist or a parent cycle', function (array $items) {
+    $menu = app(AdminMenu::class)->group('shop', 'Shop', 50);
+
+    foreach ($items as [$key, $parent]) {
+        $menu->add(new AdminMenuItem($key, $key, 'star', 'admin.dashboard', null, 'shop', parent: $parent));
+    }
+
+    expect(fn () => $menu->for(User::factory()->withRole('super-admin')->create()))
+        ->toThrow(LogicException::class, $items[0][0]);
+})->with([
+    'a missing parent' => [[['shop.child', 'shop.nope']]],
+    'a cycle' => [[['shop.a', 'shop.b'], ['shop.b', 'shop.a']]],
+]);
+
+it('skips the broken items and logs in production', function () {
+    inProduction();
+    Log::spy();
+    app(AdminMenu::class)
+        ->add(new AdminMenuItem('stray', 'Stray', 'star', 'admin.dashboard', null, 'nowhere'))
+        ->group('shop', 'Shop', 50)
+        ->add(new AdminMenuItem('shop.a', 'A', 'star', 'admin.dashboard', null, 'shop', parent: 'shop.b'))
+        ->add(new AdminMenuItem('shop.b', 'B', 'star', 'admin.dashboard', null, 'shop', parent: 'shop.a'))
+        ->add(new AdminMenuItem('shop.orphan', 'Orphan', 'star', 'admin.dashboard', null, 'shop', parent: 'shop.nope'));
+
+    $groups = app(AdminMenu::class)->for(User::factory()->withRole('super-admin')->create());
+
+    expect(collect($groups['shop']['items'])->pluck('key')->all())->toBe(['shop.orphan'])
+        ->and($groups)->not->toHaveKey('nowhere');
+    Log::shouldHaveReceived('warning')->times(4);
+});
+
+it('shows each kind of user only the items they may open', function (callable $user, array $expected) {
+    $this->actingAs($user());
+
+    $labels = collect(renderedSidebar($this->get(route('profile.edit'))))->flatten(1)->pluck('label')->all();
+
+    expect($labels)->toBe($expected);
+})->with([
+    'super admin' => [
+        fn () => User::factory()->withRole('super-admin')->create(),
+        ['Dashboard', 'Pages', 'Media', 'Users', 'Roles', 'Site settings', 'Maintenance', 'My profile'],
+    ],
+    'admin (maintenance is reserved)' => [
+        fn () => User::factory()->withRole('admin')->create(),
+        ['Dashboard', 'Pages', 'Media', 'Users', 'Roles', 'Site settings', 'My profile'],
+    ],
+    'users.view without roles.view' => [
+        fn () => User::factory()->withPermissions(['admin.access', 'users.view'])->create(),
+        ['Dashboard', 'Users', 'My profile'],
+    ],
+    'admin.access and media.view only' => [
+        fn () => User::factory()->withPermissions(['admin.access', 'media.view'])->create(),
+        ['Dashboard', 'Media', 'My profile'],
+    ],
+]);
+
+it('marks only the second type as current on its own pages and vice versa', function () {
+    app(ContentTypes::class)->register(new PostsType);
     $this->actingAs(User::factory()->withRole('super-admin')->create());
+    $entry = Entry::factory()->create(['type' => 'posts', 'title' => 'Chair', 'slug' => 'chair', 'path' => 'chair']);
+    $page = Entry::factory()->create(['type' => 'pages', 'title' => 'About', 'slug' => 'about', 'path' => 'about']);
 
-    $sidebar = renderedSidebar($this->get(route('admin.dashboard')));
+    foreach ([
+        'Posts' => [route('admin.content.index', 'posts'), route('admin.content.create', 'posts'), route('admin.content.edit', ['type' => 'posts', 'entry' => $entry])],
+        'Pages' => [route('admin.content.index', 'pages'), route('admin.content.create', 'pages'), route('admin.content.edit', ['type' => 'pages', 'entry' => $page])],
+    ] as $label => $urls) {
+        foreach ($urls as $url) {
+            $current = collect(renderedSidebar($this->get($url)))->flatten(1)->where('current', true)->pluck('label')->all();
 
-    expect(collect($sidebar['Shop'])->pluck('label')->all())->toBe(['Real']);
+            expect($current)->toBe([$label], $url);
+        }
+    }
 });
 
 it('nests taxonomies under their type', function () {

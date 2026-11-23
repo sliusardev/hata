@@ -5,6 +5,7 @@ namespace Hata\Support\Admin;
 use Closure;
 use Hata\Contracts\AdminUser;
 use Illuminate\Support\Facades\Gate;
+use WeakMap;
 
 /**
  * One link of the admin sidebar.
@@ -48,9 +49,14 @@ final readonly class AdminMenuItem
         return Gate::forUser($user)->allows($this->permission);
     }
 
+    /**
+     * Built once per item object: the menu checks it and the sidebar prints it.
+     */
     public function url(): string
     {
-        return route($this->route, $this->routeParameters);
+        static $urls = new WeakMap;
+
+        return $urls[$this] ??= route($this->route, $this->routeParameters);
     }
 
     public function isCurrent(): bool
