@@ -341,3 +341,23 @@ class User extends Authenticatable implements AdminUser
 ## After the last task
 
 Whole-branch review (fresh reviewer, most capable model), one fix wave, the user's full browser pass on the demo (the checklist from memory: list, form, editor, media library, site, phone width, dark mode, a color scheme), then merge `package` into `main` and push **only on the user's word**. After the merge the local `/Users/vitalii/Herd/hata/.env`, `database/database.sqlite` and `storage/app/**` of the old app are no longer used; ask the user before deleting them.
+
+---
+
+### Task 13: Configurable admin path (the user's request, 2026-11-23; run right after Task 8)
+
+The admin panel answers at `/admin` on every site, which bots probe. A site picks its own path.
+
+**Files:** `config/hata.php` (`admin.path` => `env('HATA_ADMIN_PATH', 'admin')`), `routes/admin.php` (prefix from the config), `src/HataServiceProvider.php` (validate the value at boot), any hard-coded `/admin` URL in `src/`, `resources/views/`, `resources/js/` (must become `route()`/config-built), `docs/specs/*` and CLAUDE.md "Admin routes" convention, README note (change it in `.env`, then rebuild the route cache: `php artisan optimize`). Test: `tests/Feature/Package/AdminPathTest.php`.
+
+**Interfaces:**
+- Produces: `config('hata.admin.path')` (string, no slashes). Only config/env, never a site setting: routes are cacheable and a wrong value from the UI could lock the admin out.
+- Route names stay `admin.*`; only the URI prefix changes. `ReservedSlugs` already derives reserved first segments from registered routes, so the new path is reserved for content automatically and `admin` becomes a free slug — verify, don't duplicate.
+- Validation at boot (clear `InvalidArgumentException` naming `HATA_ADMIN_PATH`): matches `^[a-z0-9]+(-[a-z0-9]+)*$` (one segment; nested paths not supported), is not a content language code from the catalogue (it would collide with `/<code>/…`), and is not a first segment of another non-content route (`login`, `register`, `settings`, `livewire`, `media`, `storage`, `vendor`, `dashboard`, `up`, …). Validation reads only config and the catalogue/route list, no queries.
+
+- [ ] **Step 1: Tests** — `it('serves the admin under a configured path')` (path `cp-7f3k` set before routes load → GET `/cp-7f3k` as super admin 200, `/admin` 404, `route('admin.dashboard')` ends with `/cp-7f3k`); `it('frees the default admin slug for content')` (with the custom path, a published page with slug `admin` answers at `/admin`); `it('reserves the configured path for content')` (`ReservedSlugs::contains('cp-7f3k')`); `it('refuses an invalid admin path', ...)` dataset: `''`, `'a/b'`, `'Admin'`, `'en'` (a catalogue language code), `'login'`, `'settings'`.
+- [ ] **Step 2: Run, expect FAIL.**
+- [ ] **Step 3: Implement**; grep for literal `/admin` / `'admin/` in src, views, js and replace with route-built URLs.
+- [ ] **Step 4: Run** — `composer test`; green.
+- [ ] **Step 5: Browser** — the user sets `HATA_ADMIN_PATH` in the demo's `.env`, runs `php artisan optimize:clear`, opens the admin at the new path (sidebar links, media library, login redirect to the admin), then removes the variable.
+- [ ] **Step 6: Commit** — `Let a site choose the admin path`
