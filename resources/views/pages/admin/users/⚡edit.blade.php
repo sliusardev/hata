@@ -1,13 +1,13 @@
 <?php
 
-use App\Actions\Users\DeleteUser;
-use App\Actions\Users\UpdateUser;
-use App\Exceptions\ProtectedActionException;
-use App\Livewire\Forms\UserForm;
-use App\Models\Role;
+use Hata\Actions\Users\DeleteUser;
+use Hata\Actions\Users\UpdateUser;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Livewire\Forms\UserForm;
+use Hata\Models\Role;
 use App\Models\User;
-use App\Support\Permissions\AccessRules;
-use App\Support\Toast;
+use Hata\Support\Permissions\AccessRules;
+use Hata\Support\Toast;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;

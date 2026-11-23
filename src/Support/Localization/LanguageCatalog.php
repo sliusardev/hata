@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Localization;
+namespace Hata\Support\Localization;
 
 /**
  * The built-in list of languages a site's content can be in. Code, not data: the route pattern is built from

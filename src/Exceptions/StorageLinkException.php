@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exceptions;
+namespace Hata\Exceptions;
 
 use RuntimeException;
 

@@ -1,11 +1,12 @@
 <?php
 
-use App\Actions\Settings\SetLogo;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaUsage;
-use App\Models\Setting;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Settings\SetLogo;
+use Hata\Hata;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaUsage;
+use Hata\Models\Setting;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,7 @@ uses(RefreshDatabase::class);
 
 function runLogoImport(): void
 {
-    (require glob(database_path('migrations/*_import_branding_logos_into_media.php'))[0])->up();
+    (require glob(Hata::path('database/migrations/*_import_branding_logos_into_media.php'))[0])->up();
 }
 
 beforeEach(function () {

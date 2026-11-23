@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Exceptions\MediaWriteException;
 use Carbon\CarbonInterface;
+use Hata\Exceptions\MediaWriteException;
 use Illuminate\Contracts\Filesystem\Filesystem;
 
 /**

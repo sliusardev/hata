@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\Media;
-use App\Models\MediaFolder;
 use App\Models\User;
-use App\Support\Media\ServerCapabilities;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Support\Media\ServerCapabilities;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;

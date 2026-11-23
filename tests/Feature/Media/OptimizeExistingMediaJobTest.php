@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Jobs\OptimizeExistingMediaBatch;
-use App\Models\Media;
-use App\Support\Media\OptimizationRunStore;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Jobs\OptimizeExistingMediaBatch;
+use Hata\Models\Media;
+use Hata\Support\Media\OptimizationRunStore;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;

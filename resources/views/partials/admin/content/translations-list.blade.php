@@ -5,7 +5,7 @@
     Receives:
     - $entry           the saved record, or null on the create page;
     - $type, $locale   the type key and the form's language (its row is left out);
-    - $languages       list<App\Support\Localization\Language>, every language added to the site;
+    - $languages       list<Hata\Support\Localization\Language>, every language added to the site;
     - $groupEntries    the live records of the group (id, locale, title, status, published_at); no query is made here;
     - $trashedEntries  the group's trashed records keyed by language;
     - $canCreate       whether the actor may create a translation;
@@ -19,7 +19,7 @@
 @php
     $byLocale = collect($groupEntries)->keyBy('locale');
     $trashedByLocale = collect($trashedEntries ?? []);
-    $activeCodes = app(App\Support\Localization\ContentLocales::class)->activeCodes();
+    $activeCodes = app(Hata\Support\Localization\ContentLocales::class)->activeCodes();
     $badge = 'mt-0.5 w-8 shrink-0 rounded bg-zinc-100 py-0.5 text-center text-[11px] font-semibold text-zinc-700 uppercase dark:bg-white/10 dark:text-zinc-200';
 @endphp
 
@@ -48,7 +48,7 @@
                 @if ($record !== null)
                     <a href="{{ route('admin.content.edit', ['type' => $type, 'entry' => $record->id]) }}" wire:navigate class="block truncate text-sm font-medium text-zinc-900 hover:underline dark:text-white" title="{{ $record->title }}" data-test="translation-edit-{{ $language->code }}">{{ $record->title }}</a>
                     <span class="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                        <span @class(['size-2 rounded-full', 'bg-green-500' => $state === App\Enums\EntryState::Published, 'bg-amber-400' => $state !== App\Enums\EntryState::Published])></span>
+                        <span @class(['size-2 rounded-full', 'bg-green-500' => $state === Hata\Enums\EntryState::Published, 'bg-amber-400' => $state !== Hata\Enums\EntryState::Published])></span>
                         {{ __('content.list.state.'.strtolower($state->name)) }}
                     </span>
                 @elseif ($binned !== null)

@@ -1,5 +1,5 @@
 @php
-    $toast = session(\App\Support\Toast::SESSION_KEY);
+    $toast = session(\Hata\Support\Toast::SESSION_KEY);
 @endphp
 
 @if (is_array($toast))

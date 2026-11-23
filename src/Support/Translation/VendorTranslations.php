@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Translation;
+namespace Hata\Support\Translation;
 
 /**
  * Maps literal English strings that vendor packages (Fortify, passkeys, Flux) pass to __() onto keys in lang/{locale}/*.php.

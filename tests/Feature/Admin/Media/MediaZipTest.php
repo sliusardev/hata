@@ -1,8 +1,8 @@
 <?php
 
-use App\Actions\Media\ZipMedia;
-use App\Models\Media;
 use App\Models\User;
+use Hata\Actions\Media\ZipMedia;
+use Hata\Models\Media;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {

@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Support\Permissions\PermissionRegistry;
 use Spatie\Permission\Models\Permission;
 
 test('it creates every registered permission', function () {

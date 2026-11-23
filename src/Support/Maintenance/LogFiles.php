@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Maintenance;
+namespace Hata\Support\Maintenance;
 
 /**
  * The files the maintenance page may show and delete: the regular files directly in storage/logs.

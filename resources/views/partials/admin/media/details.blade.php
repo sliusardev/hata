@@ -5,7 +5,7 @@
 @php
     $canEdit = auth()->user()->can('update', $media);
     $locales = (array) config('app.available_locales');
-    $primaryLocale = \App\Models\Media::primaryAltLocale();
+    $primaryLocale = \Hata\Models\Media::primaryAltLocale();
     $translationLocales = array_diff_key($locales, [$primaryLocale => true]);
     $primaryAlt = $media->altFor($primaryLocale, fallback: false);
     $translationsFilled = count(array_filter(
@@ -77,7 +77,7 @@
                     <div class="mt-3 flex items-center gap-2 rounded-lg bg-green-50 px-2.5 py-2 text-[13px] text-green-800 dark:bg-green-400/10 dark:text-green-300">
                         <flux:icon name="check" variant="micro" class="shrink-0" />
                         <span>{{ __('media.details.optimized', [
-                            'before' => App\Models\Media::formatBytes((int) $media->original_size),
+                            'before' => Hata\Models\Media::formatBytes((int) $media->original_size),
                             'after' => $media->humanSize(),
                             'percent' => $media->savedPercent(),
                         ]) }}</span>
@@ -207,7 +207,7 @@
                 <input
                     type="file"
                     x-ref="replaceInput"
-                    accept="{{ collect(App\Support\Media\MediaTypes::ALLOWED)->filter(fn (array $type): bool => $type['kind'] === $media->kind)->keys()->map(fn (string $extension): string => '.'.$extension)->implode(',') }}"
+                    accept="{{ collect(Hata\Support\Media\MediaTypes::ALLOWED)->filter(fn (array $type): bool => $type['kind'] === $media->kind)->keys()->map(fn (string $extension): string => '.'.$extension)->implode(',') }}"
                     class="hidden"
                     x-on:change="replaceFile($event.target)"
                 />

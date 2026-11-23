@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Livewire\Admin;
+namespace Hata\Livewire\Admin;
 
-use App\Actions\Media\MediaBatchEngine;
 use App\Models\User;
-use App\Support\Media\MediaBatchRun;
+use Hata\Actions\Media\MediaBatchEngine;
+use Hata\Support\Media\MediaBatchRun;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;

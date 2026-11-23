@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Models\Media;
-use App\Models\MediaPendingDeletion;
-use App\Support\Media\MediaDisks;
+use Hata\Models\Media;
+use Hata\Models\MediaPendingDeletion;
+use Hata\Support\Media\MediaDisks;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;

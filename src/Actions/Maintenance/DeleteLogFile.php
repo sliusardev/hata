@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Maintenance;
+namespace Hata\Actions\Maintenance;
 
-use App\Exceptions\MaintenanceException;
 use App\Models\User;
-use App\Support\Maintenance\LogFiles;
+use Hata\Exceptions\MaintenanceException;
+use Hata\Support\Maintenance\LogFiles;
 use Illuminate\Support\Facades\Gate;
 
 /**

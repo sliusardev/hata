@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Enums\OptimizeOutcome;
-use App\Models\Media;
 use Carbon\CarbonImmutable;
+use Hata\Enums\OptimizeOutcome;
+use Hata\Models\Media;
 
 /**
  * The saved progress of one "optimize existing files" run: the shared run fields plus the settings fingerprint it

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Enums\EntryState;
-use App\Models\Entry;
+use Hata\Enums\EntryState;
+use Hata\Models\Entry;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

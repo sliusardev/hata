@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace Hata\Enums;
 
 /**
  * What happened to one file of a move between disks.

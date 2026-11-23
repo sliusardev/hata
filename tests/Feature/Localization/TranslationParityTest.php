@@ -1,6 +1,7 @@
 <?php
 
-use App\Support\Translation\VendorTranslations;
+use Hata\Hata;
+use Hata\Support\Translation\VendorTranslations;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 
@@ -13,7 +14,7 @@ function flattenedTranslations(string $locale): array
 {
     $lines = [];
 
-    foreach (File::files(lang_path($locale)) as $file) {
+    foreach (File::files(Hata::path("resources/lang/{$locale}")) as $file) {
         $group = $file->getFilenameWithoutExtension();
 
         foreach (Arr::dot(require $file->getPathname()) as $key => $value) {
@@ -41,7 +42,7 @@ function translatedLocales(): array
  */
 function translationFiles(string $locale): array
 {
-    return collect(File::files(lang_path($locale)))
+    return collect(File::files(Hata::path("resources/lang/{$locale}")))
         ->map(fn (SplFileInfo $file): string => $file->getFilename())
         ->sort()
         ->values()
@@ -59,7 +60,7 @@ function placeholdersIn(string $line): array
 }
 
 test('no locale uses JSON translation files', function () {
-    expect(File::glob(lang_path('*.json')))->toBeEmpty();
+    expect(File::glob(Hata::path('resources/lang/*.json')))->toBeEmpty();
 });
 
 test('every available locale has the same translation files as English', function () {
@@ -108,8 +109,8 @@ test('every translation uses the same placeholders as English', function () {
 test('every translation key used in the code exists', function () {
     $english = flattenedTranslations('en');
 
-    $files = collect(File::allFiles(resource_path('views')))
-        ->merge(File::allFiles(app_path()))
+    $files = collect(File::allFiles(Hata::path('resources/views')))
+        ->merge(File::allFiles(Hata::path('src')))
         ->filter(fn (SplFileInfo $file): bool => str_ends_with($file->getFilename(), '.php'));
 
     $missing = $files

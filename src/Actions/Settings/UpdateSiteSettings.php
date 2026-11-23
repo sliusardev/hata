@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Actions\Settings;
+namespace Hata\Actions\Settings;
 
-use App\Exceptions\ProtectedActionException;
-use App\Exceptions\StorageSettingsException;
-use App\Livewire\Forms\SiteSettingsForm;
-use App\Models\Media;
-use App\Models\Role;
 use App\Models\User;
-use App\Support\Media\MediaDisks;
-use App\Support\Settings\SiteSettings;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Exceptions\StorageSettingsException;
+use Hata\Livewire\Forms\SiteSettingsForm;
+use Hata\Models\Media;
+use Hata\Models\Role;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Gate;
 
 class UpdateSiteSettings

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Models\Media;
-use App\Models\MediaFolder;
 use App\Models\User;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use Illuminate\Support\Facades\Gate;
 
 class RenameFolder

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Models\Entry;
+use Hata\Models\Entry;
 
 /**
  * What a public address resolved to: a record to show (`preview` when it is not public and only an editor sees it),

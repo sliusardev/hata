@@ -2,19 +2,58 @@
 
 namespace Tests;
 
-use App\Support\Content\ContentTypes;
-use App\Support\Content\Types\PagesType;
-use App\Support\Permissions\PermissionRegistry;
-use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use App\Models\User;
+use App\Providers\WorkbenchServiceProvider;
+use Hata\HataServiceProvider;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\Types\PagesType;
+use Hata\Support\Permissions\PermissionRegistry;
+use Illuminate\Foundation\Application;
 use Laravel\Fortify\Features;
+use Orchestra\Testbench\Concerns\WithWorkbench;
+use Orchestra\Testbench\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    use WithWorkbench;
+
+    /**
+     * The host's other packages (Livewire, Flux, Fortify, spatie) are found by package discovery, as on a site.
+     *
+     * @var bool
+     */
+    protected $enablesPackageDiscoveries = true;
+
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->withoutVite();
         $this->useKitContentTypes();
+    }
+
+    /**
+     * Hata itself is listed too: Testbench discovers the root package only from a manifest its CLI wrote, and
+     * Larastan rewrites that manifest without it.
+     *
+     * @param  Application  $app
+     * @return list<class-string>
+     */
+    protected function getPackageProviders($app): array
+    {
+        return [HataServiceProvider::class, WorkbenchServiceProvider::class];
+    }
+
+    /**
+     * The workbench is the host application: its User model, and its seeders for the maintenance page.
+     *
+     * @param  Application  $app
+     */
+    protected function defineEnvironment($app): void
+    {
+        $app->useDatabasePath(dirname(__DIR__).'/workbench/database');
+
+        $app['config']->set('auth.providers.users.model', User::class);
     }
 
     /**

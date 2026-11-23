@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Actions\Settings;
+namespace Hata\Actions\Settings;
 
-use App\Exceptions\ContentLocaleException;
 use App\Models\User;
+use Hata\Exceptions\ContentLocaleException;
 
 class AddContentLocale extends ContentLocaleAction
 {

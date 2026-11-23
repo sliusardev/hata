@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Media;
-use App\Support\Media\DirectServing;
-use Database\Seeders\RoleSeeder;
+use Hata\Database\Seeders\RoleSeeder;
+use Hata\Models\Media;
+use Hata\Support\Media\DirectServing;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;

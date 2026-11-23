@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Media\MoveMediaToDisk;
-use App\Jobs\MoveMediaBatch;
-use App\Livewire\Admin\MediaBatchPage;
-use App\Models\Media;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Jobs\MoveMediaBatch;
+use Hata\Livewire\Admin\MediaBatchPage;
+use Hata\Models\Media;
 use App\Models\User;
 use Flux\Flux;
 use Livewire\Attributes\Computed;

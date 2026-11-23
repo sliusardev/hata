@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\MediaSource;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaSource;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;

@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\MediaKind;
-use App\Support\Media\MediaTypes;
+use Hata\Enums\MediaKind;
+use Hata\Support\Media\MediaTypes;
 
 it('detects allowed files by content', function (string $name, string $bytes, string $ext, MediaKind $kind) {
     $detected = MediaTypes::detect(uploadedImage($name, $bytes));

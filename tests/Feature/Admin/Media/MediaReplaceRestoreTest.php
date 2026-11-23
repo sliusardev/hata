@@ -1,11 +1,11 @@
 <?php
 
-use App\Actions\Media\ReplaceMediaFile;
-use App\Actions\Media\RestoreOriginal;
-use App\Exceptions\MediaChangedException;
-use App\Models\Media;
-use App\Models\MediaUsage;
 use App\Models\User;
+use Hata\Actions\Media\ReplaceMediaFile;
+use Hata\Actions\Media\RestoreOriginal;
+use Hata\Exceptions\MediaChangedException;
+use Hata\Models\Media;
+use Hata\Models\MediaUsage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Storage;

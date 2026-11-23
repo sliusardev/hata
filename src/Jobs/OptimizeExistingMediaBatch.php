@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Jobs;
+namespace Hata\Jobs;
 
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Support\Media\OptimizationRun;
 use Carbon\CarbonInterface;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Support\Media\OptimizationRun;
 
 /**
  * One time-boxed batch of "Optimize existing files" on a queue worker (see MediaBatchJob). The chain also stops once

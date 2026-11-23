@@ -1,10 +1,10 @@
 <?php
 
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Actions\Media\PruneMediaDeletions;
-use App\Models\Media;
-use App\Models\MediaPendingDeletion;
 use App\Models\User;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Actions\Media\PruneMediaDeletions;
+use Hata\Models\Media;
+use Hata\Models\MediaPendingDeletion;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;

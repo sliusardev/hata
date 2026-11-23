@@ -1,14 +1,14 @@
 <?php
 
-use App\Actions\Maintenance\DeleteLogFile;
-use App\Actions\Maintenance\RunMaintenanceAction;
-use App\Exceptions\MaintenanceException;
-use App\Http\Controllers\Admin\MaintenanceRunController;
-use App\Enums\MaintenanceAction;
-use App\Models\MaintenanceRun;
-use App\Support\Maintenance\LogFiles;
-use App\Support\Maintenance\PendingMigrations;
-use App\Support\Maintenance\SeederCatalog;
+use Hata\Actions\Maintenance\DeleteLogFile;
+use Hata\Actions\Maintenance\RunMaintenanceAction;
+use Hata\Exceptions\MaintenanceException;
+use Hata\Http\Controllers\Admin\MaintenanceRunController;
+use Hata\Enums\MaintenanceAction;
+use Hata\Models\MaintenanceRun;
+use Hata\Support\Maintenance\LogFiles;
+use Hata\Support\Maintenance\PendingMigrations;
+use Hata\Support\Maintenance\SeederCatalog;
 use Flux\Flux;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -589,7 +589,7 @@ new #[Title('maintenance.title')] class extends Component {
                                     <span class="truncate">{{ $logFile['name'] }}</span>
                                 </button>
                             </flux:table.cell>
-                            <flux:table.cell align="end" class="whitespace-nowrap tabular-nums">{{ App\Models\Media::formatBytes($logFile['size']) }}</flux:table.cell>
+                            <flux:table.cell align="end" class="whitespace-nowrap tabular-nums">{{ Hata\Models\Media::formatBytes($logFile['size']) }}</flux:table.cell>
                             <flux:table.cell class="whitespace-nowrap max-sm:hidden">{{ $logDate($logFile['modified']) }}</flux:table.cell>
                             <flux:table.cell align="end">
                                 <x-admin.row-actions data-test="maintenance-log-actions-{{ $logFile['key'] }}">
@@ -614,7 +614,7 @@ new #[Title('maintenance.title')] class extends Component {
 
             <div class="min-w-0 flex-1">
                 <flux:heading level="2" class="truncate">{{ $openedLog['name'] }}</flux:heading>
-                <flux:text size="sm">{{ App\Models\Media::formatBytes($openedLog['size']) }} · {{ $logDate($openedLog['modified']) }}</flux:text>
+                <flux:text size="sm">{{ Hata\Models\Media::formatBytes($openedLog['size']) }} · {{ $logDate($openedLog['modified']) }}</flux:text>
             </div>
 
             <flux:button size="sm" variant="danger" icon="trash" wire:click="confirmDeleteLog('{{ $openedLog['key'] }}')" data-test="maintenance-log-delete">

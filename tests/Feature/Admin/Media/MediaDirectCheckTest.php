@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\User;
-use App\Support\Media\DirectServing;
-use App\Support\Settings\SiteSettings;
+use Hata\Support\Media\DirectServing;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Exceptions;

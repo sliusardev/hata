@@ -1,10 +1,10 @@
 <?php
 
-use App\Actions\Media\CropMedia;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaPendingDeletion;
 use App\Models\User;
+use Hata\Actions\Media\CropMedia;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaPendingDeletion;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Image;
 use Illuminate\Support\Facades\Storage;

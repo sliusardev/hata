@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exceptions;
+namespace Hata\Exceptions;
 
 /**
  * A storage setting that cannot be saved. `$field` is the form field (without the form prefix) the message belongs to.

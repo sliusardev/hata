@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
 /**
  * Keeps the "move files to another disk" run in the `media_move_run` settings row.

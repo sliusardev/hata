@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Models\Entry;
-use App\Models\EntryRedirect;
-use App\Support\Localization\ReservedSlugs;
+use Hata\Models\Entry;
+use Hata\Models\EntryRedirect;
+use Hata\Support\Localization\ReservedSlugs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

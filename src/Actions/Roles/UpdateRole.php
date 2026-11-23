@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Actions\Roles;
+namespace Hata\Actions\Roles;
 
-use App\Exceptions\ProtectedActionException;
-use App\Models\Role;
 use App\Models\User;
-use App\Support\Permissions\AccessRules;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Role;
+use Hata\Support\Permissions\AccessRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 

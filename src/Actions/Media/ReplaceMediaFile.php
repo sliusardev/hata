@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Enums\MediaKind;
-use App\Exceptions\MediaUploadException;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\MediaNames;
-use App\Support\Media\MediaUploadChecks;
+use Hata\Enums\MediaKind;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaNames;
+use Hata\Support\Media\MediaUploadChecks;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 

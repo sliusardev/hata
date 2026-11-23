@@ -24,7 +24,7 @@
 
                     @php
                         // Each type, followed by the taxonomies that classify it (a taxonomy shows once, under its first type).
-                        $registry = app(App\Support\Content\ContentTypes::class);
+                        $registry = app(Hata\Support\Content\ContentTypes::class);
                         $contentTypes = [];
 
                         foreach ($registry->active() as $contentType) {
@@ -39,7 +39,7 @@
                             }
                         }
 
-                        $contentTypes = array_filter($contentTypes, fn ($contentType) => auth()->user()->can('viewAny', [App\Models\Entry::class, $contentType->key()]));
+                        $contentTypes = array_filter($contentTypes, fn ($contentType) => auth()->user()->can('viewAny', [Hata\Models\Entry::class, $contentType->key()]));
                     @endphp
                     @if ($contentTypes !== [] || auth()->user()->can('media.view'))
                         <flux:sidebar.group :heading="__('navigation.content')" :class="$groupClasses">

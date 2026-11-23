@@ -1,16 +1,16 @@
 <?php
 
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Actions\Media\OptimizeImage;
-use App\Actions\Media\RebuildMediaFile;
-use App\Enums\OptimizeOutcome;
-use App\Exceptions\OptimizationDisabledException;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\ImageEdits;
-use App\Support\Media\MemoryGuard;
-use App\Support\Media\OptimizationRunStore;
-use App\Support\Media\OptimizedImage;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Actions\Media\RebuildMediaFile;
+use Hata\Enums\OptimizeOutcome;
+use Hata\Exceptions\OptimizationDisabledException;
+use Hata\Models\Media;
+use Hata\Support\Media\ImageEdits;
+use Hata\Support\Media\MemoryGuard;
+use Hata\Support\Media\OptimizationRunStore;
+use Hata\Support\Media\OptimizedImage;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Image;

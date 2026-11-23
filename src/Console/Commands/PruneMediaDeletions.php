@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Hata\Console\Commands;
 
-use App\Actions\Media\PruneMediaDeletions as PruneAction;
+use Hata\Actions\Media\PruneMediaDeletions as PruneAction;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

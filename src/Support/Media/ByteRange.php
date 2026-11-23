@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
 /**
  * Single-range HTTP `Range` handling for streamed files.

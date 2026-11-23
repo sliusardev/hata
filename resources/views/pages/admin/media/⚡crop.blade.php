@@ -1,14 +1,14 @@
 <?php
 
-use App\Actions\Media\CropMedia;
-use App\Exceptions\MediaChangedException;
-use App\Exceptions\MediaWriteException;
-use App\Models\Media;
+use Hata\Actions\Media\CropMedia;
+use Hata\Exceptions\MediaChangedException;
+use Hata\Exceptions\MediaWriteException;
+use Hata\Models\Media;
 use App\Models\User;
-use App\Support\Media\ImageEdits;
-use App\Support\Media\MediaSource;
-use App\Support\Media\MemoryGuard;
-use App\Support\Toast;
+use Hata\Support\Media\ImageEdits;
+use Hata\Support\Media\MediaSource;
+use Hata\Support\Media\MemoryGuard;
+use Hata\Support\Toast;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
@@ -370,7 +370,7 @@ new #[Title('media.crop.title'), Layout('layouts::focus')] class extends Compone
 @php
     $media = $this->media;
     $result = $this->resultSize;
-    $canCopy = auth()->user()->can('create', App\Models\Media::class);
+    $canCopy = auth()->user()->can('create', Hata\Models\Media::class);
     $hasOriginal = filled($media->original_path);
     $libraryUrl = route('admin.media.index', ['folder' => $media->folder_id ?? 'none']);
 @endphp

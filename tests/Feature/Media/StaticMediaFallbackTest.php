@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\MediaKind;
-use App\Models\Media;
+use Hata\Enums\MediaKind;
+use Hata\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

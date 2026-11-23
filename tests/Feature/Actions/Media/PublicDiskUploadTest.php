@@ -1,14 +1,14 @@
 <?php
 
-use App\Actions\Media\DeleteMedia;
-use App\Actions\Media\PruneMediaDeletions;
-use App\Actions\Media\RestoreOriginal;
-use App\Actions\Media\UploadMedia;
-use App\Exceptions\MediaUploadException;
-use App\Models\Media;
-use App\Models\MediaPendingDeletion;
 use App\Models\User;
-use App\Support\Media\MediaSource;
+use Hata\Actions\Media\DeleteMedia;
+use Hata\Actions\Media\PruneMediaDeletions;
+use Hata\Actions\Media\RestoreOriginal;
+use Hata\Actions\Media\UploadMedia;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Models\Media;
+use Hata\Models\MediaPendingDeletion;
+use Hata\Support\Media\MediaSource;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\RecordingDisk;
 

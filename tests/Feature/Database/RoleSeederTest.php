@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Role;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
+use Hata\Database\Seeders\DatabaseSeeder;
+use Hata\Models\Role;
 
 test('it creates the system roles with their default permissions', function () {
     seedRolesAndPermissions();

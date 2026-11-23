@@ -1,10 +1,10 @@
 <?php
 
-use App\Models\Role;
-use App\Models\Setting;
 use App\Models\User;
-use App\Support\Settings\SiteSettings;
-use App\Support\Toast;
+use Hata\Models\Role;
+use Hata\Models\Setting;
+use Hata\Support\Settings\SiteSettings;
+use Hata\Support\Toast;
 use Illuminate\Support\Facades\Crypt;
 use Livewire\Livewire;
 

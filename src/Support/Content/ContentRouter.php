@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Models\Entry;
-use App\Models\EntryRedirect;
 use App\Models\User;
-use App\Support\Localization\ContentLocales;
-use App\Support\Localization\Language;
+use Hata\Models\Entry;
+use Hata\Models\EntryRedirect;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Localization\Language;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;

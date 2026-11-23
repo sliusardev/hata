@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Concerns;
+namespace Hata\Http\Controllers\Concerns;
 
-use App\Models\Media;
-use App\Support\Media\ByteRange;
-use App\Support\Media\MediaTypes;
+use Hata\Models\Media;
+use Hata\Support\Media\ByteRange;
+use Hata\Support\Media\MediaTypes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\UnableToReadFile;

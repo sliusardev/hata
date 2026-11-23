@@ -1,11 +1,11 @@
 <?php
 
-use App\Actions\Roles\DeleteRole;
-use App\Actions\Roles\UpdateRole;
-use App\Exceptions\ProtectedActionException;
-use App\Livewire\Admin\RoleFormPage;
-use App\Models\Role;
-use App\Support\Toast;
+use Hata\Actions\Roles\DeleteRole;
+use Hata\Actions\Roles\UpdateRole;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Livewire\Admin\RoleFormPage;
+use Hata\Models\Role;
+use Hata\Support\Toast;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;

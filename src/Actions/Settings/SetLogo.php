@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Actions\Settings;
+namespace Hata\Actions\Settings;
 
-use App\Models\Media;
-use App\Models\MediaUsage;
-use App\Models\Setting;
 use App\Models\User;
-use App\Rules\MediaSelection;
-use App\Support\Settings\SiteLogo;
-use App\Support\Settings\SiteSettings;
+use Hata\Models\Media;
+use Hata\Models\MediaUsage;
+use Hata\Models\Setting;
+use Hata\Rules\MediaSelection;
+use Hata\Support\Settings\SiteLogo;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;

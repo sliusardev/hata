@@ -1,9 +1,9 @@
 <?php
 
-use App\Enums\MediaKind;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\MemoryGuard;
+use Hata\Enums\MediaKind;
+use Hata\Models\Media;
+use Hata\Support\Media\MemoryGuard;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {

@@ -80,7 +80,7 @@ return [
     /*
     | Messages that Fortify and laravel/passkeys pass to __() as literal
     | English strings. They are mapped to these keys by
-    | App\Support\Translation\VendorTranslations.
+    | Hata\Support\Translation\VendorTranslations.
     */
     'vendor' => [
         'password_incorrect' => 'The provided password was incorrect.',

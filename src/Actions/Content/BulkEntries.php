@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Actions\Content;
+namespace Hata\Actions\Content;
 
-use App\Enums\EntryStatus;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
 use App\Models\User;
-use App\Support\Content\ContentType;
+use Hata\Enums\EntryStatus;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 

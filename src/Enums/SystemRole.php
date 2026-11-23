@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace Hata\Enums;
 
 /**
  * Roles created by the seeder. They are flagged as is_system and cannot be deleted.

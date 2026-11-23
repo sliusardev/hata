@@ -1,10 +1,10 @@
 <?php
 
-use App\Actions\Roles\CreateRole;
-use App\Exceptions\ProtectedActionException;
-use App\Livewire\Admin\RoleFormPage;
-use App\Models\Role;
-use App\Support\Toast;
+use Hata\Actions\Roles\CreateRole;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Livewire\Admin\RoleFormPage;
+use Hata\Models\Role;
+use Hata\Support\Toast;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Title;
 

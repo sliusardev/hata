@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Localization;
+namespace Hata\Support\Localization;
 
 /**
  * One language of the catalogue (config/languages.php).

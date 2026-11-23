@@ -21,7 +21,7 @@
     $model = (string) $attributes->wire('model')->value();
     $key = 'rich-text-'.Illuminate\Support\Str::slug(str_replace('.', '-', $model));
     $labelId = $label ? $key.'-label' : null;
-    $canPickImages = ! $readonly && (auth()->user()?->can('viewAny', App\Models\Media::class) ?? false);
+    $canPickImages = ! $readonly && (auth()->user()?->can('viewAny', Hata\Models\Media::class) ?? false);
     $config = [
         'model' => $model,
         'target' => 'rich-text:'.$model,

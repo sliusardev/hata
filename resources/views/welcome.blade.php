@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-@php($contentLocales = app(App\Support\Localization\ContentLocales::class))
+@php($contentLocales = app(Hata\Support\Localization\ContentLocales::class))
 <html lang="{{ $contentLocales->current()->hreflang() }}" dir="{{ $contentLocales->current()->direction() }}">
     <head>
         <meta charset="utf-8">

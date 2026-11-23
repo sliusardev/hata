@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\Forms;
+namespace Hata\Livewire\Forms;
 
-use App\Models\Media;
+use Hata\Models\Media;
 use Livewire\Form;
 
 /**

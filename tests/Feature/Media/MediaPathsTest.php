@@ -1,7 +1,7 @@
 <?php
 
-use App\Support\Media\MediaPaths;
 use Carbon\CarbonImmutable;
+use Hata\Support\Media\MediaPaths;
 
 it('keeps the unversioned paths on a local disk', function () {
     $at = CarbonImmutable::parse('2026-03-05 10:00');

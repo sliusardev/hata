@@ -1,8 +1,8 @@
 <?php
 
-use App\Actions\Users\DeleteUser;
-use App\Exceptions\ProtectedActionException;
 use App\Models\User;
+use Hata\Actions\Users\DeleteUser;
+use Hata\Exceptions\ProtectedActionException;
 use Illuminate\Auth\Access\AuthorizationException;
 
 beforeEach(fn () => seedRolesAndPermissions());

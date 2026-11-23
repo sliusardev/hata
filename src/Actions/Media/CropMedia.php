@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Exceptions\MediaEditException;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\MediaSource;
+use Hata\Exceptions\MediaEditException;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaSource;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;

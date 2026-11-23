@@ -1,11 +1,11 @@
 <?php
 
-use App\Actions\Users\CreateUser;
-use App\Exceptions\ProtectedActionException;
-use App\Livewire\Forms\UserForm;
-use App\Models\Role;
+use Hata\Actions\Users\CreateUser;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Livewire\Forms\UserForm;
+use Hata\Models\Role;
 use App\Models\User;
-use App\Support\Toast;
+use Hata\Support\Toast;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -18,7 +18,7 @@ new #[Title('users.create.title')] class extends Component {
     {
         $this->authorize('create', User::class);
 
-        $this->form->locale = app(App\Support\Localization\ContentLocales::class)->interfaceDefault();
+        $this->form->locale = app(Hata\Support\Localization\ContentLocales::class)->interfaceDefault();
     }
 
     /**

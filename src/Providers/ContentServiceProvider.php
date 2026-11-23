@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Providers;
+namespace Hata\Providers;
 
-use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\Types\PagesType;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\Types\PagesType;
+use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Support\ServiceProvider;
 
 class ContentServiceProvider extends ServiceProvider

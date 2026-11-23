@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
 use Symfony\Component\HtmlSanitizer\Visitor\AttributeSanitizer\AttributeSanitizerInterface;

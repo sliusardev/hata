@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Models\Media;
+use Hata\Models\Media;
 
 /**
  * Media ids sent by the client (bulk selection, dragged tiles, the ZIP route).

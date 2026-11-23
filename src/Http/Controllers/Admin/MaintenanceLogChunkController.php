@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace Hata\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Models\Media;
-use App\Support\Maintenance\LogFiles;
-use App\Support\Maintenance\LogReader;
+use Hata\Http\Controllers\Controller;
+use Hata\Models\Media;
+use Hata\Support\Maintenance\LogFiles;
+use Hata\Support\Maintenance\LogReader;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

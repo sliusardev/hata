@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Content\Types;
+namespace Hata\Support\Content\Types;
 
-use App\Support\Content\ContentType;
+use Hata\Support\Content\ContentType;
 
 /**
  * A taxonomy of the posts: its records are terms, one per language like any record, and a post is filed under the

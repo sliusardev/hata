@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Exceptions\MediaChangedException;
-use App\Exceptions\MediaEditException;
-use App\Exceptions\MediaUploadException;
-use App\Models\Media;
-use App\Models\MediaPendingDeletion;
-use App\Support\Media\ImageEdits;
-use App\Support\Media\MediaDisks;
-use App\Support\Media\MediaNames;
-use App\Support\Media\MediaPaths;
-use App\Support\Media\MediaTypes;
-use App\Support\Media\OptimizedImage;
 use Closure;
+use Hata\Exceptions\MediaChangedException;
+use Hata\Exceptions\MediaEditException;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Models\Media;
+use Hata\Models\MediaPendingDeletion;
+use Hata\Support\Media\ImageEdits;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Media\MediaNames;
+use Hata\Support\Media\MediaPaths;
+use Hata\Support\Media\MediaTypes;
+use Hata\Support\Media\OptimizedImage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

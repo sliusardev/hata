@@ -1,17 +1,17 @@
 <?php
 
-use App\Actions\Media\MoveMediaToDisk;
-use App\Actions\Media\PruneMediaDeletions;
-use App\Actions\Media\RebuildMediaFile;
-use App\Enums\MediaKind;
-use App\Enums\MoveOutcome;
-use App\Exceptions\MediaWriteException;
-use App\Models\Media;
-use App\Models\MediaPendingDeletion;
 use App\Models\User;
-use App\Support\Media\DiskMoveRunStore;
-use App\Support\Media\MediaDisks;
-use App\Support\Media\OptimizationRunStore;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Actions\Media\PruneMediaDeletions;
+use Hata\Actions\Media\RebuildMediaFile;
+use Hata\Enums\MediaKind;
+use Hata\Enums\MoveOutcome;
+use Hata\Exceptions\MediaWriteException;
+use Hata\Models\Media;
+use Hata\Models\MediaPendingDeletion;
+use Hata\Support\Media\DiskMoveRunStore;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Media\OptimizationRunStore;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;

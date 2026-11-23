@@ -1,12 +1,12 @@
 <?php
 
-use App\Enums\EntryState;
-use App\Enums\EntryStatus;
-use App\Models\Entry;
-use App\Models\EntryGroup;
 use App\Models\User;
-use App\Support\Content\ContentTypes;
-use App\Support\Settings\SiteSettings;
+use Hata\Enums\EntryState;
+use Hata\Enums\EntryStatus;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Tests\Fixtures\ProductsType;

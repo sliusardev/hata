@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Image;

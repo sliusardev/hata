@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions\Settings;
+namespace Hata\Actions\Settings;
 
 use Aws\Exception\AwsException;
 use Illuminate\Filesystem\FilesystemAdapter;

@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Livewire\Forms;
+namespace Hata\Livewire\Forms;
 
-use App\Concerns\ProfileValidationRules;
-use App\Models\Role;
 use App\Models\User;
-use App\Support\Localization\ContentLocales;
+use Hata\Concerns\ProfileValidationRules;
+use Hata\Models\Role;
+use Hata\Support\Localization\ContentLocales;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Form;

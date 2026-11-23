@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Models\Entry;
-use App\Rules\EntrySlug;
-use App\Support\Localization\LanguageCatalog;
-use App\Support\Localization\ReservedSlugs;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Hata;
+use Hata\Models\Entry;
+use Hata\Rules\EntrySlug;
+use Hata\Support\Localization\LanguageCatalog;
+use Hata\Support\Localization\ReservedSlugs;
+use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Blade;
@@ -25,7 +26,7 @@ use Throwable;
  */
 class ContentTypeGenerator
 {
-    private const string TYPES_NAMESPACE = 'App\\Support\\Content\\Types';
+    private const string TYPES_NAMESPACE = 'Hata\\Support\\Content\\Types';
 
     private readonly string $typesPath;
 
@@ -42,9 +43,9 @@ class ContentTypeGenerator
         ?string $langPath = null,
         ?string $configFile = null,
     ) {
-        $this->typesPath = $typesPath ?? app_path('Support/Content/Types');
-        $this->langPath = $langPath ?? lang_path();
-        $this->configFile = $configFile ?? config_path('content.php');
+        $this->typesPath = $typesPath ?? Hata::path('src/Support/Content/Types');
+        $this->langPath = $langPath ?? Hata::path('resources/lang');
+        $this->configFile = $configFile ?? Hata::path('config/content.php');
     }
 
     /**
@@ -403,8 +404,8 @@ class ContentTypeGenerator
 
             namespace {$namespace};
 
-            use App\Support\Content\ContentType;
-            use App\Support\Content\Fields\Field;
+            use Hata\Support\Content\ContentType;
+            use Hata\Support\Content\Fields\Field;
 
             class {$class} extends ContentType
             {
@@ -433,7 +434,7 @@ class ContentTypeGenerator
                 }
 
                 /**
-                 * The type's extra fields, from `App\Support\Content\Fields` (`Text::make('subtitle')`); `->shared()`
+                 * The type's extra fields, from `Hata\Support\Content\Fields` (`Text::make('subtitle')`); `->shared()`
                  * keeps one value for every language. Each label is `content.fields.<name>` in the language files.
                  *
                  * @return list<Field>

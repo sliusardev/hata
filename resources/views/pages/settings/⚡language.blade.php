@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\Toast;
+use Hata\Support\Toast;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Title;

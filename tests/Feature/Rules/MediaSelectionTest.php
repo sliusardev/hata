@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Media;
-use App\Rules\MediaSelection;
+use Hata\Models\Media;
+use Hata\Rules\MediaSelection;
 use Illuminate\Support\Facades\Validator;
 
 /**

@@ -1,14 +1,15 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
-use App\Contracts\UsesMedia;
-use App\Support\Settings\SiteLogo;
-use App\Support\Settings\SiteSettings;
+use App\Models\User;
+use Hata\Contracts\UsesMedia;
+use Hata\Support\Settings\SiteLogo;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One site setting stored by the admin. Read and written through App\Support\Settings\SiteSettings.
+ * One site setting stored by the admin. Read and written through Hata\Support\Settings\SiteSettings.
  *
  * @property string $key
  * @property mixed $value

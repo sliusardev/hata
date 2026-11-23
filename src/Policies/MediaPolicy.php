@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Policies;
+namespace Hata\Policies;
 
-use App\Models\Media;
 use App\Models\User;
+use Hata\Models\Media;
 
 /**
  * Permission checks for the media library.

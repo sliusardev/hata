@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Users;
+namespace Hata\Actions\Users;
 
-use App\Enums\SystemRole;
-use App\Models\Role;
 use App\Models\User;
+use Hata\Enums\SystemRole;
+use Hata\Models\Role;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 

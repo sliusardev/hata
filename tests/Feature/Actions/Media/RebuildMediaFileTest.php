@@ -1,15 +1,15 @@
 <?php
 
-use App\Actions\Media\OptimizeImage;
-use App\Actions\Media\RebuildMediaFile;
-use App\Enums\MediaKind;
-use App\Exceptions\MediaChangedException;
-use App\Exceptions\MediaEditException;
-use App\Exceptions\MediaUploadException;
-use App\Models\Media;
-use App\Models\MediaPendingDeletion;
-use App\Support\Media\MediaSource;
-use App\Support\Media\OptimizedImage;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Actions\Media\RebuildMediaFile;
+use Hata\Enums\MediaKind;
+use Hata\Exceptions\MediaChangedException;
+use Hata\Exceptions\MediaEditException;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Models\Media;
+use Hata\Models\MediaPendingDeletion;
+use Hata\Support\Media\MediaSource;
+use Hata\Support\Media\OptimizedImage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 

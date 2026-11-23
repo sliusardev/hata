@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Support\Permissions;
+namespace Hata\Support\Permissions;
 
-use App\Enums\SystemRole;
-use App\Models\Role;
 use App\Models\User;
+use Hata\Enums\SystemRole;
+use Hata\Models\Role;
 use Spatie\Permission\Models\Permission;
 
 /**

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Enums\MediaKind;
-use App\Exceptions\MediaUploadException;
+use Hata\Enums\MediaKind;
+use Hata\Exceptions\MediaUploadException;
 use Illuminate\Http\UploadedFile;
 
 /**

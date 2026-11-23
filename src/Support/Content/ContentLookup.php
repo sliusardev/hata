@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Models\Entry;
+use Hata\Models\Entry;
 
 /**
  * What a public address holds, before anything is known about the viewer (ContentRouter::lookup()): the record at

@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Role;
 use App\Models\User;
-use App\Support\Toast;
+use Hata\Models\Role;
+use Hata\Support\Toast;
 use Livewire\Livewire;
 
 beforeEach(fn () => seedRolesAndPermissions());

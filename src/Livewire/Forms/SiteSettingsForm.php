@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Livewire\Forms;
+namespace Hata\Livewire\Forms;
 
-use App\Enums\SystemRole;
-use App\Support\ColorScheme\ColorScheme;
-use App\Support\Localization\ContentLocales;
-use App\Support\Media\ServerCapabilities;
-use App\Support\Settings\SiteSettings;
 use Closure;
+use Hata\Enums\SystemRole;
+use Hata\Support\ColorScheme\ColorScheme;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Media\ServerCapabilities;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Number;
 use Illuminate\Validation\Rule;
 use Livewire\Form;

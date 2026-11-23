@@ -1,11 +1,11 @@
 <?php
 
-use App\Actions\Media\ReplaceMediaFile;
-use App\Enums\MediaKind;
-use App\Exceptions\MediaUploadException;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\MediaDisks;
+use Hata\Actions\Media\ReplaceMediaFile;
+use Hata\Enums\MediaKind;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaDisks;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Storage;
 
@@ -139,6 +139,8 @@ it('requires media.edit', function () {
 });
 
 it('refuses to replace across the raster and svg line on any site disk and writes nothing', function (string $siteDisk, string $from, string $to) {
+    // Every disk is listed below, so the cloud one is faked even when the site does not use it.
+    Storage::fake('s3');
     match ($siteDisk) {
         'public' => usePublicMediaDisk(),
         's3' => fakeCloudDisk(),

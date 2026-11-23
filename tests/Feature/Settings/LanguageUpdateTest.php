@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\User;
-use App\Support\Toast;
+use Hata\Support\Toast;
 use Livewire\Livewire;
 
 test('language page is displayed', function () {

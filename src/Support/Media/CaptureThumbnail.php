@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
 use Illuminate\Contracts\Image\Transformation;
 use Intervention\Image\Encoders\WebpEncoder;

@@ -4,7 +4,7 @@
     language's address, left out when the page has none.
 --}}
 @php
-    $contentLocales = app(App\Support\Localization\ContentLocales::class);
+    $contentLocales = app(Hata\Support\Localization\ContentLocales::class);
     $alternates = $contentLocales->alternates();
 @endphp
 

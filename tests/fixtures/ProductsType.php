@@ -2,16 +2,16 @@
 
 namespace Tests\Fixtures;
 
-use App\Support\Content\ContentType;
-use App\Support\Content\Fields\Date;
-use App\Support\Content\Fields\Gallery;
-use App\Support\Content\Fields\MediaFile;
-use App\Support\Content\Fields\Number;
-use App\Support\Content\Fields\RichText;
-use App\Support\Content\Fields\Select;
-use App\Support\Content\Fields\Text;
-use App\Support\Content\Fields\Textarea;
-use App\Support\Content\Fields\Toggle;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\Fields\Date;
+use Hata\Support\Content\Fields\Gallery;
+use Hata\Support\Content\Fields\MediaFile;
+use Hata\Support\Content\Fields\Number;
+use Hata\Support\Content\Fields\RichText;
+use Hata\Support\Content\Fields\Select;
+use Hata\Support\Content\Fields\Text;
+use Hata\Support\Content\Fields\Textarea;
+use Hata\Support\Content\Fields\Toggle;
 
 /**
  * Test-only type with one field of every kind; `price` is shared between languages.

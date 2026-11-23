@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Models\Media;
+use Hata\Models\Media;
 use Illuminate\Support\HtmlString;
 
 /**

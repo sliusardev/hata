@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace Hata\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Support\Media\DirectServing;
-use App\Support\Media\MediaDisks;
+use Hata\Http\Controllers\Controller;
+use Hata\Support\Media\DirectServing;
+use Hata\Support\Media\MediaDisks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

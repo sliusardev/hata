@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\Media;
-use App\Support\Content\BodyRenderer;
-use App\Support\Content\BodySanitizer;
-use App\Support\Content\EntryInput;
+use Hata\Models\Media;
+use Hata\Support\Content\BodyRenderer;
+use Hata\Support\Content\BodySanitizer;
+use Hata\Support\Content\EntryInput;
 use Illuminate\Support\Facades\DB;
 
 dataset('hostile bodies', [

@@ -1,19 +1,19 @@
 <?php
 
-use App\Actions\Settings\AddContentLocale;
-use App\Actions\Settings\RemoveContentLocale;
-use App\Actions\Settings\SetContentLocaleActive;
-use App\Actions\Settings\SetDefaultContentLocale;
-use App\Exceptions\ContentLocaleException;
-use App\Models\Entry;
-use App\Models\Setting;
 use App\Models\User;
-use App\Support\Localization\ContentLocales;
-use App\Support\Localization\Language;
-use App\Support\Localization\LanguageCatalog;
-use App\Support\Localization\ReservedSlugs;
-use App\Support\Settings\SiteSettings;
-use App\Support\Toast;
+use Hata\Actions\Settings\AddContentLocale;
+use Hata\Actions\Settings\RemoveContentLocale;
+use Hata\Actions\Settings\SetContentLocaleActive;
+use Hata\Actions\Settings\SetDefaultContentLocale;
+use Hata\Exceptions\ContentLocaleException;
+use Hata\Models\Entry;
+use Hata\Models\Setting;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Localization\Language;
+use Hata\Support\Localization\LanguageCatalog;
+use Hata\Support\Localization\ReservedSlugs;
+use Hata\Support\Settings\SiteSettings;
+use Hata\Support\Toast;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
@@ -65,7 +65,7 @@ class LocaleProbeComponent extends Component
     public function render(): string
     {
         return <<<'BLADE'
-            <div>probe:{{ app(App\Support\Localization\ContentLocales::class)->current()->code }}|{{ app()->getLocale() }}|{{ app(App\Support\Localization\ContentLocales::class)->route('probe.component', absolute: false) }}|{{ app('translator')->getFallback() }}|{{ $count }}</div>
+            <div>probe:{{ app(Hata\Support\Localization\ContentLocales::class)->current()->code }}|{{ app()->getLocale() }}|{{ app(Hata\Support\Localization\ContentLocales::class)->route('probe.component', absolute: false) }}|{{ app('translator')->getFallback() }}|{{ $count }}</div>
             BLADE;
     }
 }

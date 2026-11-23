@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Actions\Content;
+namespace Hata\Actions\Content;
 
-use App\Enums\EntryStatus;
-use App\Models\Entry;
-use App\Models\EntryGroup;
 use App\Models\User;
-use App\Support\Content\ContentType;
-use App\Support\Content\EntryInput;
-use App\Support\Content\EntryPaths;
-use App\Support\Localization\ContentLocales;
+use Hata\Enums\EntryStatus;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\EntryInput;
+use Hata\Support\Content\EntryPaths;
+use Hata\Support\Localization\ContentLocales;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;

@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Actions\Content;
+namespace Hata\Actions\Content;
 
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
-use App\Models\EntryGroup;
-use App\Models\MediaUsage;
 use App\Models\User;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
+use Hata\Models\MediaUsage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;

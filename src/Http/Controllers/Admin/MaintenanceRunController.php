@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace Hata\Http\Controllers\Admin;
 
-use App\Actions\Maintenance\RunMaintenanceAction;
-use App\Enums\MaintenanceAction;
-use App\Enums\MaintenanceStatus;
-use App\Exceptions\MaintenanceException;
-use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\Toast;
+use Hata\Actions\Maintenance\RunMaintenanceAction;
+use Hata\Enums\MaintenanceAction;
+use Hata\Enums\MaintenanceStatus;
+use Hata\Exceptions\MaintenanceException;
+use Hata\Http\Controllers\Controller;
+use Hata\Support\Toast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;

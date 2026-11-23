@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Media;
-use App\Support\Media\DirectServing;
-use App\Support\Settings\SiteSettings;
+use Hata\Models\Media;
+use Hata\Support\Media\DirectServing;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Jobs\SyncJob;

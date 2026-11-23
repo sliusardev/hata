@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Rules\EntrySlug;
-use App\Support\Content\Fields\Field;
+use Hata\Rules\EntrySlug;
+use Hata\Support\Content\Fields\Field;
 use Illuminate\Support\Facades\Lang;
 use InvalidArgumentException;
 

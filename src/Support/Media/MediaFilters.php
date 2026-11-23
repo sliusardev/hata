@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Enums\MediaKind;
-use App\Models\Media;
-use App\Models\MediaFolder;
 use Carbon\CarbonImmutable;
+use Hata\Enums\MediaKind;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 

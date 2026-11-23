@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Enums\MoveOutcome;
-use App\Models\Media;
 use Carbon\CarbonImmutable;
+use Hata\Enums\MoveOutcome;
+use Hata\Models\Media;
 
 /**
  * The saved progress of one "move files to another disk" run: the shared run fields plus the target disk and the

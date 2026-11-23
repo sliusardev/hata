@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Media\CropMedia;
-use App\Actions\Media\RestoreOriginal;
-use App\Models\Media;
 use App\Models\User;
+use Hata\Actions\Media\CropMedia;
+use Hata\Actions\Media\RestoreOriginal;
+use Hata\Models\Media;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Image;
 use Illuminate\Support\Facades\Storage;

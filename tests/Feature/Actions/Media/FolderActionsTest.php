@@ -1,12 +1,12 @@
 <?php
 
-use App\Actions\Media\CreateFolder;
-use App\Actions\Media\DeleteFolder;
-use App\Actions\Media\RenameFolder;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaUsage;
 use App\Models\User;
+use Hata\Actions\Media\CreateFolder;
+use Hata\Actions\Media\DeleteFolder;
+use Hata\Actions\Media\RenameFolder;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaUsage;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

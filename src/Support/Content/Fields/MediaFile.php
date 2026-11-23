@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Content\Fields;
+namespace Hata\Support\Content\Fields;
 
-use App\Rules\MediaSelection;
+use Hata\Rules\MediaSelection;
 
 /**
  * One library file, of any kind unless narrowed with `accept()`.

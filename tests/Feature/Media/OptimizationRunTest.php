@@ -1,12 +1,12 @@
 <?php
 
-use App\Enums\MediaKind;
-use App\Enums\OptimizeOutcome;
-use App\Models\Media;
-use App\Models\Setting;
-use App\Support\Media\OptimizationRun;
-use App\Support\Media\OptimizationRunStore;
 use Carbon\CarbonImmutable;
+use Hata\Enums\MediaKind;
+use Hata\Enums\OptimizeOutcome;
+use Hata\Models\Media;
+use Hata\Models\Setting;
+use Hata\Support\Media\OptimizationRun;
+use Hata\Support\Media\OptimizationRunStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);

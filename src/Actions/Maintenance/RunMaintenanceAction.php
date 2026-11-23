@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Actions\Maintenance;
+namespace Hata\Actions\Maintenance;
 
-use App\Actions\Media\MoveMediaToDisk;
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Enums\MaintenanceAction;
-use App\Enums\MaintenanceStatus;
-use App\Exceptions\MaintenanceException;
-use App\Models\MaintenanceRun;
 use App\Models\User;
-use App\Support\Maintenance\ArtisanRunner;
-use App\Support\Maintenance\SeederCatalog;
-use App\Support\Settings\SiteSettings;
 use ArrayObject;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Enums\MaintenanceAction;
+use Hata\Enums\MaintenanceStatus;
+use Hata\Exceptions\MaintenanceException;
+use Hata\Models\MaintenanceRun;
+use Hata\Support\Maintenance\ArtisanRunner;
+use Hata\Support\Maintenance\SeederCatalog;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;

@@ -1,8 +1,8 @@
 <?php
 
-use App\Actions\Roles\DeleteRole;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Role;
+use Hata\Actions\Roles\DeleteRole;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Role;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -86,7 +86,7 @@ new #[Title('roles.index.title')] class extends Component {
             <flux:subheading>{{ __('roles.index.description') }}</flux:subheading>
         </div>
 
-        @can('create', App\Models\Role::class)
+        @can('create', Hata\Models\Role::class)
             <flux:button variant="primary" icon="plus" :href="route('admin.roles.create')" wire:navigate>
                 {{ __('roles.index.create') }}
             </flux:button>

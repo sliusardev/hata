@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Actions\Fortify;
+namespace Hata\Actions\Fortify;
 
-use App\Concerns\PasswordValidationRules;
-use App\Concerns\ProfileValidationRules;
-use App\Models\Role;
 use App\Models\User;
+use Hata\Concerns\PasswordValidationRules;
+use Hata\Concerns\ProfileValidationRules;
+use Hata\Models\Role;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Livewire\Admin;
+namespace Hata\Livewire\Admin;
 
-use App\Livewire\Forms\RoleForm;
-use App\Support\Permissions\AccessRules;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Livewire\Forms\RoleForm;
+use Hata\Support\Permissions\AccessRules;
+use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Component;

@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Media\CreateStorageLink;
-use App\Exceptions\StorageLinkException;
 use App\Models\User;
-use App\Support\Media\DirectServing;
+use Hata\Actions\Media\CreateStorageLink;
+use Hata\Exceptions\StorageLinkException;
+use Hata\Support\Media\DirectServing;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;

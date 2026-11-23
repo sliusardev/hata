@@ -1,9 +1,10 @@
 <?php
 
-use App\Support\Content\ContentTypes;
-use App\Support\Content\Fields\Gallery;
-use App\Support\Content\Types\PagesType;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Hata;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\Fields\Gallery;
+use Hata\Support\Content\Types\PagesType;
+use Hata\Support\Permissions\PermissionRegistry;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\Fixtures\ProductsType;
@@ -188,7 +189,7 @@ test('every content type of the site has a valid base in every language', functi
     $types = new ContentTypes;
 
     // The file, not the config: tests run with the pages type alone.
-    foreach ((require config_path('content.php'))['types'] as $class) {
+    foreach ((require Hata::path('config/content.php'))['types'] as $class) {
         $types->register(app($class));
     }
 

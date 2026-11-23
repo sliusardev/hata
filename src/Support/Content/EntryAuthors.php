@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Enums\SystemRole;
 use App\Models\User;
+use Hata\Enums\SystemRole;
 use Illuminate\Database\Eloquent\Builder;
 
 /**

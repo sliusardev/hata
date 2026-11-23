@@ -1,7 +1,7 @@
 <?php
 
-use App\Support\ColorScheme\ColorScheme;
-use App\Support\ColorScheme\Oklch;
+use Hata\Support\ColorScheme\ColorScheme;
+use Hata\Support\ColorScheme\Oklch;
 
 test('the neutral preset keeps the stock look', function () {
     expect(ColorScheme::resolve('neutral', null, null, true)->css())->toBe('');

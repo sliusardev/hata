@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace Hata\Http\Controllers;
 
-use App\Http\Controllers\Concerns\StreamsMediaFile;
-use App\Models\Media;
-use App\Support\Media\MediaDisks;
-use App\Support\Media\MediaTypes;
+use Hata\Http\Controllers\Concerns\StreamsMediaFile;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Media\MediaTypes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;

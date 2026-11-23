@@ -1,12 +1,12 @@
 <?php
 
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaUsage;
 use App\Models\User;
-use App\Support\Media\MediaFilters;
-use App\Support\Media\StoreUploadedMedia;
 use Carbon\CarbonImmutable;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaUsage;
+use Hata\Support\Media\MediaFilters;
+use Hata\Support\Media\StoreUploadedMedia;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;

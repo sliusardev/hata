@@ -3,7 +3,7 @@
 
     Receives:
     - $type        the type key;
-    - $languages   list<App\Support\Localization\Language>, every language added to the site;
+    - $languages   list<Hata\Support\Localization\Language>, every language added to the site;
     - $current     the code of the record the line belongs to (filled dark, not a link), or null;
     - $records     the group's live records (id, locale, title, status, published_at); no query is made here;
     - $trashed     optional, the group's trashed records keyed by language (the form passes them; without them a
@@ -35,7 +35,7 @@
         @if ($code === $current)
             <span class="{{ $chip }} {{ $dim }} bg-zinc-800 text-white dark:bg-white dark:text-zinc-900" title="{{ __('content.grid.this', ['language' => $language->native]) }}" aria-current="true" data-test="chip-{{ $code }}" data-state="this">{{ $code }}</span>
         @elseif ($record !== null)
-            @php $published = $state === App\Enums\EntryState::Published; @endphp
+            @php $published = $state === Hata\Enums\EntryState::Published; @endphp
             <a
                 href="{{ route('admin.content.edit', ['type' => $type, 'entry' => $record->id]) }}"
                 wire:navigate

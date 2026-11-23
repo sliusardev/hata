@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Actions\Settings;
+namespace Hata\Actions\Settings;
 
 use App\Models\User;
-use App\Support\Localization\ContentLocales;
-use App\Support\Localization\LanguageCatalog;
-use App\Support\Settings\SiteSettings;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Localization\LanguageCatalog;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Gate;
 
 /**

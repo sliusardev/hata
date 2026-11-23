@@ -1,24 +1,24 @@
 <?php
 
-namespace App\Livewire\Admin;
+namespace Hata\Livewire\Admin;
 
-use App\Actions\Content\BulkEntries;
-use App\Actions\Content\DeleteEntry;
-use App\Actions\Content\EmptyEntryTrash;
-use App\Actions\Content\PruneEntryTrash;
-use App\Actions\Content\RestoreEntry;
-use App\Actions\Content\SetEntryStatus;
-use App\Actions\Content\TrashEntry;
-use App\Enums\EntryStatus;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
 use App\Models\User;
-use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\EntryListQuery;
-use App\Support\Localization\ContentLocales;
-use App\Support\Localization\Language;
 use Flux\Flux;
+use Hata\Actions\Content\BulkEntries;
+use Hata\Actions\Content\DeleteEntry;
+use Hata\Actions\Content\EmptyEntryTrash;
+use Hata\Actions\Content\PruneEntryTrash;
+use Hata\Actions\Content\RestoreEntry;
+use Hata\Actions\Content\SetEntryStatus;
+use Hata\Actions\Content\TrashEntry;
+use Hata\Enums\EntryStatus;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\EntryListQuery;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Localization\Language;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;

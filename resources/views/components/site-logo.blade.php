@@ -8,7 +8,7 @@
 ])
 
 @php
-    use App\Support\Settings\SiteLogo;
+    use Hata\Support\Settings\SiteLogo;
 @endphp
 
 @if (SiteLogo::isCustom())

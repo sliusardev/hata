@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\User;
-use App\Support\Settings\SiteSettings;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Carbon;
 
 test('authenticated users get the interface in their own language', function () {

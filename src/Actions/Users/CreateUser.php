@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions\Users;
+namespace Hata\Actions\Users;
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;

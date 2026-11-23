@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Entry;
-use App\Support\Content\ContentTypes;
-use App\Support\Settings\SiteSettings;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Settings\SiteSettings;
 use Tests\Fixtures\ProductsType;
 
 beforeEach(function () {

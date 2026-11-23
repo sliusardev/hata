@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
 use Dom\Element;
 use Dom\HTMLDocument;

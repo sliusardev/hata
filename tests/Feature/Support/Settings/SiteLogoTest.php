@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Media;
-use App\Support\Settings\SiteLogo;
-use App\Support\Settings\SiteSettings;
+use Hata\Models\Media;
+use Hata\Support\Settings\SiteLogo;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {

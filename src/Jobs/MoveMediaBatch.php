@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Jobs;
+namespace Hata\Jobs;
 
-use App\Actions\Media\MoveMediaToDisk;
-use App\Support\Media\DiskMoveRun;
 use Carbon\CarbonInterface;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Support\Media\DiskMoveRun;
 
 use function Illuminate\Support\enum_value;
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Maintenance;
+namespace Hata\Support\Maintenance;
 
 /**
  * Reads a log file in chunks from its end and marks each line up for the viewer.

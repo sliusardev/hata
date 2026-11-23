@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Middleware;
+namespace Hata\Http\Middleware;
 
-use App\Support\Localization\ContentLocales;
 use Closure;
+use Hata\Support\Localization\ContentLocales;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 

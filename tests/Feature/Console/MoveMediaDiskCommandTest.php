@@ -1,8 +1,8 @@
 <?php
 
-use App\Actions\Media\MoveMediaToDisk;
-use App\Models\Media;
-use App\Support\Media\DiskMoveRunStore;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Models\Media;
+use Hata\Support\Media\DiskMoveRunStore;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;

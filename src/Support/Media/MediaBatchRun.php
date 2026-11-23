@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Models\Media;
 use Carbon\CarbonImmutable;
+use Hata\Models\Media;
 
 /**
  * The saved progress of a run that walks media rows in batches (optimizing existing files, moving files between

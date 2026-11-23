@@ -74,34 +74,19 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - name: Setup Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '22'
-
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Prepare environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
-
-      - name: Build frontend assets
-        run: |
-          npm ci
-          npm run build
-
       - name: Run tests on SQLite
         if: matrix.database == 'sqlite'
-        run: php artisan test --compact
+        run: vendor/bin/pest --compact
         env:
           DB_CONNECTION: sqlite
           DB_DATABASE: ':memory:'
 
       - name: Run tests on MySQL
         if: matrix.database == 'mysql'
-        run: php artisan test --compact
+        run: vendor/bin/pest --compact
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1

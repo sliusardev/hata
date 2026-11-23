@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Enums\MediaKind;
-use App\Enums\MoveOutcome;
-use App\Exceptions\MediaChangedException;
-use App\Exceptions\MediaWriteException;
-use App\Models\Media;
-use App\Models\MediaPendingDeletion;
 use App\Models\User;
-use App\Support\Media\DiskMoveRun;
-use App\Support\Media\DiskMoveRunStore;
-use App\Support\Media\MediaBatchRun;
-use App\Support\Media\MediaDisks;
-use App\Support\Media\MediaPaths;
+use Hata\Enums\MediaKind;
+use Hata\Enums\MoveOutcome;
+use Hata\Exceptions\MediaChangedException;
+use Hata\Exceptions\MediaWriteException;
+use Hata\Models\Media;
+use Hata\Models\MediaPendingDeletion;
+use Hata\Support\Media\DiskMoveRun;
+use Hata\Support\Media\DiskMoveRunStore;
+use Hata\Support\Media\MediaBatchRun;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Media\MediaPaths;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;

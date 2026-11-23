@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Media;
-use App\Models\MediaFolder;
 use App\Models\User;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 

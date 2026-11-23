@@ -1,10 +1,11 @@
 <?php
 
-use App\Actions\Maintenance\DeleteLogFile;
-use App\Exceptions\MaintenanceException;
 use App\Models\User;
-use App\Support\Maintenance\LogFiles;
-use App\Support\Maintenance\LogReader;
+use Hata\Actions\Maintenance\DeleteLogFile;
+use Hata\Exceptions\MaintenanceException;
+use Hata\Hata;
+use Hata\Support\Maintenance\LogFiles;
+use Hata\Support\Maintenance\LogReader;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
@@ -67,7 +68,7 @@ describe('files', function () {
         logFile('.gitignore');
         File::ensureDirectoryExists($this->logs.'/archive');
         File::put($this->logs.'/archive/inner.log', 'x');
-        symlink(base_path('.env.example'), $this->logs.'/linked.log');
+        symlink(Hata::path('composer.json'), $this->logs.'/linked.log');
 
         $files = app(LogFiles::class)->all();
 
@@ -190,7 +191,7 @@ describe('reading', function () {
         $path = logFile('laravel.log', implode("\n", [
             '[2026-11-14 15:28:02] production.ERROR: Call to undefined method {"userId":1}',
             '[stacktrace]',
-            '#0 /app/Actions/Media/UploadMedia.php(84): App\\Models\\Media->thumb()',
+            '#0 /app/Actions/Media/UploadMedia.php(84): Hata\\Models\\Media->thumb()',
             '[2026-11-14T15:32:07.123456+00:00] local.WARNING: Probe failed',
             '[2026-11-14 15:33:00] local.DEBUG: select 1',
             'plain text',
@@ -202,7 +203,7 @@ describe('reading', function () {
         expect($html)
             ->toContain('<span class="log-date">[2026-11-14 15:28:02]</span> <span class="log-level log-level-error">production.ERROR:</span> Call to undefined method')
             ->toContain('<span class="log-trace">[stacktrace]</span>')
-            ->toContain('<span class="log-trace">#0 /app/Actions/Media/UploadMedia.php(84): App\\Models\\Media-&gt;thumb()</span>')
+            ->toContain('<span class="log-trace">#0 /app/Actions/Media/UploadMedia.php(84): Hata\\Models\\Media-&gt;thumb()</span>')
             ->toContain('<span class="log-level log-level-warning">local.WARNING:</span>')
             ->toContain('<span class="log-level log-level-debug">local.DEBUG:</span>')
             ->toContain("\nplain text\n");

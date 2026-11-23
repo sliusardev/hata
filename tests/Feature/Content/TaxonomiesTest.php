@@ -1,20 +1,20 @@
 <?php
 
-use App\Actions\Content\DeleteEntry;
-use App\Actions\Content\RestoreEntry;
-use App\Actions\Content\SetEntryStatus;
-use App\Actions\Content\TrashEntry;
-use App\Actions\Content\UpdateEntry;
-use App\Actions\Settings\SetContentTypeActive;
-use App\Enums\EntryStatus;
-use App\Livewire\Admin\EntryListPage;
-use App\Models\Entry;
 use App\Models\User;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\Types\CategoriesType;
-use App\Support\Content\Types\PostsType;
-use App\Support\Content\Types\TagsType;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Content\DeleteEntry;
+use Hata\Actions\Content\RestoreEntry;
+use Hata\Actions\Content\SetEntryStatus;
+use Hata\Actions\Content\TrashEntry;
+use Hata\Actions\Content\UpdateEntry;
+use Hata\Actions\Settings\SetContentTypeActive;
+use Hata\Enums\EntryStatus;
+use Hata\Livewire\Admin\EntryListPage;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\Types\CategoriesType;
+use Hata\Support\Content\Types\PostsType;
+use Hata\Support\Content\Types\TagsType;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;

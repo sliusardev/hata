@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Role;
 use App\Models\User;
+use Hata\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 

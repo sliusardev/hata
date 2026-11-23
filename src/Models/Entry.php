@@ -1,17 +1,19 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
-use App\Contracts\UsesMedia;
-use App\Enums\EntryState;
-use App\Enums\EntryStatus;
-use App\Models\Concerns\HasSearchIndex;
-use App\Support\Content\BodySanitizer;
-use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypes;
-use App\Support\Localization\ContentLocales;
-use Database\Factories\EntryFactory;
+use App\Models\User;
+use Hata\Contracts\UsesMedia;
+use Hata\Database\Factories\EntryFactory;
+use Hata\Enums\EntryState;
+use Hata\Enums\EntryStatus;
+use Hata\Models\Concerns\HasSearchIndex;
+use Hata\Support\Content\BodySanitizer;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Localization\ContentLocales;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -56,6 +58,7 @@ use Illuminate\Support\Facades\Gate;
     'entry_group_id', 'type', 'locale', 'parent_id', 'author_id', 'title', 'slug', 'path', 'body', 'excerpt',
     'seo_title', 'seo_description', 'image_id', 'fields', 'status', 'published_at',
 ])]
+#[UseFactory(EntryFactory::class)]
 class Entry extends Model implements UsesMedia
 {
     /** @use HasFactory<EntryFactory> */

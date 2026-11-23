@@ -1,9 +1,9 @@
 <?php
 
-use App\Support\Content\Types\CategoriesType;
-use App\Support\Content\Types\PagesType;
-use App\Support\Content\Types\PostsType;
-use App\Support\Content\Types\TagsType;
+use Hata\Support\Content\Types\CategoriesType;
+use Hata\Support\Content\Types\PagesType;
+use Hata\Support\Content\Types\PostsType;
+use Hata\Support\Content\Types\TagsType;
 
 return [
 
@@ -67,7 +67,7 @@ return [
     |
     | Names content may not use as the first segment of its address, besides
     | every language code and the first segment of every service route (see
-    | App\Support\Localization\ReservedSlugs): what the web server answers
+    | Hata\Support\Localization\ReservedSlugs): what the web server answers
     | itself from the public folder.
     |
     */

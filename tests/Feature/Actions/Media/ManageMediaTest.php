@@ -1,12 +1,12 @@
 <?php
 
-use App\Actions\Media\DeleteMedia;
-use App\Actions\Media\MoveMedia;
-use App\Actions\Media\UpdateMedia;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaPendingDeletion;
 use App\Models\User;
+use Hata\Actions\Media\DeleteMedia;
+use Hata\Actions\Media\MoveMedia;
+use Hata\Actions\Media\UpdateMedia;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaPendingDeletion;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

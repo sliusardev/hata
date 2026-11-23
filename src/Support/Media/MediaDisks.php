@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Enums\MediaKind;
+use Hata\Enums\MediaKind;
 
 /**
  * What the media code needs to know about a filesystem disk: whether files on it are reached over the network

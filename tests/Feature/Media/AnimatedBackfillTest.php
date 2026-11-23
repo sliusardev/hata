@@ -1,6 +1,7 @@
 <?php
 
-use App\Models\Media;
+use Hata\Hata;
+use Hata\Models\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +22,7 @@ it('backfills the animated column from the stored files', function () {
 
     Schema::table('media', fn ($table) => $table->dropColumn('animated'));
 
-    (require database_path('migrations/2026_11_11_164228_add_animated_to_media_table.php'))->up();
+    (require Hata::path('database/migrations/2026_11_11_164228_add_animated_to_media_table.php'))->up();
 
     expect(Media::find($animated->id)->animated)->toBeTrue()
         ->and(Media::find($static->id)->animated)->toBeFalse()

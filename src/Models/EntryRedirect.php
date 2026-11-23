@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
-use Database\Factories\EntryRedirectFactory;
+use Hata\Database\Factories\EntryRedirectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['type', 'locale', 'path', 'entry_id'])]
+#[UseFactory(EntryRedirectFactory::class)]
 class EntryRedirect extends Model
 {
     /** @use HasFactory<EntryRedirectFactory> */

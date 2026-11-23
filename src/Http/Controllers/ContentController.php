@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace Hata\Http\Controllers;
 
-use App\Models\Entry;
-use App\Models\Media;
-use App\Support\Content\BodyRenderer;
-use App\Support\Content\ContentLookup;
-use App\Support\Content\ContentRouter;
-use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\Fields\Gallery;
-use App\Support\Localization\ContentLocales;
+use Hata\Models\Entry;
+use Hata\Models\Media;
+use Hata\Support\Content\BodyRenderer;
+use Hata\Support\Content\ContentLookup;
+use Hata\Support\Content\ContentRouter;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\Fields\Gallery;
+use Hata\Support\Localization\ContentLocales;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

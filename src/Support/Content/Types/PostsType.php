@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Support\Content\Types;
+namespace Hata\Support\Content\Types;
 
-use App\Support\Content\ContentType;
-use App\Support\Content\Fields\Field;
-use App\Support\Content\Fields\Gallery;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\Fields\Field;
+use Hata\Support\Content\Fields\Gallery;
 
 class PostsType extends ContentType
 {
@@ -33,7 +33,7 @@ class PostsType extends ContentType
     }
 
     /**
-     * The type's extra fields, from `App\Support\Content\Fields` (`Text::make('subtitle')`); `->shared()`
+     * The type's extra fields, from `Hata\Support\Content\Fields` (`Text::make('subtitle')`); `->shared()`
      * keeps one value for every language. Each label is `content.fields.<name>` in the language files.
      *
      * @return list<Field>

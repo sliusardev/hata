@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Content;
+namespace Hata\Actions\Content;
 
-use App\Models\Entry;
 use App\Models\User;
-use App\Support\Content\ContentType;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentType;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;

@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Media\MoveFolder;
-use App\Models\Media;
-use App\Models\MediaFolder;
 use App\Models\User;
+use Hata\Actions\Media\MoveFolder;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Storage;

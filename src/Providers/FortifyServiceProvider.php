@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Providers;
+namespace Hata\Providers;
 
-use App\Actions\Fortify\CreateNewUser;
-use App\Actions\Fortify\ResetUserPassword;
+use Hata\Actions\Fortify\CreateNewUser;
+use Hata\Actions\Fortify\ResetUserPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;

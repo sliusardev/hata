@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Actions\Content;
+namespace Hata\Actions\Content;
 
-use App\Models\Entry;
 use App\Models\User;
+use Hata\Models\Entry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;

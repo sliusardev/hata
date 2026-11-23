@@ -1,12 +1,12 @@
 <?php
 
-use App\Actions\Content\CreateEntry;
-use App\Livewire\Admin\EntryFormPage;
-use App\Models\Entry;
-use App\Support\Content\EntryAuthors;
-use App\Support\Content\EntryPaths;
-use App\Support\Localization\ContentLocales;
-use App\Support\Toast;
+use Hata\Actions\Content\CreateEntry;
+use Hata\Livewire\Admin\EntryFormPage;
+use Hata\Models\Entry;
+use Hata\Support\Content\EntryAuthors;
+use Hata\Support\Content\EntryPaths;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Toast;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -25,7 +25,7 @@ new class extends EntryFormPage {
 
     public function mount(string $type, ContentLocales $locales): void
     {
-        abort_unless(app(App\Support\Content\ContentTypes::class)->isActive($type), 404);
+        abort_unless(app(Hata\Support\Content\ContentTypes::class)->isActive($type), 404);
 
         $this->authorize('create', [Entry::class, $type]);
 
@@ -36,7 +36,7 @@ new class extends EntryFormPage {
         if ($locale !== null) {
             abort_unless(is_string($locale) && $locales->has($locale), 404);
         } else {
-            $remembered = (string) session(App\Livewire\Admin\EntryListPage::LOCALE_SESSION_KEY);
+            $remembered = (string) session(Hata\Livewire\Admin\EntryListPage::LOCALE_SESSION_KEY);
             $locale = $remembered !== '' && $locales->has($remembered) ? $remembered : $locales->defaultCode();
         }
 
@@ -57,7 +57,7 @@ new class extends EntryFormPage {
 
         // The group already has this language (in the trash too): open that record instead of a form that could
         // never be saved.
-        $existing = App\Models\EntryGroup::recordIn($source->entry_group_id, $locale);
+        $existing = Hata\Models\EntryGroup::recordIn($source->entry_group_id, $locale);
 
         if ($existing !== null) {
             $this->redirectRoute('admin.content.edit', ['type' => $type, 'entry' => $existing->id]);
@@ -94,14 +94,14 @@ new class extends EntryFormPage {
      * The languages the record can still be created in: every language of the site, or for a translation those
      * its group does not have yet (the form's own included).
      *
-     * @return list<App\Support\Localization\Language>
+     * @return list<Hata\Support\Localization\Language>
      */
     #[Computed]
     public function localeChoices(): array
     {
         // The trash counts: the group's language is taken there too (CreateEntry would hand back that record).
         $groupId = $this->groupEntries->first()?->entry_group_id;
-        $taken = $groupId === null ? [] : App\Models\EntryGroup::takenLocales($groupId);
+        $taken = $groupId === null ? [] : Hata\Models\EntryGroup::takenLocales($groupId);
 
         return array_values(array_filter(
             $this->languages,
@@ -116,7 +116,7 @@ new class extends EntryFormPage {
     private function publishByDefault(): void
     {
         if ($this->abilities['edit'] || $this->contentType->isTaxonomy()) {
-            $this->form->status = App\Enums\EntryStatus::Published->value;
+            $this->form->status = Hata\Enums\EntryStatus::Published->value;
         }
     }
 

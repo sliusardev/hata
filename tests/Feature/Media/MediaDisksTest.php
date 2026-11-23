@@ -1,10 +1,10 @@
 <?php
 
-use App\Enums\MediaKind;
-use App\Models\Media;
-use App\Support\Media\MediaDisks;
-use App\Support\Media\MediaPaths;
 use Carbon\CarbonImmutable;
+use Hata\Enums\MediaKind;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Media\MediaPaths;
 
 beforeEach(function () {
     config(['filesystems.disks.s3.driver' => 's3']);

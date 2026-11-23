@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Hata\Console\Commands;
 
-use App\Actions\Users\CreateSuperAdmin;
-use App\Concerns\ProfileValidationRules;
+use Hata\Actions\Users\CreateSuperAdmin;
+use Hata\Concerns\ProfileValidationRules;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

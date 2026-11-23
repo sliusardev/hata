@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\Media\MediaTypes;
+use Hata\Support\Media\MediaTypes;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;

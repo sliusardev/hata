@@ -1,15 +1,15 @@
 <?php
 
-use App\Actions\Content\LinkTranslations;
-use App\Actions\Content\UnlinkTranslation;
-use App\Actions\Content\UpdateEntry;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
-use App\Models\EntryGroup;
-use App\Models\EntryRedirect;
 use App\Models\User;
-use App\Support\Content\EntryPaths;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Content\LinkTranslations;
+use Hata\Actions\Content\UnlinkTranslation;
+use Hata\Actions\Content\UpdateEntry;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
+use Hata\Models\EntryRedirect;
+use Hata\Support\Content\EntryPaths;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;

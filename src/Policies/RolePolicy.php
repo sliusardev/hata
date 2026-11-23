@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Policies;
+namespace Hata\Policies;
 
-use App\Models\Role;
 use App\Models\User;
-use App\Support\Permissions\AccessRules;
+use Hata\Models\Role;
+use Hata\Support\Permissions\AccessRules;
 
 /**
  * Permission checks for managing roles. Protection rules that also bind super admins
- * live in App\Support\Permissions\AccessRules and are enforced by the actions.
+ * live in Hata\Support\Permissions\AccessRules and are enforced by the actions.
  */
 class RolePolicy
 {

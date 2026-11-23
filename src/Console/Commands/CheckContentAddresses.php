@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Hata\Console\Commands;
 
-use App\Models\Entry;
-use App\Support\Content\ContentTypes;
-use App\Support\Localization\ContentLocales;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Localization\ContentLocales;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

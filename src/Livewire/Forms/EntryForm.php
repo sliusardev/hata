@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Livewire\Forms;
+namespace Hata\Livewire\Forms;
 
-use App\Enums\EntryStatus;
-use App\Models\Entry;
-use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypes;
 use DateTimeInterface;
+use Hata\Enums\EntryStatus;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypes;
 use Illuminate\Support\Facades\Date;
 use Livewire\Form;
 

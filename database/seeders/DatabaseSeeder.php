@@ -1,9 +1,9 @@
 <?php
 
-namespace Database\Seeders;
+namespace Hata\Database\Seeders;
 
-use App\Actions\Users\CreateSuperAdmin;
 use App\Models\User;
+use Hata\Actions\Users\CreateSuperAdmin;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;

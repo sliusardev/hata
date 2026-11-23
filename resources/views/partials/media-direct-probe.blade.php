@@ -9,9 +9,9 @@
     $forceMediaDirectProbe = $forceMediaDirectProbe ?? request()->routeIs('admin.settings.edit');
 
     if (auth()->user()?->can('settings.edit')
-        && \App\Support\Media\MediaDisks::publishes((string) config('media.disk'))
-        && \App\Support\Media\MediaDisks::publicUrl(\App\Support\Media\MediaDisks::PUBLIC) !== null) {
-        $directServing = app(\App\Support\Media\DirectServing::class);
+        && \Hata\Support\Media\MediaDisks::publishes((string) config('media.disk'))
+        && \Hata\Support\Media\MediaDisks::publicUrl(\Hata\Support\Media\MediaDisks::PUBLIC) !== null) {
+        $directServing = app(\Hata\Support\Media\DirectServing::class);
 
         $due = $directServing->dueForCheck();
 

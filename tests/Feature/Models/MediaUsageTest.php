@@ -1,14 +1,14 @@
 <?php
 
-use App\Actions\Media\DeleteFolder;
-use App\Actions\Media\DeleteMedia;
-use App\Models\Entry;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaUsage;
-use App\Models\Setting;
 use App\Models\User;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Media\DeleteFolder;
+use Hata\Actions\Media\DeleteMedia;
+use Hata\Models\Entry;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaUsage;
+use Hata\Models\Setting;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;

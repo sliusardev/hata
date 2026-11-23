@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Enums\OptimizeOutcome;
-use App\Exceptions\MediaChangedException;
-use App\Exceptions\OptimizationDisabledException;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\ImageEdits;
-use App\Support\Media\MediaBatchRun;
-use App\Support\Media\MediaSource;
-use App\Support\Media\OptimizationRun;
-use App\Support\Media\OptimizationRunStore;
+use Hata\Enums\OptimizeOutcome;
+use Hata\Exceptions\MediaChangedException;
+use Hata\Exceptions\OptimizationDisabledException;
+use Hata\Models\Media;
+use Hata\Support\Media\ImageEdits;
+use Hata\Support\Media\MediaBatchRun;
+use Hata\Support\Media\MediaSource;
+use Hata\Support\Media\OptimizationRun;
+use Hata\Support\Media\OptimizationRunStore;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use InvalidArgumentException;

@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Enums\EntryStatus;
-use App\Models\Entry;
-use App\Rules\EntrySlug;
-use App\Rules\MediaSelection;
 use Carbon\CarbonImmutable;
 use Closure;
+use Hata\Enums\EntryStatus;
+use Hata\Models\Entry;
+use Hata\Rules\EntrySlug;
+use Hata\Rules\MediaSelection;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Date;

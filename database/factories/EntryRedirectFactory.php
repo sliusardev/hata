@@ -1,9 +1,9 @@
 <?php
 
-namespace Database\Factories;
+namespace Hata\Database\Factories;
 
-use App\Models\Entry;
-use App\Models\EntryRedirect;
+use Hata\Models\Entry;
+use Hata\Models\EntryRedirect;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -11,6 +11,11 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class EntryRedirectFactory extends Factory
 {
+    /**
+     * @var class-string<EntryRedirect>
+     */
+    protected $model = EntryRedirect::class;
+
     /**
      * @return array<string, mixed>
      */

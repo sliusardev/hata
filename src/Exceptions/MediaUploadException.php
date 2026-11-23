@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Exceptions;
+namespace Hata\Exceptions;
 
-use App\Enums\MediaKind;
+use Hata\Enums\MediaKind;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Number;
 use Throwable;

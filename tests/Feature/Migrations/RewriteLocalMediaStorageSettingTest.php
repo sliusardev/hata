@@ -1,7 +1,8 @@
 <?php
 
-use App\Models\Setting;
-use App\Support\Settings\SiteSettings;
+use Hata\Hata;
+use Hata\Models\Setting;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 
@@ -9,7 +10,7 @@ uses(RefreshDatabase::class);
 
 function runStorageRewrite(): void
 {
-    (require glob(database_path('migrations/*_rewrite_local_media_storage_setting.php'))[0])->up();
+    (require glob(Hata::path('database/migrations/*_rewrite_local_media_storage_setting.php'))[0])->up();
 }
 
 it('turns a stored local storage into public and forgets the cached settings', function () {

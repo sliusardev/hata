@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
 /**
  * Estimates whether decoding an image of the given size fits in the remaining PHP memory.

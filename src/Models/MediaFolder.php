@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
-use Database\Factories\MediaFolderFactory;
+use Hata\Database\Factories\MediaFolderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property-read int|null $media_count
  */
 #[Fillable(['parent_id', 'name'])]
+#[UseFactory(MediaFolderFactory::class)]
 class MediaFolder extends Model
 {
     /** @use HasFactory<MediaFolderFactory> */

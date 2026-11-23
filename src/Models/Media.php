@@ -1,16 +1,18 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
-use App\Actions\Media\OptimizeImage;
-use App\Enums\MediaKind;
-use App\Models\Concerns\HasSearchIndex;
-use App\Support\Localization\ContentLocales;
-use App\Support\Media\DirectServing;
-use App\Support\Media\MediaDisks;
-use Database\Factories\MediaFactory;
+use App\Models\User;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Database\Factories\MediaFactory;
+use Hata\Enums\MediaKind;
+use Hata\Models\Concerns\HasSearchIndex;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Media\DirectServing;
+use Hata\Support\Media\MediaDisks;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -54,6 +56,7 @@ use Illuminate\Support\Str;
     'width', 'height', 'original_size', 'uploaded_extension', 'optimized_with', 'optimize_failure', 'animated', 'edits', 'version', 'title', 'alt',
 ])]
 #[Hidden(['search_index'])]
+#[UseFactory(MediaFactory::class)]
 class Media extends Model
 {
     /** @use HasFactory<MediaFactory> */

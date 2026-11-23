@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Settings;
+namespace Hata\Support\Settings;
 
-use App\Models\Setting;
 use Closure;
+use Hata\Models\Setting;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;

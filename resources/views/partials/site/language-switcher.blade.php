@@ -3,7 +3,7 @@
     current page in it when there is one (the alternates), else to that language's home page.
 --}}
 @php
-    $contentLocales = app(App\Support\Localization\ContentLocales::class);
+    $contentLocales = app(Hata\Support\Localization\ContentLocales::class);
     $languages = $contentLocales->active();
     $alternates = $contentLocales->alternates();
     $current = $contentLocales->current();

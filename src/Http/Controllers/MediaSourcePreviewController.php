@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace Hata\Http\Controllers;
 
-use App\Models\Media;
-use App\Support\Media\MediaSource;
-use App\Support\Media\MemoryGuard;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaSource;
+use Hata\Support\Media\MemoryGuard;
 use Illuminate\Image\ImageException;
 use Illuminate\Support\Facades\Image;
 use Imagick;

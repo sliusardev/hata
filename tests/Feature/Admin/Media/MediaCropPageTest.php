@@ -1,12 +1,12 @@
 <?php
 
-use App\Actions\Media\CropMedia;
-use App\Exceptions\MediaChangedException;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaUsage;
 use App\Models\User;
-use App\Support\Media\MemoryGuard;
+use Hata\Actions\Media\CropMedia;
+use Hata\Exceptions\MediaChangedException;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaUsage;
+use Hata\Support\Media\MemoryGuard;
 use Illuminate\Support\Facades\Image;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;

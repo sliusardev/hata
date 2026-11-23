@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Middleware;
+namespace Hata\Http\Middleware;
 
-use App\Support\Content\ContentTypes;
-use App\Support\Localization\ContentLocales;
 use Closure;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Localization\ContentLocales;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Enums\MediaKind;
-use App\Models\Media;
+use Hata\Enums\MediaKind;
+use Hata\Models\Media;
 use InvalidArgumentException;
 
 /**

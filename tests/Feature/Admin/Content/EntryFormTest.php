@@ -1,13 +1,13 @@
 <?php
 
-use App\Enums\EntryStatus;
-use App\Models\Entry;
-use App\Models\Media;
-use App\Models\MediaUsage;
 use App\Models\User;
-use App\Support\Content\ContentTypes;
-use App\Support\Settings\SiteSettings;
-use App\Support\Toast;
+use Hata\Enums\EntryStatus;
+use Hata\Models\Entry;
+use Hata\Models\Media;
+use Hata\Models\MediaUsage;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Settings\SiteSettings;
+use Hata\Support\Toast;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

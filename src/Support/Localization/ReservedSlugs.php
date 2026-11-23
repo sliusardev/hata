@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Localization;
+namespace Hata\Support\Localization;
 
-use App\Http\Middleware\SetContentLocale;
+use Hata\Http\Middleware\SetContentLocale;
 use Illuminate\Support\Facades\Route;
 
 /**

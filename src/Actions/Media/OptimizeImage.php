@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Support\Media\CaptureThumbnail;
-use App\Support\Media\ImageEdits;
-use App\Support\Media\MediaTypes;
-use App\Support\Media\MemoryGuard;
-use App\Support\Media\OptimizedImage;
-use App\Support\Media\StripMetadata;
 use finfo;
+use Hata\Support\Media\CaptureThumbnail;
+use Hata\Support\Media\ImageEdits;
+use Hata\Support\Media\MediaTypes;
+use Hata\Support\Media\MemoryGuard;
+use Hata\Support\Media\OptimizedImage;
+use Hata\Support\Media\StripMetadata;
 use Illuminate\Image\Image as PendingImage;
 use Illuminate\Image\ImageException;
 use Illuminate\Support\Facades\Image;

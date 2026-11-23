@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Content\Fields;
+namespace Hata\Support\Content\Fields;
 
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Carbon;

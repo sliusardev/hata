@@ -1,8 +1,8 @@
 <?php
 
-use App\Actions\Settings\TestStorageConnection;
 use Aws\Command;
 use Aws\S3\Exception\S3Exception;
+use Hata\Actions\Settings\TestStorageConnection;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\DirectoryListing;

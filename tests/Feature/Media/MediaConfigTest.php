@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Role;
+use Hata\Models\Role;
 
 it('uses imagick when the extension is loaded, otherwise gd', function () {
     expect(config('images.default'))->toBe(extension_loaded('imagick') ? 'imagick' : 'gd');

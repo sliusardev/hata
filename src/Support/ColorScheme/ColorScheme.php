@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\ColorScheme;
+namespace Hata\Support\ColorScheme;
 
 /**
  * The color scheme of the admin panel and the sign-in pages: an accent color and a base gray.

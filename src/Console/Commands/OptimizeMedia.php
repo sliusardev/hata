@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Hata\Console\Commands;
 
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Actions\Media\OptimizeImage;
-use App\Enums\OptimizeOutcome;
-use App\Exceptions\OptimizationDisabledException;
-use App\Support\Media\MediaBatchRun;
-use App\Support\Media\OptimizationRun;
-use App\Support\Media\OptimizationRunStore;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Enums\OptimizeOutcome;
+use Hata\Exceptions\OptimizationDisabledException;
+use Hata\Support\Media\MediaBatchRun;
+use Hata\Support\Media\OptimizationRun;
+use Hata\Support\Media\OptimizationRunStore;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 

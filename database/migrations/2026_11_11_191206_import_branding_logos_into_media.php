@@ -1,11 +1,11 @@
 <?php
 
-use App\Actions\Media\UploadMedia;
-use App\Actions\Settings\SetLogo;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\Setting;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Media\UploadMedia;
+use Hata\Actions\Settings\SetLogo;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\Setting;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Env;

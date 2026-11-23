@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Hata\Console\Commands;
 
-use App\Actions\Media\MediaBatchEngine;
-use App\Support\Media\MediaBatchRun;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Media\MediaBatchEngine;
+use Hata\Support\Media\MediaBatchRun;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Sleep;
 

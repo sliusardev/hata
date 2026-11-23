@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Actions\Content;
+namespace Hata\Actions\Content;
 
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
-use App\Models\EntryGroup;
 use App\Models\User;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;

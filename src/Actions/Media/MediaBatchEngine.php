@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Models\Media;
-use App\Support\Media\MediaBatchRun;
-use App\Support\Media\MediaBatchRunStore;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaBatchRun;
+use Hata\Support\Media\MediaBatchRunStore;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 

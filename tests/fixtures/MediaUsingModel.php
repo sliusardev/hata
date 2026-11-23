@@ -2,8 +2,8 @@
 
 namespace Tests\Fixtures;
 
-use App\Contracts\UsesMedia;
 use App\Models\User;
+use Hata\Contracts\UsesMedia;
 use Illuminate\Database\Eloquent\Model;
 
 /**

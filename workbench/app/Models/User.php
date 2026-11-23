@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\SystemRole;
-use App\Models\Concerns\HasSearchIndex;
 use Database\Factories\UserFactory;
+use Hata\Enums\SystemRole;
+use Hata\Models\Concerns\HasSearchIndex;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;

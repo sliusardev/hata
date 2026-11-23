@@ -44,7 +44,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Colors of the admin panel and the sign-in pages, set in the site settings.
-    | See App\Support\ColorScheme\ColorScheme.
+    | See Hata\Support\ColorScheme\ColorScheme.
     |
     */
 

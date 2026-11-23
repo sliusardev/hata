@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Permissions;
+namespace Hata\Support\Permissions;
 
 use InvalidArgumentException;
 

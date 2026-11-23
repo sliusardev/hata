@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Concerns;
+namespace Hata\Concerns;
 
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;

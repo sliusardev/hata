@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Policies;
+namespace Hata\Policies;
 
 use App\Models\User;
 
 /**
  * Permission checks for managing users. Protection rules that also bind super admins
- * (rules 2–5) live in App\Support\Permissions\AccessRules and are enforced by the actions.
+ * (rules 2–5) live in Hata\Support\Permissions\AccessRules and are enforced by the actions.
  */
 class UserPolicy
 {

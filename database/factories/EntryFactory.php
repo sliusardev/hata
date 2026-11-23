@@ -1,10 +1,10 @@
 <?php
 
-namespace Database\Factories;
+namespace Hata\Database\Factories;
 
-use App\Enums\EntryStatus;
-use App\Models\Entry;
-use App\Models\EntryGroup;
+use Hata\Enums\EntryStatus;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -14,6 +14,11 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class EntryFactory extends Factory
 {
+    /**
+     * @var class-string<Entry>
+     */
+    protected $model = Entry::class;
+
     /**
      * @return array<string, mixed>
      */

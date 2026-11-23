@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Maintenance;
+namespace Hata\Support\Maintenance;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\File;

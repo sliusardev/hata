@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Jobs;
+namespace Hata\Jobs;
 
-use App\Actions\Media\MediaBatchEngine;
-use App\Support\Media\MediaBatchRun;
 use Carbon\CarbonInterface;
+use Hata\Actions\Media\MediaBatchEngine;
+use Hata\Support\Media\MediaBatchRun;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 

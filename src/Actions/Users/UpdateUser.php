@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Users;
+namespace Hata\Actions\Users;
 
-use App\Exceptions\ProtectedActionException;
 use App\Models\User;
-use App\Support\Permissions\AccessRules;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Support\Permissions\AccessRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;

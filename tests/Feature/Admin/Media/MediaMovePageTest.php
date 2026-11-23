@@ -1,10 +1,10 @@
 <?php
 
-use App\Actions\Media\MoveMediaToDisk;
-use App\Jobs\MoveMediaBatch;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\DiskMoveRunStore;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Jobs\MoveMediaBatch;
+use Hata\Models\Media;
+use Hata\Support\Media\DiskMoveRunStore;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;

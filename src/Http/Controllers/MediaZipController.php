@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace Hata\Http\Controllers;
 
-use App\Actions\Media\ZipMedia;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\MediaIds;
+use Hata\Actions\Media\ZipMedia;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaIds;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use ZipArchive;

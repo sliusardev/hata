@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Livewire\Admin;
+namespace Hata\Livewire\Admin;
 
-use App\Livewire\Forms\EntryForm;
-use App\Models\Entry;
-use App\Models\Media;
-use App\Support\Content\BodySanitizer;
-use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\EntryAuthors;
-use App\Support\Content\EntryPaths;
-use App\Support\Content\Fields\RichText;
-use App\Support\Localization\ContentLocales;
-use App\Support\Localization\Language;
+use Hata\Livewire\Forms\EntryForm;
+use Hata\Models\Entry;
+use Hata\Models\Media;
+use Hata\Support\Content\BodySanitizer;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\EntryAuthors;
+use Hata\Support\Content\EntryPaths;
+use Hata\Support\Content\Fields\RichText;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Localization\Language;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;

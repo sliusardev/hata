@@ -1,7 +1,7 @@
 {{-- The dialogs of Site settings → Languages. Outside the settings form, so Enter in the search never submits it. --}}
 @php
-    $confirmLanguage = $languageCode === '' ? null : app(App\Support\Localization\ContentLocales::class)->language($languageCode);
-    $defaultLanguage = app(App\Support\Localization\ContentLocales::class)->default();
+    $confirmLanguage = $languageCode === '' ? null : app(Hata\Support\Localization\ContentLocales::class)->language($languageCode);
+    $defaultLanguage = app(Hata\Support\Localization\ContentLocales::class)->default();
 @endphp
 
 <flux:modal name="add-language" class="w-full max-w-lg">

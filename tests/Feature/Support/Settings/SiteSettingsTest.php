@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Setting;
-use App\Support\Settings\SiteSettings;
+use Hata\Models\Setting;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Facades\Cache;

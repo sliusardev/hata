@@ -219,8 +219,8 @@
 </x-confirm-modal>
 
 @php
-    $replaceTarget = $this->replacingId === null ? null : App\Models\Media::query()->withCount('usages')->find($this->replacingId);
-    $restoreTarget = $this->restoringId === null ? null : App\Models\Media::query()->withCount('usages')->find($this->restoringId);
+    $replaceTarget = $this->replacingId === null ? null : Hata\Models\Media::query()->withCount('usages')->find($this->replacingId);
+    $restoreTarget = $this->restoringId === null ? null : Hata\Models\Media::query()->withCount('usages')->find($this->restoringId);
 @endphp
 
 <x-confirm-modal

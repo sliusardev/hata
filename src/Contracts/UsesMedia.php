@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Contracts;
+namespace Hata\Contracts;
 
 use App\Models\User;
 

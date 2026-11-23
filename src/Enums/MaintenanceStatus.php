@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace Hata\Enums;
 
 enum MaintenanceStatus: string
 {

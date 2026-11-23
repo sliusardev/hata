@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;

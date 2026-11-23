@@ -1,10 +1,10 @@
 <?php
 
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Models\Media;
-use App\Models\Setting;
-use App\Support\Media\OptimizationRunStore;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Models\Media;
+use Hata\Models\Setting;
+use Hata\Support\Media\OptimizationRunStore;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;

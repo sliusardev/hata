@@ -1,14 +1,14 @@
 <?php
 
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Actions\Media\OptimizeImage;
-use App\Actions\Media\RebuildMediaFile;
-use App\Enums\OptimizeOutcome;
-use App\Jobs\OptimizeExistingMediaBatch;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Media\OptimizationRun;
-use App\Support\Media\OptimizationRunStore;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Actions\Media\RebuildMediaFile;
+use Hata\Enums\OptimizeOutcome;
+use Hata\Jobs\OptimizeExistingMediaBatch;
+use Hata\Models\Media;
+use Hata\Support\Media\OptimizationRun;
+use Hata\Support\Media\OptimizationRunStore;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;

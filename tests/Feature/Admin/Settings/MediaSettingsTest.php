@@ -1,12 +1,12 @@
 <?php
 
-use App\Actions\Media\OptimizeImage;
-use App\Models\Media;
-use App\Models\Setting;
 use App\Models\User;
-use App\Support\Media\OptimizationRun;
-use App\Support\Media\OptimizationRunStore;
-use App\Support\Media\ServerCapabilities;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Models\Media;
+use Hata\Models\Setting;
+use Hata\Support\Media\OptimizationRun;
+use Hata\Support\Media\OptimizationRunStore;
+use Hata\Support\Media\ServerCapabilities;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 

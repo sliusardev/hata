@@ -1,17 +1,18 @@
 <?php
 
-use App\Actions\Media\DeleteFolder;
-use App\Actions\Media\DeleteMedia;
-use App\Actions\Settings\RemoveLogo;
-use App\Actions\Settings\SetLogo;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaUsage;
-use App\Models\Setting;
 use App\Models\User;
-use App\Support\Settings\SiteLogo;
-use App\Support\Settings\SiteSettings;
-use App\Support\Toast;
+use Hata\Actions\Media\DeleteFolder;
+use Hata\Actions\Media\DeleteMedia;
+use Hata\Actions\Settings\RemoveLogo;
+use Hata\Actions\Settings\SetLogo;
+use Hata\Hata;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaUsage;
+use Hata\Models\Setting;
+use Hata\Support\Settings\SiteLogo;
+use Hata\Support\Settings\SiteSettings;
+use Hata\Support\Toast;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -311,6 +312,6 @@ test('without media.view the logo slots show the picker hint and no way to brows
 
 test('the old logo route and upload class are gone', function () {
     $this->get('/branding/logo/light')->assertNotFound();
-    expect(file_exists(app_path('Actions/Settings/UploadLogo.php')))->toBeFalse()
+    expect(file_exists(Hata::path('src/Actions/Settings/UploadLogo.php')))->toBeFalse()
         ->and(Route::has('branding.logo'))->toBeFalse();
 });

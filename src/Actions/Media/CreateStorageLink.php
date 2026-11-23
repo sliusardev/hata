@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Exceptions\StorageLinkException;
 use App\Models\User;
-use App\Support\Media\DirectServing;
+use Hata\Exceptions\StorageLinkException;
+use Hata\Support\Media\DirectServing;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Gate;
 use Throwable;

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Models\MediaFolder;
+use Hata\Models\MediaFolder;
 use Illuminate\Validation\ValidationException;
 
 /**

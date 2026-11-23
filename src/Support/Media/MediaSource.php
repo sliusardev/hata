@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Models\Media;
+use Hata\Models\Media;
 use Illuminate\Support\Facades\Image;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;

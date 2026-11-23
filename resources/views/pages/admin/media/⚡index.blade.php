@@ -1,26 +1,26 @@
 <?php
 
-use App\Actions\Media\CreateFolder;
-use App\Actions\Media\DeleteFolder;
-use App\Actions\Media\DeleteMedia;
-use App\Actions\Media\MoveFolder;
-use App\Actions\Media\MoveMedia;
-use App\Actions\Media\PruneMediaDeletions;
-use App\Actions\Media\RenameFolder;
-use App\Actions\Media\ReplaceMediaFile;
-use App\Actions\Media\RestoreOriginal;
-use App\Actions\Media\UpdateMedia;
-use App\Actions\Media\ZipMedia;
-use App\Exceptions\MediaChangedException;
-use App\Exceptions\MediaUploadException;
-use App\Livewire\Forms\MediaDetailsForm;
-use App\Models\Media;
-use App\Models\MediaFolder;
+use Hata\Actions\Media\CreateFolder;
+use Hata\Actions\Media\DeleteFolder;
+use Hata\Actions\Media\DeleteMedia;
+use Hata\Actions\Media\MoveFolder;
+use Hata\Actions\Media\MoveMedia;
+use Hata\Actions\Media\PruneMediaDeletions;
+use Hata\Actions\Media\RenameFolder;
+use Hata\Actions\Media\ReplaceMediaFile;
+use Hata\Actions\Media\RestoreOriginal;
+use Hata\Actions\Media\UpdateMedia;
+use Hata\Actions\Media\ZipMedia;
+use Hata\Exceptions\MediaChangedException;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Livewire\Forms\MediaDetailsForm;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use App\Models\User;
-use App\Support\Media\MediaFilters;
-use App\Support\Media\MediaIds;
-use App\Support\Media\StoreUploadedMedia;
-use App\Support\Media\UploaderConfig;
+use Hata\Support\Media\MediaFilters;
+use Hata\Support\Media\MediaIds;
+use Hata\Support\Media\StoreUploadedMedia;
+use Hata\Support\Media\UploaderConfig;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -1553,8 +1553,8 @@ new #[Title('media.index.title')] class extends Component {
 }; ?>
 
 @php
-    $canManageFolders = auth()->user()->can('manageFolders', App\Models\Media::class);
-    $canUpload = auth()->user()->can('create', App\Models\Media::class);
+    $canManageFolders = auth()->user()->can('manageFolders', Hata\Models\Media::class);
+    $canUpload = auth()->user()->can('create', Hata\Models\Media::class);
     $uploaderConfig = $this->uploaderConfig;
 @endphp
 
@@ -1599,7 +1599,7 @@ new #[Title('media.index.title')] class extends Component {
         @endif
     </div>
 
-    @if (auth()->user()->can('settings.edit') && \App\Support\Media\MediaDisks::publishes((string) config('media.disk')) && in_array(app(\App\Support\Media\DirectServing::class)->state(), ['link_missing', 'unreachable'], true))
+    @if (auth()->user()->can('settings.edit') && \Hata\Support\Media\MediaDisks::publishes((string) config('media.disk')) && in_array(app(\Hata\Support\Media\DirectServing::class)->state(), ['link_missing', 'unreachable'], true))
         <flux:callout icon="exclamation-triangle" variant="warning" data-test="direct-warning">
             <flux:callout.text>
                 {{ __('media.index.direct_warning') }}
@@ -1621,7 +1621,7 @@ new #[Title('media.index.title')] class extends Component {
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:flex">
             <flux:select wire:model.live="type" :aria-label="__('media.index.filters.type')" class="lg:w-44">
                 <flux:select.option value="">{{ __('media.index.filters.all_types') }}</flux:select.option>
-                @foreach (App\Enums\MediaKind::cases() as $kind)
+                @foreach (Hata\Enums\MediaKind::cases() as $kind)
                     <flux:select.option :value="$kind->value">{{ __('media.index.types.'.$kind->value) }}</flux:select.option>
                 @endforeach
             </flux:select>
@@ -1700,7 +1700,7 @@ new #[Title('media.index.title')] class extends Component {
                 @if ($selected !== [])
                     @include('partials.admin.media.bulk-bar', [
                         'count' => count($selected),
-                        'canMove' => auth()->user()->can('manageFolders', App\Models\Media::class),
+                        'canMove' => auth()->user()->can('manageFolders', Hata\Models\Media::class),
                         'folders' => $this->folderList,
                     ])
                 @endif
@@ -1716,7 +1716,7 @@ new #[Title('media.index.title')] class extends Component {
             @endif
 
             @island(name: 'files', always: true)
-                @php $canMoveFiles = auth()->user()->can('manageFolders', App\Models\Media::class); @endphp
+                @php $canMoveFiles = auth()->user()->can('manageFolders', Hata\Models\Media::class); @endphp
                 @if ($this->media->isEmpty() && $this->hasSubfolders)
                     <flux:text size="sm" variant="subtle" data-test="media-no-files">{{ __('media.index.subfolders.no_files') }}</flux:text>
                 @elseif ($this->media->isEmpty())

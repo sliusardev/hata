@@ -1,14 +1,15 @@
 <?php
 
-use App\Actions\Media\OptimizeImage;
-use App\Actions\Media\UploadMedia;
-use App\Enums\MediaKind;
-use App\Exceptions\MediaUploadException;
-use App\Models\Media;
-use App\Models\MediaFolder;
 use App\Models\User;
-use App\Support\Media\MemoryGuard;
-use App\Support\Media\OptimizedImage;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Actions\Media\UploadMedia;
+use Hata\Enums\MediaKind;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Hata;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Support\Media\MemoryGuard;
+use Hata\Support\Media\OptimizedImage;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Storage;
 
@@ -147,7 +148,7 @@ it('deletes written files when the insert fails', function () {
 });
 
 it('rejects heic the server cannot read', function () {
-    $bytes = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
+    $bytes = (string) file_get_contents(Hata::path('tests/fixtures/media/sample.heic'));
     $this->mock(OptimizeImage::class)
         ->shouldReceive('handle')
         ->andReturn(new OptimizedImage($bytes, 'image/heic', 'heic', null, null, optimized: false, failure: 'unreadable'));
@@ -178,7 +179,7 @@ it('records the extension the user picked when the browser converted the file', 
 ]);
 
 it('rejects heic whenever the optimizer could not convert it', function (OptimizedImage $result) {
-    $bytes = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
+    $bytes = (string) file_get_contents(Hata::path('tests/fixtures/media/sample.heic'));
     $this->mock(OptimizeImage::class)->shouldReceive('handle')->andReturn($result);
 
     expect(fn () => app(UploadMedia::class)->handle($this->actor, uploadedImage('IMG_1.heic', $bytes)))

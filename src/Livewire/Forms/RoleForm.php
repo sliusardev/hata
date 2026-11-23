@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Livewire\Forms;
+namespace Hata\Livewire\Forms;
 
-use App\Models\Role;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Models\Role;
+use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Form;

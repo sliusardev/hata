@@ -1,11 +1,11 @@
 <?php
 
-use App\Actions\Media\UploadMedia;
-use App\Models\Media;
-use App\Models\MediaFolder;
-use App\Models\MediaUsage;
 use App\Models\User;
-use App\Support\Media\MemoryGuard;
+use Hata\Actions\Media\UploadMedia;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Models\MediaUsage;
+use Hata\Support\Media\MemoryGuard;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Js;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;

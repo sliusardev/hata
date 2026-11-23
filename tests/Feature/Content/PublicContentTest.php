@@ -1,23 +1,25 @@
 <?php
 
-use App\Http\Middleware\LookUpContent;
-use App\Http\Middleware\SetContentLocale;
-use App\Models\Entry;
-use App\Models\EntryRedirect;
-use App\Models\Media;
 use App\Models\User;
-use App\Support\Content\ContentRouter;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\EntryPaths;
-use App\Support\Localization\ContentLocales;
-use App\Support\Localization\ReservedSlugs;
-use App\Support\Settings\SiteSettings;
+use Hata\Http\Middleware\LookUpContent;
+use Hata\Http\Middleware\SetContentLocale;
+use Hata\Models\Entry;
+use Hata\Models\EntryRedirect;
+use Hata\Models\Media;
+use Hata\Support\Content\ContentRouter;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\EntryPaths;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Localization\ReservedSlugs;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Http\Request;
 use Illuminate\Routing\CompiledRouteCollection;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\Fixtures\ProductsType;
@@ -181,6 +183,13 @@ describe('pages', function () {
 
     it('is a plain page without Livewire, Flux or the admin\'s scripts', function () {
         aboutPages(['body' => '<p>Text</p>']);
+        // The real Vite with a manifest of its own, so the page's stylesheets can be told apart.
+        $this->withVite();
+        $public = sys_get_temp_dir().'/hata-public-'.Str::random(12);
+        File::ensureDirectoryExists($public.'/build');
+        File::put($public.'/build/manifest.json', (string) json_encode(collect(['resources/css/app.css', 'resources/css/site.css', 'resources/js/app.js'])
+            ->mapWithKeys(fn (string $src): array => [$src => ['file' => 'assets/'.basename($src), 'src' => $src, 'isEntry' => true]])));
+        app()->usePublicPath($public);
         // A running `npm run dev` leaves `public/hot`, and Vite then adds its client script to every page.
         Vite::useHotFile(storage_path('framework/testing/vite.hot'));
         // Livewire injects its scripts into a response only after a component rendered in the same request; one test
@@ -196,6 +205,8 @@ describe('pages', function () {
             ->and($html)->toContain('rich-text-content')
             ->and($html)->toContain(Vite::asset('resources/css/site.css'))
             ->and($html)->not->toContain(Vite::asset('resources/css/app.css'));
+
+        File::deleteDirectory($public);
     });
 });
 

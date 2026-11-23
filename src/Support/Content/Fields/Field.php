@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Content\Fields;
+namespace Hata\Support\Content\Fields;
 
 /**
  * An extra field of a content type. Converts between the form value and the stored value.

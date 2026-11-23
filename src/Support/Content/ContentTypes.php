@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
-use App\Support\Localization\LanguageCatalog;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Support\Localization\LanguageCatalog;
+use Hata\Support\Permissions\PermissionRegistry;
 use InvalidArgumentException;
 
 /**

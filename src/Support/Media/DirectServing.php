@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Support\Settings\SiteSettings;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;

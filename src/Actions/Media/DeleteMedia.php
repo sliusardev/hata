@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Models\Media;
-use App\Models\MediaUsage;
 use App\Models\User;
-use App\Support\Media\MediaDisks;
+use Hata\Models\Media;
+use Hata\Models\MediaUsage;
+use Hata\Support\Media\MediaDisks;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;

@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Users\SyncUserRoles;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Role;
 use App\Models\User;
+use Hata\Actions\Users\SyncUserRoles;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Role;
 
 beforeEach(fn () => seedRolesAndPermissions());
 

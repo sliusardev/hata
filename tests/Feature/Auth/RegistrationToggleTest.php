@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\Fortify\CreateNewUser;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Fortify\CreateNewUser;
+use Hata\Support\Settings\SiteSettings;
 
 test('registration is disabled by default', function () {
     expect(config('admin.registration_enabled'))->toBeFalse();

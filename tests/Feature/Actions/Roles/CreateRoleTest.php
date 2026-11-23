@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Roles\CreateRole;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Role;
 use App\Models\User;
+use Hata\Actions\Roles\CreateRole;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Role;
 use Illuminate\Auth\Access\AuthorizationException;
 
 beforeEach(fn () => seedRolesAndPermissions());

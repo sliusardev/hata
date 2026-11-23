@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Media\MoveMedia;
-use App\Models\Media;
-use App\Models\MediaFolder;
 use App\Models\User;
+use Hata\Actions\Media\MoveMedia;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

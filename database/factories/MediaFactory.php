@@ -1,10 +1,10 @@
 <?php
 
-namespace Database\Factories;
+namespace Hata\Database\Factories;
 
-use App\Enums\MediaKind;
-use App\Models\Media;
-use App\Models\MediaFolder;
+use Hata\Enums\MediaKind;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -15,6 +15,11 @@ use Illuminate\Support\Str;
  */
 class MediaFactory extends Factory
 {
+    /**
+     * @var class-string<Media>
+     */
+    protected $model = Media::class;
+
     /**
      * @return array<string, mixed>
      */

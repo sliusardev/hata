@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Content\Fields;
+namespace Hata\Support\Content\Fields;
 
 class Textarea extends Field
 {

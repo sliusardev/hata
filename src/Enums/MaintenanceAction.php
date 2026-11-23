@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace Hata\Enums;
 
 /**
  * The fixed list of actions the maintenance page can run. Nothing outside it is ever passed to Artisan.

@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Rules;
+namespace Hata\Rules;
 
-use App\Models\Entry;
-use App\Support\Content\ContentType;
-use App\Support\Content\EntryPaths;
 use Closure;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\EntryPaths;
 use Illuminate\Contracts\Validation\ValidationRule;
 
 /**

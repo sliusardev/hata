@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace Hata\Support;
 
 /**
  * Toast notifications that survive a redirect.

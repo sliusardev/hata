@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Content;
+namespace Hata\Support\Content;
 
 /**
  * What ContentTypeGenerator did: the class it wrote, the files it changed, and the lines it could not place.

@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\ContentController;
-use App\Http\Controllers\MediaController;
-use App\Http\Controllers\StaticMediaFallbackController;
-use App\Http\Middleware\LookUpContent;
-use App\Support\Content\ContentRouter;
+use Hata\Http\Controllers\ContentController;
+use Hata\Http\Controllers\MediaController;
+use Hata\Http\Controllers\StaticMediaFallbackController;
+use Hata\Http\Middleware\LookUpContent;
+use Hata\Support\Content\ContentRouter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 

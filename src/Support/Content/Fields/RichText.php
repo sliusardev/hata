@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Support\Content\Fields;
+namespace Hata\Support\Content\Fields;
 
-use App\Support\Content\BodySanitizer;
-use App\Support\Content\EntryInput;
 use Closure;
+use Hata\Support\Content\BodySanitizer;
+use Hata\Support\Content\EntryInput;
 
 /**
  * Formatted text edited in the same editor as the body, and kept to the same rules: cleaned on save by

@@ -1,10 +1,10 @@
 <?php
 
-use App\Models\Entry;
-use App\Models\EntryRedirect;
-use App\Rules\EntrySlug;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\EntryPaths;
+use Hata\Models\Entry;
+use Hata\Models\EntryRedirect;
+use Hata\Rules\EntrySlug;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\EntryPaths;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Tests\Fixtures\ProductsType;

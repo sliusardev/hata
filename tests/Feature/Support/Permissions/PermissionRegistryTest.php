@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\SystemRole;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Enums\SystemRole;
+use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Support\Facades\Lang;
 
 test('it loads the permissions from the configuration', function () {

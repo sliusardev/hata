@@ -1,13 +1,13 @@
 <?php
 
-use App\Actions\Media\CropMedia;
-use App\Actions\Media\ReplaceMediaFile;
-use App\Actions\Media\UploadMedia;
-use App\Exceptions\MediaWriteException;
-use App\Models\Media;
-use App\Models\MediaPendingDeletion;
 use App\Models\User;
-use App\Support\Media\MediaPaths;
+use Hata\Actions\Media\CropMedia;
+use Hata\Actions\Media\ReplaceMediaFile;
+use Hata\Actions\Media\UploadMedia;
+use Hata\Exceptions\MediaWriteException;
+use Hata\Models\Media;
+use Hata\Models\MediaPendingDeletion;
+use Hata\Support\Media\MediaPaths;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\RecordingDisk;
 

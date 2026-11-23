@@ -27,7 +27,7 @@ return [
 
     /*
     | Literal strings used inside Flux UI components. Mapped by
-    | App\Support\Translation\VendorTranslations.
+    | Hata\Support\Translation\VendorTranslations.
     */
     'flux' => [
         'character_count' => 'Character {current} of {total}',

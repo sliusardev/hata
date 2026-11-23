@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Actions\Media\UploadMedia;
-use App\Exceptions\MediaUploadException;
-use App\Models\Media;
-use App\Models\MediaFolder;
 use App\Models\User;
+use Hata\Actions\Media\UploadMedia;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

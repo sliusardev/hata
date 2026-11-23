@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Support\Settings;
+namespace Hata\Support\Settings;
 
-use App\Models\Media;
-use App\Support\Media\MediaAcceptance;
-use App\Support\Media\MediaDisks;
 use ArrayObject;
+use Hata\Models\Media;
+use Hata\Support\Media\MediaAcceptance;
+use Hata\Support\Media\MediaDisks;
 use Illuminate\Support\Facades\Storage;
 
 /**

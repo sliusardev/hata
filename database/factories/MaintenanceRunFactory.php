@@ -1,10 +1,10 @@
 <?php
 
-namespace Database\Factories;
+namespace Hata\Database\Factories;
 
-use App\Enums\MaintenanceAction;
-use App\Enums\MaintenanceStatus;
-use App\Models\MaintenanceRun;
+use Hata\Enums\MaintenanceAction;
+use Hata\Enums\MaintenanceStatus;
+use Hata\Models\MaintenanceRun;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -12,6 +12,11 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class MaintenanceRunFactory extends Factory
 {
+    /**
+     * @var class-string<MaintenanceRun>
+     */
+    protected $model = MaintenanceRun::class;
+
     /**
      * @return array<string, mixed>
      */

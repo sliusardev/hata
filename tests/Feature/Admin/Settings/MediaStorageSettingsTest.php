@@ -1,14 +1,14 @@
 <?php
 
-use App\Actions\Media\CreateStorageLink;
-use App\Actions\Settings\TestStorageConnection;
-use App\Exceptions\StorageLinkException;
-use App\Models\Media;
-use App\Models\Setting;
 use App\Models\User;
-use App\Support\Media\DirectServing;
-use App\Support\Media\MediaDisks;
-use App\Support\Settings\SiteSettings;
+use Hata\Actions\Media\CreateStorageLink;
+use Hata\Actions\Settings\TestStorageConnection;
+use Hata\Exceptions\StorageLinkException;
+use Hata\Models\Media;
+use Hata\Models\Setting;
+use Hata\Support\Media\DirectServing;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

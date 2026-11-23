@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Policies;
+namespace Hata\Policies;
 
-use App\Models\Entry;
 use App\Models\User;
+use Hata\Models\Entry;
 
 /**
  * Each check is the type's own permission, `"{type}.{action}"`. Opening the list and a record also passes with

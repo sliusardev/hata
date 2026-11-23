@@ -1,39 +1,39 @@
 <?php
 
-use App\Actions\Media\CreateStorageLink;
-use App\Actions\Media\MoveMediaToDisk;
-use App\Actions\Media\OptimizeImage;
-use App\Actions\Settings\AddContentLocale;
-use App\Actions\Settings\RemoveContentLocale;
-use App\Actions\Settings\RemoveLogo;
-use App\Actions\Settings\SetContentLocaleActive;
-use App\Actions\Settings\SetContentTypeActive;
-use App\Models\Entry;
-use App\Support\Content\ContentTypes;
-use App\Actions\Settings\SetDefaultContentLocale;
-use App\Exceptions\ContentLocaleException;
-use App\Actions\Settings\UpdateSiteSettings;
-use App\Actions\Settings\SetLogo;
-use App\Actions\Settings\TestStorageConnection;
-use App\Enums\SystemRole;
-use App\Exceptions\ProtectedActionException;
-use App\Exceptions\StorageLinkException;
-use App\Exceptions\StorageSettingsException;
-use App\Livewire\Forms\SiteSettingsForm;
-use App\Support\ColorScheme\ColorScheme;
-use App\Support\Localization\ContentLocales;
-use App\Support\Localization\Language;
-use App\Support\Localization\LanguageCatalog;
-use App\Models\Media;
-use App\Models\Role;
-use App\Support\Media\DirectServing;
-use App\Support\Media\MediaDisks;
-use App\Support\Media\OptimizationRun;
-use App\Support\Media\OptimizationRunStore;
-use App\Support\Media\ServerCapabilities;
-use App\Support\Settings\SiteLogo;
-use App\Support\Settings\SiteSettings;
-use App\Support\Toast;
+use Hata\Actions\Media\CreateStorageLink;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Actions\Settings\AddContentLocale;
+use Hata\Actions\Settings\RemoveContentLocale;
+use Hata\Actions\Settings\RemoveLogo;
+use Hata\Actions\Settings\SetContentLocaleActive;
+use Hata\Actions\Settings\SetContentTypeActive;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentTypes;
+use Hata\Actions\Settings\SetDefaultContentLocale;
+use Hata\Exceptions\ContentLocaleException;
+use Hata\Actions\Settings\UpdateSiteSettings;
+use Hata\Actions\Settings\SetLogo;
+use Hata\Actions\Settings\TestStorageConnection;
+use Hata\Enums\SystemRole;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Exceptions\StorageLinkException;
+use Hata\Exceptions\StorageSettingsException;
+use Hata\Livewire\Forms\SiteSettingsForm;
+use Hata\Support\ColorScheme\ColorScheme;
+use Hata\Support\Localization\ContentLocales;
+use Hata\Support\Localization\Language;
+use Hata\Support\Localization\LanguageCatalog;
+use Hata\Models\Media;
+use Hata\Models\Role;
+use Hata\Support\Media\DirectServing;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Media\OptimizationRun;
+use Hata\Support\Media\OptimizationRunStore;
+use Hata\Support\Media\ServerCapabilities;
+use Hata\Support\Settings\SiteLogo;
+use Hata\Support\Settings\SiteSettings;
+use Hata\Support\Toast;
 use Flux\Flux;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Mail\Message;
@@ -250,7 +250,7 @@ new #[Title('site_settings.title')] class extends Component {
      * Every registered content type, whether it is on and how many records it holds (the trash included). One
      * grouped query, only for the Content types tab.
      *
-     * @return list<array{type: App\Support\Content\ContentType, active: bool, count: int, taxonomies: list<string>}>
+     * @return list<array{type: Hata\Support\Content\ContentType, active: bool, count: int, taxonomies: list<string>}>
      */
     #[Computed]
     public function contentTypeRows(): array
@@ -853,7 +853,7 @@ new #[Title('site_settings.title')] class extends Component {
 <section
     class="w-full max-w-5xl space-y-6"
     x-data="{
-        fields: @js(array_merge(...array_values(App\Livewire\Forms\SiteSettingsForm::SECTIONS))),
+        fields: @js(array_merge(...array_values(Hata\Livewire\Forms\SiteSettingsForm::SECTIONS))),
         pendingUrl: null,
         leaving: false,
         isDirty() {
@@ -965,7 +965,7 @@ new #[Title('site_settings.title')] class extends Component {
             </div>
             <flux:error name="form.color_scheme" />
 
-            @if ($form->color_scheme === App\Support\ColorScheme\ColorScheme::CUSTOM)
+            @if ($form->color_scheme === Hata\Support\ColorScheme\ColorScheme::CUSTOM)
                 <div class="grid gap-6 sm:grid-cols-2">
                     <flux:field>
                         <flux:label>{{ __('site_settings.colors.accent') }}</flux:label>
@@ -983,7 +983,7 @@ new #[Title('site_settings.title')] class extends Component {
                     </flux:field>
 
                     <flux:select wire:model.live="form.color_gray" :label="__('site_settings.colors.gray')" :description="__('site_settings.colors.gray_description')">
-                        @foreach (array_keys(App\Support\ColorScheme\ColorScheme::GRAYS) as $gray)
+                        @foreach (array_keys(Hata\Support\ColorScheme\ColorScheme::GRAYS) as $gray)
                             <flux:select.option :value="$gray" wire:key="gray-{{ $gray }}">{{ __("site_settings.colors.grays.{$gray}") }}</flux:select.option>
                         @endforeach
                     </flux:select>
@@ -1057,7 +1057,7 @@ new #[Title('site_settings.title')] class extends Component {
 
             @if ($form->media_optimize)
                 <flux:select wire:model="form.media_max_side" :label="__('site_settings.media.max_side')" :description="__('site_settings.media.max_side_description')" class="max-w-xs">
-                    @foreach (App\Livewire\Forms\SiteSettingsForm::MEDIA_MAX_SIDES as $side)
+                    @foreach (Hata\Livewire\Forms\SiteSettingsForm::MEDIA_MAX_SIDES as $side)
                         <flux:select.option :value="$side" wire:key="max-side-{{ $side }}">{{ __("site_settings.media.max_side_{$side}") }}</flux:select.option>
                     @endforeach
                 </flux:select>

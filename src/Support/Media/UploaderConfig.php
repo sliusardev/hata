@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Enums\MediaKind;
-use App\Models\Media;
 use App\Models\User;
+use Hata\Enums\MediaKind;
+use Hata\Models\Media;
 
 /**
  * Config of the mediaUploader Alpine component (resources/js/media-uploader.js), for the library page and the picker.

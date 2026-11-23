@@ -1,6 +1,6 @@
 <?php
 
-use App\Livewire\Admin\EntryListPage;
+use Hata\Livewire\Admin\EntryListPage;
 
 new class extends EntryListPage {
     public function render(): mixed
@@ -20,7 +20,7 @@ new class extends EntryListPage {
     $publishes = $contentType->supports('publication');
     $taxonomies = $this->taxonomies;
     $showTranslations = $this->multilingual && ! $inTrash;
-    $activeCodes = app(App\Support\Localization\ContentLocales::class)->activeCodes();
+    $activeCodes = app(Hata\Support\Localization\ContentLocales::class)->activeCodes();
     $timezone = config('admin.timezone');
     $trashDays = (int) config('content.trash_days');
     $selectable = $abilities['edit'] || $abilities['delete'];
@@ -53,7 +53,7 @@ new class extends EntryListPage {
          which shows a vertical scrollbar. --}}
     <div class="border-b border-zinc-200 dark:border-zinc-700">
     <nav class="-mb-px flex gap-6 overflow-x-auto text-sm" aria-label="{{ $contentType->pluralLabel() }}">
-        @foreach (App\Support\Content\EntryListQuery::TABS as $tabKey)
+        @foreach (Hata\Support\Content\EntryListQuery::TABS as $tabKey)
             @continue(! $publishes && ! in_array($tabKey, ['all', 'trash'], true))
             <button
                 type="button"
@@ -183,8 +183,8 @@ new class extends EntryListPage {
                             $editUrl = route('admin.content.edit', ['type' => $type, 'entry' => $entry->id]);
                             $thumb = $entry->image?->thumbUrl();
                             $stateColor = match ($state) {
-                                App\Enums\EntryState::Published => 'green',
-                                App\Enums\EntryState::Scheduled => 'sky',
+                                Hata\Enums\EntryState::Published => 'green',
+                                Hata\Enums\EntryState::Scheduled => 'sky',
                                 default => 'zinc',
                             };
                             $stateLabel = __('content.list.state.'.strtolower($state->name));
@@ -287,10 +287,10 @@ new class extends EntryListPage {
                                             <flux:menu.item icon="pencil-square" :href="$editUrl" wire:navigate data-test="edit-entry-menu-{{ $entry->id }}">{{ __('common.actions.edit') }}</flux:menu.item>
                                         @endif
                                         @if ($abilities['edit'] && $publishes)
-                                            @if ($state !== App\Enums\EntryState::Published)
+                                            @if ($state !== Hata\Enums\EntryState::Published)
                                                 <flux:menu.item icon="eye" wire:click="setStatus({{ $entry->id }}, 'published')" data-test="publish-entry-{{ $entry->id }}">{{ __('content.list.actions.publish') }}</flux:menu.item>
                                             @endif
-                                            @if ($state !== App\Enums\EntryState::Draft)
+                                            @if ($state !== Hata\Enums\EntryState::Draft)
                                                 <flux:menu.item icon="eye-slash" wire:click="setStatus({{ $entry->id }}, 'draft')" data-test="unpublish-entry-{{ $entry->id }}">{{ __('content.list.actions.unpublish') }}</flux:menu.item>
                                             @endif
                                         @endif

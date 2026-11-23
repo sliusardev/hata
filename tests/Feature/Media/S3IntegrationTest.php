@@ -1,12 +1,12 @@
 <?php
 
-use App\Actions\Media\DeleteMedia;
-use App\Actions\Media\MoveMediaToDisk;
-use App\Actions\Media\PruneMediaDeletions;
-use App\Actions\Media\UploadMedia;
-use App\Enums\MoveOutcome;
-use App\Models\Media;
 use App\Models\User;
+use Hata\Actions\Media\DeleteMedia;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Actions\Media\PruneMediaDeletions;
+use Hata\Actions\Media\UploadMedia;
+use Hata\Enums\MoveOutcome;
+use Hata\Models\Media;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;

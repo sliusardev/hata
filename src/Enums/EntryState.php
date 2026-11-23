@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Enums;
+namespace Hata\Enums;
 
 /**
  * What a record is right now: a draft, published for a future moment, or live.

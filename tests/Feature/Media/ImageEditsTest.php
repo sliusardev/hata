@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\Media\ImageEdits;
+use Hata\Support\Media\ImageEdits;
 
 it('round-trips the spec shape', function () {
     $input = [

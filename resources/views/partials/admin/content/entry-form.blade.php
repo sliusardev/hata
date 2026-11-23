@@ -1,5 +1,5 @@
 {{--
-    The record form shared by the create and edit pages (App\Livewire\Admin\EntryFormPage).
+    The record form shared by the create and edit pages (Hata\Livewire\Admin\EntryFormPage).
 
     Receives:
     - $entry           the saved record, or null on the create page;
@@ -36,7 +36,7 @@
         'prefix' => $this->addressPrefix,
         'siteName' => (string) config('app.name'),
         'nowLocal' => now()->tz($timezone)->format('Y-m-d\TH:i'),
-        'editorModels' => collect($contentType->fields())->filter(fn ($field) => $field instanceof App\Support\Content\Fields\RichText)->map(fn ($field) => $field->name)->values()->all(),
+        'editorModels' => collect($contentType->fields())->filter(fn ($field) => $field instanceof Hata\Support\Content\Fields\RichText)->map(fn ($field) => $field->name)->values()->all(),
         'leaveModal' => 'leave-entry-form',
         'savedLocale' => $entry?->locale,
         // A term is always published: its Save is plain "Save" from the start.
@@ -51,7 +51,7 @@
         ],
     ];
     $source = $entry === null && $fromId !== null ? collect($groupEntries)->firstWhere('id', $fromId) : null;
-    $activeCodes = app(App\Support\Localization\ContentLocales::class)->activeCodes();
+    $activeCodes = app(Hata\Support\Localization\ContentLocales::class)->activeCodes();
 @endphp
 
 <section
@@ -78,9 +78,9 @@
                     <flux:heading size="xl" level="1" class="min-w-0 break-words">{{ $entry?->title ?? $contentType->newLabel() }}</flux:heading>
                     @if ($trashed)
                         <flux:badge size="sm" color="red" icon="trash">{{ __('content.form.trashed.badge') }}</flux:badge>
-                    @elseif ($state === App\Enums\EntryState::Draft)
+                    @elseif ($state === Hata\Enums\EntryState::Draft)
                         <flux:badge size="sm" color="zinc">{{ __('content.list.state.draft') }}</flux:badge>
-                    @elseif ($state === App\Enums\EntryState::Scheduled)
+                    @elseif ($state === Hata\Enums\EntryState::Scheduled)
                         <flux:badge size="sm" color="sky">{{ __('content.list.state.scheduled') }}</flux:badge>
                     @endif
                 </div>
@@ -105,7 +105,7 @@
                 @if ($entry !== null && ! $trashed)
                     {{-- A record that is hidden, or in a language that is switched off, opens only as a preview for
                          those who may edit the type; visitors get 404 there. --}}
-                    @php $languageOn = app(App\Support\Localization\ContentLocales::class)->isActive($entry->locale); @endphp
+                    @php $languageOn = app(Hata\Support\Localization\ContentLocales::class)->isActive($entry->locale); @endphp
                     @unless ($languageOn)
                         <flux:text class="max-w-64 text-xs" data-test="language-off-note">{{ __('content.form.language_off') }}</flux:text>
                     @endunless
@@ -324,7 +324,7 @@
                         'taxonomy' => $taxonomy,
                         'options' => $this->termOptions[$taxonomy->key()] ?? [],
                         // A typed name makes a term: only with the right to create in that taxonomy.
-                        'canCreate' => ! $readOnly && auth()->user()->can('create', [App\Models\Entry::class, $taxonomy->key()]),
+                        'canCreate' => ! $readOnly && auth()->user()->can('create', [Hata\Models\Entry::class, $taxonomy->key()]),
                     ])
                 @endforeach
 

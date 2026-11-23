@@ -1,14 +1,14 @@
 <?php
 
-use App\Actions\Media\UpdateMedia;
-use App\Models\Media;
-use App\Models\MediaFolder;
+use Hata\Actions\Media\UpdateMedia;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
 use App\Models\User;
-use App\Support\Media\MediaAcceptance;
-use App\Support\Media\MediaFilters;
-use App\Support\Media\MediaIds;
-use App\Support\Media\StoreUploadedMedia;
-use App\Support\Media\UploaderConfig;
+use Hata\Support\Media\MediaAcceptance;
+use Hata\Support\Media\MediaFilters;
+use Hata\Support\Media\MediaIds;
+use Hata\Support\Media\StoreUploadedMedia;
+use Hata\Support\Media\UploaderConfig;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -25,7 +25,7 @@ use Livewire\WithFileUploads;
  * The media picker: placed next to a form field, it shows the chosen file(s) and opens the library in a modal.
  * Usage: <livewire:media-picker wire:model="form.field" accept="image" :multiple="false" :extensions="[...]" :label="__('…')" />
  * The value is a media id (or null), or with `multiple` a list of ids in the order they were picked.
- * The parent validates the value again on save (App\Rules\MediaSelection): the browser can send any id.
+ * The parent validates the value again on save (Hata\Rules\MediaSelection): the browser can send any id.
  *
  * Detached mode (<livewire:media-picker detached accept="image" />, one per page) renders only the modal, for the rich
  * text editor: the browser event `media-picker:open` with `{target, locale}` opens it, and a choice dispatches
@@ -668,7 +668,7 @@ new class extends Component {
 }; ?>
 
 @php
-    $canView = auth()->user()?->can('viewAny', App\Models\Media::class) ?? false;
+    $canView = auth()->user()?->can('viewAny', Hata\Models\Media::class) ?? false;
     $chosen = $detached ? new Illuminate\Database\Eloquent\Collection : $this->chosen;
     $modalName = 'media-picker-'.$this->getId();
 @endphp
@@ -733,13 +733,13 @@ new class extends Component {
         <flux:modal :name="$modalName" wire:model.self="showModal" class="w-full max-w-5xl p-0!">
             @if ($showModal)
                 @php
-                    $canUpload = auth()->user()->can('create', App\Models\Media::class);
+                    $canUpload = auth()->user()->can('create', Hata\Models\Media::class);
                     $canEdit = auth()->user()->can('media.edit');
                     $uploaderConfig = $this->uploaderConfig;
                     $acceptance = $this->acceptance();
                     $focused = $this->focused;
                     $locales = (array) config('app.available_locales');
-                    $primaryLocale = App\Models\Media::primaryAltLocale();
+                    $primaryLocale = Hata\Models\Media::primaryAltLocale();
                 @endphp
 
                 <div class="flex max-h-[85vh] flex-col" x-data="mediaUploader(@js($uploaderConfig))">
@@ -884,7 +884,7 @@ new class extends Component {
                                         @endforeach
                                     </div>
 
-                                    @if ($this->hasMore && $limit < App\Support\Media\MediaIds::MAX)
+                                    @if ($this->hasMore && $limit < Hata\Support\Media\MediaIds::MAX)
                                         <div class="flex justify-center">
                                             <flux:button size="sm" wire:click="loadMore" data-test="media-picker-load-more">{{ __('media.picker.load_more') }}</flux:button>
                                         </div>
@@ -908,7 +908,7 @@ new class extends Component {
                                         </div>
                                     </div>
 
-                                    @if ($focused->kind === App\Enums\MediaKind::Image)
+                                    @if ($focused->kind === Hata\Enums\MediaKind::Image)
                                         <div class="space-y-2">
                                             <flux:label for="picker-alt-{{ $this->getId() }}">
                                                 {{ __('media.details.alt') }}@if (count($locales) > 1) ({{ $locales[$primaryLocale] ?? $primaryLocale }})@endif

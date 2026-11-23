@@ -1,10 +1,10 @@
 <?php
 
-use App\Actions\Content\LinkTranslations;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
-use App\Models\EntryGroup;
-use App\Support\Localization\ContentLocales;
+use Hata\Actions\Content\LinkTranslations;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
+use Hata\Support\Localization\ContentLocales;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -146,7 +146,7 @@ new class extends Component {
     <flux:modal wire:model.self="open" class="w-full max-w-lg" data-test="link-modal">
         <div class="space-y-5">
             <div class="space-y-2">
-                <flux:heading size="lg">{{ __('content.link.title', ['language' => app(App\Support\Localization\ContentLocales::class)->language($locale !== '' ? $locale : 'en')->native]) }}</flux:heading>
+                <flux:heading size="lg">{{ __('content.link.title', ['language' => app(Hata\Support\Localization\ContentLocales::class)->language($locale !== '' ? $locale : 'en')->native]) }}</flux:heading>
                 <flux:text>{{ __('content.link.description') }}</flux:text>
             </div>
 
@@ -160,7 +160,7 @@ new class extends Component {
                     @endphp
                     <div wire:key="link-candidate-{{ $candidate->id }}">
                         <button type="button" wire:click="pick({{ $candidate->id }})" class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start hover:bg-zinc-100 dark:hover:bg-white/10" data-test="link-candidate-{{ $candidate->id }}">
-                            <span @class(['size-2 shrink-0 rounded-full', 'bg-green-500' => $candidateState === App\Enums\EntryState::Published, 'bg-amber-400' => $candidateState !== App\Enums\EntryState::Published]) title="{{ __('content.list.state.'.strtolower($candidateState->name)) }}"></span>
+                            <span @class(['size-2 shrink-0 rounded-full', 'bg-green-500' => $candidateState === Hata\Enums\EntryState::Published, 'bg-amber-400' => $candidateState !== Hata\Enums\EntryState::Published]) title="{{ __('content.list.state.'.strtolower($candidateState->name)) }}"></span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate text-sm font-medium text-zinc-900 dark:text-white">{{ $candidate->title }}</span>
                                 <span class="block truncate text-xs text-zinc-500 dark:text-zinc-400">/{{ $candidate->path }}</span>

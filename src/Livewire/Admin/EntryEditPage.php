@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Livewire\Admin;
+namespace Hata\Livewire\Admin;
 
-use App\Actions\Content\RestoreEntry;
-use App\Actions\Content\TrashEntry;
-use App\Actions\Content\UnlinkTranslation;
-use App\Actions\Content\UpdateEntry;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
-use App\Support\Content\ContentTypes;
-use App\Support\Localization\Language;
-use App\Support\Toast;
 use Flux\Flux;
+use Hata\Actions\Content\RestoreEntry;
+use Hata\Actions\Content\TrashEntry;
+use Hata\Actions\Content\UnlinkTranslation;
+use Hata\Actions\Content\UpdateEntry;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Localization\Language;
+use Hata\Support\Toast;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;

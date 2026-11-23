@@ -1,17 +1,17 @@
 <?php
 
-use App\Actions\Maintenance\RunMaintenanceAction;
-use App\Actions\Media\MoveMediaToDisk;
-use App\Enums\MaintenanceAction;
-use App\Enums\MaintenanceStatus;
-use App\Models\MaintenanceRun;
-use App\Models\Role;
 use App\Models\User;
-use App\Support\Maintenance\ArtisanRunner;
-use App\Support\Maintenance\PendingMigrations;
-use App\Support\Maintenance\SeederCatalog;
-use App\Support\Settings\SiteSettings;
-use App\Support\Toast;
+use Hata\Actions\Maintenance\RunMaintenanceAction;
+use Hata\Actions\Media\MoveMediaToDisk;
+use Hata\Enums\MaintenanceAction;
+use Hata\Enums\MaintenanceStatus;
+use Hata\Models\MaintenanceRun;
+use Hata\Models\Role;
+use Hata\Support\Maintenance\ArtisanRunner;
+use Hata\Support\Maintenance\PendingMigrations;
+use Hata\Support\Maintenance\SeederCatalog;
+use Hata\Support\Settings\SiteSettings;
+use Hata\Support\Toast;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
@@ -230,12 +230,12 @@ describe('migrations', function () {
 });
 
 describe('seeders', function () {
-    it('finds the project seeders, DatabaseSeeder first', function () {
+    it('finds the host\'s seeders, DatabaseSeeder first', function () {
         $catalog = app(SeederCatalog::class);
 
-        expect($catalog->names())->toBe(['DatabaseSeeder', 'RoleSeeder'])
-            ->and($catalog->resolve('RoleSeeder'))->toBe('Database\Seeders\RoleSeeder')
-            ->and($catalog->resolve('Database\Seeders\RoleSeeder'))->toBeNull()
+        expect($catalog->names())->toBe(['DatabaseSeeder', 'DemoSeeder'])
+            ->and($catalog->resolve('DemoSeeder'))->toBe('Database\Seeders\DemoSeeder')
+            ->and($catalog->resolve('Database\Seeders\DemoSeeder'))->toBeNull()
             ->and($catalog->resolve('../../app/Models/User'))->toBeNull();
     });
 
@@ -244,18 +244,18 @@ describe('seeders', function () {
 
         Livewire::actingAs(maintainer())->test('pages::admin.maintenance.index')
             ->assertSet('seeder', 'DatabaseSeeder')
-            ->set('seeder', 'RoleSeeder')
+            ->set('seeder', 'DemoSeeder')
             ->call('confirm', 'seed')
-            ->assertSee(__('maintenance.actions.seed.confirm', ['seeder' => 'RoleSeeder']))
-            ->assertSeeHtml('name="seeder" value="RoleSeeder"')
+            ->assertSee(__('maintenance.actions.seed.confirm', ['seeder' => 'DemoSeeder']))
+            ->assertSeeHtml('name="seeder" value="DemoSeeder"')
             // The dialog keeps posting the seeder it named, whatever the select is changed to behind it.
             ->set('seeder', 'DatabaseSeeder')
-            ->assertSeeHtml('name="seeder" value="RoleSeeder"');
+            ->assertSeeHtml('name="seeder" value="DemoSeeder"');
 
-        runMaintenance('seed', 'RoleSeeder')->assertRedirect(route('admin.maintenance'));
+        runMaintenance('seed', 'DemoSeeder')->assertRedirect(route('admin.maintenance'));
 
-        expect($fake->calls)->toBe([['db:seed', ['--class' => 'Database\Seeders\RoleSeeder', '--force' => true]]])
-            ->and(MaintenanceRun::query()->sole()->title())->toBe(__('maintenance.actions.seed.title').': RoleSeeder');
+        expect($fake->calls)->toBe([['db:seed', ['--class' => 'Database\Seeders\DemoSeeder', '--force' => true]]])
+            ->and(MaintenanceRun::query()->sole()->title())->toBe(__('maintenance.actions.seed.title').': DemoSeeder');
     });
 
     it('never runs a class that is not a listed seeder', function (string $tampered) {
@@ -272,7 +272,7 @@ describe('seeders', function () {
             ->assertSessionHas(Toast::SESSION_KEY, fn (array $toast): bool => $toast['text'] === __('maintenance.errors.unknown_seeder'));
 
         expect($fake->calls)->toBe([])->and(MaintenanceRun::count())->toBe(0);
-    })->with(['App\Models\User', 'Database\Seeders\RoleSeeder', '../RoleSeeder', '', 'RoleSeeder --database=other']);
+    })->with(['App\Models\User', 'Database\Seeders\DemoSeeder', '../DemoSeeder', '', 'DemoSeeder --database=other']);
 });
 
 describe('caches', function () {

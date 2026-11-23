@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\Entry;
-use App\Models\Media;
-use App\Support\Content\ContentTypes;
-use App\Support\Settings\SiteSettings;
+use Hata\Models\Entry;
+use Hata\Models\Media;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\DB;
 use Tests\Fixtures\ProductsType;
 

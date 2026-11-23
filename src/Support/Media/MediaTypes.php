@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Enums\MediaKind;
 use finfo;
+use Hata\Enums\MediaKind;
 use Illuminate\Http\UploadedFile;
 
 /**

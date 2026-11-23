@@ -1,11 +1,13 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
-use App\Enums\MaintenanceAction;
-use App\Enums\MaintenanceStatus;
-use Database\Factories\MaintenanceRunFactory;
+use App\Models\User;
+use Hata\Database\Factories\MaintenanceRunFactory;
+use Hata\Enums\MaintenanceAction;
+use Hata\Enums\MaintenanceStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $finished_at
  */
 #[Fillable(['user_id', 'user_name', 'action', 'parameter', 'status', 'slot', 'exit_code', 'output', 'output_truncated', 'started_at', 'finished_at'])]
+#[UseFactory(MaintenanceRunFactory::class)]
 class MaintenanceRun extends Model
 {
     /** @use HasFactory<MaintenanceRunFactory> */

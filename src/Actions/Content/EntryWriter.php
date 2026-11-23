@@ -1,20 +1,20 @@
 <?php
 
-namespace App\Actions\Content;
+namespace Hata\Actions\Content;
 
-use App\Enums\EntryStatus;
-use App\Models\Entry;
-use App\Models\EntryGroup;
-use App\Models\EntryRedirect;
-use App\Models\MediaUsage;
-use App\Support\Content\BodySanitizer;
-use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\EntryInput;
-use App\Support\Content\EntryPaths;
-use App\Support\Content\Fields\Field;
-use App\Support\Content\Fields\RichText;
-use App\Support\Media\MediaIds;
+use Hata\Enums\EntryStatus;
+use Hata\Models\Entry;
+use Hata\Models\EntryGroup;
+use Hata\Models\EntryRedirect;
+use Hata\Models\MediaUsage;
+use Hata\Support\Content\BodySanitizer;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\EntryInput;
+use Hata\Support\Content\EntryPaths;
+use Hata\Support\Content\Fields\Field;
+use Hata\Support\Content\Fields\RichText;
+use Hata\Support\Media\MediaIds;
 
 /**
  * The writes CreateEntry and UpdateEntry share. Runs inside the caller's transaction.

@@ -1,9 +1,9 @@
 <?php
 
-use App\Actions\Users\UpdateUser;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Role;
 use App\Models\User;
+use Hata\Actions\Users\UpdateUser;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Role;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Hash;
 

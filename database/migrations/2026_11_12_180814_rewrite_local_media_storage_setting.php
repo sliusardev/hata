@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Setting;
-use App\Support\Settings\SiteSettings;
+use Hata\Models\Setting;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\Cache;
 

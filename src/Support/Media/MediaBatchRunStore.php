@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
-use App\Models\Setting;
 use Carbon\Exceptions\InvalidFormatException;
+use Hata\Models\Setting;
 
 /**
  * Keeps one batch run in its own settings row (one row per mode). It is read and written directly, not through

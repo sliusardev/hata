@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\ColorScheme;
+namespace Hata\Support\ColorScheme;
 
 /**
  * Conversions between sRGB hex colors and OKLCH, the perceptual color space used to build

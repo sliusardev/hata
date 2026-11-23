@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Hata\Console\Commands;
 
-use App\Support\Content\ContentTypeGenerator;
+use Hata\Hata;
+use Hata\Support\Content\ContentTypeGenerator;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -68,6 +69,6 @@ class MakeContentType extends Command
 
     private function relative(string $path): string
     {
-        return str_starts_with($path, base_path().'/') ? substr($path, strlen(base_path()) + 1) : $path;
+        return str_starts_with($path, Hata::path().'/') ? substr($path, strlen(Hata::path()) + 1) : $path;
     }
 }

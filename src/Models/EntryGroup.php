@@ -1,12 +1,14 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
-use App\Contracts\UsesMedia;
-use App\Support\Content\ContentTypes;
-use App\Support\Localization\ContentLocales;
-use Database\Factories\EntryGroupFactory;
+use App\Models\User;
+use Hata\Contracts\UsesMedia;
+use Hata\Database\Factories\EntryGroupFactory;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Localization\ContentLocales;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['type', 'shared'])]
+#[UseFactory(EntryGroupFactory::class)]
 class EntryGroup extends Model implements UsesMedia
 {
     /** @use HasFactory<EntryGroupFactory> */

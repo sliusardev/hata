@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Models;
+namespace Hata\Models;
 
-use App\Enums\SystemRole;
+use Hata\Enums\SystemRole;
 use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Role as SpatieRole;
 

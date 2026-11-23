@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Actions\Fortify;
+namespace Hata\Actions\Fortify;
 
-use App\Concerns\PasswordValidationRules;
 use App\Models\User;
+use Hata\Concerns\PasswordValidationRules;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
 

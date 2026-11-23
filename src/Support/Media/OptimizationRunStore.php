@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
 /**
  * Keeps the "optimize existing files" run in the `media_optimization_run` settings row.

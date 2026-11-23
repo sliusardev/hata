@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Support\Content\Types;
+namespace Hata\Support\Content\Types;
 
-use App\Support\Content\ContentType;
+use Hata\Support\Content\ContentType;
 
 class PagesType extends ContentType
 {

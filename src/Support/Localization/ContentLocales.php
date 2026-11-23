@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Localization;
+namespace Hata\Support\Localization;
 
 use Illuminate\Support\Facades\Route;
 

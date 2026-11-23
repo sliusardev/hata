@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Actions\Content;
+namespace Hata\Actions\Content;
 
-use App\Enums\EntryStatus;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
 use App\Models\User;
+use Hata\Enums\EntryStatus;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
 use Illuminate\Support\Facades\Gate;
 
 class SetEntryStatus

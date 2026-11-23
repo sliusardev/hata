@@ -1,10 +1,10 @@
 <?php
 
-namespace Database\Seeders;
+namespace Hata\Database\Seeders;
 
-use App\Enums\SystemRole;
-use App\Models\Role;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Enums\SystemRole;
+use Hata\Models\Role;
+use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Database\Seeder;
 
 /**

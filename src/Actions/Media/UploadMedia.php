@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Actions\Media;
+namespace Hata\Actions\Media;
 
-use App\Enums\MediaKind;
-use App\Exceptions\MediaUploadException;
-use App\Exceptions\MediaWriteException;
-use App\Models\Media;
-use App\Models\MediaFolder;
 use App\Models\User;
-use App\Support\Media\MediaDisks;
-use App\Support\Media\MediaNames;
-use App\Support\Media\MediaPaths;
-use App\Support\Media\MediaUploadChecks;
+use Hata\Enums\MediaKind;
+use Hata\Exceptions\MediaUploadException;
+use Hata\Exceptions\MediaWriteException;
+use Hata\Models\Media;
+use Hata\Models\MediaFolder;
+use Hata\Support\Media\MediaDisks;
+use Hata\Support\Media\MediaNames;
+use Hata\Support\Media\MediaPaths;
+use Hata\Support\Media\MediaUploadChecks;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;

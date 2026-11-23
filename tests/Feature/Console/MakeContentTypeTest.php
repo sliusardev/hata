@@ -1,14 +1,15 @@
 <?php
 
-use App\Models\Entry;
-use App\Support\Content\ContentType;
-use App\Support\Content\ContentTypeGenerator;
-use App\Support\Content\ContentTypes;
-use App\Support\Content\Types\CaseStudiesType;
-use App\Support\Content\Types\RecipesType;
-use App\Support\Localization\LanguageCatalog;
-use App\Support\Localization\ReservedSlugs;
-use App\Support\Permissions\PermissionRegistry;
+use Hata\Hata;
+use Hata\Models\Entry;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypeGenerator;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Content\Types\CaseStudiesType;
+use Hata\Support\Content\Types\RecipesType;
+use Hata\Support\Localization\LanguageCatalog;
+use Hata\Support\Localization\ReservedSlugs;
+use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Tests\Fixtures\ProductsType;
@@ -21,12 +22,12 @@ beforeEach(function () {
     $this->root = sys_get_temp_dir().'/make-content-type-'.Str::random(12);
 
     File::ensureDirectoryExists($this->root.'/config');
-    File::copy(config_path('content.php'), $this->root.'/config/content.php');
+    File::copy(Hata::path('config/content.php'), $this->root.'/config/content.php');
 
     foreach (['en', 'uk'] as $locale) {
         File::ensureDirectoryExists("{$this->root}/lang/{$locale}");
-        File::copy(lang_path("{$locale}/content.php"), "{$this->root}/lang/{$locale}/content.php");
-        File::copy(lang_path("{$locale}/permissions.php"), "{$this->root}/lang/{$locale}/permissions.php");
+        File::copy(Hata::path("resources/lang/{$locale}/content.php"), "{$this->root}/lang/{$locale}/content.php");
+        File::copy(Hata::path("resources/lang/{$locale}/permissions.php"), "{$this->root}/lang/{$locale}/permissions.php");
     }
 
     $this->app->bind(ContentTypeGenerator::class, fn ($app): ContentTypeGenerator => new ContentTypeGenerator(
@@ -75,7 +76,7 @@ test('it writes a flat type with its config entry and its lines in every languag
         ->and((new ContentTypes)->register($type)->find('recipes'))->toBe($type);
 
     expect((require $this->root.'/config/content.php')['types'])
-        ->toBe([...(require config_path('content.php'))['types'], 'App\Support\Content\Types\RecipesType']);
+        ->toBe([...(require Hata::path('config/content.php'))['types'], 'Hata\Support\Content\Types\RecipesType']);
 
     foreach (['en', 'uk'] as $locale) {
         $content = require "{$this->root}/lang/{$locale}/content.php";
@@ -88,7 +89,7 @@ test('it writes a flat type with its config entry and its lines in every languag
             'new' => 'New recipe',
             'create' => 'Create recipe',
         ])
-            ->and($content['types']['pages'])->toBe((require lang_path("{$locale}/content.php"))['types']['pages'])
+            ->and($content['types']['pages'])->toBe((require Hata::path("resources/lang/{$locale}/content.php"))['types']['pages'])
             ->and($permissions['groups']['recipes'])->toBe('Recipes')
             ->and($permissions['items']['recipes'])->toBe([
                 'view' => 'View recipes',
@@ -96,7 +97,7 @@ test('it writes a flat type with its config entry and its lines in every languag
                 'edit' => 'Edit and publish recipes',
                 'delete' => 'Move recipes to the trash and delete them',
             ])
-            ->and($permissions['items']['pages'])->toBe((require lang_path("{$locale}/permissions.php"))['items']['pages']);
+            ->and($permissions['items']['pages'])->toBe((require Hata::path("resources/lang/{$locale}/permissions.php"))['items']['pages']);
     }
 });
 
@@ -168,8 +169,8 @@ test('it keeps the imports of the config in sorted order', function () {
     $sorted = $imports[0];
     sort($sorted);
 
-    expect($imports[0])->toBe($sorted)->toContain('use App\\Support\\Content\\Types\\ArticlesType;')
-        ->and((require $this->root.'/config/content.php')['types'])->toBe([...(require config_path('content.php'))['types'], 'App\Support\Content\Types\ArticlesType']);
+    expect($imports[0])->toBe($sorted)->toContain('use Hata\\Support\\Content\\Types\\ArticlesType;')
+        ->and((require $this->root.'/config/content.php')['types'])->toBe([...(require Hata::path('config/content.php'))['types'], 'Hata\Support\Content\Types\ArticlesType']);
 });
 
 test('it refuses a base that is the address of an existing page, trashed or not', function (bool $trashed) {

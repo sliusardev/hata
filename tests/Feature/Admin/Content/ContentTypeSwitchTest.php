@@ -1,14 +1,14 @@
 <?php
 
-use App\Actions\Settings\SetContentTypeActive;
-use App\Exceptions\ProtectedActionException;
-use App\Models\Entry;
-use App\Models\Media;
-use App\Models\MediaUsage;
 use App\Models\User;
-use App\Support\Content\ContentTypes;
-use App\Support\Settings\SiteSettings;
-use App\Support\Toast;
+use Hata\Actions\Settings\SetContentTypeActive;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Models\Entry;
+use Hata\Models\Media;
+use Hata\Models\MediaUsage;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Settings\SiteSettings;
+use Hata\Support\Toast;
 use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Livewire;
 use Tests\Fixtures\ProductsType;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Media;
+namespace Hata\Support\Media;
 
 use Illuminate\Image\Image as PendingImage;
 use Illuminate\Support\Facades\Image;

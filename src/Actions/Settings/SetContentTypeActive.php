@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Actions\Settings;
+namespace Hata\Actions\Settings;
 
-use App\Exceptions\ProtectedActionException;
 use App\Models\User;
-use App\Support\Content\ContentTypes;
-use App\Support\Settings\SiteSettings;
+use Hata\Exceptions\ProtectedActionException;
+use Hata\Support\Content\ContentTypes;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Gate;
 
 class SetContentTypeActive

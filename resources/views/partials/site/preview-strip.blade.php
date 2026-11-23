@@ -9,7 +9,7 @@
                 <span class="font-semibold">
                     @if ($languageOff && $entry->isPublic())
                         {{ __('content.public.language_off') }}
-                    @elseif ($entry->state() === App\Enums\EntryState::Scheduled)
+                    @elseif ($entry->state() === Hata\Enums\EntryState::Scheduled)
                         {{ __('content.public.scheduled', ['date' => $entry->published_at->tz(config('admin.timezone'))->isoFormat('LLL')]) }}
                     @else
                         {{ __('content.public.draft') }}

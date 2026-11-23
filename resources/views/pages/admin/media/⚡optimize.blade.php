@@ -1,11 +1,11 @@
 <?php
 
-use App\Actions\Media\OptimizeExistingMedia;
-use App\Actions\Media\OptimizeImage;
-use App\Exceptions\OptimizationDisabledException;
-use App\Jobs\OptimizeExistingMediaBatch;
-use App\Livewire\Admin\MediaBatchPage;
-use App\Models\Media;
+use Hata\Actions\Media\OptimizeExistingMedia;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Exceptions\OptimizationDisabledException;
+use Hata\Jobs\OptimizeExistingMediaBatch;
+use Hata\Livewire\Admin\MediaBatchPage;
+use Hata\Models\Media;
 use App\Models\User;
 use Flux\Flux;
 use Livewire\Attributes\Computed;

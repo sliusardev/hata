@@ -1,6 +1,6 @@
 <?php
 
-use App\Livewire\Admin\EntryEditPage;
+use Hata\Livewire\Admin\EntryEditPage;
 
 new class extends EntryEditPage {
     public function render(): mixed

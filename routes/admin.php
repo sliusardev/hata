@@ -1,11 +1,11 @@
 <?php
 
-use App\Http\Controllers\Admin\MaintenanceLogChunkController;
-use App\Http\Controllers\Admin\MaintenanceRunController;
-use App\Http\Controllers\Admin\MediaDirectCheckController;
-use App\Http\Controllers\MediaSourcePreviewController;
-use App\Http\Controllers\MediaZipController;
-use App\Support\Content\ContentTypes;
+use Hata\Http\Controllers\Admin\MaintenanceLogChunkController;
+use Hata\Http\Controllers\Admin\MaintenanceRunController;
+use Hata\Http\Controllers\Admin\MediaDirectCheckController;
+use Hata\Http\Controllers\MediaSourcePreviewController;
+use Hata\Http\Controllers\MediaZipController;
+use Hata\Support\Content\ContentTypes;
 use Illuminate\Support\Facades\Route;
 
 /*

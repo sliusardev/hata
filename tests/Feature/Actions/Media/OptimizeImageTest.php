@@ -1,7 +1,8 @@
 <?php
 
-use App\Actions\Media\OptimizeImage;
-use App\Support\Media\MemoryGuard;
+use Hata\Actions\Media\OptimizeImage;
+use Hata\Hata;
+use Hata\Support\Media\MemoryGuard;
 use Illuminate\Image\Transformations\Orient;
 use Illuminate\Support\Facades\Image;
 use Intervention\Image\Interfaces\ImageInterface;
@@ -143,7 +144,7 @@ it('converts heic to webp on imagick', function () {
     }
 
     config(['images.default' => 'imagick']);
-    $heic = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
+    $heic = (string) file_get_contents(Hata::path('tests/fixtures/media/sample.heic'));
 
     $result = app(OptimizeImage::class)->handle($heic, 'image/heic');
     $thumbnail = getimagesizefromstring((string) app(OptimizeImage::class)->thumbnail($heic));
@@ -159,7 +160,7 @@ it('converts heic to webp on imagick', function () {
 
 it('reports heic unreadable on gd', function () {
     config(['images.default' => 'gd']);
-    $heic = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
+    $heic = (string) file_get_contents(Hata::path('tests/fixtures/media/sample.heic'));
 
     $result = app(OptimizeImage::class)->handle($heic, 'image/heic');
 
@@ -343,7 +344,7 @@ it('lets the memory guard pass everything when memory is unlimited', function ()
  */
 function useHeicDecodingImagick(): string
 {
-    $heic = (string) file_get_contents(base_path('tests/fixtures/media/sample.heic'));
+    $heic = (string) file_get_contents(Hata::path('tests/fixtures/media/sample.heic'));
 
     try {
         if (! extension_loaded('imagick') || ! (new Imagick)->readImageBlob($heic)) {

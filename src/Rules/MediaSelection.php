@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Rules;
+namespace Hata\Rules;
 
-use App\Support\Media\MediaAcceptance;
-use App\Support\Media\MediaIds;
 use Closure;
+use Hata\Support\Media\MediaAcceptance;
+use Hata\Support\Media\MediaIds;
 use Illuminate\Contracts\Validation\ValidationRule;
 
 /**
