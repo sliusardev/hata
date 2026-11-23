@@ -22,22 +22,38 @@ final class HataConfig
     public const array INTERNAL = ['languages', 'permissions'];
 
     /**
+     * Maps (code => name) whose entries a site must be able to remove: a published value replaces the default as a
+     * whole instead of being merged into it.
+     *
+     * @var list<string>
+     */
+    public const array ATOMIC = ['admin.interface_locales'];
+
+    /**
      * Merges a published config over the defaults: nested maps are filled in key by key, so a published file
      * written for an older version still gets the keys added since. A non-empty list in the published file
-     * replaces the default list as a whole (a list has no keys to line up), and an empty published array
+     * replaces the default list as a whole (a list has no keys to line up), a path in `ATOMIC` is replaced as a whole too, and an empty published array
      * leaves a default map alone.
      *
      * @param  array<string, mixed>  $defaults
      * @param  array<string, mixed>  $published
+     * @param  string  $path  the dotted path of `$defaults` (used by the recursion)
      * @return array<string, mixed>
      */
-    public static function merge(array $defaults, array $published): array
+    public static function merge(array $defaults, array $published, string $path = ''): array
     {
         foreach ($published as $key => $value) {
             $default = $defaults[$key] ?? null;
+            $here = $path === '' ? (string) $key : "{$path}.{$key}";
+
+            if (is_array($value) && $value !== [] && in_array($here, self::ATOMIC, true)) {
+                $defaults[$key] = $value;
+
+                continue;
+            }
 
             if (is_array($value) && is_array($default) && ! array_is_list($default)) {
-                $defaults[$key] = $value === [] ? $default : (array_is_list($value) ? $value : self::merge($default, $value));
+                $defaults[$key] = $value === [] ? $default : (array_is_list($value) ? $value : self::merge($default, $value, $here));
 
                 continue;
             }

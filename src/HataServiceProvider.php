@@ -160,15 +160,11 @@ class HataServiceProvider extends ServiceProvider
 
     /**
      * The settings of Laravel's own packages that Hata depends on, set at runtime so the host's config files need no
-     * edits: the interface languages, Fortify's features, views and home, and spatie's role model.
+     * edits: Fortify's features, views and home, and spatie's role model.
      */
     private function configurePackages(): void
     {
         config([
-            'hata.admin.interface_locales' => config('hata.admin.interface_locales') ?? [
-                'en' => 'English',
-                'uk' => 'Українська',
-            ],
             'permission.models.role' => Role::class,
             'fortify.home' => '/dashboard',
             'fortify.views' => true,

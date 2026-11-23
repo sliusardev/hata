@@ -21,8 +21,8 @@ use Throwable;
  * language's `content.php` and `permissions.php` (English text in each, to be translated).
  *
  * The config and language files are edited as text, by the shape Pint gives them (a top-level `'section' => [`
- * closed by `],` at the same indent; the type list is the `types` section inside the `content` one). A file that has another shape is left alone, and so is one that no longer
- * loads with the new lines; the lines are returned to be added by hand.
+ * closed by `],` at the same indent; the type list is the `types` section inside the `content` one). A file that has another shape is left alone,
+ * and so is one that no longer loads with the new lines; the lines are returned to be added by hand.
  */
 class ContentTypeGenerator
 {
