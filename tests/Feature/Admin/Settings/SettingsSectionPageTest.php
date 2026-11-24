@@ -192,7 +192,7 @@ it('mount is 403 for a section that is not registered', function () {
     Livewire::actingAs($this->shopAdmin)->test(ShopSettingsSection::class)->assertForbidden();
 });
 
-it('stored-only encrypted and array keys round-trip through put() and value() and load into a section', function () {
+it('stored-only encrypted and array keys round-trip, and an encrypted key never reaches the browser even when not listed as a secret', function () {
     $settings = app(SiteSettings::class);
     $settings->define('shop_flags', null, 'array')->define('shop_note', null, encrypted: true)->define('shop_hidden', null, encrypted: true);
 
@@ -211,8 +211,9 @@ it('stored-only encrypted and array keys round-trip through put() and value() an
     Livewire::actingAs($this->shopAdmin)
         ->test(ShopStoredOnlySection::class)
         ->assertSet('values.shop_flags', ['c'])
-        ->assertSet('values.shop_note', 'second note')
+        ->assertSet('values.shop_note', '')
         ->assertSet('values.shop_hidden', '')
+        ->assertDontSee('second note')
         ->assertDontSee('top secret');
 });
 

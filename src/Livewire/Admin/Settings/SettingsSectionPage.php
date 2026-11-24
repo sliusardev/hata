@@ -98,7 +98,7 @@ abstract class SettingsSectionPage extends Component
         }
 
         // Mark the form clean, so the leave-page warning does not fire on the redirect below.
-        foreach ($this->secretFields() as $field) {
+        foreach ($this->secrets() as $field) {
             $this->values[$field] = '';
         }
 
@@ -119,7 +119,7 @@ abstract class SettingsSectionPage extends Component
     protected function load(): array
     {
         $settings = app(SiteSettings::class);
-        $secrets = $this->secretFields();
+        $secrets = $this->secrets();
         $values = [];
 
         foreach ($this->fields() as $field) {
@@ -140,13 +140,28 @@ abstract class SettingsSectionPage extends Component
     }
 
     /**
-     * The fields that are never loaded and are stored only when typed.
+     * The fields that are never loaded and are stored only when typed. Fields defined as encrypted are added to them
+     * automatically (secrets()).
      *
      * @return list<string>
      */
     protected function secretFields(): array
     {
         return [];
+    }
+
+    /**
+     * The section's secret fields together with every field defined as encrypted, so an encrypted setting is never
+     * sent to the browser even when a section forgets to list it in secretFields().
+     *
+     * @return list<string>
+     */
+    final protected function secrets(): array
+    {
+        $settings = app(SiteSettings::class);
+        $encrypted = array_filter($this->fields(), fn (string $field): bool => $settings->definition($field)?->encrypted === true);
+
+        return array_values(array_unique([...$this->secretFields(), ...$encrypted]));
     }
 
     /**
@@ -204,7 +219,7 @@ abstract class SettingsSectionPage extends Component
      */
     protected function changed(): array
     {
-        $secrets = $this->secretFields();
+        $secrets = $this->secrets();
 
         return array_values(array_filter($this->fields(), fn (string $field): bool => in_array($field, $secrets, true)
             ? trim($this->normalize($this->values[$field] ?? null)) !== ''
