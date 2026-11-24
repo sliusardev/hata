@@ -531,6 +531,7 @@ class HataServiceProvider extends ServiceProvider
         );
 
         Blade::directive('hataAssets', fn (string $entries): string => '<?php echo \\'.HataAssets::class."::tags({$entries}); ?>");
+        Blade::directive('hataHead', fn (): string => "<?php echo view('hata::partials.site.head')->render(); ?>");
         Blade::directive('hataFonts', fn (): string => '<?php echo \\'.HataAssets::class.'::fonts(); ?>');
     }
 

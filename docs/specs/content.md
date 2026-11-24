@@ -798,15 +798,18 @@ lists the stored ones (in every language, trashed ones included) and fails when 
 
 **Templates** (a folder of their own so a theme can replace them):
 
-- `layouts/site.blade.php`: `<html lang dir>` from the content language, `<title>` from `$pageTitle`, which the page
-  builds whole (`Entry::documentTitle()`: the `seo_title` alone when set, else the title, " - " and the site name; the
-  form's search preview uses the same rule and separator), `<meta name="robots" content="noindex">` in preview, the
-  favicons, the public stylesheet only (`@hataAssets(['resources/css/site.css'])`, from Hata's prebuilt `dist/`, below), the color scheme
+- `layouts/site.blade.php`: `<html lang dir>` from the content language, the whole head from `@hataHead`
+  (`partials/site/head.blade.php`, printed from the request's `Hata\Support\Seo\PageMeta`, which `EntryPage` and
+  `ContentController::listOf()` fill: `<title>` (`Entry::documentTitle()`: the `seo_title` alone when set, else the
+  title, " - " and the site name; the form's search preview uses the same rule and separator), the description
+  (`seo_description`, else the excerpt, else the start of the body, else the site's), `noindex` in preview, the
+  canonical (built from the record, never from the request; `?page=N` kept for N > 1; none in preview), Open Graph and
+  Twitter tags (none in preview) and `hreflang`), the favicons, the public stylesheet only (`@hataAssets(['resources/css/site.css'])`, from Hata's prebuilt `dist/`, below), the color scheme
   (`partials.color-scheme`), a small inline script that sets the `dark` class from the stored appearance (Flux's
   `flux.appearance`, when the visitor has used the admin) or else the visitor's system light/dark preference (no Flux,
-  Livewire or admin JavaScript is loaded), `hreflang`,
+  Livewire or admin JavaScript is loaded),
   and a header with the site logo (when one is chosen) or the site name linking to the home page in that language, and
-  the switcher. No description, canonical or Open Graph tags yet.
+  the switcher.
 - `partials/site/language-switcher.blade.php`: a `<details>` with plain links, no JavaScript; each active language links
   to the translation when it is among the alternates, else to that language's home (`ContentLocales::route('home', [],
   $code)`); the current language links to the current page and carries `aria-current`. Absent with one language.

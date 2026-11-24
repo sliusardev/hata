@@ -3,8 +3,8 @@
     The neutral layout of the public site until themes replace it. Plain HTML: no Livewire, no Flux scripts and no
     admin JavaScript; only the site's own CSS (resources/css/site.css, not the admin's app.css), the color scheme and
     a two-line appearance check for dark mode.
-    Expects $pageTitle, the whole document title (a page builds it, see Entry::documentTitle()); $noindex and
-    $strip (a section) are optional.
+    The head's title, description, canonical, Open Graph and hreflang come from PageMeta through @hataHead (a
+    controller fills it); a section 'strip' is optional.
 --}}
 @php
     $contentLocales = app(Hata\Support\Localization\ContentLocales::class);
@@ -15,11 +15,7 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-        <title>{{ $pageTitle }}</title>
-
-        @if ($noindex ?? false)
-            <meta name="robots" content="noindex">
-        @endif
+        @hataHead
 
         @include('hata::partials.favicons')
 
@@ -39,8 +35,6 @@
                 }
             })();
         </script>
-
-        @include('hata::partials.hreflang')
     </head>
     <body class="min-h-screen bg-white font-sans text-zinc-800 antialiased dark:bg-zinc-900 dark:text-zinc-200">
         @yield('strip')

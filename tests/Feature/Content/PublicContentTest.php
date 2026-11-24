@@ -535,7 +535,7 @@ describe('addresses that cannot be content', function () {
 });
 
 describe('cost', function () {
-    it('makes at most five queries more than the home page for a page with translations and images', function () {
+    it('makes at most six queries more than the home page for a page with translations and images', function () {
         $home = publicQueriesOf(fn () => $this->get('/')->assertOk());
 
         $image = Media::factory()->image()->create();
@@ -546,7 +546,7 @@ describe('cost', function () {
 
         $page = publicQueriesOf(fn () => $this->get('/about')->assertOk()->assertSee('<link rel="alternate" hreflang="de"', escape: false));
 
-        expect($page - $home)->toBeLessThanOrEqual(5)
+        expect($page - $home)->toBeLessThanOrEqual(6)
             ->and(publicQueriesOf(fn () => $this->get('/about')->assertOk(), ['entries', 'entry_redirects', 'media']))->toBeLessThanOrEqual(4);
     });
 

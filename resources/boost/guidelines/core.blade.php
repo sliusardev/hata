@@ -20,6 +20,7 @@ This site runs Hata, an admin panel and CMS installed as a Composer package (nam
 - Admin menu: `app(Hata\Support\Admin\AdminMenu::class)->add(new AdminMenuItem(key:, label:, icon:, route:, permission:, group:, order:))` in a provider's `boot()`; groups `platform`, `content`, `administration`, `account`.
 - Admin routes: middleware `web, auth, verified, can:admin.access`, prefix `config('hata.admin.path')`, names `admin.`. Full Livewire pages use `#[Layout('hata::layouts.app')]`; Blade pages `<x-hata::layouts.app :title="...">`.
 - Admin assets of a module: `app(Hata\Support\Admin\AdminAssets::class)->add('vendor/shop', ['resources/css/admin.css'])`.
+- Public layouts and themes: print the whole head with `@hataHead` (title, description, canonical, Open Graph, hreflang) inside `<head>`, never by hand; a controller of the site's own fills `app(Hata\Support\Seo\PageMeta::class)` (`setTitle()`, `setDescription()`, `setCanonical()`, `setImage()`, `setType()`, `setNoindex()`).
 - Components: `<x-hata::confirm-modal>`, `<x-hata::admin.row-actions>`, `<x-hata::admin.empty-state>`, `<x-hata::admin.rich-text>`, `<x-hata::flash-toast>`, Livewire `hata::media-picker`. UI is Flux free only (no Pro components).
 - Translations: Hata's are `__('hata::group.key')`; override a line in `lang/vendor/hata/<locale>/<group>.php`. Interface languages: `config('hata.admin.interface_locales')`.
 - Seeders: the site's `DatabaseSeeder` calls `Hata\Database\Seeders\HataSeeder`, then the site's own.
