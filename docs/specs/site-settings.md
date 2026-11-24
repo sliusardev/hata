@@ -18,7 +18,7 @@ The registry is `Hata\Support\Admin\SettingsSections` (a singleton; sections are
 
 | Key | Label | Order | Component (`hata::admin.settings.sections.…`) | What it holds |
 |---|---|---|---|---|
-| `site` | Site | 10 | `site` | site name, timezone |
+| `site` | Site | 10 | `site` | site name, timezone, home page, site descriptions, image for sharing |
 | `languages` | Languages | 20 | `languages` | the site's content languages (applied at once), the default interface language |
 | `content` | Content types | 30 | `content` | switches for the registered content types (applied at once, no Save) |
 | `access` | Access | 40 | `access` | public registration, role of new users |
@@ -68,6 +68,8 @@ Sections are listed by order (ties keep the order they were added in), at the si
 ## Fields
 
 - **Site name:** required, ≤255.
+- **Home page** (Site section, card): "Built-in home page" or "A page". A chosen page shows its title and path with "Change"; the search (`homeSearch`, a public property outside `values`, so typing never makes the form dirty) lists up to 20 live `pages` records of the default content language by path (`homeCandidates()`, columns `id, title, path, locale, type`). `home_page` (config `hata.content.home_page`) must be a non-trashed `pages` record, else `UpdateSiteSettings` throws `ProtectedActionException` (`home.unavailable`), shown on `values.home_page`; "Built-in" stores null (removes the row). A chosen record that is no longer live says so.
+- **Search and sharing** (Site section, card): one textarea per active content language (≤300, recommended 160, with an "N / 160" counter) stored as the array `site_description` (`hata.seo.description`): the form replaces the active languages' entries, blank ones are removed and off languages' texts are kept; and the share image (`og_image`, `hata.seo.image`): a library file picked with the media picker (`PageMeta::IMAGE_EXTENSIONS`: png, jpg, jpeg, webp), a preview, the hint "1200 × 630 px is shown best" and a warning under 600 × 315. The section saves all or nothing (one transaction): a refused image (`values.og_image`) rolls back the other fields.
 - **Content types section** (`content`): every registered content type with its icon, name, description, record count (one grouped query, the trash included) and a switch. Switching a type on applies at once; switching one off asks first (`<x-hata::confirm-modal>`: its pages leave the site, nothing is deleted). Each change is `Hata\Actions\Settings\SetContentTypeActive` (`settings.edit`), stored as the site setting `content_disabled_types` (config `hata.content.disabled_types`), followed by a reload of the section so the sidebar shows the change. A type whose `required()` is true (pages) has no switch and the mark "Always on". The section has no Save button (`<x-hata::admin.settings-section :save="false">`). See [content](content.md).
 - **Languages section:** the site's content languages (added from the catalogue, switched on and off, the default; each change is stored at once, see [languages](languages.md)) and, saved with the Save button, **Default interface language**: one of `hata.admin.interface_locales`, for guests and users without a language. The field shows the site's value, not the administrator's own language.
 - **Timezone:** any PHP timezone. Dates are stored in UTC (`app.timezone` doesn't change); admin views convert with `->tz(config('hata.admin.timezone'))`.
@@ -125,6 +127,8 @@ Details of the settings and their defaults are in [the media spec](media.md#site
 |---|---|---|
 | `SetLogo` | `settings.edit` | stores a library file's id as the logo and records the usage; called by Appearance's Save inside its transaction (`assign()` does it without checks, for callers that already validated the id) |
 | `RemoveLogo` | `settings.edit` | removes the setting and its usage; the file stays |
+| `SetShareImage` | `settings.edit` | as `SetLogo` for the key `og_image` (also `media.view` unless the id is the stored one; `MediaSelection` with `PageMeta::IMAGE_EXTENSIONS`; usage recorded; `Setting::forgetMedia()` clears it when the file is deleted, the usage label is "Image for sharing" linking to the Site section) |
+| `RemoveShareImage` | `settings.edit` | removes the setting and its usage; the file stays |
 | `UpdateSiteSettings` | `settings.edit` | stores only the keys it's given (the changed fields of one section); owns `STORAGE_FIELDS`; the role of new users must be assignable by the actor and not super-admin (`ProtectedActionException`, shown as a field error) |
 
 ## Config cache

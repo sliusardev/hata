@@ -178,9 +178,9 @@ test('the shell renders only the open section', function () {
 
     $tables = collect(DB::getQueryLog())->pluck('query')->implode("\n");
 
-    // Only the shell and the site section mount; the Media section's file counts and the Access section's role
-    // options never run.
-    expect($mounted)->toBe(['hata::admin.settings.edit', 'hata::admin.settings.sections.site'])
+    // Only the shell and the site section (with its share image picker) mount; the Media section's file counts and
+    // the Access section's role options never run.
+    expect($mounted)->toBe(['hata::admin.settings.edit', 'hata::admin.settings.sections.site', 'hata::media-picker'])
         ->and($tables)->not->toMatch('/from [`"]media[`"]/')
         ->and($tables)->not->toMatch('/[`"]name[`"] != \\?/');
 });

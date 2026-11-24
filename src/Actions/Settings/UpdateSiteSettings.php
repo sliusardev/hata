@@ -5,6 +5,7 @@ namespace Hata\Actions\Settings;
 use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Exceptions\StorageSettingsException;
+use Hata\Models\Entry;
 use Hata\Models\Media;
 use Hata\Models\Role;
 use Hata\Support\Media\MediaDisks;
@@ -39,6 +40,14 @@ class UpdateSiteSettings
 
             if ($role === null || $role->isSuperAdmin() || ! Gate::forUser($actor)->allows('assign', $role)) {
                 throw ProtectedActionException::because('hata::site_settings.messages.role_unavailable');
+            }
+        }
+
+        if (filled($data['home_page'] ?? null)) {
+            $isLivePage = Entry::query()->ofType('pages')->whereKey((int) $data['home_page'])->exists();
+
+            if (! $isLivePage) {
+                throw ProtectedActionException::because('hata::site_settings.home.unavailable');
             }
         }
 

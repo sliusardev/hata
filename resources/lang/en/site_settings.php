@@ -13,6 +13,35 @@ return [
         'timezone_description' => 'Dates in the admin panel are shown in this timezone.',
     ],
 
+    'home' => [
+        'heading' => 'Home page',
+        'description' => 'What opens at the address of the site itself. The chosen page and its translations answer there, each in its own language.',
+        'options' => [
+            'builtin' => 'Built-in home page',
+            'builtin_hint' => 'A simple page with the site name and its languages.',
+            'page' => 'A page',
+            'page_hint' => 'One of the pages of the site opens as its home.',
+        ],
+        'change' => 'Change',
+        'search' => 'Search pages by title',
+        'none_found' => 'No pages found.',
+        'missing' => 'The chosen page is no longer available. Choose another one or use the built-in home page.',
+        'unavailable' => 'This page cannot be the home page. Choose a page that is not in the trash.',
+    ],
+
+    'seo' => [
+        'heading' => 'Search and social networks',
+        'description' => 'How the site is described in search results and in links shared in messengers and social networks. A page without its own description uses this text.',
+        'description_label' => 'Description (:language)',
+        'description_placeholder' => 'One or two sentences about the site',
+        'image' => 'Image for sharing',
+        'image_description' => 'Shown in a shared link when the page has no image of its own.',
+        'image_none' => 'No image chosen',
+        'image_small' => 'This image is small and may look blurry in a shared link.',
+        'image_hint' => '1200 × 630 px is shown best. PNG, JPG or WebP from the media library.',
+        'usage' => 'Image for sharing',
+    ],
+
     'content' => [
         'heading' => 'Content types',
         'list_heading' => 'Content types of the site',

@@ -36,12 +36,16 @@ class Setting extends Model implements UsesMedia
 
     public function mediaUsageLabel(string $field): string
     {
+        if ($field === 'og_image') {
+            return __('hata::site_settings.seo.usage');
+        }
+
         return $field === 'logo_dark' ? __('hata::site_settings.logo.usage_dark') : __('hata::site_settings.logo.usage_light');
     }
 
     public function mediaUsageUrl(string $field, ?AdminUser $viewer): ?string
     {
-        return $viewer?->can('settings.edit') ? route('admin.settings.edit', ['tab' => 'appearance']) : null;
+        return $viewer?->can('settings.edit') ? route('admin.settings.edit', ['tab' => $field === 'og_image' ? 'site' : 'appearance']) : null;
     }
 
     /**
@@ -50,6 +54,12 @@ class Setting extends Model implements UsesMedia
      */
     public function forgetMedia(string $field, int $mediaId): void
     {
+        if ($field === 'og_image' && $this->key === $field && (int) $this->value === $mediaId) {
+            app(SiteSettings::class)->put([$field => null]);
+
+            return;
+        }
+
         $variants = array_map(fn (string $variant): string => "logo_{$variant}", SiteLogo::VARIANTS);
 
         if (in_array($field, $variants, true) && $this->key === $field && (int) $this->value === $mediaId) {
