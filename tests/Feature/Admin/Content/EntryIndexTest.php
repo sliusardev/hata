@@ -714,3 +714,18 @@ test('going back to the tree order and clearing the filters drop the picked rows
     entryList()->call('sort', 'title')->set('selected', [(string) $entry->id])->call('resetSort')->assertSet('selected', []);
     entryList()->set('selected', [(string) $entry->id])->call('clearFilters')->assertSet('selected', []);
 });
+
+test('the home page and its translation carry the badge in the list, other pages do not', function () {
+    $this->actingAs(contentViewer());
+    $en = Entry::factory()->page()->published()->inLocale('en')->create(['title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    $uk = Entry::factory()->page()->published()->translationOf($en, 'uk')->create(['title' => 'Pro nas', 'slug' => 'pro-nas', 'path' => 'pro-nas']);
+    $other = Entry::factory()->page()->published()->inLocale('en')->create(['title' => 'Contacts', 'slug' => 'contacts', 'path' => 'contacts']);
+    config(['hata.content.home_page' => $en->id]);
+
+    $list = entryList()
+        ->assertSeeHtml('data-test="home-page-badge-'.$en->id.'"')
+        ->assertSeeHtml('data-test="home-page-badge-'.$uk->id.'"')
+        ->assertDontSeeHtml('data-test="home-page-badge-'.$other->id.'"');
+
+    $list->assertSee(__('hata::content.list.home_page'));
+});

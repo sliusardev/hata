@@ -1,8 +1,11 @@
 <?php
 
 use App\Models\User;
+use Hata\Actions\Content\DeleteEntry;
+use Hata\Actions\Content\PruneEntryTrash;
 use Hata\Actions\Content\UnlinkTranslation;
 use Hata\Models\Entry;
+use Hata\Models\Setting;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Settings\SiteSettings;
 use Illuminate\Database\Events\QueryExecuted;
@@ -185,5 +188,90 @@ describe('cost', function () {
         chooseHome($uk);
 
         expect($count('/', ['entries']))->toBe(1);
+    });
+});
+
+describe('the chosen page\'s own address', function () {
+    it('redirects to the language\'s home with no-cache, for the record and its translations', function () {
+        [$uk, $en] = homePages();
+        chooseHome($uk);
+
+        $this->get('/about')->assertStatus(301)->assertRedirect(homeUrl())->assertHeader('Cache-Control', 'no-cache, private');
+        $this->get('/en/about-us')->assertStatus(301)->assertRedirect(homeUrl('en'));
+    });
+
+    it('leaves the pages under it alone', function () {
+        [$uk] = homePages();
+        Entry::factory()->page()->published()->inLocale('uk')->create(['title' => 'Команда', 'slug' => 'team', 'path' => 'about/team', 'parent_id' => $uk->id, 'body' => '<p>Люди</p>']);
+        chooseHome($uk);
+
+        $this->get('/about/team')->assertOk()->assertSee('Люди');
+    });
+
+    it('does not redirect an editor who opens a draft translation, which is a preview', function () {
+        [$uk, $en] = homePages();
+        $en->update(['status' => 'draft']);
+        chooseHome($uk);
+
+        $this->actingAs(User::factory()->withRole('admin')->create())->withCookie((string) config('session.cookie'), 'a-session')->get('/en/about-us')
+            ->assertOk()
+            ->assertSee('noindex', escape: false);
+    });
+
+    it('costs no query more than the page did', function () {
+        [$uk] = homePages();
+
+        $queries = function (int $status): int {
+            $count = 0;
+            DB::listen(function () use (&$count): void {
+                $count++;
+            });
+            $this->get('/about')->assertStatus($status);
+
+            return $count;
+        };
+
+        $before = $queries(200);
+        chooseHome($uk);
+        $after = $queries(301);
+
+        expect($after)->toBeLessThanOrEqual($before);
+    });
+});
+
+describe('deleting the chosen page for good', function () {
+    it('clears the setting and its row when DeleteEntry purges it', function () {
+        [$uk] = homePages();
+        app(SiteSettings::class)->put(['home_page' => $uk->id]);
+        $uk->delete();
+
+        app(DeleteEntry::class)->handle(User::factory()->withRole('admin')->create(), Entry::onlyTrashed()->findOrFail($uk->id));
+
+        expect(config('hata.content.home_page'))->toBeNull()
+            ->and(Setting::query()->where('key', 'home_page')->exists())->toBeFalse();
+    });
+
+    it('clears it when the trash is pruned', function () {
+        [$uk] = homePages();
+        app(SiteSettings::class)->put(['home_page' => $uk->id]);
+        $uk->delete();
+        Entry::onlyTrashed()->whereKey($uk->id)->update(['deleted_at' => now()->subDays(31)]);
+
+        app(PruneEntryTrash::class)->handle();
+
+        expect(config('hata.content.home_page'))->toBeNull()
+            ->and(Setting::query()->where('key', 'home_page')->exists())->toBeFalse();
+    });
+
+    it('keeps it when another record is purged', function () {
+        [$uk] = homePages();
+        $other = Entry::factory()->page()->published()->inLocale('uk')->create(['slug' => 'other', 'path' => 'other']);
+        app(SiteSettings::class)->put(['home_page' => $uk->id]);
+        $other->delete();
+
+        app(DeleteEntry::class)->handle(User::factory()->withRole('admin')->create(), Entry::onlyTrashed()->findOrFail($other->id));
+
+        expect(config('hata.content.home_page'))->toBe($uk->id)
+            ->and(Setting::query()->where('key', 'home_page')->exists())->toBeTrue();
     });
 });

@@ -805,3 +805,15 @@ test('the header lists the languages of the page as links, and a translation say
         ->assertSee(__('hata::content.form.translation.title', ['title' => 'Home', 'language' => 'EN']))
         ->assertSeeHtml('data-test="chip-en" data-state="published"');
 });
+
+test('the form header carries the home page badge for the chosen page and its translation only', function () {
+    $this->actingAs(formEditor());
+    $en = Entry::factory()->page()->published()->inLocale('en')->create(['slug' => 'about', 'path' => 'about']);
+    $uk = Entry::factory()->page()->published()->translationOf($en, 'uk')->create(['slug' => 'pro-nas', 'path' => 'pro-nas']);
+    $other = Entry::factory()->page()->published()->inLocale('en')->create(['slug' => 'contacts', 'path' => 'contacts']);
+    config(['hata.content.home_page' => $en->id]);
+
+    editForm($en)->assertSeeHtml('data-test="home-page-badge"');
+    editForm($uk)->assertSeeHtml('data-test="home-page-badge"');
+    editForm($other)->assertDontSeeHtml('data-test="home-page-badge"');
+});

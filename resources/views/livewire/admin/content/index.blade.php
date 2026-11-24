@@ -24,6 +24,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
     $activeCodes = app(Hata\Support\Localization\ContentLocales::class)->activeCodes();
     $timezone = config('hata.admin.timezone');
     $trashDays = (int) config('hata.content.trash_days');
+    $homeGroupId = $this->homeGroupId;
     $selectable = $abilities['edit'] || $abilities['delete'];
     $checkbox = 'size-4 cursor-pointer rounded accent-zinc-800 dark:accent-white';
 @endphp
@@ -214,6 +215,9 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                                                 <span @class(['shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700 uppercase dark:bg-white/10 dark:text-zinc-200', 'opacity-60' => ! in_array($entry->locale, $activeCodes, true)]) data-test="entry-language-{{ $entry->id }}">{{ $entry->locale }}</span>
                                             @endif
                                             <a href="{{ $editUrl }}" wire:navigate class="truncate font-medium text-zinc-900 hover:underline dark:text-white" data-test="edit-entry-link-{{ $entry->id }}">{{ $entry->title }}</a>
+                                            @if ($homeGroupId !== null && $entry->entry_group_id === $homeGroupId)
+                                                <flux:badge size="sm" color="sky" icon="home" class="shrink-0" data-test="home-page-badge-{{ $entry->id }}">{{ __('hata::content.list.home_page') }}</flux:badge>
+                                            @endif
                                             {{-- On a narrow screen the Status column is hidden, so the state sits by the title. --}}
                                             @if (! $inTrash && $publishes)
                                                 <flux:badge size="sm" :color="$stateColor" class="shrink-0 md:hidden">{{ $stateLabel }}</flux:badge>

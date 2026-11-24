@@ -7,6 +7,8 @@ use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
 use Hata\Models\EntryGroup;
 use Hata\Models\MediaUsage;
+use Hata\Support\Content\HomePage;
+use Hata\Support\Settings\SiteSettings;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +70,13 @@ class DeleteEntry
 
         $ids = $entries->modelKeys();
         $groupIds = array_values(array_unique($entries->map(fn (Entry $entry): int => (int) $entry->entry_group_id)->all()));
+
+        // The chosen home page goes for good: the setting goes with it, in this transaction (the config follows after commit).
+        $homeId = app(HomePage::class)->id();
+
+        if ($homeId !== null && in_array($homeId, $ids, true)) {
+            app(SiteSettings::class)->put(['home_page' => null]);
+        }
 
         MediaUsage::query()
             ->where('usable_type', (new Entry)->getMorphClass())

@@ -17,6 +17,7 @@ use Hata\Models\Entry;
 use Hata\Support\Content\ContentType;
 use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\EntryListQuery;
+use Hata\Support\Content\HomePage;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\Language;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -379,6 +380,16 @@ abstract class EntryListPage extends Component
             'edit' => $user->can($this->contentType->permission('edit')),
             'delete' => $user->can($this->contentType->permission('delete')),
         ];
+    }
+
+    /**
+     * The group of the chosen home page when this list is the pages type, else null: one query per render, for the
+     * badge on the rows.
+     */
+    #[Computed]
+    public function homeGroupId(): ?int
+    {
+        return $this->type === 'pages' ? app(HomePage::class)->groupId() : null;
     }
 
     public function isFiltered(): bool

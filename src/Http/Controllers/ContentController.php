@@ -7,6 +7,7 @@ use Hata\Support\Content\ContentLookup;
 use Hata\Support\Content\ContentRouter;
 use Hata\Support\Content\ContentType;
 use Hata\Support\Content\EntryPage;
+use Hata\Support\Content\HomePage;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Seo\PageMeta;
 use Illuminate\Http\RedirectResponse;
@@ -25,9 +26,9 @@ class ContentController extends Controller
     ) {}
 
     /**
-     * The scoped services (PageMeta) are resolved per call, never held: a route keeps its controller across requests.
+     * The scoped services (PageMeta, HomePage) are resolved per call, never held: a route keeps its controller across requests.
      */
-    public function __invoke(Request $request, EntryPage $entryPage, PageMeta $meta, string $path): Response|RedirectResponse
+    public function __invoke(Request $request, EntryPage $entryPage, PageMeta $meta, HomePage $home, string $path): Response|RedirectResponse
     {
         $lookup = $request->attributes->get(ContentRouter::LOOKUP_ATTRIBUTE);
 
@@ -67,6 +68,11 @@ class ContentController extends Controller
         $preview = $match->preview || $languageOff;
 
         $this->locales->useAlternates($this->alternates($entry));
+
+        // The chosen page lives at its language's home; only the record itself (a preview stays openable for editors).
+        if (! $preview && $home->includes($entry)) {
+            return redirect($this->locales->route('home', [], $entry->locale), 301)->header('Cache-Control', 'no-cache');
+        }
 
         return $entryPage->response($entry, $request->user(), $preview, $languageOff);
     }

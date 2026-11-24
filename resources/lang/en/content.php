@@ -95,6 +95,7 @@ return [
         'edit' => 'Edit the translation',
     ],
     'list' => [
+        'home_page' => 'Home page',
         'tabs' => [
             'all' => 'All',
             'published' => 'Published',
