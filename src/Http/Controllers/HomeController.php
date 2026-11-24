@@ -16,22 +16,23 @@ use Illuminate\Http\Response;
 class HomeController extends Controller
 {
     public function __construct(
-        private readonly HomePage $home,
         private readonly ContentLocales $locales,
-        private readonly EntryPage $entryPage,
-        private readonly PageMeta $meta,
     ) {}
 
-    public function __invoke(Request $request): Response
+    /**
+     * The scoped services (HomePage, PageMeta) arrive as arguments: a route keeps its controller for as long as the
+     * router lives, which may be longer than one request.
+     */
+    public function __invoke(Request $request, HomePage $home, EntryPage $entryPage, PageMeta $meta): Response
     {
         $url = $this->locales->route('home');
-        $record = $this->home->recordFor($this->locales->current()->code);
+        $record = $home->recordFor($this->locales->current()->code);
 
         if ($record !== null && $record->isPublic()) {
-            return $this->entryPage->response($record, $request->user(), preview: false, languageOff: false, canonical: $url);
+            return $entryPage->response($record, $request->user(), preview: false, languageOff: false, canonical: $url);
         }
 
-        $this->meta
+        $meta
             ->setTitle((string) config('app.name'))
             ->setOgTitle((string) config('app.name'))
             ->setCanonical($url);
@@ -39,7 +40,7 @@ class HomeController extends Controller
         $hint = null;
 
         if ($request->user()?->can('settings.edit')) {
-            $hint = $this->home->id() === null ? 'choose' : 'unpublished';
+            $hint = $home->id() === null ? 'choose' : 'unpublished';
         }
 
         return response()->view('hata::site.home', ['hint' => $hint]);

@@ -157,6 +157,24 @@ describe('the chosen page', function () {
     });
 });
 
+it('reflects a changed home page and fresh head tags on the next request through the same router', function () {
+    [$uk] = homePages();
+    $other = Entry::factory()->page()->published()->inLocale('uk')->create(['title' => 'Контакти', 'slug' => 'contacts', 'path' => 'contacts', 'body' => '<p>Телефон</p>']);
+
+    chooseHome($uk);
+    $this->get('/')->assertOk()->assertSee('Ми робимо дахи');
+    $this->get('/contacts')->assertOk()->assertSee('<link rel="canonical" href="'.url('/contacts').'">', escape: false);
+
+    chooseHome($other);
+    $this->get('/')->assertOk()
+        ->assertSee('Телефон')
+        ->assertDontSee('Ми робимо дахи')
+        ->assertSee('<link rel="canonical" href="'.homeUrl().'">', escape: false);
+
+    config(['hata.content.home_page' => null]);
+    $this->get('/')->assertOk()->assertDontSee('Телефон');
+});
+
 describe('cost', function () {
     it('adds no query for the neutral home and one entries query for a chosen page', function () {
         $count = fn (string $path, array $tables): int => homeQueries(fn () => $this->get($path)->assertOk(), $tables);

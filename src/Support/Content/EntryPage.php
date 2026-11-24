@@ -26,7 +26,6 @@ class EntryPage
     public function __construct(
         private readonly ContentTypes $types,
         private readonly BodyRenderer $renderer,
-        private readonly PageMeta $meta,
     ) {}
 
     /**
@@ -40,7 +39,8 @@ class EntryPage
         $taxonomy = $type->isTaxonomy();
         $records = $taxonomy ? $this->filedUnder($entry) : null;
 
-        $this->meta
+        // resolved here, not held: PageMeta is scoped to the request and this object may outlive it
+        app(PageMeta::class)
             ->setTitle($entry->documentTitle())
             ->setOgTitle(filled($entry->seo_title) ? (string) $entry->seo_title : $entry->title)
             ->setDescription(filled($entry->seo_description) ? $entry->seo_description : (filled($entry->excerpt) ? $entry->excerpt : $entry->body))

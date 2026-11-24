@@ -22,11 +22,12 @@ class ContentController extends Controller
     public function __construct(
         private readonly ContentRouter $router,
         private readonly ContentLocales $locales,
-        private readonly EntryPage $entryPage,
-        private readonly PageMeta $meta,
     ) {}
 
-    public function __invoke(Request $request, string $path): Response|RedirectResponse
+    /**
+     * The scoped services (PageMeta) are resolved per call, never held: a route keeps its controller across requests.
+     */
+    public function __invoke(Request $request, EntryPage $entryPage, PageMeta $meta, string $path): Response|RedirectResponse
     {
         $lookup = $request->attributes->get(ContentRouter::LOOKUP_ATTRIBUTE);
 
@@ -49,7 +50,7 @@ class ContentController extends Controller
         if ($match->listOf !== null) {
             abort_if($languageOff, 404);
 
-            return $this->listOf($match->listOf);
+            return $this->listOf($match->listOf, $entryPage, $meta);
         }
 
         if ($match->redirectTo !== null) {
@@ -67,14 +68,14 @@ class ContentController extends Controller
 
         $this->locales->useAlternates($this->alternates($entry));
 
-        return $this->entryPage->response($entry, $request->user(), $preview, $languageOff);
+        return $entryPage->response($entry, $request->user(), $preview, $languageOff);
     }
 
     /**
      * The list of a type's public records in the current language, newest first, a page at a time. Two queries, a
      * third for the rows' images.
      */
-    private function listOf(ContentType $type): Response
+    private function listOf(ContentType $type, EntryPage $entryPage, PageMeta $meta): Response
     {
         $locale = $this->locales->current()->code;
         $alternates = [];
@@ -90,10 +91,10 @@ class ContentController extends Controller
 
         $this->locales->useAlternates($alternates);
 
-        $records = $this->entryPage->page(Entry::query()->ofType($type->key())->where('locale', $locale));
+        $records = $entryPage->page(Entry::query()->ofType($type->key())->where('locale', $locale));
         $url = $this->locales->route('content', ['path' => trim((string) $type->base($locale), '/')], $locale);
 
-        $this->meta
+        $meta
             ->setTitle($type->pluralLabel().' - '.config('app.name'))
             ->setOgTitle($type->pluralLabel())
             ->setCanonical(EntryPage::withPage($url, $records->currentPage()));

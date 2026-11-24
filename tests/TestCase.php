@@ -9,7 +9,6 @@ use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\Types\PagesType;
 use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Laravel\Fortify\Features;
 use Orchestra\Testbench\Concerns\WithWorkbench;
@@ -98,8 +97,7 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Every request of a test starts with fresh scoped services (PageMeta, HomePage) and fresh controllers, which would
-     * otherwise keep the previous request's instances, as a real request would not.
+     * Every request of a test starts with fresh scoped services (PageMeta, HomePage) as a real request would.
      *
      * @param  string  $method
      * @param  string  $uri
@@ -113,11 +111,6 @@ abstract class TestCase extends BaseTestCase
     public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
     {
         $this->app->forgetScopedInstances();
-
-        // a route keeps its controller, and with it the scoped services the constructor received
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            $route->flushController();
-        }
 
         return parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
     }
