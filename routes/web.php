@@ -1,6 +1,7 @@
 <?php
 
 use Hata\Http\Controllers\ContentController;
+use Hata\Http\Controllers\HomeController;
 use Hata\Http\Controllers\MediaController;
 use Hata\Http\Controllers\StaticMediaFallbackController;
 use Hata\Http\Middleware\LookUpContent;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 | Public pages, in every content language: the default one at these addresses, the others under /<code>/.
 */
 Route::localized(function () {
-    Route::view('/', 'hata::welcome')->name('home');
+    Route::get('/', HomeController::class)->name('home');
 });
 
 /*

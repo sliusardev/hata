@@ -33,6 +33,7 @@ use Hata\Support\Admin\SettingsSections;
 use Hata\Support\Assets\HataAssets;
 use Hata\Support\Assets\HataVite;
 use Hata\Support\Config\HataConfig;
+use Hata\Support\Content\HomePage;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\LanguageCatalog;
 use Hata\Support\Media\DirectServing;
@@ -106,6 +107,7 @@ class HataServiceProvider extends ServiceProvider
         ));
 
         $this->app->scoped(PageMeta::class);
+        $this->app->scoped(HomePage::class);
 
         $this->registerLocalizedRoutes();
         $this->registerFluxOverrides();

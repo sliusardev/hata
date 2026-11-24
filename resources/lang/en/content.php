@@ -338,5 +338,10 @@ return [
         'preview_note' => 'Visitors don’t see this page yet.',
         'edit' => 'Edit',
         'language' => 'Language',
+        'home' => [
+            'choose' => 'Choose a home page in Site settings',
+            'unpublished' => 'The home page is not published in this language',
+            'settings' => 'Site settings',
+        ],
     ],
 ];

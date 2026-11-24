@@ -27,7 +27,7 @@ it('renders hata\'s anonymous components and layouts under the hata prefix', fun
     expect(View::exists('hata::layouts.app'))->toBeTrue()
         ->and(View::exists('hata::auth.login'))->toBeTrue()
         ->and(View::exists('hata::components.confirm-modal'))->toBeTrue()
-        ->and(View::exists('hata::welcome'))->toBeTrue();
+        ->and(View::exists('hata::site.home'))->toBeTrue();
 
     $this->get(route('login'))->assertOk()->assertSee('name="password"', escape: false);
 });

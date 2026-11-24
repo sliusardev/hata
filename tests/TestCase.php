@@ -9,9 +9,12 @@ use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\Types\PagesType;
 use Hata\Support\Permissions\PermissionRegistry;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Testing\TestResponse;
 use Laravel\Fortify\Features;
 use Orchestra\Testbench\Concerns\WithWorkbench;
 use Orchestra\Testbench\TestCase as BaseTestCase;
+use Symfony\Component\HttpFoundation\Response;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -92,6 +95,31 @@ abstract class TestCase extends BaseTestCase
         $this->app->forgetInstance(PermissionRegistry::class);
         $this->app->forgetInstance(ContentTypes::class);
         $this->app->make(ContentTypes::class);
+    }
+
+    /**
+     * Every request of a test starts with fresh scoped services (PageMeta, HomePage) and fresh controllers, which would
+     * otherwise keep the previous request's instances, as a real request would not.
+     *
+     * @param  string  $method
+     * @param  string  $uri
+     * @param  array<string, mixed>  $parameters
+     * @param  array<string, mixed>  $cookies
+     * @param  array<string, mixed>  $files
+     * @param  array<string, mixed>  $server
+     * @param  string|null  $content
+     * @return TestResponse<Response>
+     */
+    public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
+    {
+        $this->app->forgetScopedInstances();
+
+        // a route keeps its controller, and with it the scoped services the constructor received
+        foreach (Route::getRoutes()->getRoutes() as $route) {
+            $route->flushController();
+        }
+
+        return parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
     }
 
     protected function skipUnlessFortifyHas(string $feature, ?string $message = null): void
