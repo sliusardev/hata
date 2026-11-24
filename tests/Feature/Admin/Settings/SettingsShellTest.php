@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Js;
 use Livewire\Component;
 use Livewire\Livewire;
 use Tests\Fixtures\ShopSettingsSection;
@@ -112,14 +113,17 @@ test('switching sections is navigation, guarded in the browser', function () {
         ->toContain(e(__('hata::site_settings.unsaved.leave_body')));
 });
 
-test('a typed SMTP password counts as an unsaved change', function () {
+test('a typed secret counts as an unsaved change', function (string $section, string $secret) {
     $this->actingAs(User::factory()->withRole('admin')->create());
 
-    // The section's dirty check treats a typed secret as a change; the shell's guard asks that check.
-    Livewire::test('hata::admin.settings.sections.mail')
+    // The section root's dirty check counts a typed secret as a change (its `secrets` list); the shell's guard asks it.
+    Livewire::test("hata::admin.settings.sections.{$section}")
         ->assertSeeHtml('data-settings-section')
-        ->assertSeeHtml('mail_password');
-});
+        ->assertSeeHtml('secrets: '.Js::from([$secret])->toHtml());
+})->with([
+    'SMTP password' => ['mail', 'mail_password'],
+    'S3 secret' => ['media', 'media_s3_secret'],
+]);
 
 test('unknown or forbidden tab falls back to the first visible section', function () {
     $this->actingAs(shopOnlyUser());
