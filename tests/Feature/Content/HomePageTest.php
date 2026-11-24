@@ -63,16 +63,34 @@ function homeSettingsEditor(): User
 }
 
 describe('the neutral home', function () {
-    it('shows the site name, the description of the language and the home canonical', function () {
+    it('has the site name as its title, the description of the language in the head and the home canonical', function () {
         app(SiteSettings::class)->put(['site_description' => ['uk' => 'Дахи під ключ']]);
 
         $this->get('/')->assertOk()
-            ->assertSee('<h1', escape: false)
-            ->assertSeeText(config('app.name'))
-            ->assertSeeText('Дахи під ключ')
+            ->assertSee('<title>'.config('app.name').'</title>', escape: false)
+            ->assertSee('<meta name="description" content="Дахи під ключ">', escape: false)
+            ->assertDontSeeText('Дахи під ключ')
             ->assertSee('<link rel="canonical" href="'.homeUrl().'">', escape: false)
             ->assertSee('<meta property="og:type" content="website">', escape: false)
             ->assertDontSee('data-test="home-hint"', escape: false);
+    });
+
+    it('introduces Hata in the language of the address, with the admin link', function () {
+        $this->get('/')->assertOk()
+            ->assertSee('<h1', escape: false)
+            ->assertSeeText('Ваш сайт готовий.')
+            ->assertSeeText('Відкрити адмінку')
+            ->assertSee('href="'.route('admin.dashboard').'"', escape: false)
+            ->assertDontSee('data-test="home-hint"', escape: false);
+
+        $this->get('/en/')->assertOk()
+            ->assertSeeText('Your site is ready.')
+            ->assertSeeText('Open the admin')
+            ->assertSee('href="'.route('admin.dashboard').'"', escape: false);
+
+        $this->actingAs(homeSettingsEditor())->get('/en/')->assertOk()
+            ->assertSeeText('Your site is ready.')
+            ->assertSee('data-test="home-hint"', escape: false);
     });
 
     it('shows a user who may edit the settings the hint to choose a home page', function () {

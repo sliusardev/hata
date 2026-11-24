@@ -12,3 +12,53 @@
 @source '../views/partials/site';
 @source '../views/components/site-logo.blade.php';
 @source '../views/components/app-logo-icon.blade.php';
+
+/*
+ * The neutral home's palette (site/home.blade.php): warm paper, mint cards, hairlines instead of shadows. Prefixed
+ * "home" so no other public page changes; the dark values keep the character on a deep ink-teal. System font stacks
+ * only: the page makes no font request of its own.
+ */
+@theme {
+    --font-home-serif: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+    --font-home-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+    --color-home-paper: #f2f8f7;
+    --color-home-mint: #e4f0f1;
+    --color-home-sand: #f2e8e2;
+    --color-home-foam: #cae1e2;
+    --color-home-line: #cae1e2;
+    --color-home-pill: #a2cbcd;
+    --color-home-ink: #283338;
+    --color-home-body: #333333;
+    --color-home-muted: #4b5a60;
+    --color-home-accent: #2a7779;
+    --color-home-cta: #1c5d5f;
+    --color-home-cta-hover: #156152;
+    --color-home-cta-ink: #ffffff;
+    --color-home-ghost: #0e4749;
+    --color-home-stroke: #231e21;
+    --color-home-sage: #65b8a2;
+    --color-home-rose: #d6aec1;
+}
+
+@layer theme {
+    .dark {
+        --color-home-paper: #0f1f22;
+        --color-home-mint: #16302f;
+        --color-home-sand: #2a2523;
+        --color-home-foam: #1f4245;
+        --color-home-line: #22403f;
+        --color-home-pill: #34605f;
+        --color-home-ink: #e4f0f1;
+        --color-home-body: #cfdfe0;
+        --color-home-muted: #9fb8ba;
+        --color-home-accent: #7cc4c6;
+        --color-home-cta: #6cc0c2;
+        --color-home-cta-hover: #8dd0d2;
+        --color-home-cta-ink: #0b1a1c;
+        --color-home-ghost: #a2cbcd;
+        --color-home-stroke: #e4f0f1;
+        --color-home-sage: #65b8a2;
+        --color-home-rose: #d6aec1;
+    }
+}

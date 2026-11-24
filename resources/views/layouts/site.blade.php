@@ -5,10 +5,13 @@
     a two-line appearance check for dark mode.
     The head's title, description, canonical, Open Graph and hreflang come from PageMeta through @hataHead (a
     controller fills it); a section 'strip' is optional.
+    A view yields 'content' into the narrow reading column, or 'page' for a full-width page with its own sections (the
+    neutral home), which also gets the home's paper background and a wider header.
 --}}
 @php
     $contentLocales = app(Hata\Support\Localization\ContentLocales::class);
     $language = $contentLocales->current();
+    $wide = $__env->hasSection('page');
 @endphp
 <html lang="{{ $language->hreflang() }}" dir="{{ $language->direction() }}">
     <head>
@@ -36,12 +39,16 @@
             })();
         </script>
     </head>
-    <body class="min-h-screen bg-white font-sans text-zinc-800 antialiased dark:bg-zinc-900 dark:text-zinc-200">
+    <body @class([
+        'min-h-screen font-sans antialiased',
+        'bg-white text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200' => ! $wide,
+        'bg-home-paper text-home-body' => $wide,
+    ])>
         @yield('strip')
 
-        <header class="border-b border-zinc-200 dark:border-zinc-700">
-            <div class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-                <a href="{{ $contentLocales->route('home') }}" class="flex min-w-0 items-center gap-2 font-semibold text-zinc-900 dark:text-white">
+        <header @class(['border-b', 'border-zinc-200 dark:border-zinc-700' => ! $wide, 'border-home-line' => $wide])>
+            <div @class(['mx-auto flex items-center justify-between gap-4 px-4 py-4', 'max-w-3xl sm:px-6' => ! $wide, 'max-w-[1200px] sm:px-8' => $wide])>
+                <a href="{{ $contentLocales->route('home') }}" @class(['flex min-w-0 items-center gap-2 font-semibold', 'text-zinc-900 dark:text-white' => ! $wide, 'text-home-ink' => $wide])>
                     @if (Hata\Support\Settings\SiteLogo::isCustom())
                         <x-hata::site-logo class="h-8" />
                     @else
@@ -53,8 +60,14 @@
             </div>
         </header>
 
-        <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-            @yield('content')
-        </main>
+        @if ($wide)
+            <main>
+                @yield('page')
+            </main>
+        @else
+            <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+                @yield('content')
+            </main>
+        @endif
     </body>
 </html>

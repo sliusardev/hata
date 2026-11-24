@@ -876,7 +876,12 @@ settings or a neutral home. `Hata\Support\Content\HomePage` (scoped) reads the s
   record is public it is rendered by `EntryPage` exactly as a page, with the canonical and the alternates pointing to
   each language's home address. When none is public in the language (trashed, draft, no translation) the neutral home
   is shown for that language only; other languages keep showing their public translations.
-- The neutral home (`hata::site.home`, in `layouts/site`) shows the site name and the language's site description. A
+- The neutral home (`hata::site.home`, full width in `layouts/site` through its `page` section) introduces Hata: a
+  headline, what Hata is, "Open the admin" (`admin.dashboard`) and "Documentation" (the GitHub repository), a line on
+  choosing a home page in Site settings → Site, six feature cards and a Laravel/Livewire/MIT strip, in the language of
+  the address (`hata::content.public.home.*`). Its palette is the `home-*` tokens in `resources/css/site.css` (light
+  and dark), with system font stacks and inline SVG only, no query of its own. The site description is no longer
+  printed on the page (it stays the head's description). A
   user with `settings.edit` also sees a hint strip ("Choose a home page in Site settings", or that the chosen page is
   not public in this language).
 - The chosen record's own address and its translations' addresses answer 301 to that language's home with
