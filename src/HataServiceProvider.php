@@ -28,6 +28,7 @@ use Hata\Providers\FortifyServiceProvider;
 use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminMenuItem;
+use Hata\Support\Admin\SettingsSections;
 use Hata\Support\Assets\HataAssets;
 use Hata\Support\Assets\HataVite;
 use Hata\Support\Config\HataConfig;
@@ -97,6 +98,7 @@ class HataServiceProvider extends ServiceProvider
         $this->app->singleton(ContentLocales::class);
         $this->app->singleton(AdminAssets::class);
         $this->app->singleton(AdminMenu::class);
+        $this->app->singleton(SettingsSections::class);
         $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
             $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
         ));
