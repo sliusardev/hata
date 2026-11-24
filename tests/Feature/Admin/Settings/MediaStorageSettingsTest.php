@@ -12,6 +12,7 @@ use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -164,7 +165,7 @@ it('saves the connection fields without a test while the storage stays local', f
 
     expect($test->calls)->toBe([])
         ->and(config('filesystems.disks.s3.bucket'))->toBe('media-bucket')
-        ->and(config('hata.media.disk'))->toBe('local');
+        ->and(config('hata.media.disk'))->toBe('public');
 });
 
 it('requires a bucket, key and secret for s3', function () {
@@ -340,6 +341,7 @@ it('knows which disks are cloud disks and their public url', function () {
 
 it('stores no s3 setting the admin did not change, so .env keeps working', function () {
     config([
+        'hata.media.disk' => 'public',
         'filesystems.disks.s3.bucket' => 'env-bucket',
         'filesystems.disks.s3.key' => 'env-key',
         'filesystems.disks.s3.secret' => 'env-secret',
@@ -541,4 +543,69 @@ describe('direct serving status', function () {
             ->assertOk()
             ->assertSee('window.mediaDirectProbe', false);
     });
+});
+
+it('ends the private local mode when the section is saved with the untouched This server choice (decision 52)', function () {
+    $test = fakeConnectionTest(['ok' => false, 'step' => 'endpoint', 'message' => 'x']);
+    config(['hata.media.disk' => 'local']);
+
+    storageTab()
+        ->assertSet('values.media_storage', 'public')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Setting::query()->where('key', 'media_storage')->value('value'))->toBe('public')
+        ->and(config('hata.media.disk'))->toBe('public')
+        ->and($test->calls)->toBe([]);
+});
+
+it('does not store the storage choice when the disk is already public and untouched', function () {
+    config(['hata.media.disk' => 'public']);
+
+    storageTab()->call('save')->assertHasNoErrors();
+
+    expect(Setting::query()->where('key', 'media_storage')->exists())->toBeFalse();
+});
+
+it('runs the s3-rows exists query at most once per Media save', function () {
+    config(['hata.media.disk' => 'public']);
+    Media::factory()->create(['disk' => 's3']);
+    fakeConnectionTest();
+
+    $page = storageTab()
+        ->set(s3FormInput(['values.media_s3_bucket' => 'other-bucket']))
+        ->set('values.media_s3_bucket', 'other-bucket');
+
+    DB::enableQueryLog();
+    $page->call('save')->assertSet('showS3ChangeModal', true);
+    $page->call('confirmS3Change');
+    $queries = collect(DB::getQueryLog())->filter(fn (array $q): bool => str_contains($q['query'], 'from "media"') && str_contains($q['query'], '"disk"'));
+    DB::disableQueryLog();
+
+    // one per request: the save that opens the dialog, and the confirmation
+    expect($queries)->toHaveCount(2);
+});
+
+it('validates the form once per Media save request, also when confirming the s3 change', function () {
+    config(['hata.media.disk' => 'public']);
+    Media::factory()->create(['disk' => 's3']);
+    fakeConnectionTest();
+
+    $page = storageTab()->set(s3FormInput(['values.media_s3_bucket' => 'other-bucket']));
+
+    $made = 0;
+    Validator::resolver(function ($translator, $data, $rules, $messages, $attributes) use (&$made) {
+        if (isset($data['values'])) {
+            $made++;
+        }
+
+        return new Illuminate\Validation\Validator($translator, $data, $rules, $messages, $attributes);
+    });
+
+    $page->call('save');
+    expect($made)->toBe(1);
+
+    $made = 0;
+    $page->call('confirmS3Change');
+    expect($made)->toBe(1);
 });

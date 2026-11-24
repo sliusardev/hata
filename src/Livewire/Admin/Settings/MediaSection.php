@@ -32,6 +32,8 @@ use Livewire\Attributes\Locked;
  *
  * Storage fields are stored only when changed, so an untouched one keeps following `.env`. A change to where existing
  * S3 files are looked up asks for confirmation first, and a changed connection is tested by the action that stores it.
+ *
+ * @property-read bool $hasS3Files
  */
 abstract class MediaSection extends SettingsSectionPage
 {
@@ -158,6 +160,21 @@ abstract class MediaSection extends SettingsSectionPage
         return parent::prepare($validated);
     }
 
+    /**
+     * Saving ends the private `MEDIA_DISK=local` mode (decision 52): the form loads it as "This server", so that
+     * choice would look untouched; it is stored as `public` instead, which never runs the connection test.
+     */
+    protected function changed(): array
+    {
+        $changed = parent::changed();
+
+        if (config('hata.media.disk') === 'local') {
+            $changed = array_values(array_unique([...$changed, 'media_storage']));
+        }
+
+        return $changed;
+    }
+
     protected function persist(array $changed): void
     {
         try {
@@ -177,19 +194,18 @@ abstract class MediaSection extends SettingsSectionPage
         }
     }
 
-    public function save(): void
+    /**
+     * Asks for confirmation before a save that moves where existing s3 files are looked up.
+     */
+    protected function beforePersist(array $changed): bool
     {
-        $this->authorizeSection();
-
-        $this->validate();
-
         if (! $this->s3ChangeConfirmed && $this->movesS3Files()) {
             $this->showS3ChangeModal = true;
 
-            return;
+            return false;
         }
 
-        parent::save();
+        return true;
     }
 
     /**
@@ -223,7 +239,7 @@ abstract class MediaSection extends SettingsSectionPage
         }
 
         // The connection settings belong to the `s3` disk.
-        return $changed && $this->hasS3Files();
+        return $changed && $this->hasS3Files;
     }
 
     /**
