@@ -103,7 +103,12 @@ class EntryWriter
             $ids = [...$ids, ...$entry->terms()->onlyTrashed()->pluck('entries.id')->all()];
         }
 
-        $entry->terms()->sync(array_values(array_unique($ids)));
+        $changes = $entry->terms()->sync(array_values(array_unique($ids)));
+
+        // Filing changes the record's term pages and the sitemap, so `updated_at` moves even when nothing else did.
+        if (! $entry->wasRecentlyCreated && ($changes['attached'] !== [] || $changes['detached'] !== [])) {
+            $entry->touch();
+        }
     }
 
     /**

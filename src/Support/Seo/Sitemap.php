@@ -26,16 +26,24 @@ class Sitemap
     ) {}
 
     /**
+     * The settings whose change changes the sitemap. Others are left out: the media probe rewrites its stored-only
+     * settings every 30 minutes to a day.
+     */
+    public const array SETTINGS = ['home_page', 'content_locales', 'content_default_locale', 'content_disabled_types'];
+
+    /**
      * When the sitemap last changed, by one query: the latest of every record's `updated_at` (trashed ones too: a
-     * trash sets it), the latest `published_at` that has come (a scheduled record goes live without a write) and the
-     * settings' `updated_at`. Null on a site with none of them.
+     * trash sets it), the latest `published_at` that has come (a scheduled record goes live without a write), the
+     * groups' `updated_at` (linking and unlinking translations touch them, not the records) and the `updated_at` of
+     * the settings in SETTINGS. Null on a site with none of them.
      */
     public function lastModified(): ?CarbonImmutable
     {
         $row = DB::query()
             ->selectSub(DB::table('entries')->selectRaw('max(updated_at)'), 'entry_updated')
             ->selectSub(DB::table('entries')->selectRaw('max(published_at)')->where('published_at', '<=', now()), 'entry_published')
-            ->selectSub(DB::table('settings')->selectRaw('max(updated_at)'), 'setting_updated')
+            ->selectSub(DB::table('entry_groups')->selectRaw('max(updated_at)'), 'group_updated')
+            ->selectSub(DB::table('settings')->selectRaw('max(updated_at)')->whereIn('key', self::SETTINGS), 'setting_updated')
             ->first();
 
         $latest = null;

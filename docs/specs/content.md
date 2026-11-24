@@ -907,8 +907,12 @@ builds it on request, streamed (`response()->stream`) from cursors with no bodie
   base); every term with a public record of an active type filed under it.
 - Headers: `Content-Type: application/xml; charset=utf-8`, `Cache-Control: public, max-age=3600` and `Last-Modified`
   from one query: the latest of `entries.updated_at` (trashed included), the latest `published_at` that has come (a
-  scheduled record goes live without a write) and `settings.updated_at`. A matching `If-Modified-Since` gets 304 and no
-  body is built. Moving a page bumps its descendants' `updated_at` (`EntryPaths`), so `lastmod` follows a move.
+  scheduled record goes live without a write), the latest `entry_groups.updated_at` (linking and unlinking a
+  translation touch the groups, not the records, since that is not an edit) and the `updated_at` of the settings that
+  change the sitemap (`Sitemap::SETTINGS`: `home_page`, `content_locales`, `content_default_locale`,
+  `content_disabled_types`; the media probe's stored-only settings are left out). A matching `If-Modified-Since` gets
+  304 and no body is built. Moving a page bumps its descendants' `updated_at` (`EntryPaths`), so `lastmod` follows a
+  move; filing a record under other terms touches it (`EntryWriter::syncTerms()`).
 - Known limit: one file; there is no split into several files past 50,000 URLs.
 
 `GET /robots.txt` (route `robots`, `hata.seo.robots`, env `HATA_ROBOTS`, default true), also without the `web` group,

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Hata\Actions\Content\LinkTranslations;
 use Hata\Actions\Settings\SetContentTypeActive;
 use Hata\Models\Entry;
 use Hata\Support\Content\ContentTypes;
@@ -9,6 +10,7 @@ use Hata\Support\Content\Types\PostsType;
 use Hata\Support\Content\Types\TagsType;
 use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 beforeEach(function () {
     app(ContentTypes::class)->register(new PostsType)->register(new CategoriesType)->register(new TagsType);
@@ -176,4 +178,58 @@ it('moves Last-Modified when a scheduled record goes live without a write', func
 
     expect(strtotime($after))->toBeGreaterThan(strtotime($before))
         ->and(strtotime($after))->toBe($soon->published_at->getTimestamp());
+});
+
+/**
+ * The Last-Modified header of the sitemap, as a timestamp.
+ */
+function sitemapLastModified(): int
+{
+    return (int) strtotime((string) test()->get('/sitemap.xml')->headers->get('Last-Modified'));
+}
+
+it('moves Last-Modified when a record is filed under an existing term', function () {
+    $post = sitemapEntry('posts', 'open-day', attributes: ['title' => 'Open day']);
+    $news = sitemapEntry('categories', 'news', attributes: ['title' => 'News']);
+    $admin = User::factory()->withRole('admin')->create();
+
+    // A first save stores the record the way the form does, so the second one changes nothing but its terms.
+    $this->actingAs($admin);
+    Livewire::test('hata::admin.content.edit', ['type' => 'posts', 'entry' => $post])->call('save')->assertHasNoErrors();
+
+    $before = sitemapLastModified();
+    $this->travelTo(now()->addHour());
+
+    Livewire::test('hata::admin.content.edit', ['type' => 'posts', 'entry' => $post->fresh()])
+        ->set('form.terms', [(string) $news->id])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(sitemapLastModified())->toBeGreaterThan($before);
+});
+
+it('moves Last-Modified when a translation is linked', function () {
+    $en = sitemapEntry('pages', 'about');
+    $uk = sitemapEntry('pages', 'pro-nas', 'uk');
+    $admin = User::factory()->withRole('admin')->create();
+
+    $before = sitemapLastModified();
+    $this->travelTo(now()->addHour());
+
+    app(LinkTranslations::class)->handle($admin, $en, $uk);
+
+    expect(sitemapLastModified())->toBeGreaterThan($before)
+        ->and($uk->fresh()->updated_at->getTimestamp())->toBeLessThan($before + 1);
+});
+
+it('keeps Last-Modified when a setting the sitemap does not read is saved', function () {
+    sitemapEntry('pages', 'about');
+
+    $before = sitemapLastModified();
+
+    // The media probe rewrites its stored-only settings every 30 minutes to a day.
+    $this->travelTo(now()->addHour());
+    app(SiteSettings::class)->putStoredOnly(['media_direct_state' => 'ok', 'media_direct_checked_at' => now()->getTimestamp()]);
+
+    expect(sitemapLastModified())->toBe($before);
 });

@@ -63,8 +63,10 @@ class LinkTranslations
 
         $left = $theirs->entry_group_id;
 
-        // Not through the model: linking is not an edit, so `updated_at` stays.
+        // Not through the model: linking is not an edit, so `updated_at` stays. Both groups' `updated_at` move instead
+        // (the sitemap's alternates changed).
         Entry::withTrashed()->whereKey($theirs->id)->toBase()->update(['entry_group_id' => $mine->entry_group_id]);
+        EntryGroup::query()->whereKey([$mine->entry_group_id, $left])->toBase()->update(['updated_at' => now()]);
 
         // Only a group that is really empty goes (the foreign key would take a record added meanwhile with it).
         EntryGroup::deleteEmptied([$left]);

@@ -43,7 +43,10 @@ class UnlinkTranslation
 
             $group = EntryGroup::query()->create(['type' => $entry->type, 'shared' => $shared]);
 
+            // Not through the model: unlinking is not an edit, so `updated_at` stays. The group it leaves moves instead
+            // (the sitemap's alternates changed); the new group is new.
             Entry::withTrashed()->whereKey($entry->id)->toBase()->update(['entry_group_id' => $group->id]);
+            EntryGroup::query()->whereKey($entry->entry_group_id)->toBase()->update(['updated_at' => now()]);
 
             $entry->entry_group_id = $group->id;
             $entry->syncOriginalAttribute('entry_group_id');
