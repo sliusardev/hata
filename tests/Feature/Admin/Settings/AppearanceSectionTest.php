@@ -26,7 +26,7 @@ beforeEach(function () {
     Storage::fake('local');
 });
 
-function logoMedia(string $name = 'logo.webp', ?string $mime = null): Media
+function appearanceMedia(string $name = 'logo.webp', ?string $mime = null): Media
 {
     $media = Media::factory()->image()->create(['name' => $name, ...($mime === null ? [] : ['mime' => $mime])]);
     Storage::disk($media->disk)->put($media->path, 'file');
@@ -34,40 +34,56 @@ function logoMedia(string $name = 'logo.webp', ?string $mime = null): Media
     return $media;
 }
 
-function logoAdmin(): User
+function appearanceAdmin(): User
 {
     return User::factory()->withRole('admin')->create();
 }
 
-test('choosing a logo through the picker binding stores the id, records the usage and reloads the tab', function () {
-    $this->actingAs(logoAdmin());
-    $media = logoMedia();
+const APPEARANCE = 'hata::admin.settings.sections.appearance';
 
-    // The picker writes the chosen id into the bound property (null is what the parent holds without a logo).
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->assertSet('logoLight', null)
-        ->set('logoLight', $media->id)
+test('choosing a logo through the picker binding stores nothing until Save, then stores the id, records the usage and reloads the tab', function () {
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
+
+    $page = Livewire::test(APPEARANCE)
+        ->assertSet('values.logo_light', null)
+        ->set('values.logo_light', $media->id)
         ->assertHasNoErrors()
-        ->assertRedirect(route('admin.settings.edit', ['tab' => 'logo']));
+        ->assertNoRedirect();
+
+    expect(Setting::count())->toBe(0)->and(MediaUsage::count())->toBe(0);
+
+    $page->call('save')->assertHasNoErrors()->assertRedirect(route('admin.settings.edit', ['tab' => 'appearance']));
 
     $setting = Setting::query()->where('key', 'logo_light')->firstOrFail();
     expect($setting->value)->toBe($media->id)
         ->and(config('hata.admin.logo.light'))->toBe($media->id)
         ->and(MediaUsage::query()->where('media_id', $media->id)->where('field', 'logo_light')->where('usable_id', $setting->id)->count())->toBe(1)
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.logo.chosen'));
+        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.messages.saved'));
 });
 
-test('the page hands the picker the current logo and accepts the picker clearing it', function () {
-    $this->actingAs(logoAdmin());
-    $media = logoMedia();
+test('picking a logo makes the section dirty', function () {
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
+
+    $page = Livewire::test(APPEARANCE)->set('values.logo_light', $media->id);
+
+    expect($page->get('values')['logo_light'])->not->toBe($page->get('saved')['logo_light'])
+        ->and($page->get('saved')['logo_light'])->toBeNull();
+});
+
+test('the section hands the picker the current logo and Save accepts the picker clearing it', function () {
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
     app(SetLogo::class)->handle(auth()->user(), 'dark', $media->id);
 
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->assertSet('logoDark', $media->id)
-        ->assertSet('logoLight', null)
+    Livewire::test(APPEARANCE)
+        ->assertSet('values.logo_dark', $media->id)
+        ->assertSet('values.logo_light', null)
         ->assertSeeHtml('data-test="logo-preview-dark"')
-        ->set('logoDark', null)
-        ->assertRedirect(route('admin.settings.edit', ['tab' => 'logo']));
+        ->set('values.logo_dark', null)
+        ->call('save')
+        ->assertRedirect(route('admin.settings.edit', ['tab' => 'appearance']));
 
     expect(Setting::count())->toBe(0)
         ->and(MediaUsage::count())->toBe(0)
@@ -75,69 +91,73 @@ test('the page hands the picker the current logo and accepts the picker clearing
 });
 
 test('a GIF, a document, a missing id or a tampered value is refused with a field error and nothing is stored', function (string $case) {
-    $this->actingAs(logoAdmin());
+    $this->actingAs(appearanceAdmin());
     $id = match ($case) {
         'array' => [1, 2],
-        'gif' => logoMedia('spinner.gif', 'image/gif')->id,
+        'gif' => appearanceMedia('spinner.gif', 'image/gif')->id,
         'document' => Media::factory()->document()->create()->id,
         'missing' => 987654,
     };
 
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->set('logoLight', $id)
-        ->assertHasErrors('logoLight')
-        ->assertSet('logoLight', null)
+    Livewire::test(APPEARANCE)
+        ->set('values.logo_light', $id)
+        ->call('save')
+        ->assertHasErrors('values.logo_light')
         ->assertNoRedirect();
 
     expect(Setting::count())->toBe(0)->and(MediaUsage::count())->toBe(0);
 })->with(['gif', 'document', 'missing', 'array']);
 
-test('a refused id puts the stored logo back in the field', function () {
-    $this->actingAs(logoAdmin());
-    $media = logoMedia();
+test('a refused id leaves the stored logo in place', function () {
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
     app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
 
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->set('logoLight', logoMedia('spinner.gif', 'image/gif')->id)
-        ->assertHasErrors('logoLight')
-        ->assertSet('logoLight', $media->id);
+    Livewire::test(APPEARANCE)
+        ->set('values.logo_light', appearanceMedia('spinner.gif', 'image/gif')->id)
+        ->call('save')
+        ->assertHasErrors('values.logo_light');
 
     expect(config('hata.admin.logo.light'))->toBe($media->id);
 });
 
 test('opening the picker on an empty slot (the picker echoing the empty value) changes nothing', function (mixed $empty) {
-    $this->actingAs(logoAdmin());
+    $this->actingAs(appearanceAdmin());
 
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->set('logoLight', $empty)
-        ->assertNoRedirect()
-        ->assertHasNoErrors();
+    $page = Livewire::test(APPEARANCE)->set('values.logo_light', $empty);
 
-    expect(session(Toast::SESSION_KEY))->toBeNull();
+    expect($page->get('values')['logo_light'] ?? null)->toBeIn([null, '']);
+    $page->call('save')->assertHasNoErrors();
+
+    expect(Setting::count())->toBe(0);
 })->with([[''], [null]]);
 
 test('choosing the logo that is already stored changes nothing', function () {
-    $this->actingAs(logoAdmin());
-    $media = logoMedia();
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
     app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
+    $before = Setting::query()->where('key', 'logo_light')->value('updated_at');
 
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->set('logoLight', (string) $media->id)
-        ->assertNoRedirect();
+    Livewire::test(APPEARANCE)
+        ->set('values.logo_light', (string) $media->id)
+        ->call('save')
+        ->assertHasNoErrors();
 
-    expect(session(Toast::SESSION_KEY))->toBeNull();
+    expect(MediaUsage::count())->toBe(1)
+        ->and(Setting::query()->where('key', 'logo_light')->value('updated_at'))->toEqual($before);
 });
 
 test('settings.edit without media.view cannot take a library file as a logo, but may keep the one in place', function () {
-    $media = logoMedia();
-    $other = logoMedia('other.png', 'image/png');
-    app(SetLogo::class)->handle(logoAdmin(), 'light', $media->id);
+    $media = appearanceMedia();
+    $other = appearanceMedia('other.png', 'image/png');
+    app(SetLogo::class)->handle(appearanceAdmin(), 'light', $media->id);
     $actor = User::factory()->withPermissions(['admin.access', 'settings.edit'])->create();
     $this->actingAs($actor);
 
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->set('logoDark', $other->id)
-        ->assertHasErrors('logoDark');
+    Livewire::test(APPEARANCE)
+        ->set('values.logo_dark', $other->id)
+        ->call('save')
+        ->assertHasErrors('values.logo_dark');
 
     expect(fn () => app(SetLogo::class)->handle($actor, 'dark', $other->id))->toThrow(AuthorizationException::class)
         ->and(Setting::query()->where('key', 'logo_dark')->exists())->toBeFalse();
@@ -147,13 +167,13 @@ test('settings.edit without media.view cannot take a library file as a logo, but
 });
 
 test('removing a logo unlinks it, keeps the file and drops the usage', function () {
-    $this->actingAs(logoAdmin());
-    $media = logoMedia();
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
     app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
 
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
+    Livewire::test(APPEARANCE)
         ->call('removeLogo', 'light')
-        ->assertRedirect(route('admin.settings.edit', ['tab' => 'logo']));
+        ->assertRedirect(route('admin.settings.edit', ['tab' => 'appearance']));
 
     expect(SiteLogo::isCustom())->toBeFalse()
         ->and(Setting::count())->toBe(0)
@@ -163,36 +183,127 @@ test('removing a logo unlinks it, keeps the file and drops the usage', function 
 });
 
 test('a logo whose file is gone shows a note with Remove in its slot, and Remove clears it', function () {
-    $this->actingAs(logoAdmin());
-    $media = logoMedia();
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
     app(SetLogo::class)->handle(auth()->user(), 'dark', $media->id);
     Storage::disk($media->disk)->delete($media->path);
     SiteLogo::flush();
 
-    $page = Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
+    $page = Livewire::test(APPEARANCE)
         ->assertSee(__('hata::site_settings.logo.missing'))
         ->assertSeeHtml('data-test="logo-missing-dark"')
         ->assertDontSeeHtml('data-test="logo-missing-light"');
 
     $page->call('removeLogo', 'dark')
-        ->assertRedirect(route('admin.settings.edit', ['tab' => 'logo']));
+        ->assertRedirect(route('admin.settings.edit', ['tab' => 'appearance']));
 
     expect(Setting::query()->where('key', 'logo_dark')->exists())->toBeFalse()
         ->and(MediaUsage::count())->toBe(0);
 });
 
+test('without media.view the logo slots show the picker hint and no way to browse', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.edit'])->create());
+
+    Livewire::test(APPEARANCE)
+        ->assertSeeHtml('data-test="media-picker-needs-access"')
+        ->assertDontSeeHtml('data-test="media-picker-open"');
+});
+
+test('removeLogo needs the section permission', function () {
+    $this->actingAs(User::factory()->withPermissions(['admin.access', 'users.view'])->create());
+
+    Livewire::test(APPEARANCE)->assertForbidden();
+});
+
+test('it saves a custom color scheme and every page applies it', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::test(APPEARANCE)
+        ->set('values.color_scheme', 'custom')
+        ->set('values.color_accent', '#8A1C7C')
+        ->set('values.color_gray', 'stone')
+        ->set('values.color_tint_sidebar', false)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Setting::query()->pluck('value', 'key')->only(['color_scheme', 'color_accent', 'color_gray', 'color_tint_sidebar'])->all())
+        ->toBe(['color_scheme' => 'custom', 'color_accent' => '#8a1c7c', 'color_gray' => 'stone', 'color_tint_sidebar' => false]);
+
+    $this->get(route('admin.dashboard'))->assertSee('<style id="color-scheme">:root{', false)->assertSee('--color-accent:#8a1c7c', false);
+});
+
+test('a custom scheme needs a valid hex color', function (string $color) {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::test(APPEARANCE)
+        ->set('values.color_scheme', 'custom')
+        ->set('values.color_accent', $color)
+        ->call('save')
+        ->assertHasErrors('values.color_accent');
+
+    expect(Setting::count())->toBe(0);
+})->with(['', 'blue', '#12345', '#12345g']);
+
+test('the section previews the chosen scheme before it is saved', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::test(APPEARANCE)
+        ->set('values.color_scheme', 'rose')
+        ->assertSee('--color-accent:#e11d48', false);
+
+    expect(Setting::count())->toBe(0);
+});
+
+test('appearance saves logos and colors all or nothing', function () {
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
+
+    Livewire::test(APPEARANCE)
+        ->set('values.logo_light', $media->id)
+        ->set('values.color_scheme', 'custom')
+        ->set('values.color_accent', 'nope')
+        ->call('save')
+        ->assertHasErrors('values.color_accent');
+
+    expect(Setting::count())->toBe(0)->and(MediaUsage::count())->toBe(0);
+
+    // A failure inside the transaction (a refused logo next to valid colors) stores no color either.
+    Livewire::test(APPEARANCE)
+        ->set('values.color_scheme', 'rose')
+        ->set('values.logo_dark', appearanceMedia('spinner.gif', 'image/gif')->id)
+        ->call('save')
+        ->assertHasErrors('values.logo_dark');
+
+    expect(Setting::count())->toBe(0)->and(config('hata.admin.colors.scheme'))->not->toBe('rose');
+});
+
+test('saving logo and colors together stores both', function () {
+    $this->actingAs(appearanceAdmin());
+    $media = appearanceMedia();
+
+    Livewire::test(APPEARANCE)
+        ->set('values.logo_dark', $media->id)
+        ->set('values.color_scheme', 'rose')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Setting::query()->where('key', 'logo_dark')->value('value'))->toBe($media->id)
+        ->and(Setting::query()->where('key', 'color_scheme')->value('value'))->toBe('rose')
+        ->and(MediaUsage::count())->toBe(1);
+});
+
 test('setting and removing a logo require settings.edit', function () {
     $actor = User::factory()->withPermissions(['admin.access', 'users.view'])->create();
-    $media = logoMedia();
+    $media = appearanceMedia();
 
     expect(fn () => app(SetLogo::class)->handle($actor, 'light', $media->id))->toThrow(AuthorizationException::class)
         ->and(fn () => app(RemoveLogo::class)->handle($actor, 'light'))->toThrow(AuthorizationException::class);
 });
 
 test('SetLogo validates the file and replaces the usage of the previous one', function () {
-    $actor = logoAdmin();
-    $first = logoMedia('first.png', 'image/png');
-    $second = logoMedia('second.svg', 'image/svg+xml');
+    $actor = appearanceAdmin();
+    $first = appearanceMedia('first.png', 'image/png');
+    $second = appearanceMedia('second.svg', 'image/svg+xml');
 
     app(SetLogo::class)->handle($actor, 'light', $first->id);
     app(SetLogo::class)->handle($actor, 'light', $second->id);
@@ -200,14 +311,14 @@ test('SetLogo validates the file and replaces the usage of the previous one', fu
     expect(MediaUsage::query()->pluck('media_id')->all())->toBe([$second->id])
         ->and(Setting::query()->where('key', 'logo_light')->count())->toBe(1);
 
-    expect(fn () => app(SetLogo::class)->handle($actor, 'light', logoMedia('a.gif', 'image/gif')->id))->toThrow(ValidationException::class);
+    expect(fn () => app(SetLogo::class)->handle($actor, 'light', appearanceMedia('a.gif', 'image/gif')->id))->toThrow(ValidationException::class);
 });
 
 test('the layouts show the chosen logo instead of the default mark', function () {
-    $this->actingAs(logoAdmin());
+    $this->actingAs(appearanceAdmin());
     $this->get(route('admin.dashboard'))->assertDontSee('<img', false);
 
-    $media = logoMedia();
+    $media = appearanceMedia();
     app(SetLogo::class)->handle(auth()->user(), 'light', $media->id);
 
     $this->get(route('admin.dashboard'))->assertSee($media->url(), false);
@@ -216,15 +327,15 @@ test('the layouts show the chosen logo instead of the default mark', function ()
 });
 
 test('every auth layout shows the chosen logo', function (string $layout) {
-    $media = logoMedia();
-    app(SetLogo::class)->handle(logoAdmin(), 'light', $media->id);
+    $media = appearanceMedia();
+    app(SetLogo::class)->handle(appearanceAdmin(), 'light', $media->id);
 
     expect(view($layout, ['slot' => ''])->render())->toContain(e($media->url()));
 })->with(['hata::layouts.auth.simple', 'hata::layouts.auth.card', 'hata::layouts.auth.split']);
 
 test('deleting the logo file in the library clears the setting', function () {
-    $actor = logoAdmin();
-    $media = logoMedia();
+    $actor = appearanceAdmin();
+    $media = appearanceMedia();
     app(SetLogo::class)->handle($actor, 'light', $media->id);
 
     app(DeleteMedia::class)->handle($actor, $media);
@@ -236,9 +347,9 @@ test('deleting the logo file in the library clears the setting', function () {
 });
 
 test('deleting a folder that holds the logo file clears the setting', function () {
-    $actor = logoAdmin();
+    $actor = appearanceAdmin();
     $folder = MediaFolder::factory()->create();
-    $media = logoMedia();
+    $media = appearanceMedia();
     $media->update(['folder_id' => $folder->id]);
     app(SetLogo::class)->handle($actor, 'dark', $media->id);
 
@@ -248,8 +359,8 @@ test('deleting a folder that holds the logo file clears the setting', function (
 });
 
 test('a delete that fails after the logo was forgotten leaves the setting, the cache and the files intact', function () {
-    $actor = logoAdmin();
-    $media = logoMedia();
+    $actor = appearanceAdmin();
+    $media = appearanceMedia();
     app(SetLogo::class)->handle($actor, 'light', $media->id);
 
     // The media rows are deleted after forgetMedia() ran inside the same transaction.
@@ -270,9 +381,9 @@ test('a delete that fails after the logo was forgotten leaves the setting, the c
 });
 
 test('both logo variants are looked up with one query per request', function () {
-    $actor = logoAdmin();
-    app(SetLogo::class)->handle($actor, 'light', logoMedia()->id);
-    app(SetLogo::class)->handle($actor, 'dark', logoMedia('logo-dark.webp')->id);
+    $actor = appearanceAdmin();
+    app(SetLogo::class)->handle($actor, 'light', appearanceMedia()->id);
+    app(SetLogo::class)->handle($actor, 'dark', appearanceMedia('logo-dark.webp')->id);
     SiteLogo::flush();
 
     DB::flushQueryLog();
@@ -287,9 +398,9 @@ test('both logo variants are looked up with one query per request', function () 
 });
 
 test('the library details panel names the logo usage and links it only to users who may edit the settings', function () {
-    $media = logoMedia();
-    app(SetLogo::class)->handle(logoAdmin(), 'dark', $media->id);
-    $url = route('admin.settings.edit', ['tab' => 'logo']);
+    $media = appearanceMedia();
+    app(SetLogo::class)->handle(appearanceAdmin(), 'dark', $media->id);
+    $url = route('admin.settings.edit', ['tab' => 'appearance']);
 
     $this->actingAs(User::factory()->withRole('admin')->create());
     Livewire::test('hata::admin.media.index')->call('select', $media->id)
@@ -300,14 +411,6 @@ test('the library details panel names the logo usage and links it only to users 
     Livewire::test('hata::admin.media.index')->call('select', $media->id)
         ->assertSee(__('hata::site_settings.logo.usage_dark'))
         ->assertDontSeeHtml('href="'.$url.'"');
-});
-
-test('without media.view the logo slots show the picker hint and no way to browse', function () {
-    $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.edit'])->create());
-
-    Livewire::test('hata::admin.settings.edit', ['tab' => 'logo'])
-        ->assertSeeHtml('data-test="media-picker-needs-access"')
-        ->assertDontSeeHtml('data-test="media-picker-open"');
 });
 
 test('the old logo route and upload class are gone', function () {

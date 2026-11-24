@@ -132,6 +132,10 @@ return [
         'test_failed' => 'Could not send the email: :error',
     ],
 
+    'appearance' => [
+        'heading' => 'Appearance',
+    ],
+
     'logo' => [
         'heading' => 'Logo',
         'description' => 'Shown next to the site name in the admin panel and on the sign-in pages. Choose files from the media library; without a choice, the default Hata mark is used. If you choose only one logo, it is used in both themes.',

@@ -41,7 +41,7 @@ class Setting extends Model implements UsesMedia
 
     public function mediaUsageUrl(string $field, ?AdminUser $viewer): ?string
     {
-        return $viewer?->can('settings.edit') ? route('admin.settings.edit', ['tab' => 'logo']) : null;
+        return $viewer?->can('settings.edit') ? route('admin.settings.edit', ['tab' => 'appearance']) : null;
     }
 
     /**
