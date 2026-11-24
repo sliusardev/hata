@@ -83,13 +83,18 @@ class Sitemap
     }
 
     /**
-     * Every active language's home, with the others as alternates.
+     * Every active language's home, with the others as alternates; none while no page is chosen (the Hata
+     * introduction is not indexed).
      *
      * @param  array<string, array<string, CarbonImmutable>>  $newest  type => locale => latest change
      * @return Generator<int, string>
      */
     private function homes(array $newest): Generator
     {
+        if ($this->home->id() === null) {
+            return;
+        }
+
         $alternates = [];
 
         foreach ($this->locales->active() as $language) {

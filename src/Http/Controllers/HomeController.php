@@ -10,8 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 /**
- * The site's address in every language: the chosen page when it is public in the language, else the neutral home.
- * The alternates stay each active language's home address.
+ * The site's address in every language: the chosen page when it is public in the language; the plain home (the site
+ * name and description, indexed) where a page is chosen but not public; the Hata introduction (not indexed) while no
+ * page is chosen at all. The alternates stay each active language's home address.
  */
 class HomeController extends Controller
 {
@@ -26,6 +27,7 @@ class HomeController extends Controller
     public function __invoke(Request $request, HomePage $home, EntryPage $entryPage, PageMeta $meta): Response
     {
         $url = $this->locales->route('home');
+        $chosen = $home->id() !== null;
         $record = $home->recordFor($this->locales->current()->code);
 
         if ($record !== null && $record->isPublic()) {
@@ -35,14 +37,16 @@ class HomeController extends Controller
         $meta
             ->setTitle((string) config('app.name'))
             ->setOgTitle((string) config('app.name'))
-            ->setCanonical($url);
+            ->setCanonical($url)
+            // The introduction is Hata's, not the site's: kept out of search results (and out of the sitemap).
+            ->setNoindex(! $chosen);
 
         $hint = null;
 
         if ($request->user()?->can('settings.edit')) {
-            $hint = $home->id() === null ? 'choose' : 'unpublished';
+            $hint = $chosen ? 'unpublished' : 'choose';
         }
 
-        return response()->view('hata::site.home', ['hint' => $hint]);
+        return response()->view($chosen ? 'hata::site.home-plain' : 'hata::site.home', ['hint' => $hint]);
     }
 }

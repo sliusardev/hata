@@ -62,35 +62,35 @@ function homeSettingsEditor(): User
     return User::factory()->withPermissions(['settings.edit'])->create();
 }
 
-describe('the neutral home', function () {
-    it('has the site name as its title, the description of the language in the head and the home canonical', function () {
+describe('the Hata introduction, while no page is chosen', function () {
+    it('has the site name as its title and the description of the language in the head, and is not indexed', function () {
         app(SiteSettings::class)->put(['site_description' => ['uk' => 'Дахи під ключ']]);
 
         $this->get('/')->assertOk()
             ->assertSee('<title>'.config('app.name').'</title>', escape: false)
             ->assertSee('<meta name="description" content="Дахи під ключ">', escape: false)
+            ->assertSee('<meta name="robots" content="noindex">', escape: false)
+            ->assertDontSee('rel="canonical"', escape: false)
             ->assertDontSeeText('Дахи під ключ')
-            ->assertSee('<link rel="canonical" href="'.homeUrl().'">', escape: false)
-            ->assertSee('<meta property="og:type" content="website">', escape: false)
             ->assertDontSee('data-test="home-hint"', escape: false);
     });
 
-    it('introduces Hata in the language of the address, with the admin link', function () {
+    it('introduces Hata in the language of the address, with the admin link for a signed-in user only', function () {
         $this->get('/')->assertOk()
-            ->assertSee('<h1', escape: false)
+            ->assertSee('data-test="hata-intro"', escape: false)
             ->assertSeeText('Ваш сайт готовий.')
-            ->assertSeeText('Відкрити адмінку')
-            ->assertSee('href="'.route('admin.dashboard').'"', escape: false)
-            ->assertDontSee('data-test="home-hint"', escape: false);
+            ->assertSeeText(__('hata::content.public.home.docs', [], 'uk'))
+            ->assertDontSeeText('Відкрити адмінку')
+            ->assertDontSee('data-test="home-admin-link"', escape: false);
 
         $this->get('/en/')->assertOk()
             ->assertSeeText('Your site is ready.')
-            ->assertSeeText('Open the admin')
-            ->assertSee('href="'.route('admin.dashboard').'"', escape: false);
+            ->assertDontSee('href="'.route('admin.dashboard').'"', escape: false);
 
-        $this->actingAs(homeSettingsEditor())->get('/en/')->assertOk()
-            ->assertSeeText('Your site is ready.')
-            ->assertSee('data-test="home-hint"', escape: false);
+        $this->actingAs(User::factory()->create())->get('/en/')->assertOk()
+            ->assertSeeText('Open the admin')
+            ->assertSee('href="'.route('admin.dashboard').'"', escape: false)
+            ->assertDontSee('data-test="home-hint"', escape: false);
     });
 
     it('shows a user who may edit the settings the hint to choose a home page', function () {
@@ -99,14 +99,35 @@ describe('the neutral home', function () {
             ->assertSeeText(__('hata::content.public.home.choose', [], 'uk'))
             ->assertSee(route('admin.settings.edit', ['tab' => 'site']), escape: false);
     });
+});
 
-    it('is shown where the chosen page is not public, with the other hint for the editor and none for a guest', function () {
+describe('the plain home, where the chosen page is not public', function () {
+    it('shows the site name and the description of the language, indexed, without the introduction', function () {
+        app(SiteSettings::class)->put(['site_description' => ['en' => 'Roofs, turnkey']]);
+        [$uk] = homePages();
+        Entry::query()->where('locale', 'en')->forceDelete();
+        chooseHome($uk);
+
+        $this->get('/en/')->assertOk()
+            ->assertSee('data-test="home-plain"', escape: false)
+            ->assertSee('<h1', escape: false)
+            ->assertSeeText(config('app.name'))
+            ->assertSeeText('Roofs, turnkey')
+            ->assertSee('<link rel="canonical" href="'.homeUrl('en').'">', escape: false)
+            ->assertSee('<meta property="og:type" content="website">', escape: false)
+            ->assertDontSee('noindex', escape: false)
+            ->assertDontSee('data-test="hata-intro"', escape: false)
+            ->assertDontSeeText('Hata CMF')
+            ->assertDontSee('data-test="home-hint"', escape: false);
+    });
+
+    it('is shown where the chosen page is a draft, with the other hint for the editor and none for a guest', function () {
         [$uk, $en] = homePages();
         $en->update(['status' => 'draft']);
         chooseHome($uk);
 
         $this->get('/en/')->assertOk()
-            ->assertSee('<h1', escape: false)
+            ->assertSee('data-test="home-plain"', escape: false)
             ->assertDontSee('We build roofs')
             ->assertDontSee('data-test="home-hint"', escape: false);
 
@@ -119,8 +140,8 @@ describe('the neutral home', function () {
         chooseHome($uk);
         Entry::query()->where('entry_group_id', $uk->entry_group_id)->get()->each->delete();
 
-        $this->get('/')->assertOk()->assertDontSee('Ми робимо дахи');
-        $this->get('/en/')->assertOk()->assertDontSee('We build roofs');
+        $this->get('/')->assertOk()->assertSee('data-test="home-plain"', escape: false)->assertDontSee('Ми робимо дахи');
+        $this->get('/en/')->assertOk()->assertSee('data-test="home-plain"', escape: false)->assertDontSee('We build roofs');
     });
 
     it('is shown in the language of a trashed chosen record while its translations still show', function () {
@@ -128,7 +149,7 @@ describe('the neutral home', function () {
         chooseHome($uk);
         $uk->delete();
 
-        $this->get('/')->assertOk()->assertDontSee('Ми робимо дахи');
+        $this->get('/')->assertOk()->assertSee('data-test="home-plain"', escape: false)->assertDontSee('Ми робимо дахи');
         $this->get('/en/')->assertOk()->assertSee('We build roofs');
     });
 
@@ -136,7 +157,7 @@ describe('the neutral home', function () {
         $other = Entry::factory()->published()->inLocale('uk')->create(['type' => 'posts', 'slug' => 'news', 'path' => 'news', 'body' => '<p>Новина</p>']);
         chooseHome($other);
 
-        $this->get('/')->assertOk()->assertDontSee('Новина');
+        $this->get('/')->assertOk()->assertSee('data-test="home-plain"', escape: false)->assertDontSee('Новина');
     });
 });
 
@@ -174,7 +195,7 @@ describe('the chosen page', function () {
         app(UnlinkTranslation::class)->handle($admin, $en);
 
         $this->get('/')->assertOk()->assertSee('Ми робимо дахи');
-        $this->get('/en/')->assertOk()->assertDontSee('We build roofs')->assertSee('<h1', escape: false);
+        $this->get('/en/')->assertOk()->assertDontSee('We build roofs')->assertSee('data-test="home-plain"', escape: false);
     });
 });
 

@@ -1,10 +1,15 @@
 {{--
-    The neutral home page, until a page is chosen in Site settings (or where the chosen one is not public): a small
-    landing page that introduces Hata, full width in layouts/site ('page'). Flat on warm paper: no shadows, hairlines,
-    pill buttons, system fonts only; the palette is the "home" tokens in resources/css/site.css (light and dark).
+    The Hata introduction, shown only while no home page is chosen in Site settings (where a chosen page is not
+    public, site/home-plain is shown instead): a small landing page, full width in layouts/site ('page'), not indexed;
+    "Open the admin" is for signed-in users only. Flat on warm paper: no shadows, hairlines, pill buttons, system fonts
+    only; the palette is the "home" tokens in resources/css/site.css (light and dark).
     No query of its own: the head comes from PageMeta (HomeController).
 --}}
-@extends('hata::layouts.site')
+@extends('hata::layouts.site', [
+    // Kept for a site whose overridden layouts/site still prints the old variables (the 0.3 line).
+    'pageTitle' => app(Hata\Support\Seo\PageMeta::class)->title(),
+    'noindex' => true,
+])
 
 @section('strip')
     @include('hata::partials.site.home-hint')
@@ -43,12 +48,14 @@
                 </p>
 
                 <div class="mt-9 flex flex-wrap gap-3">
-                    <a href="{{ route('admin.dashboard') }}" class="{{ $pill }} bg-home-cta text-home-cta-ink hover:bg-home-cta-hover" data-test="home-admin-link">
-                        {{ __('hata::content.public.home.admin') }}
-                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                        </svg>
-                    </a>
+                    @auth
+                        <a href="{{ route('admin.dashboard') }}" class="{{ $pill }} bg-home-cta text-home-cta-ink hover:bg-home-cta-hover" data-test="home-admin-link">
+                            {{ __('hata::content.public.home.admin') }}
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                            </svg>
+                        </a>
+                    @endauth
                     <a href="https://github.com/sliusardev/hata" class="{{ $pill }} border border-home-ghost text-home-ghost hover:bg-home-mint">
                         {{ __('hata::content.public.home.docs') }}
                         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

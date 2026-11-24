@@ -868,22 +868,28 @@ before every request (`Tests\TestCase::call()`).
 ### The home page
 
 `/` (route `home`, inside `Route::localized()`, `Hata\Http\Controllers\HomeController`) shows the page chosen in Site
-settings or a neutral home. `Hata\Support\Content\HomePage` (scoped) reads the setting `home_page`
-(`hata.content.home_page`, a `pages` record id):
+settings, the plain home or the Hata introduction. `Hata\Support\Content\HomePage` (scoped) reads the setting
+`home_page` (`hata.content.home_page`, a `pages` record id):
 
 - The home is the chosen record's **current group** in the current language (one query by a subquery on its
   `entry_group_id`; the setting stores no group), so linking and unlinking translations changes no setting. When that
   record is public it is rendered by `EntryPage` exactly as a page, with the canonical and the alternates pointing to
-  each language's home address. When none is public in the language (trashed, draft, no translation) the neutral home
+  each language's home address. When none is public in the language (trashed, draft, no translation) the plain home
   is shown for that language only; other languages keep showing their public translations.
-- The neutral home (`hata::site.home`, full width in `layouts/site` through its `page` section) introduces Hata: a
-  headline, what Hata is, "Open the admin" (`admin.dashboard`) and "Documentation" (the GitHub repository), a line on
-  choosing a home page in Site settings → Site, six feature cards and a Laravel/Livewire/MIT strip, in the language of
-  the address (`hata::content.public.home.*`). Its palette is the `home-*` tokens in `resources/css/site.css` (light
-  and dark), with system font stacks and inline SVG only, no query of its own. The site description is no longer
-  printed on the page (it stays the head's description). A
-  user with `settings.edit` also sees a hint strip ("Choose a home page in Site settings", or that the chosen page is
-  not public in this language).
+- **The plain home** (`hata::site.home-plain`, a page is chosen but not public in the language): the site name as the
+  heading and the language's site description (`PageMeta::description()`) in `layouts/site`'s reading column
+  (`content` section), with the site's neutral look. Indexed, with the home canonical, and listed in the sitemap, so a
+  live site never shows Hata's introduction to its visitors.
+- **The Hata introduction** (`hata::site.home`, only while no page is chosen at all, `HomePage::id() === null`), full
+  width in `layouts/site` through its `page` section: a headline, what Hata is, "Open the admin" (`admin.dashboard`,
+  for signed-in users only) and "Documentation" (the GitHub repository, for everyone), a line on choosing a home page
+  in Site settings → Site, six feature cards and a Laravel/Livewire/MIT strip, in the language of the address
+  (`hata::content.public.home.*`). It is `noindex` (no canonical, no Open Graph), and the sitemap leaves the homes out
+  while no page is chosen. Its palette is the `home-*` tokens in `resources/css/site.css` (light and dark), with system
+  font stacks and inline SVG only, no query of its own. The site description is not printed on it (it stays the
+  head's description).
+- A user with `settings.edit` sees a hint strip on both ("Choose a home page in Site settings" on the introduction,
+  "The home page is not published in this language" on the plain home).
 - The chosen record's own address and its translations' addresses answer 301 to that language's home with
   `Cache-Control: no-cache` (the choice can change). A preview (an editor opening a draft) is not redirected, and pages
   under the chosen page keep their addresses. `HomePage::includes()` takes only `pages` records; the group loaded by
@@ -901,7 +907,7 @@ settings or a neutral home. `Hata\Support\Content\HomePage` (scoped) reads the s
 declared `->withoutMiddleware('web')`: no session, cookies or locale, so a proxy can cache it. `Hata\Support\Seo\Sitemap`
 builds it on request, streamed (`response()->stream`) from cursors with no bodies:
 
-- every active language's home; every public record of an active type except the chosen home page's group, a group of
+- every active language's home (none while no page is chosen: the introduction is `noindex`); every public record of an active type except the chosen home page's group, a group of
   translations written together with `xhtml:link` alternates (rows ordered by group and language); the list of a type
   with a base that has a public record in the language (a taxonomy has no list: the router has none for a taxonomy
   base); every term with a public record of an active type filed under it.

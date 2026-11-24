@@ -60,7 +60,10 @@ it('answers with the headers of a cacheable xml file and no cookie', function ()
         ->and($response->headers->get('Cache-Control'))->toContain('public')->toContain('max-age=3600');
 });
 
-it('lists the home of every active language with alternates between them', function () {
+it('lists the home of every active language with alternates between them, once a page is chosen', function () {
+    // Chosen in English only: the other languages' homes are the plain home, still listed.
+    app(SiteSettings::class)->put(['home_page' => sitemapEntry('pages', 'welcome')->id]);
+
     $xml = sitemap();
 
     expect(sitemapLocs($xml))->toBe([url('/'), url('/uk'), url('/de')])
@@ -134,6 +137,12 @@ it('lists a type list with its newest record and skips it without public records
 
     expect(sitemapLocs($xml))->toContain(url('/posts'))
         ->and($xml)->toMatch('#<loc>'.preg_quote(url('/posts'), '#').'</loc><lastmod>'.preg_quote($new->updated_at->utc()->toAtomString(), '#').'</lastmod>#');
+});
+
+it('leaves the homes out while no page is chosen, since the introduction is not indexed', function () {
+    sitemapEntry('pages', 'about');
+
+    expect(sitemapLocs(sitemap()))->toBe([url('/about')]);
 });
 
 it('lists the chosen home page as the home and not at its own address', function () {
