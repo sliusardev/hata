@@ -153,7 +153,7 @@ timezone), as cards "Home page" and "Search and sharing" / "Пошук і соц
   `/en/` becomes the neutral page.
 - The admin marks the home page: a "Home page" badge on its row in the content list and in its edit form header.
 - `resources/views/welcome.blade.php` is removed; decision 10 is superseded. A site that overrode
-  `vendor/hata/welcome.blade.php` loses it: a breaking change, released as `v0.2.0`.
+  `vendor/hata/welcome.blade.php` loses it: a breaking change, released as `v0.3.0`.
 
 ### 4. `/sitemap.xml`
 

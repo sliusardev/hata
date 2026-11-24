@@ -35,7 +35,8 @@ Steps, in order:
      `resources/views/welcome.blade.php` deleted when this run removed the route.
    - `public/robots.txt`: deleted only when it is exactly Laravel's stock file (`User-agent: *` / `Disallow:`), since
      the web server would serve it before Hata's `/robots.txt` route, which adds the `Sitemap:` line; a changed
-     file is kept and the line to add is printed. Skipped when `hata.seo.robots` is off.
+     file is kept and the line to add is printed. Skipped when `hata.seo.robots` is off. A site installed before
+     v0.3.0 deletes a stock `public/robots.txt` by hand.
    - `app/Providers/AppServiceProvider.php`: `configureDefaults()` (`Date::use(CarbonImmutable::class)`,
      `DB::prohibitDestructiveCommands()` in production, `Password::defaults()`) from
      `stubs/app-service-provider-defaults.stub`, called first in `boot()`. These are the site's defaults, not Hata's.
@@ -73,6 +74,24 @@ by-hand lines. The report is always printed.
   `php artisan permissions:sync` when the update adds permissions (both are safe to rerun).
 - After changing `.env` or `config/hata.php` on a site that caches: `php artisan optimize`.
 
+`seo` holds `description` (`[code => text]`, the site description per content language), `image` (a media id, the share
+image), `sitemap` (`HATA_SITEMAP`, default true) and `robots` (`HATA_ROBOTS`, default true): the last two switch off
+Hata's `/sitemap.xml` and `/robots.txt` routes for a site that serves its own files (read while the routes register,
+so set them before the routes load). The first two are stored by Site settings. `content.home_page` is the chosen home
+page's record id, also stored by Site settings.
+
+### What changed for v0.3.0 (head tags, sitemap, home page)
+
+- **Breaking:** `hata::welcome` (`resources/views/welcome.blade.php`) is removed; `/` is `HomeController`, which shows the
+  page chosen in Site settings or the neutral `hata::site.home`. A site that overrode
+  `resources/views/vendor/hata/welcome.blade.php` loses that file's effect (override `hata::site.home` instead).
+- Public pages print their head through `@hataHead` (`Hata\Support\Seo\PageMeta`): description, canonical, Open
+  Graph and Twitter tags. A site that overrode `layouts/site` keeps its own head until it replaces it with `@hataHead`.
+- `/sitemap.xml` and `/robots.txt` are served by Hata. The web server answers a file in `public/` first, so a site
+  installed before v0.3.0 deletes a stock `public/robots.txt` (`User-agent: *` / `Disallow:`) by hand;
+  `hata:install` does it for new installs and never touches a changed file.
+- New settings in Site settings: home page, site description per language, image for sharing.
+
 ### What changed for v0.2.0 (the settings sections)
 
 Breaking for code that reached into the old settings page; a site that only installs Hata needs nothing:
@@ -107,7 +126,7 @@ A bad value throws an `InvalidArgumentException` naming the reason. Route names 
 
 ## Config
 
-One published file, `config/hata.php` (tag `hata-config`), sections `admin`, `content`, `media`.
+One published file, `config/hata.php` (tag `hata-config`), sections `admin`, `content`, `media`, `seo`.
 `Hata\Support\Config\HataConfig::merge()` puts the site's file over the package's defaults: nested maps merge key by
 key (a site's file from an older Hata still gets newer keys), lists (`content.types`, `content.reserved_slugs`)
 replace the default list whole, and `admin.interface_locales` replaces whole (a site can drop `uk`). Data that is not
@@ -188,6 +207,12 @@ register through it.
   falling back to the site's `permissions.*`. The prefix defaults to `permissions` (the site's own files). Then
   `php artisan permissions:sync`. Never through config (`docs/specs/roles.md`).
 - **Settings sections:** see "Adding a settings section" below.
+- **Public head (themes and modules):** write `@hataHead` once in the layout's `<head>` and fill
+  `app(\Hata\Support\Seo\PageMeta::class)` from the controller (`setTitle()`, `setDescription()`, `setCanonical()`,
+  `setImage()`, `setType('website'|'article')`, `setNoindex()`); anything left empty falls back to the site's. **Scoped
+  services (`PageMeta`, `HomePage`) are resolved per call**, as a method argument or `app()`, never held in a
+  controller's constructor: the router caches controller instances, which would keep the first request's state
+  (`docs/specs/content.md`).
 - **Admin menu:** `app(AdminMenu::class)->group(...)`/`->add(new AdminMenuItem(...))` in a provider's `boot()`
   (`docs/specs/admin-menu.md`).
 - **Admin routes:** middleware `web, auth, verified, can:admin.access`, prefix `config('hata.admin.path')`, names

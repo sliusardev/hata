@@ -827,7 +827,7 @@ shared theme (`resources/css/theme.css`: the dark variant, fonts, zinc, accent a
 455 KB (48 KB gzipped) for the admin's `app.css`, which public pages no longer load. A class used in a site template
 outside those paths must be added to its `@source` list.
 
-**Cost per page view** (asserted: at most 5 queries more than the home page in the same setup, and at most 4 that read
+**Cost per page view** (asserted: at most 6 queries more than the home page in the same setup, and at most 5 that read
 `entries`, `entry_redirects` or `media`; the home page makes none in the tests):
 
 1. `select * from entries where locale = ? and path = ? and type in (?) and deleted_at is null`
@@ -836,6 +836,8 @@ outside those paths must be added to its `@source` list.
    one active language, which has neither `hreflang` nor a switcher: a plain page there is one query, asserted)
 3. `select * from media where id in (?)`, the record's image, only when it has one
 4. `select * from media where id in (…)`, the body's images, only when the body has any
+5. `select * from media where id = ?`, the site's share image (`hata.seo.image`), by primary key and remembered for the
+   request, only when the page has no shareable image of its own and a site image is set
 
 Plus the site logo (one query, only when a custom logo is chosen) and, for a signed-in viewer, what the user and
 permission checks cost. The figures exclude the session's own queries, which depend on the session driver and are the
@@ -844,7 +846,74 @@ redirect lookup), a draft or scheduled page one, a redirect to a draft two, none
 session cookie the same counts plus the session's and the user's own queries; a public redirect two; a bare base none;
 an address that is not slug-shaped never reaches the controller.
 
+### Head tags: `PageMeta` and `@hataHead`
+
+`Hata\Support\Seo\PageMeta` is bound `scoped`: a controller fills it (`setTitle`, `setOgTitle`, `setDescription`,
+`setCanonical`, `setImage`, `setType`, `setNoindex`) and `@hataHead` (the partial `hata::partials.site.head`, printed by
+`layouts/site`) reads it. Fallbacks are applied when the head is printed, not when it is filled: no title means the
+site name, no description means the site's description for the current content language (`hata.seo.description`), no
+image means the site's share image (`hata.seo.image`, a media file of `PageMeta::IMAGE_EXTENSIONS`: png, jpg, jpeg,
+webp). A description is normalised (tags stripped, entities decoded, whitespace collapsed, cut to 160 characters on a
+word boundary with "…"). `og:type` is `website` for a taxonomy and for a hierarchical type (pages) and `article` for a
+flat type. A preview (`noindex`) prints no canonical and no Open Graph tags. The twitter card is `summary_large_image`
+with an image, else `summary`. `EntryPage` (the shared builder of a record's or term's page) and
+`ContentController::listOf()` fill it for the kit's pages; a theme or module writes `@hataHead` once in its layout and
+fills `PageMeta` from its controller.
+
+**Scoped services are resolved per call.** `PageMeta` and `HomePage` live for one request, but the router keeps a
+controller instance for as long as it lives, so a controller never holds a scoped service in its constructor: it takes
+them as method arguments (`__invoke(Request $request, PageMeta $meta)`) or `app()`. Tests reset the scoped instances
+before every request (`Tests\TestCase::call()`).
+
+### The home page
+
+`/` (route `home`, inside `Route::localized()`, `Hata\Http\Controllers\HomeController`) shows the page chosen in Site
+settings or a neutral home. `Hata\Support\Content\HomePage` (scoped) reads the setting `home_page`
+(`hata.content.home_page`, a `pages` record id):
+
+- The home is the chosen record's **current group** in the current language (one query by a subquery on its
+  `entry_group_id`; the setting stores no group), so linking and unlinking translations changes no setting. When that
+  record is public it is rendered by `EntryPage` exactly as a page, with the canonical and the alternates pointing to
+  each language's home address. When none is public in the language (trashed, draft, no translation) the neutral home
+  is shown for that language only; other languages keep showing their public translations.
+- The neutral home (`hata::site.home`, in `layouts/site`) shows the site name and the language's site description. A
+  user with `settings.edit` also sees a hint strip ("Choose a home page in Site settings", or that the chosen page is
+  not public in this language).
+- The chosen record's own address and its translations' addresses answer 301 to that language's home with
+  `Cache-Control: no-cache` (the choice can change). A preview (an editor opening a draft) is not redirected, and pages
+  under the chosen page keep their addresses. No new query: `HomePage::includes()` reads the group already loaded.
+- Deleting the chosen record for good clears the setting in the same transaction (`DeleteEntry::purge()`); trashing it
+  does not.
+- The content list and the form show a "Home page" badge on the chosen record and its translations.
+- `hata::welcome` no longer exists (breaking, v0.3.0): a site that overrode `vendor/hata/welcome.blade.php` loses it.
+
+### Sitemap and robots
+
+`GET /sitemap.xml` (route `sitemap`, registered when `hata.seo.sitemap` is true, env `HATA_SITEMAP`, default true) is
+declared `->withoutMiddleware('web')`: no session, cookies or locale, so a proxy can cache it. `Hata\Support\Seo\Sitemap`
+builds it on request, streamed (`response()->stream`) from cursors with no bodies:
+
+- every active language's home; every public record of an active type except the chosen home page's group, a group of
+  translations written together with `xhtml:link` alternates (rows ordered by group and language); the list of a type
+  with a base that has a public record in the language (a taxonomy has no list: the router has none for a taxonomy
+  base); every term with a public record of an active type filed under it.
+- Headers: `Content-Type: application/xml; charset=utf-8`, `Cache-Control: public, max-age=3600` and `Last-Modified`
+  from one query: the latest of `entries.updated_at` (trashed included), the latest `published_at` that has come (a
+  scheduled record goes live without a write) and `settings.updated_at`. A matching `If-Modified-Since` gets 304 and no
+  body is built. Moving a page bumps its descendants' `updated_at` (`EntryPaths`), so `lastmod` follows a move.
+- Known limit: one file; there is no split into several files past 50,000 URLs.
+
+`GET /robots.txt` (route `robots`, `hata.seo.robots`, env `HATA_ROBOTS`, default true), also without the `web` group,
+answers `User-agent: *` / `Disallow:` and, when the sitemap is on, `Sitemap: <url>/sitemap.xml`;
+`Cache-Control: public, max-age=86400`, no query. It never names the admin path (`HATA_ADMIN_PATH` may hide it).
+`hata:install` deletes Laravel's stock `public/robots.txt` when unchanged, because the web server would serve it first
+([package](package.md)). `sitemap.xml` and `robots.txt` are reserved slugs.
+
 ## Tests
+
+`tests/Feature/Seo` (`PageMetaFallbackTest`, `HeadTagsTest`, `SitemapTest`, `RobotsTest`),
+`tests/Feature/Content/HomePageTest.php`, and the `SeoRoutesOff` suite (both routes switched off before the routes
+load, so a site serving its own files gets 404 from Hata).
 
 `tests/Feature/Content/PublicContentTest.php`: a page in the default language and its translation under the prefix, a
 nested path, a record under a type's base and the bare base, the trailing slash, addresses that cannot be content (the
@@ -956,5 +1025,4 @@ gallery).
 
 ## Not included yet
 
-Head tags beyond the title (description, canonical, Open Graph), `sitemap.xml` and the
-home page setting (a later part).
+Splitting the sitemap past 50,000 URLs.

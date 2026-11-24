@@ -44,7 +44,8 @@ migrations. The installer refuses to run while the config is cached (`php artisa
 What it does, each step safe to repeat:
 
 - Adds `implements AdminUser` and `use IsAdminUser` to `app/Models/User.php`.
-- Removes Laravel's `welcome` route and view (Hata's home page takes `/`).
+- Removes Laravel's `welcome` route and view (Hata's home page takes `/`) and Laravel's stock `public/robots.txt`
+  (Hata serves `/robots.txt` and `/sitemap.xml`).
 - Adds `configureDefaults()` to `app/Providers/AppServiceProvider.php`: immutable dates, strict password rules in
   production and `DB::prohibitDestructiveCommands()` in production. These are your site's defaults; Hata does not
   depend on them.
@@ -283,9 +284,10 @@ A full-page Livewire component uses `#[Layout('hata::layouts.app')]`; a Blade pa
 ### Theme and view overrides
 
 The public pages are Blade views: `hata::layouts.site`, `hata::site.entry` (a record), `hata::site.list` (a type's
-list), `hata::site.term` (a term) and `hata::welcome` (the home page). Laravel lets a site override any of Hata's Blade
+list), `hata::site.term` (a term) and `hata::site.home` (the home page when none is chosen). Laravel lets a site override any of Hata's Blade
 views, components and layouts by putting a file at the same path under `resources/views/vendor/hata/`, for example
-`resources/views/vendor/hata/site/entry.blade.php`.
+`resources/views/vendor/hata/site/entry.blade.php`. A theme's layout prints the head with `@hataHead` and a theme's
+controller fills `Hata\Support\Seo\PageMeta` (see `docs/specs/package.md`).
 
 **An overridden view stops receiving Hata's fixes:** your copy is used from then on, whatever Hata changes in its own.
 Prefer the extension points above; override the public `site/*` and `layouts/site` views for a theme, and admin views
