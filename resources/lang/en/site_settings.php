@@ -134,6 +134,7 @@ return [
 
     'appearance' => [
         'heading' => 'Appearance',
+        'logo_requirements' => 'PNG, JPG, WebP or SVG from the media library. A logo is saved with the Save button. Best: transparent background, height at least 64 px.',
     ],
 
     'logo' => [

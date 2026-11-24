@@ -134,6 +134,7 @@ return [
 
     'appearance' => [
         'heading' => 'Вигляд',
+        'logo_requirements' => 'PNG, JPG, WebP або SVG з медіатеки. Лого зберігається кнопкою «Зберегти». Найкраще: прозорий фон, висота від 64 px.',
     ],
 
     'logo' => [

@@ -267,14 +267,20 @@ test('appearance saves logos and colors all or nothing', function () {
 
     expect(Setting::count())->toBe(0)->and(MediaUsage::count())->toBe(0);
 
-    // A failure inside the transaction (a refused logo next to valid colors) stores no color either.
+    // A valid logo is written first, then a refused one throws: the transaction takes the first and the colors back.
+    $light = appearanceMedia('light.png', 'image/png');
+
     Livewire::test(APPEARANCE)
-        ->set('values.color_scheme', 'rose')
+        ->set('values.logo_light', $light->id)
         ->set('values.logo_dark', appearanceMedia('spinner.gif', 'image/gif')->id)
+        ->set('values.color_scheme', 'rose')
         ->call('save')
         ->assertHasErrors('values.logo_dark');
 
-    expect(Setting::count())->toBe(0)->and(config('hata.admin.colors.scheme'))->not->toBe('rose');
+    expect(Setting::count())->toBe(0)
+        ->and(MediaUsage::count())->toBe(0)
+        ->and(config('hata.admin.logo.light'))->toBeNull()
+        ->and(config('hata.admin.colors.scheme'))->not->toBe('rose');
 });
 
 test('saving logo and colors together stores both', function () {

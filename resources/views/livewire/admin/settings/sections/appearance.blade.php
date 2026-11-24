@@ -278,7 +278,7 @@ new class extends SettingsSectionPage {
                 @endforeach
             </div>
 
-            <flux:text class="text-xs">{{ __('hata::site_settings.logo.requirements') }}</flux:text>
+            <flux:text class="text-xs">{{ __('hata::site_settings.appearance.logo_requirements') }}</flux:text>
 
     </div>
 
