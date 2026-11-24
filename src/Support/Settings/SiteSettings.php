@@ -9,8 +9,10 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use LogicException;
 
 /**
  * Site settings edited in the admin panel.
@@ -22,90 +24,14 @@ class SiteSettings
 {
     private static int $suspended = 0;
 
+    /**
+     * Problems already logged in this process.
+     *
+     * @var array<string, true>
+     */
+    private static array $warned = [];
+
     public const string CACHE_KEY = 'site_settings';
-
-    /**
-     * Setting key => config path it overrides.
-     *
-     * @var array<string, string>
-     */
-    public const array CONFIG_PATHS = [
-        'site_name' => 'app.name',
-        'default_locale' => 'app.locale',
-        'timezone' => 'hata.admin.timezone',
-        'registration_enabled' => 'hata.admin.registration_enabled',
-        'default_role' => 'hata.admin.default_role',
-        'mail_mailer' => 'mail.default',
-        'mail_host' => 'mail.mailers.smtp.host',
-        'mail_port' => 'mail.mailers.smtp.port',
-        'mail_scheme' => 'mail.mailers.smtp.scheme',
-        'mail_username' => 'mail.mailers.smtp.username',
-        'mail_password' => 'mail.mailers.smtp.password',
-        'mail_from_address' => 'mail.from.address',
-        'mail_from_name' => 'mail.from.name',
-        'logo_light' => 'hata.admin.logo.light',
-        'logo_dark' => 'hata.admin.logo.dark',
-        'color_scheme' => 'hata.admin.colors.scheme',
-        'color_accent' => 'hata.admin.colors.accent',
-        'color_gray' => 'hata.admin.colors.gray',
-        'color_tint_sidebar' => 'hata.admin.colors.tint_sidebar',
-        'media_optimize' => 'hata.media.optimize.enabled',
-        'media_max_side' => 'hata.media.optimize.max_side',
-        'media_quality' => 'hata.media.optimize.quality',
-        'media_format' => 'hata.media.optimize.format',
-        'media_strip_exif' => 'hata.media.optimize.strip_exif',
-        'media_client_resize' => 'hata.media.optimize.client_resize',
-        'media_keep_originals' => 'hata.media.optimize.keep_originals',
-        'media_max_image_mb' => 'hata.media.limits.image_mb',
-        'media_max_document_mb' => 'hata.media.limits.document_mb',
-        'media_storage' => 'hata.media.disk',
-        'media_s3_endpoint' => 'filesystems.disks.s3.endpoint',
-        'media_s3_region' => 'filesystems.disks.s3.region',
-        'media_s3_bucket' => 'filesystems.disks.s3.bucket',
-        'media_s3_key' => 'filesystems.disks.s3.key',
-        'media_s3_secret' => 'filesystems.disks.s3.secret',
-        'media_s3_path_style' => 'filesystems.disks.s3.use_path_style_endpoint',
-        'media_s3_public_url' => 'filesystems.disks.s3.url',
-        'media_s3_prefix' => 'filesystems.disks.s3.root',
-        'content_locales' => 'hata.content.locales',
-        'content_default_locale' => 'hata.content.default_locale',
-        'content_disabled_types' => 'hata.content.disabled_types',
-    ];
-
-    /**
-     * Values the app stores and reads itself (probe results): they map to no config path and no form field.
-     *
-     * @var list<string>
-     */
-    public const array STORED_ONLY = [
-        'media_direct_state',
-        'media_direct_url',
-        'media_direct_checked_at',
-        'media_direct_attempted_at',
-        'media_direct_attempted_url',
-    ];
-
-    /**
-     * Settings that must reach config as a given type (the code checks with is_int()/is_bool()).
-     *
-     * @var array<string, 'int'|'bool'>
-     */
-    public const array CASTS = [
-        'registration_enabled' => 'bool',
-        'color_tint_sidebar' => 'bool',
-        'mail_port' => 'int',
-        'logo_light' => 'int',
-        'logo_dark' => 'int',
-        'media_optimize' => 'bool',
-        'media_max_side' => 'int',
-        'media_quality' => 'int',
-        'media_strip_exif' => 'bool',
-        'media_client_resize' => 'bool',
-        'media_keep_originals' => 'bool',
-        'media_max_image_mb' => 'int',
-        'media_max_document_mb' => 'int',
-        'media_s3_path_style' => 'bool',
-    ];
 
     /**
      * "Do not scale" is stored as 0, because a null value would remove the setting
@@ -114,11 +40,16 @@ class SiteSettings
     public const string NO_MAX_SIDE = 'media_max_side';
 
     /**
-     * Settings stored encrypted with the application key.
+     * The defined keys. A site or module adds its own with define().
      *
-     * @var list<string>
+     * @var array<string, SettingDefinition>
      */
-    public const array ENCRYPTED = ['mail_password', 'media_s3_secret'];
+    private array $definitions = [];
+
+    /**
+     * Whether apply() has run in this process, so a key defined later is applied at once.
+     */
+    private bool $applied = false;
 
     /**
      * Config values before the first override, restored when a setting is removed.
@@ -145,6 +76,35 @@ class SiteSettings
     public function __construct()
     {
         $this->configuredLocale = (string) config('app.locale');
+    }
+
+    /**
+     * Define a setting key: the config path it overrides (null for a value the app stores and reads itself),
+     * the type it reaches config as and whether it is stored encrypted. A key defined after the settings were
+     * applied is applied at once.
+     *
+     * @param  'int'|'bool'|'array'|null  $cast
+     */
+    public function define(string $key, ?string $config = null, ?string $cast = null, bool $encrypted = false): static
+    {
+        $this->definitions[$key] = new SettingDefinition($key, $config, $cast, $encrypted);
+
+        if ($this->applied && $config !== null && ! self::buildingConfigCache()) {
+            $this->memo = null;
+            $this->applyKey($this->definitions[$key]);
+        }
+
+        return $this;
+    }
+
+    public function definition(string $key): ?SettingDefinition
+    {
+        return $this->definitions[$key] ?? null;
+    }
+
+    public function isDefined(string $key): bool
+    {
+        return isset($this->definitions[$key]);
     }
 
     /**
@@ -241,26 +201,12 @@ class SiteSettings
             config([$path => $value]);
         }
 
-        foreach ($this->stored() as $key => $value) {
-            $path = self::CONFIG_PATHS[$key] ?? null;
+        $this->applied = true;
 
-            if ($path === null || $value === null) {
-                continue;
+        foreach ($this->definitions as $definition) {
+            if ($definition->config !== null) {
+                $this->applyKey($definition);
             }
-
-            if (in_array($key, self::ENCRYPTED, true)) {
-                try {
-                    $value = Crypt::decryptString((string) $value);
-                } catch (DecryptException) {
-                    continue;
-                }
-            }
-
-            if (! array_key_exists($path, $this->defaults)) {
-                $this->defaults[$path] = config($path);
-            }
-
-            config([$path => $this->cast($key, $value)]);
         }
 
         // The site's default interface language, where no request's own language can overwrite it.
@@ -274,15 +220,62 @@ class SiteSettings
         }
     }
 
-    private function cast(string $key, mixed $value): mixed
+    /**
+     * Write one stored setting over its config path. A key stored for no definition, or not stored, does nothing.
+     */
+    private function applyKey(SettingDefinition $definition): void
     {
-        $value = match (self::CASTS[$key] ?? null) {
+        $value = $this->stored()[$definition->key] ?? null;
+
+        if ($value === null || $definition->config === null) {
+            return;
+        }
+
+        if ($definition->encrypted) {
+            try {
+                $value = Crypt::decryptString((string) $value);
+            } catch (DecryptException) {
+                return;
+            }
+        }
+
+        if (! array_key_exists($definition->config, $this->defaults)) {
+            $this->defaults[$definition->config] = config($definition->config);
+        }
+
+        config([$definition->config => $this->cast($definition, $value)]);
+    }
+
+    private function cast(SettingDefinition $definition, mixed $value): mixed
+    {
+        $value = match ($definition->cast) {
             'int' => is_numeric($value) ? (int) $value : $value,
             'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN),
+            'array' => is_string($value) ? (json_decode($value, true) ?? []) : $value,
             default => $value,
         };
 
-        return $key === self::NO_MAX_SIDE && $value === 0 ? null : $value;
+        return $definition->key === self::NO_MAX_SIDE && $value === 0 ? null : $value;
+    }
+
+    /**
+     * A mistake in a setting key: thrown in the local and testing environments, else logged once and skipped.
+     */
+    private function problem(string $problem): void
+    {
+        $message = "Site settings: {$problem}.";
+
+        if (app()->environment('local', 'testing')) {
+            throw new LogicException($message);
+        }
+
+        if (isset(self::$warned[$message])) {
+            return;
+        }
+
+        self::$warned[$message] = true;
+
+        Log::warning($message);
     }
 
     /**
@@ -295,7 +288,11 @@ class SiteSettings
     {
         DB::transaction(function () use ($values): void {
             foreach ($values as $key => $value) {
-                if (! array_key_exists($key, self::CONFIG_PATHS) && ! in_array($key, self::STORED_ONLY, true)) {
+                $definition = $this->definition($key);
+
+                if ($definition === null) {
+                    $this->problem("the key [{$key}] is not defined, so it is not stored");
+
                     continue;
                 }
 
@@ -305,7 +302,11 @@ class SiteSettings
                     continue;
                 }
 
-                if (in_array($key, self::ENCRYPTED, true)) {
+                if ($definition->cast === 'array') {
+                    $value = json_encode($value, JSON_THROW_ON_ERROR);
+                }
+
+                if ($definition->encrypted) {
                     $value = Crypt::encryptString((string) $value);
                 }
 
@@ -325,7 +326,7 @@ class SiteSettings
     }
 
     /**
-     * Store values the app keeps for itself (STORED_ONLY: probe results), which reach no config. Only the settings
+     * Store values the app keeps for itself (defined without a config path: probe results), which reach no config. Only the settings
      * cache and this process's copy are refreshed: no apply(), so logos, mailers and the s3 disk stay as they are. A
      * null value removes the key; other keys are ignored.
      *
@@ -333,7 +334,11 @@ class SiteSettings
      */
     public function putStoredOnly(array $values): void
     {
-        $values = array_intersect_key($values, array_flip(self::STORED_ONLY));
+        $values = array_filter(
+            $values,
+            fn (string $key): bool => $this->definition($key)?->config === null && $this->isDefined($key),
+            ARRAY_FILTER_USE_KEY,
+        );
 
         if ($values === []) {
             return;

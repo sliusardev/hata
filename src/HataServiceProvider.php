@@ -92,6 +92,7 @@ class HataServiceProvider extends ServiceProvider
         );
 
         $this->app->singleton(SiteSettings::class);
+        $this->defineSettings();
         $this->app->singleton(DirectServing::class);
         $this->app->singleton(ContentLocales::class);
         $this->app->singleton(AdminAssets::class);
@@ -106,6 +107,75 @@ class HataServiceProvider extends ServiceProvider
 
         $this->app->register(ContentServiceProvider::class);
         $this->app->register(FortifyServiceProvider::class);
+    }
+
+    /**
+     * Declare the site setting keys Hata itself stores.
+     */
+    private function defineSettings(): void
+    {
+        $settings = $this->app->make(SiteSettings::class);
+
+        // General
+        $settings->define('site_name', 'app.name');
+        $settings->define('default_locale', 'app.locale');
+        $settings->define('timezone', 'hata.admin.timezone');
+        $settings->define('registration_enabled', 'hata.admin.registration_enabled', 'bool');
+        $settings->define('default_role', 'hata.admin.default_role');
+
+        // Mail
+        $settings->define('mail_mailer', 'mail.default');
+        $settings->define('mail_host', 'mail.mailers.smtp.host');
+        $settings->define('mail_port', 'mail.mailers.smtp.port', 'int');
+        $settings->define('mail_scheme', 'mail.mailers.smtp.scheme');
+        $settings->define('mail_username', 'mail.mailers.smtp.username');
+        $settings->define('mail_password', 'mail.mailers.smtp.password', encrypted: true);
+        $settings->define('mail_from_address', 'mail.from.address');
+        $settings->define('mail_from_name', 'mail.from.name');
+
+        // Logo
+        $settings->define('logo_light', 'hata.admin.logo.light', 'int');
+        $settings->define('logo_dark', 'hata.admin.logo.dark', 'int');
+
+        // Colors
+        $settings->define('color_scheme', 'hata.admin.colors.scheme');
+        $settings->define('color_accent', 'hata.admin.colors.accent');
+        $settings->define('color_gray', 'hata.admin.colors.gray');
+        $settings->define('color_tint_sidebar', 'hata.admin.colors.tint_sidebar', 'bool');
+
+        // Media: optimization and limits
+        $settings->define('media_optimize', 'hata.media.optimize.enabled', 'bool');
+        $settings->define('media_max_side', 'hata.media.optimize.max_side', 'int');
+        $settings->define('media_quality', 'hata.media.optimize.quality', 'int');
+        $settings->define('media_format', 'hata.media.optimize.format');
+        $settings->define('media_strip_exif', 'hata.media.optimize.strip_exif', 'bool');
+        $settings->define('media_client_resize', 'hata.media.optimize.client_resize', 'bool');
+        $settings->define('media_keep_originals', 'hata.media.optimize.keep_originals', 'bool');
+        $settings->define('media_max_image_mb', 'hata.media.limits.image_mb', 'int');
+        $settings->define('media_max_document_mb', 'hata.media.limits.document_mb', 'int');
+
+        // Media: storage
+        $settings->define('media_storage', 'hata.media.disk');
+        $settings->define('media_s3_endpoint', 'filesystems.disks.s3.endpoint');
+        $settings->define('media_s3_region', 'filesystems.disks.s3.region');
+        $settings->define('media_s3_bucket', 'filesystems.disks.s3.bucket');
+        $settings->define('media_s3_key', 'filesystems.disks.s3.key');
+        $settings->define('media_s3_secret', 'filesystems.disks.s3.secret', encrypted: true);
+        $settings->define('media_s3_path_style', 'filesystems.disks.s3.use_path_style_endpoint', 'bool');
+        $settings->define('media_s3_public_url', 'filesystems.disks.s3.url');
+        $settings->define('media_s3_prefix', 'filesystems.disks.s3.root');
+
+        // Media: probe results the app keeps for itself (no config path)
+        $settings->define('media_direct_state');
+        $settings->define('media_direct_url');
+        $settings->define('media_direct_checked_at');
+        $settings->define('media_direct_attempted_at');
+        $settings->define('media_direct_attempted_url');
+
+        // Content
+        $settings->define('content_locales', 'hata.content.locales');
+        $settings->define('content_default_locale', 'hata.content.default_locale');
+        $settings->define('content_disabled_types', 'hata.content.disabled_types');
     }
 
     public function boot(): void

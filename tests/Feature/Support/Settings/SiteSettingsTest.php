@@ -18,8 +18,8 @@ test('removing a setting brings back the value from the config file', function (
         ->and($settings->has('site_name'))->toBeFalse();
 });
 
-test('it ignores keys that are not settings', function () {
-    app(SiteSettings::class)->put(['app_key' => 'x']);
+test('it refuses keys that are not settings', function () {
+    expect(fn () => app(SiteSettings::class)->put(['app_key' => 'x']))->toThrow(LogicException::class);
 
     expect(app(SiteSettings::class)->stored())->toBe([]);
 });
