@@ -96,11 +96,20 @@ final class SettingsSections
      */
     public function open(AdminUser $user, string $key): ?SettingsSection
     {
+        return $this->pick($this->for($user), $key);
+    }
+
+    /**
+     * The section `open()` would choose from a list `for()` already returned, so a page that needs the list too
+     * resolves the components once.
+     *
+     * @param  list<SettingsSection>  $sections
+     */
+    public function pick(array $sections, string $key): ?SettingsSection
+    {
         if (! isset($this->sections[$key])) {
             $key = self::ALIASES[$key] ?? $key;
         }
-
-        $sections = $this->for($user);
 
         foreach ($sections as $section) {
             if ($section->key === $key) {

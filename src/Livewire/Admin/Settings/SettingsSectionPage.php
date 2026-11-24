@@ -3,6 +3,7 @@
 namespace Hata\Livewire\Admin\Settings;
 
 use Hata\Contracts\AdminUser;
+use Hata\Livewire\Admin\Settings\Concerns\AuthorizesSettingsSection;
 use Hata\Support\Admin\SettingsSections;
 use Hata\Support\Settings\SiteSettings;
 use Hata\Support\Toast;
@@ -20,12 +21,14 @@ use LogicException;
  * only the fields that differ from that copy, so a value that comes from `.env` or a config default and was left
  * alone is never frozen into the database. Secret fields are never loaded (they start empty), are stored only when
  * typed and then always count as a change. The section's permission is checked on mount and again on every later
- * request (`hydrate()`), because a request can name any component; a subclass's own actions are covered by that too.
+ * request (the `AuthorizesSettingsSection` trait hooks, which a subclass cannot override away), because a request can name any component; a subclass's own actions are covered by that too.
  *
  * The view wraps its cards in `<x-hata::admin.settings-section>`, which carries the browser's unsaved-changes check.
  */
 abstract class SettingsSectionPage extends Component
 {
+    use AuthorizesSettingsSection;
+
     /**
      * @var array<string, mixed>
      */
@@ -71,14 +74,6 @@ abstract class SettingsSectionPage extends Component
         $this->saved = $this->values;
     }
 
-    /**
-     * Every request after the first re-checks the permission, whatever action or property update it carries.
-     */
-    public function hydrate(): void
-    {
-        $this->authorizeSection();
-    }
-
     public function save(): void
     {
         $this->authorizeSection();
@@ -93,6 +88,10 @@ abstract class SettingsSectionPage extends Component
 
         // Only validated values are stored: a field without a rule never reaches the settings from the browser.
         $changed = array_values(array_diff($this->changed(), $unruled));
+
+        if (! $this->beforePersist($changed)) {
+            return;
+        }
 
         if ($changed !== []) {
             $this->persist($this->prepare(Arr::only($validated, $changed)));
@@ -160,6 +159,17 @@ abstract class SettingsSectionPage extends Component
     protected function prepare(array $validated): array
     {
         return array_map(fn (mixed $value): mixed => is_string($value) && trim($value) === '' || $value === null ? null : $value, $validated);
+    }
+
+    /**
+     * A hook after validation and before anything is stored: return false to stop the save (a section that asks for
+     * confirmation first opens its dialog here and saves again from its confirm action). Validation has run once by then.
+     *
+     * @param  list<string>  $changed  the fields that would be stored
+     */
+    protected function beforePersist(array $changed): bool
+    {
+        return true;
     }
 
     /**

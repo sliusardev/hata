@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Hata\Models\Setting;
+use Hata\Support\Admin\SettingsSections;
 use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
@@ -15,6 +16,38 @@ class ShopSettingsSectionWithoutCurrencyRule extends ShopSettingsSection
     {
         return ['values.shop_api_token' => ['nullable', 'string', 'max:255']];
     }
+}
+
+class ShopStoredOnlySection extends ShopSettingsSection
+{
+    protected function fields(): array
+    {
+        return ['shop_flags', 'shop_note', 'shop_hidden'];
+    }
+
+    protected function secretFields(): array
+    {
+        return ['shop_hidden'];
+    }
+
+    protected function rules(): array
+    {
+        return [
+            'values.shop_flags' => ['nullable', 'array'],
+            'values.shop_note' => ['nullable', 'string'],
+            'values.shop_hidden' => ['nullable', 'string'],
+        ];
+    }
+
+    public function render(): string
+    {
+        return '<div data-settings-section></div>';
+    }
+}
+
+class ShopOverridingHydrate extends ShopSettingsSection
+{
+    public function hydrate(): void {}
 }
 
 beforeEach(function () {
@@ -151,4 +184,44 @@ it('never stores a field without a validation rule from the browser', function (
 
     expect(Setting::query()->where('key', 'shop_currency')->exists())->toBeFalse()
         ->and(Setting::query()->where('key', 'shop_api_token')->exists())->toBeTrue();
+});
+
+it('mount is 403 for a section that is not registered', function () {
+    app(SettingsSections::class)->remove('shop');
+
+    Livewire::actingAs($this->shopAdmin)->test(ShopSettingsSection::class)->assertForbidden();
+});
+
+it('stored-only encrypted and array keys round-trip through put() and value() and load into a section', function () {
+    $settings = app(SiteSettings::class);
+    $settings->define('shop_flags', null, 'array')->define('shop_note', null, encrypted: true)->define('shop_hidden', null, encrypted: true);
+
+    $settings->put(['shop_flags' => ['a', 'b'], 'shop_note' => 'plain note', 'shop_hidden' => 'top secret']);
+
+    expect($settings->value('shop_flags'))->toBe(['a', 'b'])
+        ->and($settings->value('shop_note'))->toBe('plain note')
+        ->and(Setting::query()->where('key', 'shop_note')->value('value'))->not->toBe('plain note');
+
+    $settings->putStoredOnly(['shop_note' => 'second note', 'shop_flags' => ['c']]);
+
+    expect($settings->value('shop_note'))->toBe('second note')
+        ->and($settings->value('shop_flags'))->toBe(['c'])
+        ->and(Setting::query()->where('key', 'shop_note')->value('value'))->not->toBe('second note');
+
+    Livewire::actingAs($this->shopAdmin)
+        ->test(ShopStoredOnlySection::class)
+        ->assertSet('values.shop_flags', ['c'])
+        ->assertSet('values.shop_note', 'second note')
+        ->assertSet('values.shop_hidden', '')
+        ->assertDontSee('top secret');
+});
+
+it('a subclass overriding hydrate() without calling the parent is still 403 after the permission is revoked', function () {
+    $page = Livewire::actingAs($this->shopAdmin)->test(ShopOverridingHydrate::class);
+
+    $this->shopAdmin->revokePermissionTo('shop.settings');
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $this->shopAdmin->refresh();
+
+    $page->set('values.shop_currency', 'GBP')->assertForbidden();
 });

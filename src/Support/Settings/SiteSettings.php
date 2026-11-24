@@ -134,9 +134,48 @@ class SiteSettings
         return array_key_exists($key, $this->stored());
     }
 
+    /**
+     * The stored value of a key, decrypted and decoded by its definition (an encrypted key that cannot be decrypted
+     * reads as null). Other casts are applied only where the value reaches config.
+     */
     public function value(string $key): mixed
     {
-        return $this->stored()[$key] ?? null;
+        $value = $this->stored()[$key] ?? null;
+        $definition = $this->definition($key);
+
+        if ($value === null || $definition === null) {
+            return $value;
+        }
+
+        if ($definition->encrypted) {
+            try {
+                $value = Crypt::decryptString((string) $value);
+            } catch (DecryptException) {
+                return null;
+            }
+        }
+
+        if ($definition->cast === 'array' && is_string($value)) {
+            return json_decode($value, true) ?? [];
+        }
+
+        return $value;
+    }
+
+    /**
+     * What is written to the table for a value: JSON for an array key, then encrypted for an encrypted one.
+     */
+    private function encode(SettingDefinition $definition, mixed $value): mixed
+    {
+        if ($definition->cast === 'array') {
+            $value = json_encode($value, JSON_THROW_ON_ERROR);
+        }
+
+        if ($definition->encrypted) {
+            $value = Crypt::encryptString((string) $value);
+        }
+
+        return $value;
     }
 
     /**
@@ -302,15 +341,7 @@ class SiteSettings
                     continue;
                 }
 
-                if ($definition->cast === 'array') {
-                    $value = json_encode($value, JSON_THROW_ON_ERROR);
-                }
-
-                if ($definition->encrypted) {
-                    $value = Crypt::encryptString((string) $value);
-                }
-
-                Setting::query()->updateOrCreate(['key' => $key], ['value' => $value]);
+                Setting::query()->updateOrCreate(['key' => $key], ['value' => $this->encode($definition, $value)]);
             }
         });
 
@@ -348,7 +379,7 @@ class SiteSettings
             foreach ($values as $key => $value) {
                 $value === null
                     ? Setting::query()->where('key', $key)->delete()
-                    : Setting::query()->updateOrCreate(['key' => $key], ['value' => $value]);
+                    : Setting::query()->updateOrCreate(['key' => $key], ['value' => $this->encode($this->definitions[$key], $value)]);
             }
         });
 

@@ -6,6 +6,7 @@ use Hata\Support\Settings\SiteSettings;
 use Hata\Support\Toast;
 use Illuminate\Support\Facades\Crypt;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(fn () => seedRolesAndPermissions());
 
@@ -157,6 +158,21 @@ it('reports a failed test email', function () {
 });
 
 it('does not send a test email without the settings.edit permission', function () {
+    $user = User::factory()->withRole('admin')->create();
+    $this->actingAs($user);
+
+    $page = Livewire::test('hata::admin.settings.sections.mail');
+
+    $user->syncRoles([]);
+    $user->syncPermissions(['admin.access']);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    $page->call('sendTestEmail')->assertForbidden();
+
+    expect(app('mailer')->getSymfonyTransport()->messages())->toHaveCount(0);
+});
+
+it('does not mount without the settings.edit permission', function () {
     $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
 
     Livewire::test('hata::admin.settings.sections.mail')->assertForbidden();

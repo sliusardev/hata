@@ -24,7 +24,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
 
     public function mount(): void
     {
-        $section = $this->user() === null ? null : app(SettingsSections::class)->open($this->user(), $this->tab);
+        $section = app(SettingsSections::class)->pick($this->sections, $this->tab);
 
         abort_if($section === null, 403);
 
@@ -60,7 +60,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
         isDirty() {
             const section = document.querySelector('[data-settings-section]');
 
-            return section !== null && Alpine.$data(section).isDirty();
+            return section !== null && (Alpine.$data(section)?.isDirty?.() ?? false);
         },
         leave() {
             this.leaving = true;
