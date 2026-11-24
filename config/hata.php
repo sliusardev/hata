@@ -179,6 +179,18 @@ return [
 
         /*
         |--------------------------------------------------------------------------
+        | Home page
+        |--------------------------------------------------------------------------
+        |
+        | The id of the page record shown at the site's address, chosen in Site
+        | settings (`home_page`). With none, the neutral home page is shown.
+        |
+        */
+
+        'home_page' => null,
+
+        /*
+        |--------------------------------------------------------------------------
         | Trash
         |--------------------------------------------------------------------------
         |
@@ -205,6 +217,39 @@ return [
             'storage', 'build', 'vendor', 'index.php', 'favicon.ico', 'favicon.svg', 'apple-touch-icon.png',
             'robots.txt', 'sitemap.xml', '.well-known',
         ],
+
+    ],
+
+    'seo' => [
+
+        /*
+        |--------------------------------------------------------------------------
+        | Site description and share image
+        |--------------------------------------------------------------------------
+        |
+        | `description` is the fallback meta description per content language
+        | (['en' => '…']) and `image` the id of the media file shown when a page is
+        | shared; both are chosen in Site settings (`site_description`, `og_image`).
+        |
+        */
+
+        'description' => [],
+
+        'image' => null,
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sitemap and robots.txt
+        |--------------------------------------------------------------------------
+        |
+        | Whether Hata answers /sitemap.xml and /robots.txt. Turn one off when the
+        | site serves its own file.
+        |
+        */
+
+        'sitemap' => env('HATA_SITEMAP', true),
+
+        'robots' => env('HATA_ROBOTS', true),
 
     ],
 

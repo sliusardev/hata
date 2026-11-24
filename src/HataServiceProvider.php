@@ -37,6 +37,7 @@ use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\LanguageCatalog;
 use Hata\Support\Media\DirectServing;
 use Hata\Support\Permissions\PermissionRegistry;
+use Hata\Support\Seo\PageMeta;
 use Hata\Support\Settings\SiteSettings;
 use Hata\Support\Translation\VendorTranslations;
 use Illuminate\Console\Events\CommandFinished;
@@ -103,6 +104,8 @@ class HataServiceProvider extends ServiceProvider
         $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
             $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
         ));
+
+        $this->app->scoped(PageMeta::class);
 
         $this->registerLocalizedRoutes();
         $this->registerFluxOverrides();
@@ -179,6 +182,11 @@ class HataServiceProvider extends ServiceProvider
         $settings->define('content_locales', 'hata.content.locales');
         $settings->define('content_default_locale', 'hata.content.default_locale');
         $settings->define('content_disabled_types', 'hata.content.disabled_types');
+        $settings->define('home_page', 'hata.content.home_page', 'int');
+
+        // Search and sharing
+        $settings->define('site_description', 'hata.seo.description', 'array');
+        $settings->define('og_image', 'hata.seo.image', 'int');
     }
 
     public function boot(): void
