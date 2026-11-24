@@ -3,6 +3,7 @@
 namespace Hata\Support\Content;
 
 use Hata\Models\Entry;
+use Hata\Support\Content\Types\PagesType;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -47,7 +48,7 @@ class HomePage
         }
 
         $record = Entry::query()
-            ->ofType('pages')
+            ->ofType(PagesType::KEY)
             ->where('locale', $locale)
             ->where('entry_group_id', fn ($query) => $query->select('entry_group_id')->from('entries')->where('id', $id))
             ->first();
@@ -60,13 +61,15 @@ class HomePage
     }
 
     /**
-     * Whether the record is the chosen one or one of its group's translations.
+     * Whether the record is a page of the chosen record's group (the chosen one itself or a translation). The loaded
+     * `groupEntries` only proves a match: ContentRouter filters it (public records, active languages), so a miss there
+     * falls back to the group's id, by at most one query per request.
      */
     public function includes(Entry $entry): bool
     {
         $id = $this->id();
 
-        if ($id === null) {
+        if ($id === null || $entry->type !== PagesType::KEY) {
             return false;
         }
 
@@ -74,8 +77,8 @@ class HomePage
             return true;
         }
 
-        if ($entry->relationLoaded('groupEntries')) {
-            return $entry->groupEntries->contains('id', $id);
+        if ($entry->relationLoaded('groupEntries') && $entry->groupEntries->contains('id', $id)) {
+            return true;
         }
 
         $group = $this->groupId();
@@ -84,7 +87,7 @@ class HomePage
     }
 
     /**
-     * The chosen record's current group (trashed included), by one query.
+     * The chosen record's current group (trashed included), by one query, remembered for the request.
      */
     public function groupId(): ?int
     {

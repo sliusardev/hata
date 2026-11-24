@@ -18,6 +18,7 @@ use Hata\Support\Content\ContentType;
 use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\EntryListQuery;
 use Hata\Support\Content\HomePage;
+use Hata\Support\Content\Types\PagesType;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\Language;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -389,7 +390,7 @@ abstract class EntryListPage extends Component
     #[Computed]
     public function homeGroupId(): ?int
     {
-        return $this->type === 'pages' ? app(HomePage::class)->groupId() : null;
+        return $this->type === PagesType::KEY ? app(HomePage::class)->groupId() : null;
     }
 
     public function isFiltered(): bool

@@ -6,6 +6,11 @@ use Hata\Support\Content\ContentType;
 
 class PagesType extends ContentType
 {
+    /**
+     * The type's key, for code that names the pages type itself (the home page is always one of its records).
+     */
+    public const string KEY = 'pages';
+
     public function translationPrefix(): string
     {
         return 'hata::';
@@ -13,7 +18,7 @@ class PagesType extends ContentType
 
     public function key(): string
     {
-        return 'pages';
+        return self::KEY;
     }
 
     public function icon(): string

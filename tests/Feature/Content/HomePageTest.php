@@ -114,7 +114,7 @@ describe('the neutral home', function () {
             ->assertSeeText(__('hata::content.public.home.unpublished', [], 'en'));
     });
 
-    it('is shown everywhere when the chosen record and its translations are trashed or is not a page', function () {
+    it('is shown everywhere when the chosen record and its translations are trashed', function () {
         [$uk] = homePages();
         chooseHome($uk);
         Entry::query()->where('entry_group_id', $uk->entry_group_id)->get()->each->delete();
@@ -216,6 +216,37 @@ describe('the chosen page\'s own address', function () {
 
         $this->get('/about')->assertStatus(301)->assertRedirect(homeUrl())->assertHeader('Cache-Control', 'no-cache, private');
         $this->get('/en/about-us')->assertStatus(301)->assertRedirect(homeUrl('en'));
+    });
+
+    it('redirects a public translation when the chosen record is a draft', function () {
+        [$uk] = homePages();
+        $uk->update(['status' => 'draft']);
+        chooseHome($uk);
+
+        $this->get('/en/')->assertOk()->assertSee('We build roofs');
+        $this->get('/en/about-us')->assertStatus(301)->assertRedirect(homeUrl('en'));
+    });
+
+    it('redirects a public translation when the chosen record is trashed', function () {
+        [$uk] = homePages();
+        chooseHome($uk);
+        $uk->delete();
+
+        $this->get('/en/')->assertOk()->assertSee('We build roofs');
+        $this->get('/en/about-us')->assertStatus(301)->assertRedirect(homeUrl('en'));
+    });
+
+    it('redirects on a one-language site when the chosen record is in a language that is off', function () {
+        app(SiteSettings::class)->put([
+            'content_locales' => [['code' => 'uk', 'active' => true], ['code' => 'en', 'active' => false]],
+            'content_default_locale' => 'uk',
+        ]);
+        $en = Entry::factory()->page()->published()->inLocale('en')->create(['title' => 'About us', 'slug' => 'about-us', 'path' => 'about-us', 'body' => '<p>We build roofs.</p>']);
+        Entry::factory()->page()->published()->translationOf($en, 'uk')->create(['title' => 'Про нас', 'slug' => 'about', 'path' => 'about', 'body' => '<p>Ми робимо дахи.</p>']);
+        chooseHome($en);
+
+        $this->get('/')->assertOk()->assertSee('Ми робимо дахи');
+        $this->get('/about')->assertStatus(301)->assertRedirect(homeUrl());
     });
 
     it('leaves the pages under it alone', function () {

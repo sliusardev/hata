@@ -886,7 +886,10 @@ settings or a neutral home. `Hata\Support\Content\HomePage` (scoped) reads the s
   not public in this language).
 - The chosen record's own address and its translations' addresses answer 301 to that language's home with
   `Cache-Control: no-cache` (the choice can change). A preview (an editor opening a draft) is not redirected, and pages
-  under the chosen page keep their addresses. No new query: `HomePage::includes()` reads the group already loaded.
+  under the chosen page keep their addresses. `HomePage::includes()` takes only `pages` records; the group loaded by
+  the router proves a match, and since that list is filtered (public records, active languages) a miss falls back to
+  the chosen record's group id: at most one query by primary key, remembered for the request (none at the chosen
+  record's own address).
 - Deleting the chosen record for good clears the setting in the same transaction (`DeleteEntry::purge()`); trashing it
   does not.
 - The content list and the form show a "Home page" badge on the chosen record and its translations.

@@ -8,6 +8,7 @@ use Hata\Models\Entry;
 use Hata\Support\Content\ContentType;
 use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\HomePage;
+use Hata\Support\Content\Types\PagesType;
 use Hata\Support\Localization\ContentLocales;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -111,7 +112,7 @@ class Sitemap
             ->whereIn('type', array_keys($types))
             ->whereIn('locale', $locales)
             ->when($homeGroup !== null, fn (Builder $query) => $query->where(
-                fn (Builder $other) => $other->where('type', '<>', 'pages')->orWhere('entry_group_id', '<>', $homeGroup),
+                fn (Builder $other) => $other->where('type', '<>', PagesType::KEY)->orWhere('entry_group_id', '<>', $homeGroup),
             ))
             ->select(['id', 'entry_group_id', 'type', 'locale', 'path', 'updated_at']);
 

@@ -8,6 +8,7 @@ use Hata\Exceptions\StorageSettingsException;
 use Hata\Models\Entry;
 use Hata\Models\Media;
 use Hata\Models\Role;
+use Hata\Support\Content\Types\PagesType;
 use Hata\Support\Media\MediaDisks;
 use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Gate;
@@ -44,7 +45,7 @@ class UpdateSiteSettings
         }
 
         if (filled($data['home_page'] ?? null)) {
-            $isLivePage = Entry::query()->ofType('pages')->whereKey((int) $data['home_page'])->exists();
+            $isLivePage = Entry::query()->ofType(PagesType::KEY)->whereKey((int) $data['home_page'])->exists();
 
             if (! $isLivePage) {
                 throw ProtectedActionException::because('hata::site_settings.home.unavailable');
