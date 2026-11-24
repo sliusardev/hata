@@ -49,8 +49,8 @@ class Setting extends Model implements UsesMedia
     }
 
     /**
-     * Stop using a logo whose file is being deleted. Runs inside the delete's transaction; the settings cache
-     * and the config are refreshed only after it commits (see SiteSettings::put()).
+     * Stop using a logo or the share image (`og_image`) whose file is being deleted. Runs inside the delete's
+     * transaction; the settings cache and the config are refreshed only after it commits (see SiteSettings::put()).
      */
     public function forgetMedia(string $field, int $mediaId): void
     {
