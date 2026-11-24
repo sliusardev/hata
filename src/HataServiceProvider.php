@@ -238,7 +238,7 @@ class HataServiceProvider extends ServiceProvider
             ->add(new AdminMenuItem('media', 'hata::navigation.media', 'photo', 'admin.media.index', $admin('media.view'), 'content', 900, 'admin.media.*'))
             ->add(new AdminMenuItem('users', 'hata::navigation.users', 'users', 'admin.users.index', $admin('users.view'), 'administration', 10, 'admin.users.*'))
             ->add(new AdminMenuItem('roles', 'hata::navigation.roles', 'shield-check', 'admin.roles.index', $admin('roles.view'), 'administration', 20, 'admin.roles.*'))
-            ->add(new AdminMenuItem('settings', 'hata::navigation.site_settings', 'adjustments-horizontal', 'admin.settings.edit', $admin('settings.edit'), 'administration', 30, 'admin.settings.*'))
+            ->add(new AdminMenuItem('settings', 'hata::navigation.site_settings', 'adjustments-horizontal', 'admin.settings.edit', fn (AdminUser $user): bool => $admin()($user) && $this->app->make(SettingsSections::class)->visibleTo($user), 'administration', 30, 'admin.settings.*'))
             ->add(new AdminMenuItem('maintenance', 'hata::navigation.maintenance', 'wrench-screwdriver', 'admin.maintenance', $admin('maintenance.run'), 'administration', 40))
             ->add(new AdminMenuItem('profile', 'hata::navigation.my_profile', 'user-circle', 'profile.edit', null, 'account', 10, 'profile.edit|language.edit|security.edit|appearance.edit'));
     }

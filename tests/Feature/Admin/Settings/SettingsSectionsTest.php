@@ -82,6 +82,14 @@ it('says whether a user sees any section', function () {
         ->and(app(SettingsSections::class)->visibleTo(User::factory()->withPermissions(['settings.edit'])->create()))->toBeTrue();
 });
 
+it('answers visibleTo() from permissions alone, never resolving a component', function () {
+    app(SettingsSections::class)->add(section('ghost', 10, null, 'no-such-component'));
+    $user = User::factory()->create();
+
+    expect(app(SettingsSections::class)->visibleTo($user))->toBeTrue()
+        ->and(fn () => app(SettingsSections::class)->for($user))->toThrow(LogicException::class, 'ghost');
+});
+
 it('checks one section with allows()', function () {
     $gated = section('gated', 10, 'settings.edit');
 

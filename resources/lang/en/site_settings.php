@@ -144,8 +144,6 @@ return [
         'dark' => 'Dark theme',
         'default' => 'Default logo',
         'uses_other' => 'Uses the other theme’s logo',
-        'requirements' => 'PNG, JPG, WebP or SVG from the media library. A logo is saved as soon as it is chosen. Best: transparent background, height at least 64 px.',
-        'chosen' => 'Logo saved.',
         'missing' => 'The logo file is missing.',
         'remove_missing' => 'Remove',
         'removed' => 'Logo removed.',
@@ -280,8 +278,6 @@ return [
 
     'unsaved' => [
         'heading' => 'Unsaved changes',
-        'body' => 'The “:tab” tab has unsaved changes. If you switch tabs, they will be lost.',
-        'discard' => 'Switch without saving',
         'leave_body' => 'This page has unsaved changes. If you leave it, they will be lost.',
         'leave' => 'Leave without saving',
     ],
