@@ -2,11 +2,12 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "sliusardev/hata",
     "type": "library",
-    "description": "Hata: an admin panel and CMS for Laravel (users, roles, site settings, media library, content).",
+    "description": "Hata: a content management framework (CMF) for Laravel (admin panel, users, roles, site settings, media library, content).",
     "keywords": [
         "laravel",
         "admin",
         "cms",
+        "cmf",
         "livewire"
     ],
     "license": "MIT",

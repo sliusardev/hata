@@ -1,6 +1,6 @@
 # Hata (sliusardev/hata)
 
-This site runs Hata, an admin panel and CMS installed as a Composer package (namespace `Hata\`; views, translations, Livewire and Blade components under `hata::`; config key `hata`). Hata's code is in `vendor/sliusardev/hata`; its contract is `vendor/sliusardev/hata/docs/specs/package.md`, its guide `vendor/sliusardev/hata/README.md`.
+This site runs Hata, a content management framework (CMF) for Laravel installed as a Composer package (namespace `Hata\`; views, translations, Livewire and Blade components under `hata::`; config key `hata`). Hata's code is in `vendor/sliusardev/hata`; its contract is `vendor/sliusardev/hata/docs/specs/package.md`, its guide `vendor/sliusardev/hata/README.md`.
 
 ## Rules
 

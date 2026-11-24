@@ -1,9 +1,9 @@
 # Hata
 
-Hata (`sliusardev/hata`) is an admin panel and CMS for Laravel, installed as a Composer package. It gives a fresh
-Laravel app sign-in (with 2FA and passkeys), users, roles and permissions, site settings, a media library, a
-maintenance page, content types (pages, posts, categories, tags, and your own) with their public pages, and an
-English and Ukrainian interface. Hata's fixes reach a site with `composer update`.
+Hata (`sliusardev/hata`) is a content management framework (CMF) for Laravel, installed as a Composer package. It
+gives a fresh Laravel app an admin panel, sign-in (with 2FA and passkeys), users, roles and permissions, site
+settings, a media library, a maintenance page, content types (pages, posts, categories, tags, and your own) with their
+public pages, and an English and Ukrainian interface. Hata's fixes reach a site with `composer update`.
 
 The contract behind this guide (every name and rule) is [docs/specs/package.md](docs/specs/package.md); the design
 decisions are in [CLAUDE.md](CLAUDE.md).
@@ -303,19 +303,18 @@ published copies would fail.
 
 ### What a site accepts by installing Hata
 
-Hata is a CMS, not a library, so a few site-wide mechanisms come with it: its routes (`/`, the content fallback, which
-any route of yours beats, sign-in, `/settings`, the admin, media), `SetLocale` on the `web` group, the content lookup
-before the session starts, site settings written over `app.name`, `app.locale`, `mail.*` and the S3 disk, a handler
-for missing translation keys (a site that needs its own calls
+Hata is a framework for whole sites, not a library, so a few site-wide mechanisms come with it: its routes (`/`, the
+content fallback, which any route of yours beats, sign-in, `/settings`, the admin, media), `SetLocale` on the `web`
+group, the content lookup before the session starts, site settings written over `app.name`, `app.locale`, `mail.*` and
+the S3 disk, a handler for missing translation keys (a site that needs its own calls
 `Hata\Support\Translation\VendorTranslations::translate()` from it), global validation attribute names, a morph map
-for its models, and a super admin who passes every permission check. It also sets these config values over the
-site's own files: Fortify's `features`, `views`, `home`, `middleware`, `limiters` and `lowercase_usernames` (a site's
+for its models, and a super admin who passes every permission check. It also sets these config values over the site's
+own files: Fortify's `features`, `views`, `home`, `middleware`, `limiters` and `lowercase_usernames` (a site's
 `config/fortify.php` values for them are ignored), `images.default` (imagick or gd) and Livewire's
 `temporary_file_upload.rules`. The site's user model gets `Hata\Policies\UserPolicy` as its exact policy, which beats
 an `App\Policies\UserPolicy` Laravel would guess and a `#[UsePolicy]`: a site that needs its own extends
 `Hata\Policies\UserPolicy` and registers it with `Gate::policy()` in its `AppServiceProvider::boot()` (it runs after
-Hata's). The full list:
-[docs/specs/package.md](docs/specs/package.md#what-a-site-accepts-by-installing-hata).
+Hata's). The full list: [docs/specs/package.md](docs/specs/package.md#what-a-site-accepts-by-installing-hata).
 
 ## Developing Hata
 

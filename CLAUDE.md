@@ -1,6 +1,6 @@
 # Project notes for Claude Code
 
-Hata is a Composer package (`sliusardev/hata`, namespace `Hata\`): an admin panel and CMS for Laravel (users, roles, permissions, site settings, media library, maintenance, content types with public pages). A client site is a fresh Laravel app that requires it and runs `php artisan hata:install`. This repository is the package; the app to look at it in a browser is the demo at `/Users/vitalii/Herd/hata-demo` (https://hata.test), which requires this checkout through a Composer path repository (symlink), so an edit here shows there at once. Laravel Boost (its guidelines, MCP server, `AGENTS.md`) is installed in the demo, not here. Install, update and the extension API: [docs/specs/package.md](docs/specs/package.md).
+Hata is a Composer package (`sliusardev/hata`, namespace `Hata\`): a content management framework (CMF) for Laravel, with an admin panel (users, roles, permissions, site settings, media library, maintenance, content types with public pages). A client site is a fresh Laravel app that requires it and runs `php artisan hata:install`. This repository is the package; the app to look at it in a browser is the demo at `/Users/vitalii/Herd/hata-demo` (https://hata.test), which requires this checkout through a Composer path repository (symlink), so an edit here shows there at once. Laravel Boost (its guidelines, MCP server, `AGENTS.md`) is installed in the demo, not here. Install, update and the extension API: [docs/specs/package.md](docs/specs/package.md).
 
 ## Stack (verified 2026-11-23)
 
