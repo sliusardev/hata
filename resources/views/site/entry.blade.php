@@ -2,7 +2,11 @@
     A content record on the public site: title, image and body. The type's own fields are not printed here.
     Receives $entry (with its image loaded), $body (rendered), $galleries (field name => images), $terms (taxonomy key => the record's terms), $preview, $languageOff (the page's language is switched off) and $editUrl (null without the type's edit).
 --}}
-@extends('hata::layouts.site')
+@extends('hata::layouts.site', [
+    // Kept for a site whose overridden layouts/site still prints the old variables (the 0.3 line).
+    'pageTitle' => app(Hata\Support\Seo\PageMeta::class)->title(),
+    'noindex' => $preview,
+])
 
 @section('strip')
     @include('hata::partials.site.preview-strip')

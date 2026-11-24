@@ -16,7 +16,9 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\CompiledRouteCollection;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\Fixtures\ProductsType;
@@ -682,4 +684,29 @@ describe('admin links', function () {
         $this->get($about->url())->assertOk()->assertSeeText('Про нас');
         $this->get($draft->url())->assertOk()->assertSee('data-test="preview-strip"', escape: false);
     });
+});
+
+it('still passes the old title and noindex variables to a layout a site overrode before v0.3.0', function () {
+    $views = storage_path('framework/testing/old-site-layout');
+    File::ensureDirectoryExists($views.'/layouts');
+    File::put($views.'/layouts/site.blade.php', '<title>{{ $pageTitle }}</title>@if ($noindex ?? false)<meta name="robots" content="noindex">@endif<main>@yield(\'content\')</main>');
+    View::prependNamespace('hata', $views);
+
+    try {
+        [$about] = aboutPages(['body' => '<p>Ми робимо дахи.</p>']);
+        $about->forceFill(['status' => 'draft'])->save();
+        $contacts = Entry::factory()->page()->published()->inLocale('uk')->create(['title' => 'Контакти', 'slug' => 'contacts', 'path' => 'contacts']);
+
+        $this->get('/contacts')->assertOk()
+            ->assertSee('<title>'.$contacts->documentTitle().'</title>', escape: false)
+            ->assertDontSee('noindex', escape: false);
+
+        browseAs(pageEditor());
+        $this->get('/about')->assertOk()
+            ->assertSee('<title>'.$about->documentTitle().'</title>', escape: false)
+            ->assertSee('<meta name="robots" content="noindex">', escape: false)
+            ->assertSee('Ми робимо дахи');
+    } finally {
+        File::deleteDirectory($views);
+    }
 });

@@ -83,10 +83,17 @@ page's record id, also stored by Site settings.
 ### What changed for v0.3.0 (head tags, sitemap, home page)
 
 - **Breaking:** `hata::welcome` (`resources/views/welcome.blade.php`) is removed; `/` is `HomeController`, which shows the
-  page chosen in Site settings or the neutral `hata::site.home`. A site that overrode
+  page chosen in Site settings, the plain `hata::site.home-plain` where that page is not public in the language, or
+  the Hata introduction `hata::site.home` while no page is chosen. A site that overrode
   `resources/views/vendor/hata/welcome.blade.php` loses that file's effect (override `hata::site.home` instead).
-- Public pages print their head through `@hataHead` (`Hata\Support\Seo\PageMeta`): description, canonical, Open
-  Graph and Twitter tags. A site that overrode `layouts/site` keeps its own head until it replaces it with `@hataHead`.
+- **Breaking for a site that overrode `layouts/site`:** the Hata introduction fills a `page` section, not `content`,
+  so an overridden layout that prints only `@yield('content')` shows an empty page at `/` while no home page is chosen;
+  such a layout must also print `@yield('page')` (or start again from the new `layouts/site`). The record, list, term
+  and plain home pages still fill `content` and still pass `$pageTitle` and `$noindex` for the whole 0.3 line, so an
+  old layout keeps working there, but it prints none of the new tags.
+- Public pages print their head through `@hataHead` (`Hata\Support\Seo\PageMeta`): title, description, robots,
+  canonical, Open Graph and Twitter tags and the hreflang links. An overridden `layouts/site` prints only what it
+  printed before (the title, robots and `partials.hreflang`) until it replaces those lines with `@hataHead`.
 - `/sitemap.xml` and `/robots.txt` are served by Hata. The web server answers a file in `public/` first, so a site
   installed before v0.3.0 deletes a stock `public/robots.txt` (`User-agent: *` / `Disallow:`) by hand;
   `hata:install` does it for new installs and never touches a changed file.

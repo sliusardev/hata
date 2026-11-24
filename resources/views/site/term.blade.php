@@ -2,7 +2,11 @@
     A term (a category, a tag) on the public site: its name, its description and the public records filed under it.
     Receives $entry (the term), $records (a simple paginator), $preview, $languageOff and $editUrl.
 --}}
-@extends('hata::layouts.site')
+@extends('hata::layouts.site', [
+    // Kept for a site whose overridden layouts/site still prints the old variables (the 0.3 line).
+    'pageTitle' => app(Hata\Support\Seo\PageMeta::class)->title(),
+    'noindex' => $preview,
+])
 
 @section('strip')
     @include('hata::partials.site.preview-strip')
