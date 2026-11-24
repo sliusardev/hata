@@ -70,6 +70,17 @@ by-hand lines. The report is always printed.
   `php artisan permissions:sync` when the update adds permissions (both are safe to rerun).
 - After changing `.env` or `config/hata.php` on a site that caches: `php artisan optimize`.
 
+### What changed for v0.2.0 (the settings sections)
+
+Breaking for code that reached into the old settings page; a site that only installs Hata needs nothing:
+
+- `SiteSettings::CASTS`, `::ENCRYPTED` and `::CONFIG_PATHS` are removed. The keys are a registry: `SiteSettings::define()` (see below), read back with `definition()` and `isDefined()`.
+- `Hata\Livewire\Forms\SiteSettingsForm` is removed, and `form.*` no longer exists on the page. Each section is its own component over `values.*` (`SettingsSectionPage`).
+- The tabs are merged into seven sections: General is **Site**, Logo and Colors are **Appearance**. Old links keep working through aliases (`?tab=general` opens `site`, `?tab=logo` and `?tab=colors` open `appearance`).
+- Save stores only the fields the admin changed, so an untouched value that comes from `.env` is no longer frozen into the database. A typed secret always counts as changed.
+- Appearance saves the logos together with the colors, all or nothing; choosing a logo no longer stores it at once.
+- Access is per section, and the menu item and the page need at least one section the user may open (they no longer need `settings.edit` itself).
+
 ## Deploying
 
 - `HataVite` reads the manifest from the package's own `dist/`, so the tags always name the installed version's
@@ -173,6 +184,7 @@ register through it.
   provider's `register()` or `boot()`; labels `shop::permissions.groups.shop` and `shop::permissions.items.shop.view`,
   falling back to the site's `permissions.*`. The prefix defaults to `permissions` (the site's own files). Then
   `php artisan permissions:sync`. Never through config (`docs/specs/roles.md`).
+- **Settings sections:** see "Adding a settings section" below.
 - **Admin menu:** `app(AdminMenu::class)->group(...)`/`->add(new AdminMenuItem(...))` in a provider's `boot()`
   (`docs/specs/admin-menu.md`).
 - **Admin routes:** middleware `web, auth, verified, can:admin.access`, prefix `config('hata.admin.path')`, names
@@ -201,6 +213,70 @@ register through it.
   skipped when they exist. A site must not publish Fortify's two-factor migration or laravel/passkeys' migration after
   Hata's ran: Hata already ships those columns and that table, so the published one fails on a second create.
   From the first release on, a shipped migration is never edited.
+
+## Adding a settings section
+
+A site or a module adds a section to Site settings the way Hata's own seven are added (`docs/specs/site-settings.md`). Three parts: the setting keys, a Livewire component for the form, and the registration.
+
+**1. Define the keys.** `app(SiteSettings::class)->define($key, ?$configPath, ?$cast, $encrypted)` in a provider's `register()` or `boot()`: the key, the config path its stored value is written over (null for a stored-only value the code reads itself with `SiteSettings::value()`), a cast for the value that reaches config (`int`, `bool` or `array`) and `encrypted: true` for a secret (encrypted with `APP_KEY`). A key defined after the settings were applied is applied at once, so the order of providers does not matter. A key that is not defined is never stored (`put()` reports it).
+
+**2. Write the component.** Extend `Hata\Livewire\Admin\Settings\SettingsSectionPage`:
+
+- `key(): string` (static): the section's key, the same as its registration's.
+- `fields(): array`: the setting keys the form edits (they are the keys of `$values`).
+- `rules(): array`: validation rules keyed `values.<field>`. **Every field needs an exact `values.<field>` rule**; a field without one is reported (a `LogicException` in `local` and `testing`, a logged warning elsewhere) and is never saved, because only validated values are stored.
+- Hooks, all optional: `load()` (the form's starting values; by default a config-backed key reads its config value, a stored-only key its stored value), `prepare($validated)` (cast the changed values; a blank becomes null, which removes the setting so the config value takes over), `persist($changed)` (store them; by default `SiteSettings::put()`; override it to call an action, to store several things in one transaction or to turn a failure into a `ValidationException`), `secretFields()` (fields that start empty, are never loaded and are stored only when typed).
+- Do not override `hydrate()` or `mount()` without calling the parent: they check the section's permission on every request. Check it yourself in every action you add with `$this->authorizeSection()`.
+- The component's view has `<x-hata::admin.settings-section>` as its root, with the cards inside (`heading`, `description`, `:secrets="[...]"` for the secret fields and `:save="false"` for a section without a Save button). Never write `data-settings-section` by hand: the component carries it, and the page's leave-without-saving guard finds the open section through it.
+- Bind fields with `wire:model="values.<field>"`.
+
+**3. Register it** in a provider's `boot()` (never before the container is ready: nothing is checked until the page asks, so a component Livewire cannot resolve yet breaks nothing at boot):
+
+```php
+app(PermissionRegistry::class)->register('shop', ['settings']);   // labels in the site's lang/ (or 'shop::permissions')
+Livewire::component('shop-settings', ShopSettings::class);
+app(SiteSettings::class)
+    ->define('shop_currency', 'shop.currency')
+    ->define('shop_api_token', 'shop.token', encrypted: true);
+app(SettingsSections::class)->add(
+    new SettingsSection('shop', 'Shop', 'shopping-cart', 'shop-settings', 'shop.settings', 80),
+);
+```
+
+`SettingsSection(key, label, icon, component, permission = 'settings.edit', order = 100)`: the key is lowercase words joined by hyphens; the label is a translation key or a plain string (passed through `__()`), the icon a Flux icon, the component a Livewire name or class, the permission a gate ability, a `Closure(AdminUser): bool` or null for any admin. Hata's sections use orders 10 to 70; pick another number to place yours. The module's translations live in its own files (`shop::…`) or the site's `lang/`. Run `php artisan permissions:sync` after registering a permission.
+
+```php
+class ShopSettings extends SettingsSectionPage
+{
+    public static function key(): string { return 'shop'; }
+
+    protected function fields(): array { return ['shop_currency', 'shop_api_token']; }
+
+    protected function secretFields(): array { return ['shop_api_token']; }
+
+    protected function rules(): array
+    {
+        return [
+            'values.shop_currency' => ['required', 'string', 'size:3'],
+            'values.shop_api_token' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    public function render(): string
+    {
+        return <<<'BLADE'
+            <x-hata::admin.settings-section heading="Shop" :secrets="['shop_api_token']">
+                <flux:card class="space-y-6">
+                    <flux:input wire:model="values.shop_currency" label="Currency" />
+                    <flux:input type="password" wire:model="values.shop_api_token" label="API token" viewable />
+                </flux:card>
+            </x-hata::admin.settings-section>
+            BLADE;
+    }
+}
+```
+
+A complete worked example, with its tests, is `tests/fixtures/ShopSettingsSection.php` and `tests/Feature/Admin/Settings/SettingsSectionsTest.php`. The menu item "Site settings" is decided from the sections' permissions alone, without resolving any component, so a module section whose registration is broken (a component Livewire cannot resolve) is left out in production with a warning in the log while the item stays visible to a user who has only that section, and the page then answers 403. In `local` and `testing` the mistake throws, so the module's own tests catch it.
 
 ## Developing Hata
 

@@ -118,10 +118,11 @@ Public pages today:
 On public pages `SetContentLocale` runs after it, so the site is in the language of its address for guests
 and signed-in users alike.
 
-## Languages tab
+## Languages section
 
-Site settings → Languages (`?tab=languages`, `settings.edit`). Partials
-`partials/admin/settings/languages.blade.php` and `languages-modals.blade.php`.
+Site settings → Languages (the section `languages`, `?tab=languages`, `settings.edit`; component
+`hata::admin.settings.sections.languages`, see [site settings](site-settings.md)). The language list, its dialogs and
+its actions are in the section's view and class.
 
 - **List**: native name, English name, the address pattern, badges "Default" and "Interface" (the admin is
   translated into it), a switch, and the "⋮" menu with **Make default** (active languages only) and
@@ -135,10 +136,10 @@ Site settings → Languages (`?tab=languages`, `settings.edit`). Partials
 - **Remove**: after a confirmation. A language that has content records (those in the trash count too) is
   refused with a danger toast that says how many (`site_settings.languages.errors.has_content`): delete them
   for good first, or switch the language off to hide it.
-- Every change is stored at once and reloads the tab with a toast; a refusal is a danger toast. An unsaved
+- Every change is stored at once and reloads the section with a toast; a refusal is a danger toast. An unsaved
   choice in the field below is dropped by that reload (so the leave-page warning does not fire).
-- **Language of the admin and sign-in pages**: the field `default_locale` (moved here from the General tab),
-  one of the interface languages, saved with the tab's Save button.
+- **Language of the admin and sign-in pages**: the field `default_locale` (moved here from the former General tab),
+  one of the interface languages, saved with the section's Save button, which stores the field only when it changed.
 
 Actions (`Hata\Actions\Settings`, each `handle(AdminUser $actor, …)`, authorizing `settings.edit`; refusals throw
 `Hata\Exceptions\ContentLocaleException`): `AddContentLocale` (unknown, already added),
@@ -172,12 +173,12 @@ that is off.
 `tests/Feature/Localization/ContentLanguagesTest.php`: the catalogue; derived and broken stored values; the
 four actions and their permission; addresses (prefix, 404s, the 301 and its cache header, switching on, a
 changed default, parameters and address helpers, `hreflang`, independence from settings); a real Livewire
-component on a localized route through Livewire's update endpoint; service pages; reserved slugs; the tab.
+component on a localized route through Livewire's update endpoint; service pages; reserved slugs; the section.
 
 ## Known limitations
 
 - Building the route cache with these routes is checked by serializing them, not by running `route:cache`.
-- The tab's add dialog (search in the browser) is covered only by a browser check.
+- The section's add dialog (search in the browser) is covered only by a browser check.
 - Changing the default language changes every public address; old addresses of the old default are not
   redirected.
 - Signing out starts a new session, so the remembered site language is forgotten until the visitor opens a

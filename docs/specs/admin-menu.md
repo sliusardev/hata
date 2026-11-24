@@ -31,6 +31,13 @@ routeParameters = [])`:
 - `parent`: the key of an item in the same group it is nested under; it is listed right after its parent whatever its
   own order (taxonomies under their type).
 
+## The site settings item
+
+The "Site settings" item (Administration group, `admin.settings.edit`) has no fixed permission: it is shown when the
+user may open at least one section of the settings page, decided by `SettingsSections::visibleTo()` from the sections'
+permissions alone (no component is resolved, no query is made). Hata's own sections need `settings.edit`; a module's
+section with its own permission shows the item to users who have only that one (`docs/specs/site-settings.md`).
+
 ## Order
 
 Groups by `order`, items in a group by `order`; ties keep the order they were added in (fixed items first, then lazy
