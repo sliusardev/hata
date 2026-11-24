@@ -8,8 +8,10 @@ use Hata\Support\Settings\SiteSettings;
 use Hata\Support\Toast;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use LogicException;
 
 /**
  * One section of the site settings page: a form over a few site setting keys.
@@ -34,6 +36,13 @@ abstract class SettingsSectionPage extends Component
      */
     #[Locked]
     public array $saved = [];
+
+    /**
+     * The definition mistakes this process has logged already.
+     *
+     * @var array<string, true>
+     */
+    private static array $warned = [];
 
     /**
      * The key of the section's `SettingsSection` registration.
@@ -75,15 +84,18 @@ abstract class SettingsSectionPage extends Component
         $this->authorizeSection();
 
         $validated = $this->validate();
-        $changed = $this->changed();
+        $validated = is_array($validated['values'] ?? null) ? $validated['values'] : [];
+        $unruled = $this->fieldsWithoutRules();
+
+        if ($unruled !== []) {
+            $this->problem('the fields ['.implode(', ', $unruled).'] have no validation rule, so they are never stored');
+        }
+
+        // Only validated values are stored: a field without a rule never reaches the settings from the browser.
+        $changed = array_values(array_diff($this->changed(), $unruled));
 
         if ($changed !== []) {
-            $values = array_merge(
-                Arr::only($this->values, $changed),
-                Arr::only(is_array($validated['values'] ?? null) ? $validated['values'] : [], $changed),
-            );
-
-            $this->persist($this->prepare($values));
+            $this->persist($this->prepare(Arr::only($validated, $changed)));
         }
 
         // Mark the form clean, so the leave-page warning does not fire on the redirect below.
@@ -187,6 +199,38 @@ abstract class SettingsSectionPage extends Component
         return array_values(array_filter($this->fields(), fn (string $field): bool => in_array($field, $secrets, true)
             ? trim($this->normalize($this->values[$field] ?? null)) !== ''
             : $this->normalize($this->values[$field] ?? null) !== $this->normalize($this->saved[$field] ?? null)));
+    }
+
+    /**
+     * The fields with no `values.<field>` rule. Validation returns only the keys it has rules for, so such a field
+     * would otherwise be stored as the browser sent it.
+     *
+     * @return list<string>
+     */
+    private function fieldsWithoutRules(): array
+    {
+        return array_values(array_filter($this->fields(), fn (string $field): bool => ! array_key_exists("values.{$field}", $this->rules())));
+    }
+
+    /**
+     * A mistake in a section's definition: thrown where a developer sees it (local and testing), elsewhere logged once
+     * per process, and the field is left out.
+     */
+    private function problem(string $problem): void
+    {
+        $message = 'The settings section ['.static::key()."]: {$problem}.";
+
+        if (app()->environment('local', 'testing')) {
+            throw new LogicException($message);
+        }
+
+        if (isset(self::$warned[$message])) {
+            return;
+        }
+
+        self::$warned[$message] = true;
+
+        Log::warning($message);
     }
 
     /**

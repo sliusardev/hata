@@ -4,9 +4,18 @@ use App\Models\User;
 use Hata\Models\Setting;
 use Hata\Support\Settings\SiteSettings;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Fixtures\ShopSettingsSection;
+
+class ShopSettingsSectionWithoutCurrencyRule extends ShopSettingsSection
+{
+    protected function rules(): array
+    {
+        return ['values.shop_api_token' => ['nullable', 'string', 'max:255']];
+    }
+}
 
 beforeEach(function () {
     ShopSettingsSection::register();
@@ -118,4 +127,28 @@ it('the section root carries the dirty contract', function () {
         ->assertSeeHtml('data-settings-section')
         ->assertSeeHtml('isDirty()')
         ->assertSeeHtml('data-test="settings-section-save"');
+});
+
+it('never stores a field without a validation rule from the browser', function () {
+    config(['shop.currency' => 'EUR']);
+
+    expect(fn () => Livewire::actingAs($this->shopAdmin)
+        ->test(ShopSettingsSectionWithoutCurrencyRule::class)
+        ->set('values.shop_currency', ['injected' => str_repeat('x', 5000)])
+        ->call('save'))->toThrow(LogicException::class, 'shop_currency');
+
+    app()->detectEnvironment(fn (): string => 'production');
+    Log::spy();
+
+    Livewire::actingAs($this->shopAdmin)
+        ->test(ShopSettingsSectionWithoutCurrencyRule::class)
+        ->set('values.shop_currency', 'USD')
+        ->set('values.shop_api_token', 'new-token')
+        ->call('save')
+        ->assertRedirect(route('admin.settings.edit', ['tab' => 'shop']));
+
+    Log::shouldHaveReceived('warning')->withArgs(fn (string $message): bool => str_contains($message, 'shop_currency'));
+
+    expect(Setting::query()->where('key', 'shop_currency')->exists())->toBeFalse()
+        ->and(Setting::query()->where('key', 'shop_api_token')->exists())->toBeTrue();
 });
