@@ -9,12 +9,14 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Fixtures\CustomAdminPathTestCase;
 use Tests\Fixtures\RecordingDisk;
+use Tests\Fixtures\SeoRoutesOffTestCase;
 use Tests\TestCase;
 
 require_once __DIR__.'/fixtures/RecordingDisk.php';
 require_once __DIR__.'/fixtures/ProductsType.php';
 require_once __DIR__.'/fixtures/CustomAdminPathTestCase.php';
 require_once __DIR__.'/fixtures/ShopSettingsSection.php';
+require_once __DIR__.'/fixtures/SeoRoutesOffTestCase.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +37,11 @@ pest()->extend(TestCase::class)
 pest()->extend(CustomAdminPathTestCase::class)
     ->use(RefreshDatabase::class)
     ->in('AdminPath');
+
+// The sitemap and robots.txt routes are switched off in the config before the routes load, for the same reason.
+pest()->extend(SeoRoutesOffTestCase::class)
+    ->use(RefreshDatabase::class)
+    ->in('SeoRoutesOff');
 
 // Install tests build the schema themselves (as a host's `migrate` would), so they run without RefreshDatabase.
 pest()->extend(TestCase::class)

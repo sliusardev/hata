@@ -147,6 +147,26 @@ final class HostFiles
     }
 
     /**
+     * Deletes Laravel's stock `public/robots.txt` (it allows everything and names no sitemap): the web server would
+     * serve it before Hata's `/robots.txt` route, which adds the `Sitemap:` line. Only that exact content goes; a file
+     * the site has changed is its own and is left alone, with the line to add.
+     */
+    public function removeStockRobots(string $robots): HostFileResult
+    {
+        $source = $this->read($robots);
+
+        if ($source === null) {
+            return HostFileResult::alreadyDone();
+        }
+
+        if (trim(str_replace("\r\n", "\n", $source)) !== "User-agent: *\nDisallow:") {
+            return HostFileResult::unrecognized("Add this line to the site's own robots.txt, so crawlers find the sitemap:\n\nSitemap: ".url('sitemap.xml'));
+        }
+
+        return @unlink($robots) ? HostFileResult::changed() : HostFileResult::unrecognized('Delete public/robots.txt: Hata serves /robots.txt itself, with the sitemap address.');
+    }
+
+    /**
      * The starter kit's `configureDefaults()` (immutable dates, no destructive DB commands in production, strict
      * passwords in production), called first in `boot()`. Hata itself never sets these: they are the site's choice.
      */

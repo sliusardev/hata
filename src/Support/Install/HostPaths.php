@@ -19,6 +19,7 @@ final readonly class HostPaths
         public string $composerJson,
         public string $config,
         public string $welcomeView,
+        public string $robots,
     ) {}
 
     /**
@@ -35,6 +36,7 @@ final readonly class HostPaths
             composerJson: $base.'/composer.json',
             config: $base.'/config/hata.php',
             welcomeView: $base.'/resources/views/welcome.blade.php',
+            robots: $base.'/public/robots.txt',
         );
     }
 
@@ -55,6 +57,7 @@ final readonly class HostPaths
             composerJson: base_path('composer.json'),
             config: config_path('hata.php'),
             welcomeView: resource_path('views/welcome.blade.php'),
+            robots: public_path('robots.txt'),
         );
     }
 

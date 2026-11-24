@@ -116,6 +116,32 @@ describe('removeWelcomeRoute', function () {
     });
 });
 
+describe('removeStockRobots', function () {
+    it('deletes the stock file, whatever its line endings and trailing newline', function (string $contents) {
+        $path = hostFile('public/robots.txt', fn () => $contents);
+
+        expect(app(HostFiles::class)->removeStockRobots($path)->status)->toBe(HostFileStatus::Changed)
+            ->and(File::exists($path))->toBeFalse();
+    })->with([
+        'unix' => "User-agent: *\nDisallow:\n",
+        'crlf' => "User-agent: *\r\nDisallow:\r\n",
+        'no newline' => "User-agent: *\nDisallow:",
+        'extra blank lines' => "User-agent: *\nDisallow:\n\n\n",
+    ]);
+
+    it('keeps a changed file and prints the line to add', function () {
+        $path = hostFile('public/robots.txt', fn () => "User-agent: *\nDisallow: /private\n");
+
+        expectLeftUntouched($path, fn (string $file) => app(HostFiles::class)->removeStockRobots($file), 'Sitemap: '.url('sitemap.xml'));
+    });
+
+    it('has nothing to do without the file', function () {
+        $path = $this->hostDirectory.'/robots.txt';
+
+        expect(app(HostFiles::class)->removeStockRobots($path)->status)->toBe(HostFileStatus::AlreadyDone);
+    });
+});
+
 describe('addHostDefaults', function () {
     it('adds the starter kit\'s defaults to the skeleton provider', function () {
         $path = hostFile('app/Providers/AppServiceProvider.php');

@@ -37,6 +37,10 @@ it('reserves the configured path for content', function () {
         ->and($reserved->contains('admin'))->toBeFalse();
 });
 
-it('does not register sitemap.xml when the sitemap is switched off in the config', function () {
-    $this->get('/sitemap.xml')->assertNotFound();
+it('never names the custom admin path in robots.txt, which still points to the sitemap', function () {
+    $body = $this->get('/robots.txt')->assertOk()->getContent();
+
+    expect($body)->not->toContain('cp-7f3k')
+        ->and($body)->not->toContain('admin')
+        ->and($body)->toContain('Sitemap: '.url('sitemap.xml'));
 });

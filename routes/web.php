@@ -3,6 +3,7 @@
 use Hata\Http\Controllers\ContentController;
 use Hata\Http\Controllers\HomeController;
 use Hata\Http\Controllers\MediaController;
+use Hata\Http\Controllers\RobotsController;
 use Hata\Http\Controllers\SitemapController;
 use Hata\Http\Controllers\StaticMediaFallbackController;
 use Hata\Http\Middleware\LookUpContent;
@@ -23,6 +24,13 @@ Route::localized(function () {
 */
 if (config('hata.seo.sitemap')) {
     Route::get('sitemap.xml', SitemapController::class)->withoutMiddleware('web')->name('sitemap');
+}
+
+/*
+| robots.txt: allows everything and names the sitemap. Like the sitemap, without the "web" middleware.
+*/
+if (config('hata.seo.robots')) {
+    Route::get('robots.txt', RobotsController::class)->withoutMiddleware('web')->name('robots');
 }
 
 /*

@@ -33,6 +33,9 @@ Steps, in order:
      with their imports.
    - `routes/web.php`: the skeleton's `/` → `welcome` route removed (Hata's `home` takes `/`), then
      `resources/views/welcome.blade.php` deleted when this run removed the route.
+   - `public/robots.txt`: deleted only when it is exactly Laravel's stock file (`User-agent: *` / `Disallow:`), since
+     the web server would serve it before Hata's `/robots.txt` route, which adds the `Sitemap:` line; a changed
+     file is kept and the line to add is printed. Skipped when `hata.seo.robots` is off.
    - `app/Providers/AppServiceProvider.php`: `configureDefaults()` (`Date::use(CarbonImmutable::class)`,
      `DB::prohibitDestructiveCommands()` in production, `Password::defaults()`) from
      `stubs/app-service-provider-defaults.stub`, called first in `boot()`. These are the site's defaults, not Hata's.

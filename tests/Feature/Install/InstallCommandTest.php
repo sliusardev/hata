@@ -53,6 +53,7 @@ function hostSnapshot(string $host): array
         'composer.json',
         'config/hata.php',
         'resources/views/welcome.blade.php',
+        'public/robots.txt',
     ])->mapWithKeys(fn (string $file) => [$file => File::exists("{$host}/{$file}") ? File::get("{$host}/{$file}") : null])->all();
 }
 
@@ -70,7 +71,8 @@ it('installs on a fresh skeleton', function () {
         expect($installed[$file])->not->toBe($skeleton[$file], "{$file} was not edited");
     }
 
-    expect($installed['app/Models/User.php'])->toContain('implements AdminUser')
+    expect($installed['public/robots.txt'])->toBeNull()
+        ->and($installed['app/Models/User.php'])->toContain('implements AdminUser')
         ->and($installed['routes/web.php'])->not->toContain('welcome')
         ->and($installed['resources/views/welcome.blade.php'])->toBeNull()
         ->and($installed['config/hata.php'])->toBe(File::get(Hata::path('config/hata.php')))
@@ -211,4 +213,34 @@ it('keeps a welcome view whose route was removed earlier', function () {
         ->assertSuccessful();
 
     expect(File::exists($this->host.'/resources/views/welcome.blade.php'))->toBeTrue();
+});
+
+it('keeps a robots.txt the site changed and prints the sitemap line', function () {
+    File::put($this->host.'/public/robots.txt', "User-agent: *\nDisallow: /private\n");
+
+    $this->artisan('hata:install', ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'])
+        ->expectsOutputToContain('robots.txt (public/robots.txt)')
+        ->expectsOutputToContain('Sitemap: '.url('sitemap.xml'))
+        ->assertSuccessful();
+
+    expect(File::get($this->host.'/public/robots.txt'))->toBe("User-agent: *\nDisallow: /private\n");
+});
+
+it('reports robots.txt as done when it was already removed', function () {
+    File::delete($this->host.'/public/robots.txt');
+
+    $this->artisan('hata:install', ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'])
+        ->expectsOutputToContain('robots.txt (public/robots.txt)')
+        ->doesntExpectOutputToContain('do by hand')
+        ->assertSuccessful();
+});
+
+it('skips the robots.txt step when Hata serves none', function () {
+    config(['hata.seo.robots' => false]);
+
+    $this->artisan('hata:install', ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'])
+        ->doesntExpectOutputToContain('robots.txt (public/robots.txt)')
+        ->assertSuccessful();
+
+    expect(File::exists($this->host.'/public/robots.txt'))->toBeTrue();
 });
