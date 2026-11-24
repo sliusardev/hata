@@ -4,7 +4,9 @@ use Hata\Actions\Settings\RemoveLogo;
 use Hata\Actions\Settings\SetLogo;
 use Hata\Actions\Settings\UpdateSiteSettings;
 use Hata\Livewire\Admin\Settings\SettingsSectionPage;
+use Hata\Contracts\AdminUser;
 use Hata\Models\Media;
+use Hata\Support\Media\MediaAcceptance;
 use Hata\Support\ColorScheme\ColorScheme;
 use Hata\Support\Settings\SiteLogo;
 use Hata\Support\Toast;
@@ -154,14 +156,48 @@ new class extends SettingsSectionPage {
     }
 
     /**
-     * The file chosen for each variant (no fallback to the other one), for the previews.
+     * The file shown for each variant (no fallback to the other one): the one in the picker, so the preview follows it
+     * before Save. A picked id that differs from the stored one is looked up in one query and only trusted when the
+     * user may browse the library (as SetLogo requires); otherwise the stored logo shows.
      *
      * @return array<string, Media|null>
      */
     #[Computed]
     public function chosenLogos(): array
     {
-        return ['light' => SiteLogo::own('light'), 'dark' => SiteLogo::own('dark')];
+        $logos = ['light' => SiteLogo::own('light'), 'dark' => SiteLogo::own('dark')];
+        $user = Auth::user();
+
+        if (! $user instanceof AdminUser || ! $user->can('viewAny', Media::class)) {
+            return $logos;
+        }
+
+        $picked = [];
+
+        foreach (SiteLogo::VARIANTS as $variant) {
+            $id = $this->values["logo_{$variant}"] ?? null;
+
+            if (is_numeric($id) && (int) $id > 0 && (int) $id !== $logos[$variant]?->id) {
+                $picked[$variant] = (int) $id;
+            }
+        }
+
+        if ($picked === []) {
+            return $logos;
+        }
+
+        $found = Media::query()->whereKey(array_values($picked))->get()->keyBy('id');
+        $acceptance = new MediaAcceptance('image', SiteLogo::EXTENSIONS);
+
+        foreach ($picked as $variant => $id) {
+            $media = $found->get($id);
+
+            if ($media !== null && $acceptance->allows($media)) {
+                $logos[$variant] = $media;
+            }
+        }
+
+        return $logos;
     }
 
     /**
@@ -170,7 +206,7 @@ new class extends SettingsSectionPage {
      */
     public function logoIsMissing(string $variant): bool
     {
-        return is_int(config("hata.admin.logo.{$variant}")) && $this->chosenLogos[$variant] === null;
+        return is_int(config("hata.admin.logo.{$variant}")) && SiteLogo::own($variant) === null;
     }
 
     /**

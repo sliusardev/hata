@@ -424,3 +424,24 @@ test('the old logo route and upload class are gone', function () {
     expect(file_exists(Hata::path('src/Actions/Settings/UploadLogo.php')))->toBeFalse()
         ->and(Route::has('branding.logo'))->toBeFalse();
 });
+
+test('the logo preview follows the picker before Save, and falls back to the stored logo without media.view', function () {
+    $stored = appearanceMedia('stored.webp');
+    $picked = appearanceMedia('picked.webp');
+    app(SetLogo::class)->handle(appearanceAdmin(), 'light', $stored->id);
+
+    $this->actingAs(appearanceAdmin());
+
+    Livewire::test(APPEARANCE)
+        ->assertSeeHtml('src="'.$stored->url().'" alt="" class="h-12 w-auto max-w-full object-contain" data-test="logo-preview-light"')
+        ->set('values.logo_light', $picked->id)
+        ->assertSeeHtml('src="'.$picked->url().'" alt="" class="h-12 w-auto max-w-full object-contain" data-test="logo-preview-light"')
+        ->assertDontSeeHtml('src="'.$stored->url().'" alt="" class="h-12 w-auto max-w-full object-contain" data-test="logo-preview-light"');
+
+    $editor = User::factory()->withPermissions(['admin.access', 'settings.edit'])->create();
+
+    Livewire::actingAs($editor)->test(APPEARANCE)
+        ->set('values.logo_light', $picked->id)
+        ->assertSeeHtml('src="'.$stored->url().'" alt="" class="h-12 w-auto max-w-full object-contain" data-test="logo-preview-light"')
+        ->assertDontSeeHtml('src="'.$picked->url().'" alt="" class="h-12 w-auto max-w-full object-contain" data-test="logo-preview-light"');
+});
