@@ -11,6 +11,8 @@ use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\EntryAuthors;
 use Hata\Support\Content\EntryPaths;
 use Hata\Support\Content\Fields\RichText;
+use Hata\Support\Content\HomePage;
+use Hata\Support\Content\Types\PagesType;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\Language;
 use Illuminate\Support\Facades\Auth;
@@ -192,6 +194,16 @@ abstract class EntryFormPage extends Component
         }
 
         return $options;
+    }
+
+    /**
+     * The group of the chosen home page when the form is of the pages type, else null: at most one query per
+     * render, for the header's badge.
+     */
+    #[Computed]
+    public function homeGroupId(): ?int
+    {
+        return $this->type === PagesType::KEY ? app(HomePage::class)->groupId() : null;
     }
 
     #[Computed]

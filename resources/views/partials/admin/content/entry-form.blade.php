@@ -76,7 +76,7 @@
                 </a>
                 <div class="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                     <flux:heading size="xl" level="1" class="min-w-0 break-words">{{ $entry?->title ?? $contentType->newLabel() }}</flux:heading>
-                    @if ($type === 'pages' && $entry !== null && $entry->entry_group_id === app(Hata\Support\Content\HomePage::class)->groupId())
+                    @if ($entry !== null && $this->homeGroupId !== null && $entry->entry_group_id === $this->homeGroupId)
                         <flux:badge size="sm" color="sky" icon="home" data-test="home-page-badge">{{ __('hata::content.list.home_page') }}</flux:badge>
                     @endif
                     @if ($trashed)
