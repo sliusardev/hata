@@ -56,22 +56,22 @@ function fakeConnectionTest(array $result = ['ok' => true]): object
 function s3FormInput(array $overrides = []): array
 {
     return [
-        'form.media_storage' => 's3',
-        'form.media_s3_endpoint' => 'http://127.0.0.1:9000',
-        'form.media_s3_region' => 'us-east-1',
-        'form.media_s3_bucket' => 'media-bucket',
-        'form.media_s3_key' => 'access-key',
-        'form.media_s3_secret' => 'topsecret',
-        'form.media_s3_path_style' => true,
-        'form.media_s3_public_url' => 'https://cdn.example.com/',
-        'form.media_s3_prefix' => '/prod/',
+        'values.media_storage' => 's3',
+        'values.media_s3_endpoint' => 'http://127.0.0.1:9000',
+        'values.media_s3_region' => 'us-east-1',
+        'values.media_s3_bucket' => 'media-bucket',
+        'values.media_s3_key' => 'access-key',
+        'values.media_s3_secret' => 'topsecret',
+        'values.media_s3_path_style' => true,
+        'values.media_s3_public_url' => 'https://cdn.example.com/',
+        'values.media_s3_prefix' => '/prod/',
         ...$overrides,
     ];
 }
 
 function storageTab(): Testable
 {
-    return Livewire::withQueryParams(['tab' => 'media'])->test('hata::admin.settings.edit');
+    return Livewire::test('hata::admin.settings.sections.media');
 }
 
 it('maps the storage settings onto config and rebuilds the s3 disk', function () {
@@ -121,8 +121,8 @@ it('stores the s3 settings from the media tab, encrypts the secret and never ren
         ->and($test->calls[0]['secret'])->toBe('topsecret');
 
     storageTab()
-        ->assertSet('form.media_s3_secret', '')
-        ->assertSet('form.media_s3_bucket', 'media-bucket')
+        ->assertSet('values.media_s3_secret', '')
+        ->assertSet('values.media_s3_bucket', 'media-bucket')
         ->assertDontSee('topsecret')
         ->assertDontSeeHtml('topsecret');
 });
@@ -132,7 +132,7 @@ it('keeps the stored secret when the field is left empty and tests with it', fun
     $test = fakeConnectionTest();
 
     storageTab()
-        ->set(s3FormInput(['form.media_s3_secret' => '', 'form.media_s3_bucket' => 'other']))
+        ->set(s3FormInput(['values.media_s3_secret' => '', 'values.media_s3_bucket' => 'other']))
         ->call('save')
         ->assertHasNoErrors();
 
@@ -146,7 +146,7 @@ it('refuses to save s3 as the storage when the connection test fails, and keeps 
     storageTab()
         ->set(s3FormInput())
         ->call('save')
-        ->assertHasErrors('form.media_storage')
+        ->assertHasErrors('values.media_storage')
         ->assertSee('The bucket was not found.');
 
     expect(Setting::query()->where('key', 'like', 'media_s3_%')->exists())->toBeFalse()
@@ -158,7 +158,7 @@ it('saves the connection fields without a test while the storage stays local', f
     $test = fakeConnectionTest(['ok' => false, 'step' => 'endpoint', 'message' => 'x']);
 
     storageTab()
-        ->set(s3FormInput(['form.media_storage' => 'public']))
+        ->set(s3FormInput(['values.media_storage' => 'public']))
         ->call('save')
         ->assertHasNoErrors();
 
@@ -172,9 +172,9 @@ it('requires a bucket, key and secret for s3', function () {
     config(['filesystems.disks.s3.secret' => null]);
 
     storageTab()
-        ->set(s3FormInput(['form.media_s3_bucket' => '', 'form.media_s3_key' => '', 'form.media_s3_secret' => '']))
+        ->set(s3FormInput(['values.media_s3_bucket' => '', 'values.media_s3_key' => '', 'values.media_s3_secret' => '']))
         ->call('save')
-        ->assertHasErrors(['form.media_s3_bucket', 'form.media_s3_key', 'form.media_s3_secret']);
+        ->assertHasErrors(['values.media_s3_bucket', 'values.media_s3_key', 'values.media_s3_secret']);
 });
 
 it('tests the connection with the unsaved form and shows the result', function () {
@@ -207,7 +207,7 @@ it('warns before changing the bucket, endpoint, prefix or public url while files
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
-        ->set(s3FormInput([$field => $value, 'form.media_s3_secret' => '']))
+        ->set(s3FormInput([$field => $value, 'values.media_s3_secret' => '']))
         ->call('save')
         ->assertSet('showS3ChangeModal', true)
         ->assertSee(__('hata::site_settings.media.storage.change_heading'));
@@ -215,18 +215,18 @@ it('warns before changing the bucket, endpoint, prefix or public url while files
     expect(config('filesystems.disks.s3.bucket'))->toBe('media-bucket');
 
     storageTab()
-        ->set(s3FormInput([$field => $value, 'form.media_s3_secret' => '']))
+        ->set(s3FormInput([$field => $value, 'values.media_s3_secret' => '']))
         ->call('save')
         ->call('confirmS3Change')
         ->assertHasNoErrors();
 
     expect(Setting::query()->where('key', 'media_s3_bucket')->value('value'))
-        ->toBe($field === 'form.media_s3_bucket' ? $value : 'media-bucket');
+        ->toBe($field === 'values.media_s3_bucket' ? $value : 'media-bucket');
 })->with([
-    'bucket' => ['form.media_s3_bucket', 'another-bucket'],
-    'endpoint' => ['form.media_s3_endpoint', 'http://other:9000'],
-    'prefix' => ['form.media_s3_prefix', 'staging'],
-    'public url' => ['form.media_s3_public_url', 'https://other.example.com'],
+    'bucket' => ['values.media_s3_bucket', 'another-bucket'],
+    'endpoint' => ['values.media_s3_endpoint', 'http://other:9000'],
+    'prefix' => ['values.media_s3_prefix', 'staging'],
+    'public url' => ['values.media_s3_public_url', 'https://other.example.com'],
 ]);
 
 it('does not warn when no file is on s3', function () {
@@ -234,7 +234,7 @@ it('does not warn when no file is on s3', function () {
     app(SiteSettings::class)->put(['media_s3_bucket' => 'media-bucket']);
 
     storageTab()
-        ->set(s3FormInput(['form.media_s3_bucket' => 'another']))
+        ->set(s3FormInput(['values.media_s3_bucket' => 'another']))
         ->call('save')
         ->assertSet('showS3ChangeModal', false);
 
@@ -247,9 +247,9 @@ it('refuses to clear the connection while files are on s3', function () {
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
-        ->set(s3FormInput(['form.media_storage' => 'public', 'form.media_s3_bucket' => '', 'form.media_s3_key' => '']))
+        ->set(s3FormInput(['values.media_storage' => 'public', 'values.media_s3_bucket' => '', 'values.media_s3_key' => '']))
         ->call('save')
-        ->assertHasErrors('form.media_s3_bucket');
+        ->assertHasErrors('values.media_s3_bucket');
 
     expect(config('filesystems.disks.s3.bucket'))->toBe('media-bucket');
 });
@@ -312,7 +312,7 @@ it('counts the files on the other disk once, not on every update of the tab', fu
         $counts += str_contains($query->sql, 'count(*) as') && str_contains($query->sql, 'aggregate') ? 1 : 0;
     });
 
-    $component->set('form.media_quality', 70)->set('form.media_max_image_mb', 12)
+    $component->set('values.media_quality', 70)->set('values.media_max_image_mb', 12)
         ->assertSee(trans_choice('hata::site_settings.media.storage.other_disk', 2, ['count' => 2]));
 
     expect($counts)->toBe(0);
@@ -348,7 +348,7 @@ it('stores no s3 setting the admin did not change, so .env keeps working', funct
     $test = fakeConnectionTest();
 
     storageTab()
-        ->set('form.media_quality', '60')
+        ->set('values.media_quality', '60')
         ->call('save')
         ->assertHasNoErrors();
 
@@ -363,7 +363,7 @@ it('stores only the s3 fields the admin changed', function () {
     fakeConnectionTest();
 
     storageTab()
-        ->set('form.media_s3_prefix', 'prod')
+        ->set('values.media_s3_prefix', 'prod')
         ->call('save')
         ->assertHasNoErrors();
 
@@ -375,7 +375,7 @@ it('never tests the connection on a save that changes no storage field, even wit
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
-        ->set('form.media_quality', '60')
+        ->set('values.media_quality', '60')
         ->call('save')
         ->assertHasNoErrors();
 
@@ -388,9 +388,9 @@ it('tests a changed connection field while files are on s3 even if the storage i
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
-        ->set('form.media_s3_key', 'broken')
+        ->set('values.media_s3_key', 'broken')
         ->call('save')
-        ->assertHasErrors('form.media_storage')
+        ->assertHasErrors('values.media_storage')
         ->assertSee('The keys were refused.');
 
     expect($test->calls)->toHaveCount(1)
@@ -403,7 +403,7 @@ it('tests a changed connection field while files are on s3 even if the storage i
 it('does not test a changed connection while the storage is local and no file is on s3', function () {
     $test = fakeConnectionTest(['ok' => false, 'step' => 'bucket', 'message' => 'x']);
 
-    storageTab()->set('form.media_s3_bucket', 'new')->call('save')->assertHasNoErrors();
+    storageTab()->set('values.media_s3_bucket', 'new')->call('save')->assertHasNoErrors();
 
     expect($test->calls)->toBe([]);
 });
@@ -425,17 +425,17 @@ it('limits how often the connection can be tested', function () {
 
 it('says whether the stored secret or only the server configuration provides the key', function () {
     config(['filesystems.disks.s3.secret' => 'from-env']);
-    storageTab()->set('form.media_storage', 's3')
+    storageTab()->set('values.media_storage', 's3')
         ->assertDontSee(__('hata::site_settings.media.storage.secret_keep'))
         ->assertSee(__('hata::site_settings.media.storage.secret_env'));
 
     app(SiteSettings::class)->put(['media_s3_secret' => 'stored']);
-    storageTab()->set('form.media_storage', 's3')->assertSee(__('hata::site_settings.media.storage.secret_keep'));
+    storageTab()->set('values.media_storage', 's3')->assertSee(__('hata::site_settings.media.storage.secret_keep'));
 });
 
 it('shows the connection fields only for s3 or while files are on s3', function () {
     storageTab()->assertDontSeeHtml('data-test="s3-fields"')
-        ->set('form.media_storage', 's3')->assertSeeHtml('data-test="s3-fields"');
+        ->set('values.media_storage', 's3')->assertSeeHtml('data-test="s3-fields"');
 
     Media::factory()->create(['disk' => 's3']);
 
@@ -448,7 +448,7 @@ it('lets the storage go back to local while files are on s3, without testing the
     Media::factory()->create(['disk' => 's3']);
 
     storageTab()
-        ->set('form.media_storage', 'public')
+        ->set('values.media_storage', 'public')
         ->call('save')
         ->assertHasNoErrors();
 
@@ -457,20 +457,20 @@ it('lets the storage go back to local while files are on s3, without testing the
 });
 
 it('accepts public and s3 as the storage and rejects local', function () {
-    storageTab()->set('form.media_storage', 'local')->call('save')->assertHasErrors('form.media_storage');
+    storageTab()->set('values.media_storage', 'local')->call('save')->assertHasErrors('values.media_storage');
 
-    storageTab()->set('form.media_storage', 'public')->call('save')->assertHasNoErrors();
+    storageTab()->set('values.media_storage', 'public')->call('save')->assertHasNoErrors();
 });
 
 it('loads the storage as public unless the disk is s3', function () {
     config(['hata.media.disk' => 'local']);
-    storageTab()->assertSet('form.media_storage', 'public');
+    storageTab()->assertSet('values.media_storage', 'public');
 
     config(['hata.media.disk' => 'public']);
-    storageTab()->assertSet('form.media_storage', 'public');
+    storageTab()->assertSet('values.media_storage', 'public');
 
     config(['hata.media.disk' => 's3']);
-    storageTab()->assertSet('form.media_storage', 's3');
+    storageTab()->assertSet('values.media_storage', 's3');
 });
 
 describe('direct serving status', function () {

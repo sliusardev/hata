@@ -22,15 +22,15 @@ beforeEach(function () {
 function mediaSettingsInput(array $overrides = []): array
 {
     return [
-        'form.media_optimize' => true,
-        'form.media_max_side' => '2560',
-        'form.media_quality' => '70',
-        'form.media_format' => 'original',
-        'form.media_strip_exif' => false,
-        'form.media_client_resize' => false,
-        'form.media_keep_originals' => false,
-        'form.media_max_image_mb' => '40',
-        'form.media_max_document_mb' => '25',
+        'values.media_optimize' => true,
+        'values.media_max_side' => '2560',
+        'values.media_quality' => '70',
+        'values.media_format' => 'original',
+        'values.media_strip_exif' => false,
+        'values.media_client_resize' => false,
+        'values.media_keep_originals' => false,
+        'values.media_max_image_mb' => '40',
+        'values.media_max_document_mb' => '25',
         ...$overrides,
     ];
 }
@@ -45,9 +45,7 @@ function fakeServerCap(?int $bytes): void
 it('shows the media tab', function () {
     fakeServerCap(64 * 1024 * 1024);
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
-        ->assertSet('tab', 'media')
+    Livewire::test('hata::admin.settings.sections.media')
         ->assertSeeHtml('x-text="quality">80<')
         ->assertSee('64 MB');
 });
@@ -55,8 +53,7 @@ it('shows the media tab', function () {
 it('saves the media settings and applies them to config', function () {
     fakeServerCap(null);
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
+    Livewire::test('hata::admin.settings.sections.media')
         ->set(mediaSettingsInput())
         ->call('save')
         ->assertHasNoErrors()
@@ -72,28 +69,25 @@ it('saves the media settings and applies them to config', function () {
         ->and(config('hata.media.limits.image_mb'))->toBe(40)
         ->and(config('hata.media.limits.document_mb'))->toBe(25);
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
-        ->set(mediaSettingsInput(['form.media_max_side' => 'none']))
+    Livewire::test('hata::admin.settings.sections.media')
+        ->set(mediaSettingsInput(['values.media_max_side' => 'none']))
         ->call('save')
         ->assertHasNoErrors();
 
     expect(config('hata.media.optimize.max_side'))->toBeNull();
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
-        ->assertSet('form.media_max_side', 'none');
+    Livewire::test('hata::admin.settings.sections.media')
+        ->assertSet('values.media_max_side', 'none');
 });
 
 it('refuses a limit above the server cap', function () {
     fakeServerCap(10 * 1024 * 1024);
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
-        ->set(mediaSettingsInput(['form.media_max_image_mb' => '11', 'form.media_max_document_mb' => '5']))
+    Livewire::test('hata::admin.settings.sections.media')
+        ->set(mediaSettingsInput(['values.media_max_image_mb' => '11', 'values.media_max_document_mb' => '5']))
         ->call('save')
-        ->assertHasErrors(['form.media_max_image_mb'])
-        ->assertHasNoErrors(['form.media_max_document_mb']);
+        ->assertHasErrors(['values.media_max_image_mb'])
+        ->assertHasNoErrors(['values.media_max_document_mb']);
 
     expect(Setting::query()->where('key', 'media_max_image_mb')->exists())->toBeFalse();
 });
@@ -101,20 +95,18 @@ it('refuses a limit above the server cap', function () {
 it('refuses an out-of-range quality and an unknown format', function () {
     fakeServerCap(null);
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
-        ->set(mediaSettingsInput(['form.media_quality' => '10', 'form.media_format' => 'avif']))
+    Livewire::test('hata::admin.settings.sections.media')
+        ->set(mediaSettingsInput(['values.media_quality' => '10', 'values.media_format' => 'avif']))
         ->call('save')
-        ->assertHasErrors(['form.media_quality', 'form.media_format']);
+        ->assertHasErrors(['values.media_quality', 'values.media_format']);
 });
 
 it('keeps other tabs untouched', function () {
     fakeServerCap(null);
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
+    Livewire::test('hata::admin.settings.sections.media')
         ->set(mediaSettingsInput())
-        ->set('form.site_name', 'Changed')
+        ->set('values.site_name', 'Changed')
         ->call('save')
         ->assertHasNoErrors();
 
@@ -125,9 +117,8 @@ it('keeps other tabs untouched', function () {
 it('lets untouched limits pass on a server with a low cap', function () {
     fakeServerCap(2 * 1024 * 1024);
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
-        ->set('form.media_quality', '65')
+    Livewire::test('hata::admin.settings.sections.media')
+        ->set('values.media_quality', '65')
         ->call('save')
         ->assertHasNoErrors();
 
@@ -137,12 +128,11 @@ it('lets untouched limits pass on a server with a low cap', function () {
 it('checks a changed limit against a low cap', function () {
     fakeServerCap(2 * 1024 * 1024);
 
-    Livewire::withQueryParams(['tab' => 'media'])
-        ->test('hata::admin.settings.edit')
-        ->set('form.media_max_image_mb', '40')
+    Livewire::test('hata::admin.settings.sections.media')
+        ->set('values.media_max_image_mb', '40')
         ->call('save')
-        ->assertHasErrors(['form.media_max_image_mb'])
-        ->set('form.media_max_image_mb', '1')
+        ->assertHasErrors(['values.media_max_image_mb'])
+        ->set('values.media_max_image_mb', '1')
         ->call('save')
         ->assertHasNoErrors();
 
@@ -157,8 +147,7 @@ describe('optimize existing card', function () {
         Media::factory()->image()->create(['size' => 1_048_576, 'optimized_with' => 'webp:1920:50:exif0']);
         Media::factory()->image()->create(['size' => 1_048_576, 'optimized_with' => app(OptimizeImage::class)->fingerprint()]);
 
-        Livewire::withQueryParams(['tab' => 'media'])
-            ->test('hata::admin.settings.edit')
+        Livewire::test('hata::admin.settings.sections.media')
             ->assertSeeHtml('data-test="optimize-existing-card"')
             ->assertSeeHtml('data-test="optimize-existing-count">2<')
             ->assertSee('1.1 MB')
@@ -166,8 +155,7 @@ describe('optimize existing card', function () {
     });
 
     it('says all images match when there are no candidates', function () {
-        Livewire::withQueryParams(['tab' => 'media'])
-            ->test('hata::admin.settings.edit')
+        Livewire::test('hata::admin.settings.sections.media')
             ->assertSee(__('hata::site_settings.media.existing_none'))
             ->assertDontSeeHtml('data-test="optimize-existing-count"');
     });
@@ -186,8 +174,7 @@ describe('optimize existing card', function () {
             startedAt: now()->toImmutable(),
         ));
 
-        Livewire::withQueryParams(['tab' => 'media'])
-            ->test('hata::admin.settings.edit')
+        Livewire::test('hata::admin.settings.sections.media')
             ->assertSeeHtml('data-test="optimize-existing-progress"')
             ->assertSee(trans_choice('hata::media.batch.progress', 5, ['processed' => 2, 'total' => 5]))
             ->assertDontSeeHtml('data-test="optimize-existing-count"');
@@ -197,9 +184,8 @@ describe('optimize existing card', function () {
         config(['hata.media.optimize.enabled' => false]);
         Media::factory()->image()->create(['optimized_with' => null]);
 
-        Livewire::withQueryParams(['tab' => 'media'])
-            ->test('hata::admin.settings.edit')
-            ->set('form.media_optimize', true)
+        Livewire::test('hata::admin.settings.sections.media')
+            ->set('values.media_optimize', true)
             ->assertSeeHtml('data-test="optimize-existing-unsaved"')
             ->assertDontSeeHtml('data-test="optimize-existing-count"')
             ->assertDontSeeHtml(route('admin.media.optimize'));
@@ -219,8 +205,7 @@ describe('optimize existing card', function () {
             startedAt: now()->toImmutable(),
         ));
 
-        Livewire::withQueryParams(['tab' => 'media'])
-            ->test('hata::admin.settings.edit')
+        Livewire::test('hata::admin.settings.sections.media')
             ->assertSeeHtml('data-test="optimize-existing-progress"')
             ->assertSee(__('hata::media.optimize.status.paused'))
             ->assertSee(trans_choice('hata::media.batch.progress', 4, ['processed' => 1, 'total' => 4]))
@@ -241,8 +226,7 @@ describe('optimize existing card', function () {
             startedAt: now()->toImmutable(),
         ));
 
-        Livewire::withQueryParams(['tab' => 'media'])
-            ->test('hata::admin.settings.edit')
+        Livewire::test('hata::admin.settings.sections.media')
             ->assertDontSeeHtml('data-test="optimize-existing-progress"')
             ->assertSeeHtml('data-test="optimize-existing-count">1<');
     });
@@ -251,17 +235,15 @@ describe('optimize existing card', function () {
         Media::factory()->image()->create(['optimized_with' => null]);
         $this->actingAs(User::factory()->withPermissions(['admin.access', 'settings.view', 'settings.edit'])->create());
 
-        Livewire::withQueryParams(['tab' => 'media'])
-            ->test('hata::admin.settings.edit')
+        Livewire::test('hata::admin.settings.sections.media')
             ->assertDontSeeHtml('data-test="optimize-existing-card"');
     });
 
     it('is hidden while optimization is off', function () {
         Media::factory()->image()->create(['optimized_with' => null]);
 
-        Livewire::withQueryParams(['tab' => 'media'])
-            ->test('hata::admin.settings.edit')
-            ->set('form.media_optimize', false)
+        Livewire::test('hata::admin.settings.sections.media')
+            ->set('values.media_optimize', false)
             ->assertDontSeeHtml('data-test="optimize-existing-card"');
     });
 });

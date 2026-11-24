@@ -244,8 +244,7 @@ class HataServiceProvider extends ServiceProvider
     }
 
     /**
-     * Hata's own sections of the site settings page; the others (languages, content, appearance, media) register
-     * with their own task.
+     * Hata's own sections of the site settings page; all registered here.
      */
     private function registerSettingsSections(): void
     {
@@ -255,7 +254,8 @@ class HataServiceProvider extends ServiceProvider
             ->add(new SettingsSection('content', 'hata::site_settings.content.heading', 'squares-2x2', 'hata::admin.settings.sections.content', 'settings.edit', 30))
             ->add(new SettingsSection('access', 'hata::site_settings.access.heading', 'lock-closed', 'hata::admin.settings.sections.access', 'settings.edit', 40))
             ->add(new SettingsSection('mail', 'hata::site_settings.mail.heading', 'envelope', 'hata::admin.settings.sections.mail', 'settings.edit', 50))
-            ->add(new SettingsSection('appearance', 'hata::site_settings.appearance.heading', 'swatch', 'hata::admin.settings.sections.appearance', 'settings.edit', 60));
+            ->add(new SettingsSection('appearance', 'hata::site_settings.appearance.heading', 'swatch', 'hata::admin.settings.sections.appearance', 'settings.edit', 60))
+            ->add(new SettingsSection('media', 'hata::site_settings.media.heading', 'adjustments-horizontal', 'hata::admin.settings.sections.media', 'settings.edit', 70));
     }
 
     /**
