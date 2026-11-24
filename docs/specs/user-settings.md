@@ -22,7 +22,7 @@ Middleware: `auth`. Security also requires `password.confirm`. Routes are in `ro
 
 - A select from `config('hata.admin.interface_locales')`, saved to `users.locale` (`string(10)`, nullable).
 - After saving, a full redirect (no `wire:navigate`): the interface and `<html lang>` switch immediately. The toast goes through `Hata\Support\Toast` (session flash).
-- The `SetLocale` middleware (web group) applies `users.locale`, else the last visited site language, else the site's default interface language (`ContentLocales::interfaceDefault()`). An unknown value falls back to the default.
+- The `SetLocale` middleware (web group) applies, for a signed-in user, `users.locale` else the site's default interface language (`ContentLocales::interfaceDefault()`), and for a guest the last visited site language else the default. An unknown value falls back to the default.
 - `User` implements `HasLocalePreference`, so emails go out in the user's language.
 
 ## Security

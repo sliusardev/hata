@@ -12,8 +12,9 @@ class SetLocale
     public function __construct(private readonly ContentLocales $locales) {}
 
     /**
-     * Apply the interface language: the signed-in user's own, else the language of the site the visitor last
-     * saw (when the interface is translated into it and it is still on), else the site's default.
+     * Apply the interface language. A signed-in user gets their own, else the site's default. A guest gets the
+     * language of the site they last saw (when the interface is translated into it and it is still on), else
+     * the site's default.
      *
      * On public pages SetContentLocale runs after this and sets the language of the address.
      *
@@ -21,10 +22,12 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $user = $request->user();
+
         app()->setLocale(
-            $this->interfaceLanguage($request->user()?->locale)
-                ?? $this->lastSiteLanguage($request)
-                ?? $this->locales->interfaceDefault(),
+            $user !== null
+                ? $this->interfaceLanguage($user->locale) ?? $this->locales->interfaceDefault()
+                : $this->lastSiteLanguage($request) ?? $this->locales->interfaceDefault(),
         );
 
         return $next($request);

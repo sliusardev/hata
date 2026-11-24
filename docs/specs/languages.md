@@ -110,10 +110,10 @@ Public pages today:
 
 `SetLocale` (web group) picks the interface language:
 
-1. the signed-in user's `locale`, if it is an interface language;
-2. the session's `site_locale` (the language of the site the visitor last saw), if it is an interface
-   language and still an active content language;
-3. `ContentLocales::interfaceDefault()`.
+1. a signed-in user: their `locale` if it is an interface language, else `ContentLocales::interfaceDefault()`; the
+   session's last site language is ignored;
+2. a guest: the session's `site_locale` (the language of the site the visitor last saw), if it is an interface
+   language and still an active content language, else `ContentLocales::interfaceDefault()`.
 
 On public pages `SetContentLocale` runs after it, so the site is in the language of its address for guests
 and signed-in users alike.
