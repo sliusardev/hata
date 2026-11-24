@@ -75,7 +75,7 @@ describe('the Hata introduction, while no page is chosen', function () {
             ->assertDontSee('data-test="home-hint"', escape: false);
     });
 
-    it('introduces Hata in the language of the address, with the admin link for a signed-in user only', function () {
+    it('introduces Hata in the language of the address, with the admin link only for users with admin access', function () {
         $this->get('/')->assertOk()
             ->assertSee('data-test="hata-intro"', escape: false)
             ->assertSeeText('Ваш сайт готовий.')
@@ -88,6 +88,10 @@ describe('the Hata introduction, while no page is chosen', function () {
             ->assertDontSee('href="'.route('admin.dashboard').'"', escape: false);
 
         $this->actingAs(User::factory()->create())->get('/en/')->assertOk()
+            ->assertDontSeeText('Open the admin')
+            ->assertDontSee('href="'.route('admin.dashboard').'"', escape: false);
+
+        $this->actingAs(User::factory()->withPermissions(['admin.access'])->create())->get('/en/')->assertOk()
             ->assertSeeText('Open the admin')
             ->assertSee('href="'.route('admin.dashboard').'"', escape: false)
             ->assertDontSee('data-test="home-hint"', escape: false);
