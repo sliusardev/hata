@@ -579,7 +579,7 @@ it('runs the s3-rows exists query at most once per Media save', function () {
     DB::enableQueryLog();
     $page->call('save')->assertSet('showS3ChangeModal', true);
     $page->call('confirmS3Change');
-    $queries = collect(DB::getQueryLog())->filter(fn (array $q): bool => str_contains($q['query'], 'from "media"') && str_contains($q['query'], '"disk"'));
+    $queries = collect(DB::getQueryLog())->filter(fn (array $q): bool => preg_match('/from [`"]media[`"]/', $q['query']) === 1 && preg_match('/[`"]disk[`"]/', $q['query']) === 1);
     DB::disableQueryLog();
 
     // one per request: the save that opens the dialog, and the confirmation
