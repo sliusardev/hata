@@ -5,7 +5,6 @@ namespace Hata\Actions\Settings;
 use Hata\Contracts\AdminUser;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Exceptions\StorageSettingsException;
-use Hata\Livewire\Forms\SiteSettingsForm;
 use Hata\Models\Media;
 use Hata\Models\Role;
 use Hata\Support\Media\MediaDisks;
@@ -14,10 +13,17 @@ use Illuminate\Support\Facades\Gate;
 
 class UpdateSiteSettings
 {
+    /**
+     * Storage fields stored only when the admin changes them, so untouched ones keep following .env.
+     *
+     * @var list<string>
+     */
+    public const array STORAGE_FIELDS = ['media_storage', 'media_s3_endpoint', 'media_s3_region', 'media_s3_bucket', 'media_s3_key', 'media_s3_secret', 'media_s3_path_style', 'media_s3_public_url', 'media_s3_prefix'];
+
     public function __construct(private SiteSettings $settings, private TestStorageConnection $connectionTest) {}
 
     /**
-     * Store the settings of one tab: only the given keys change. SMTP fields are removed
+     * Store the changed settings of one section: only the given keys change. SMTP fields are removed
      * when the server mailer is chosen, and an empty SMTP password keeps the stored one.
      *
      * @param  array<string, string|int|bool|null>  $data  Validated input.
@@ -40,7 +46,7 @@ class UpdateSiteSettings
             $data = $this->normalizeMail($data);
         }
 
-        if (array_intersect_key($data, array_flip(SiteSettingsForm::STORAGE_FIELDS)) !== []) {
+        if (array_intersect_key($data, array_flip(self::STORAGE_FIELDS)) !== []) {
             $data = $this->normalizeStorage($data);
         }
 
@@ -78,7 +84,7 @@ class UpdateSiteSettings
 
         // Switching back to local is never blocked by a broken connection: only a changed connection field,
         // or a switch to s3, is tested.
-        $connectionChanged = array_intersect_key($data, array_flip(array_diff(SiteSettingsForm::STORAGE_FIELDS, ['media_storage']))) !== [];
+        $connectionChanged = array_intersect_key($data, array_flip(array_diff(self::STORAGE_FIELDS, ['media_storage']))) !== [];
         $switchedToS3 = ($data['media_storage'] ?? null) === 's3';
 
         if (($effective['media_storage'] === 's3' || $filesOnS3) && ($connectionChanged || $switchedToS3)) {

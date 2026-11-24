@@ -28,6 +28,7 @@ use Hata\Providers\FortifyServiceProvider;
 use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminMenuItem;
+use Hata\Support\Admin\SettingsSection;
 use Hata\Support\Admin\SettingsSections;
 use Hata\Support\Assets\HataAssets;
 use Hata\Support\Assets\HataVite;
@@ -193,6 +194,7 @@ class HataServiceProvider extends ServiceProvider
         $this->configureMiddleware();
         $this->configureRoutes();
         $this->registerAdminMenu();
+        $this->registerSettingsSections();
 
         $this->loadMigrationsFrom(Hata::path('database/migrations'));
 
@@ -239,6 +241,18 @@ class HataServiceProvider extends ServiceProvider
             ->add(new AdminMenuItem('settings', 'hata::navigation.site_settings', 'adjustments-horizontal', 'admin.settings.edit', $admin('settings.edit'), 'administration', 30, 'admin.settings.*'))
             ->add(new AdminMenuItem('maintenance', 'hata::navigation.maintenance', 'wrench-screwdriver', 'admin.maintenance', $admin('maintenance.run'), 'administration', 40))
             ->add(new AdminMenuItem('profile', 'hata::navigation.my_profile', 'user-circle', 'profile.edit', null, 'account', 10, 'profile.edit|language.edit|security.edit|appearance.edit'));
+    }
+
+    /**
+     * Hata's own sections of the site settings page; the others (languages, content, appearance, media) register
+     * with their own task.
+     */
+    private function registerSettingsSections(): void
+    {
+        $this->app->make(SettingsSections::class)
+            ->add(new SettingsSection('site', 'hata::site_settings.site.heading', 'cog-6-tooth', 'hata::admin.settings.sections.site', 'settings.edit', 10))
+            ->add(new SettingsSection('access', 'hata::site_settings.access.heading', 'lock-closed', 'hata::admin.settings.sections.access', 'settings.edit', 40))
+            ->add(new SettingsSection('mail', 'hata::site_settings.mail.heading', 'envelope', 'hata::admin.settings.sections.mail', 'settings.edit', 50));
     }
 
     /**

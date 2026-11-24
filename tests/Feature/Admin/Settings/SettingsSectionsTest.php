@@ -17,6 +17,9 @@ class SettingsSectionsFixture extends Component
 
 beforeEach(function () {
     seedRolesAndPermissions();
+
+    // These tests exercise the registry on its own, without Hata's registered sections.
+    $this->app->instance(SettingsSections::class, new SettingsSections);
     Livewire::component('settings-sections-fixture', SettingsSectionsFixture::class);
 });
 

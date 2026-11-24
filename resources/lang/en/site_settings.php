@@ -5,7 +5,7 @@ return [
     'title' => 'Site settings',
     'description' => 'Settings for the whole site. Saved values override the ones from the .env file.',
 
-    'general' => [
+    'site' => [
         'heading' => 'General',
         'site_name' => 'Site name',
         'site_name_description' => 'Shown in the sidebar, browser tab titles and emails.',

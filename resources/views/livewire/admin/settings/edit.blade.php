@@ -887,7 +887,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
     <flux:navbar scrollable class="-mx-3 border-b border-zinc-200 px-0 md:hidden dark:border-zinc-700" data-test="site-settings-tabs-row">
         @foreach ($sections as $section => $icon)
             <flux:navbar.item :icon="$icon" :current="$tab === $section" wire:click="switchTab('{{ $section }}')" wire:key="tab-row-{{ $section }}" class="cursor-pointer">
-                {{ __("hata::site_settings.{$section}.heading") }}
+                {{ __('hata::site_settings.'.($section === 'general' ? 'site' : $section).'.heading') }}
             </flux:navbar.item>
         @endforeach
     </flux:navbar>
@@ -897,7 +897,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
         <flux:navlist aria-label="{{ __('hata::site_settings.title') }}" data-test="site-settings-tabs">
             @foreach ($sections as $section => $icon)
                 <flux:navlist.item :icon="$icon" :current="$tab === $section" wire:click="switchTab('{{ $section }}')" wire:key="tab-{{ $section }}" class="cursor-pointer" data-test="site-settings-tab-{{ $section }}">
-                    {{ __("hata::site_settings.{$section}.heading") }}
+                    {{ __('hata::site_settings.'.($section === 'general' ? 'site' : $section).'.heading') }}
                 </flux:navlist.item>
             @endforeach
         </flux:navlist>
@@ -906,10 +906,10 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
     <div class="min-w-0 max-w-3xl flex-1 space-y-6">
     <form wire:submit="save" class="space-y-6">
         @if ($tab === 'general')
-            <flux:input wire:model="form.site_name" :label="__('hata::site_settings.general.site_name')" :description="__('hata::site_settings.general.site_name_description')" required />
+            <flux:input wire:model="form.site_name" :label="__('hata::site_settings.site.site_name')" :description="__('hata::site_settings.site.site_name_description')" required />
 
             <div class="grid gap-6 sm:grid-cols-2">
-                <flux:select wire:model="form.timezone" :label="__('hata::site_settings.general.timezone')" :description="__('hata::site_settings.general.timezone_description')">
+                <flux:select wire:model="form.timezone" :label="__('hata::site_settings.site.timezone')" :description="__('hata::site_settings.site.timezone_description')">
                     @foreach ($this->timezones as $timezone)
                         <flux:select.option :value="$timezone" wire:key="tz-{{ $timezone }}">{{ str_replace('_', ' ', $timezone) }}</flux:select.option>
                     @endforeach
@@ -1295,7 +1295,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::site_settings.title')] class e
         :confirm-label="__('hata::site_settings.unsaved.discard')"
         confirm-action="discardChangesAndSwitch"
     >
-        {{ __('hata::site_settings.unsaved.body', ['tab' => __("hata::site_settings.{$tab}.heading")]) }}
+        {{ __('hata::site_settings.unsaved.body', ['tab' => __('hata::site_settings.'.($tab === 'general' ? 'site' : $tab).'.heading')]) }}
     </x-hata::confirm-modal>
 
     <x-hata::confirm-modal
