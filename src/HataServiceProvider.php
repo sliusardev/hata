@@ -39,6 +39,7 @@ use Hata\Support\Localization\LanguageCatalog;
 use Hata\Support\Media\DirectServing;
 use Hata\Support\Permissions\PermissionRegistry;
 use Hata\Support\Seo\PageMeta;
+use Hata\Support\Seo\Sitemap;
 use Hata\Support\Settings\SiteSettings;
 use Hata\Support\Translation\VendorTranslations;
 use Illuminate\Console\Events\CommandFinished;
@@ -172,6 +173,9 @@ class HataServiceProvider extends ServiceProvider
         $settings->define('media_s3_path_style', 'filesystems.disks.s3.use_path_style_endpoint', 'bool');
         $settings->define('media_s3_public_url', 'filesystems.disks.s3.url');
         $settings->define('media_s3_prefix', 'filesystems.disks.s3.root');
+
+        // The sitemap: when a setting it reads was last stored or removed (no config path)
+        $settings->define(Sitemap::CHANGED_SETTING, cast: 'int');
 
         // Media: probe results the app keeps for itself (no config path)
         $settings->define('media_direct_state');

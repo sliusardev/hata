@@ -64,6 +64,7 @@ Sections are listed by order (ties keep the order they were added in), at the si
 | `media_storage` | `hata.media.disk` (`public` or `s3`; the form never offers the private `local` mode, see "Saving the section" under Media) | Media |
 | `media_s3_endpoint`, `media_s3_region`, `media_s3_bucket`, `media_s3_key`, `media_s3_secret` (encrypted), `media_s3_path_style` (bool), `media_s3_public_url`, `media_s3_prefix` | `filesystems.disks.s3.endpoint`, `.region`, `.bucket`, `.key`, `.secret`, `.use_path_style_endpoint`, `.url`, `.root` | Media |
 | `media_direct_state`, `media_direct_url`, `media_direct_checked_at`, `media_direct_attempted_at`, `media_direct_attempted_url` | none (stored only: the direct-serving probe, written without re-applying config) | none |
+| `sitemap_changed_at` (`Sitemap::CHANGED_SETTING`, int) | none (stored only: `SiteSettings::put()` rewrites it in the same transaction whenever one of `Sitemap::SETTINGS` is stored with a new value or removed, because a removed row leaves no `updated_at` for the sitemap's `Last-Modified`) | none |
 
 ## Fields
 

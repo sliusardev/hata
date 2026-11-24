@@ -838,6 +838,10 @@ outside those paths must be added to its `@source` list.
 4. `select * from media where id in (…)`, the body's images, only when the body has any
 5. `select * from media where id = ?`, the site's share image (`hata.seo.image`), by primary key and remembered for the
    request, only when the page has no shareable image of its own and a site image is set
+6. `select entry_group_id from entries where id = ?`, the chosen home page's group (`HomePage::groupId()`), by primary
+   key and remembered for the request, only when a home page is chosen and the record is a public `pages` record
+   outside the home group (the router's loaded group can prove a match, never a miss; none at the chosen record's own
+   address, which redirects)
 
 Plus the site logo (one query, only when a custom logo is chosen) and, for a signed-in viewer, what the user and
 permission checks cost. The figures exclude the session's own queries, which depend on the session driver and are the
@@ -882,12 +886,12 @@ settings, the plain home or the Hata introduction. `Hata\Support\Content\HomePag
   live site never shows Hata's introduction to its visitors.
 - **The Hata introduction** (`hata::site.home`, only while no page is chosen at all, `HomePage::id() === null`), full
   width in `layouts/site` through its `page` section: a headline, what Hata is, "Open the admin" (`admin.dashboard`,
-  for signed-in users only) and "Documentation" (the GitHub repository, for everyone), a line on choosing a home page
-  in Site settings → Site, six feature cards and a Laravel/Livewire/MIT strip, in the language of the address
-  (`hata::content.public.home.*`). It is `noindex` (no canonical, no Open Graph), and the sitemap leaves the homes out
-  while no page is chosen. Its palette is the `home-*` tokens in `resources/css/site.css` (light and dark), with system
-  font stacks and inline SVG only, no query of its own. The site description is not printed on it (it stays the
-  head's description).
+  for users with `admin.access` only) and "Documentation" (the GitHub repository, for everyone), a line on choosing a
+  home page in Site settings → Site, six feature cards and a Laravel/Livewire/MIT strip, in the language of the
+  address (`hata::content.public.home.*`). It is `noindex` (no canonical, no Open Graph), and the sitemap leaves the
+  homes out while no page is chosen. Its palette is the `home-*` tokens in `resources/css/site.css` (light and dark),
+  with system font stacks and inline SVG only, no query of its own. The site description is not printed on it (it
+  stays the head's description).
 - A user with `settings.edit` sees a hint strip on both ("Choose a home page in Site settings" on the introduction,
   "The home page is not published in this language" on the plain home).
 - The chosen record's own address and its translations' addresses answer 301 to that language's home with
@@ -916,7 +920,9 @@ builds it on request, streamed (`response()->stream`) from cursors with no bodie
   scheduled record goes live without a write), the latest `entry_groups.updated_at` (linking and unlinking a
   translation touch the groups, not the records, since that is not an edit) and the `updated_at` of the settings that
   change the sitemap (`Sitemap::SETTINGS`: `home_page`, `content_locales`, `content_default_locale`,
-  `content_disabled_types`; the media probe's stored-only settings are left out). A matching `If-Modified-Since` gets
+  `content_disabled_types`; the media probe's stored-only settings are left out) and of the marker
+  `sitemap_changed_at`, which `SiteSettings::put()` rewrites whenever one of those is stored or removed (a removed
+  row, such as `home_page` cleared in Site settings or by a purge, leaves no `updated_at` behind). A matching `If-Modified-Since` gets
   304 and no body is built. Moving a page bumps its descendants' `updated_at` (`EntryPaths`), so `lastmod` follows a
   move; filing a record under other terms touches it (`EntryWriter::syncTerms()`).
 - Known limit: one file; there is no split into several files past 50,000 URLs.

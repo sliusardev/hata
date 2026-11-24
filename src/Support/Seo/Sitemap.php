@@ -32,10 +32,17 @@ class Sitemap
     public const array SETTINGS = ['home_page', 'content_locales', 'content_default_locale', 'content_disabled_types'];
 
     /**
+     * A stored-only setting `SiteSettings::put()` rewrites whenever one of SETTINGS is stored or removed: a removed
+     * row leaves no `updated_at` to read.
+     */
+    public const string CHANGED_SETTING = 'sitemap_changed_at';
+
+    /**
      * When the sitemap last changed, by one query: the latest of every record's `updated_at` (trashed ones too: a
      * trash sets it), the latest `published_at` that has come (a scheduled record goes live without a write), the
      * groups' `updated_at` (linking and unlinking translations touch them, not the records) and the `updated_at` of
-     * the settings in SETTINGS. Null on a site with none of them.
+     * the settings in SETTINGS and of the marker CHANGED_SETTING (which also moves when one of them is removed). Null
+     * on a site with none of them.
      */
     public function lastModified(): ?CarbonImmutable
     {
@@ -43,7 +50,7 @@ class Sitemap
             ->selectSub(DB::table('entries')->selectRaw('max(updated_at)'), 'entry_updated')
             ->selectSub(DB::table('entries')->selectRaw('max(published_at)')->where('published_at', '<=', now()), 'entry_published')
             ->selectSub(DB::table('entry_groups')->selectRaw('max(updated_at)'), 'group_updated')
-            ->selectSub(DB::table('settings')->selectRaw('max(updated_at)')->whereIn('key', self::SETTINGS), 'setting_updated')
+            ->selectSub(DB::table('settings')->selectRaw('max(updated_at)')->whereIn('key', [...self::SETTINGS, self::CHANGED_SETTING]), 'setting_updated')
             ->first();
 
         $latest = null;

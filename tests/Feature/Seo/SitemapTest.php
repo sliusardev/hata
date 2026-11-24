@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Hata\Actions\Content\DeleteEntry;
 use Hata\Actions\Content\LinkTranslations;
 use Hata\Actions\Settings\SetContentTypeActive;
 use Hata\Models\Entry;
@@ -242,3 +243,22 @@ it('keeps Last-Modified when a setting the sitemap does not read is saved', func
 
     expect(sitemapLastModified())->toBe($before);
 });
+
+it('moves Last-Modified when the home page setting is cleared, whose row goes', function (string $how) {
+    $home = sitemapEntry('pages', 'welcome');
+    $admin = User::factory()->withRole('admin')->create();
+    app(SiteSettings::class)->put(['home_page' => $home->id]);
+
+    $before = sitemapLastModified();
+    $this->travelTo(now()->addHour());
+
+    if ($how === 'settings') {
+        app(SiteSettings::class)->put(['home_page' => null]);
+    } else {
+        $home->delete();
+        app(DeleteEntry::class)->handle($admin, Entry::onlyTrashed()->findOrFail($home->id));
+    }
+
+    expect(config('hata.content.home_page'))->toBeNull()
+        ->and(sitemapLastModified())->toBeGreaterThan($before);
+})->with(['settings', 'purge']);

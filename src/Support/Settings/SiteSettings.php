@@ -4,6 +4,7 @@ namespace Hata\Support\Settings;
 
 use Closure;
 use Hata\Models\Setting;
+use Hata\Support\Seo\Sitemap;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
@@ -326,6 +327,8 @@ class SiteSettings
     public function put(array $values): void
     {
         DB::transaction(function () use ($values): void {
+            $sitemapChanged = false;
+
             foreach ($values as $key => $value) {
                 $definition = $this->definition($key);
 
@@ -336,12 +339,18 @@ class SiteSettings
                 }
 
                 if ($value === null) {
-                    Setting::query()->where('key', $key)->delete();
-
-                    continue;
+                    $changed = Setting::query()->where('key', $key)->delete() > 0;
+                } else {
+                    $setting = Setting::query()->updateOrCreate(['key' => $key], ['value' => $this->encode($definition, $value)]);
+                    $changed = $setting->wasRecentlyCreated || $setting->wasChanged();
                 }
 
-                Setting::query()->updateOrCreate(['key' => $key], ['value' => $this->encode($definition, $value)]);
+                $sitemapChanged = $sitemapChanged || ($changed && in_array($key, Sitemap::SETTINGS, true));
+            }
+
+            // A removed row leaves no `updated_at` behind, so the sitemap's Last-Modified reads this marker instead.
+            if ($sitemapChanged) {
+                Setting::query()->updateOrCreate(['key' => Sitemap::CHANGED_SETTING], ['value' => (string) now()->getTimestamp()]);
             }
         });
 
