@@ -3,6 +3,7 @@
 use Hata\Http\Controllers\ContentController;
 use Hata\Http\Controllers\HomeController;
 use Hata\Http\Controllers\MediaController;
+use Hata\Http\Controllers\SitemapController;
 use Hata\Http\Controllers\StaticMediaFallbackController;
 use Hata\Http\Middleware\LookUpContent;
 use Hata\Support\Content\ContentRouter;
@@ -15,6 +16,14 @@ use Illuminate\Support\Facades\Route;
 Route::localized(function () {
     Route::get('/', HomeController::class)->name('home');
 });
+
+/*
+| The sitemap: every public address of every active language. No "web" middleware, like the media files: no session,
+| cookies or locale, so a crawler's request is cacheable by a proxy.
+*/
+if (config('hata.seo.sitemap')) {
+    Route::get('sitemap.xml', SitemapController::class)->withoutMiddleware('web')->name('sitemap');
+}
 
 /*
 | Fortify's "home" path. Sends users with admin access to the admin panel and

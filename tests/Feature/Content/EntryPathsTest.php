@@ -247,3 +247,13 @@ test('every statement of a move names the table with the connection\'s prefix', 
     expect($onEntries->filter(fn (string $sql): bool => str_starts_with(strtolower($sql), 'update'))->count())->toBeGreaterThanOrEqual(2)
         ->and($onEntries->every(fn (string $sql): bool => str_contains($sql, 'kit_entries')))->toBeTrue();
 });
+
+test('moving a page gives its descendants a new updated_at', function () {
+    [$root, $descendants] = pageTree(2);
+    $before = $descendants[0]->fresh()->updated_at;
+
+    $this->travel(1)->hour();
+    DB::transaction(fn () => $this->paths->move($root, 'moved'));
+
+    expect($descendants[0]->fresh()->updated_at->gt($before))->toBeTrue();
+});

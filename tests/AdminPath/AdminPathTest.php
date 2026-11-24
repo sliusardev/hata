@@ -36,3 +36,7 @@ it('reserves the configured path for content', function () {
     expect($reserved->contains('cp-7f3k'))->toBeTrue()
         ->and($reserved->contains('admin'))->toBeFalse();
 });
+
+it('does not register sitemap.xml when the sitemap is switched off in the config', function () {
+    $this->get('/sitemap.xml')->assertNotFound();
+});

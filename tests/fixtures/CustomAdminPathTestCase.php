@@ -6,7 +6,7 @@ use Illuminate\Foundation\Application;
 use Tests\TestCase;
 
 /**
- * An application whose config holds a custom admin path before Hata's routes load, as `HATA_ADMIN_PATH` does on a site.
+ * An application whose config holds a custom admin path and no sitemap route before Hata's routes load, as `HATA_ADMIN_PATH` does on a site.
  */
 abstract class CustomAdminPathTestCase extends TestCase
 {
@@ -20,5 +20,6 @@ abstract class CustomAdminPathTestCase extends TestCase
         parent::defineEnvironment($app);
 
         $app['config']->set('hata.admin.path', self::PATH);
+        $app['config']->set('hata.seo.sitemap', false);
     }
 }
