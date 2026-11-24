@@ -451,8 +451,7 @@ describe('languages tab', function () {
     it('lists the site\'s languages and offers the rest of the catalogue', function () {
         siteLanguages(['en' => true, 'uk' => false], 'en');
 
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
-            ->assertSet('tab', 'languages')
+        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages')
             ->assertSeeHtml('data-test="site-language-en"')
             ->assertSeeHtml('data-test="site-language-uk"')
             ->assertSee('Українська')
@@ -463,14 +462,8 @@ describe('languages tab', function () {
             ->assertSeeHtml('data-test="language-switch-uk"');
     });
 
-    it('does not load the languages on other tabs', function () {
-        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.edit')
-            ->assertDontSeeHtml('data-test="site-languages"')
-            ->assertDontSeeHtml('data-test="language-catalog"');
-    });
-
     it('adds a language and reloads the tab', function () {
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
+        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages')
             ->call('addLanguage', 'de')
             ->assertRedirect(route('admin.settings.edit', ['tab' => 'languages']));
 
@@ -480,7 +473,7 @@ describe('languages tab', function () {
     });
 
     it('refuses an unknown language with a message and stores nothing', function () {
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
+        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages')
             ->call('addLanguage', '../etc')
             ->assertNoRedirect();
 
@@ -489,7 +482,7 @@ describe('languages tab', function () {
 
     it('turns a language on at once and off only after the confirmation', function () {
         siteLanguages(['en' => true, 'uk' => false], 'en');
-        $page = fn () => Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit');
+        $page = fn () => Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages');
 
         $page()->call('toggleLanguage', 'uk')->assertRedirect(route('admin.settings.edit', ['tab' => 'languages']));
         expect(app(ContentLocales::class)->isActive('uk'))->toBeTrue();
@@ -507,7 +500,7 @@ describe('languages tab', function () {
     it('makes a language the default, with the interface following unless unticked', function (bool $alsoInterface, string $interface) {
         siteLanguages(['en' => true, 'uk' => true], 'en');
 
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
+        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages')
             ->call('confirmLanguage', 'default', 'uk')
             ->assertSet('languageAlsoInterface', true)
             ->assertSee(__('hata::site_settings.languages.confirm.default.also_interface'))
@@ -522,7 +515,7 @@ describe('languages tab', function () {
     it('offers no interface checkbox for a language the admin is not translated into', function () {
         siteLanguages(['en' => true, 'de' => true], 'en');
 
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
+        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages')
             ->call('confirmLanguage', 'default', 'de')
             ->assertSet('showLanguageModal', true)
             ->assertDontSee(__('hata::site_settings.languages.confirm.default.also_interface'));
@@ -531,7 +524,7 @@ describe('languages tab', function () {
     it('removes a language after the confirmation', function () {
         siteLanguages(['en' => true, 'uk' => true], 'en');
 
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
+        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages')
             ->call('confirmLanguage', 'remove', 'uk')
             ->assertSet('showLanguageModal', true)
             ->call('runLanguageAction')
@@ -541,17 +534,17 @@ describe('languages tab', function () {
     });
 
     it('drops an unsaved choice of the interface language when the list changes, so the page can reload', function () {
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
-            ->set('form.default_locale', 'uk')
+        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages')
+            ->set('values.default_locale', 'uk')
             ->call('addLanguage', 'de')
-            ->assertSet('form.default_locale', 'en')
+            ->assertSet('values.default_locale', 'en')
             ->assertRedirect(route('admin.settings.edit', ['tab' => 'languages']));
 
         expect(app(ContentLocales::class)->interfaceDefault())->toBe('en');
     });
 
     it('ignores a confirmation for an unknown action or language', function () {
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs(languagesAdmin())->test('hata::admin.settings.edit')
+        Livewire::actingAs(languagesAdmin())->test('hata::admin.settings.sections.languages')
             ->call('confirmLanguage', 'destroy', 'en')
             ->assertSet('showLanguageModal', false)
             ->call('confirmLanguage', 'remove', 'pl')
@@ -569,7 +562,7 @@ describe('languages tab', function () {
 
         app()->setLocale('uk');
 
-        Livewire::withQueryParams(['tab' => 'languages'])->actingAs($admin)->test('hata::admin.settings.edit')
-            ->assertSet('form.default_locale', 'en');
+        Livewire::actingAs($admin)->test('hata::admin.settings.sections.languages')
+            ->assertSet('values.default_locale', 'en');
     });
 });

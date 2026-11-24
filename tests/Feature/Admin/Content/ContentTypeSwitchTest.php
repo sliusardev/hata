@@ -96,12 +96,11 @@ test('the settings tab lists the types and switches them, asking before switchin
     $this->actingAs(typesAdmin());
     Entry::factory()->count(2)->create(['type' => 'products']);
 
-    $page = Livewire::withQueryParams(['tab' => 'content'])
-        ->test('hata::admin.settings.edit')
+    $page = Livewire::test('hata::admin.settings.sections.content')
         ->assertSeeHtml('data-test="content-type-pages" data-active="true"')
         ->assertSeeHtml('data-test="content-type-products" data-active="true"')
         ->assertDontSeeHtml('data-test="content-type-switch-pages"')
-        ->assertDontSeeHtml('data-test="save-site-settings-button"')
+        ->assertDontSeeHtml('data-test="settings-section-save"')
         ->assertSee(trans_choice('hata::site_settings.content.records', 2))
         ->call('toggleContentType', 'products')
         ->assertSet('showContentTypeModal', true);
@@ -113,8 +112,7 @@ test('the settings tab lists the types and switches them, asking before switchin
     expect(app(ContentTypes::class)->isActive('products'))->toBeFalse()
         ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.content.messages.turned_off', ['type' => 'Products']));
 
-    Livewire::withQueryParams(['tab' => 'content'])
-        ->test('hata::admin.settings.edit')
+    Livewire::test('hata::admin.settings.sections.content')
         ->assertSeeHtml('data-test="content-type-products" data-active="false"')
         ->call('toggleContentType', 'products')
         ->assertSet('showContentTypeModal', false)
@@ -125,7 +123,7 @@ test('the settings tab lists the types and switches them, asking before switchin
 
 test('switching a type needs settings.edit on the page too', function () {
     $this->actingAs(typesAdmin());
-    $page = Livewire::withQueryParams(['tab' => 'content'])->test('hata::admin.settings.edit');
+    $page = Livewire::test('hata::admin.settings.sections.content');
 
     $this->actingAs(User::factory()->withRole('editor')->create());
 

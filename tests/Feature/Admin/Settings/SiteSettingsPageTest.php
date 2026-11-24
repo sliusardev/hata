@@ -3,7 +3,6 @@
 use App\Models\User;
 use Hata\Models\Setting;
 use Hata\Support\Settings\SiteSettings;
-use Hata\Support\Toast;
 use Livewire\Livewire;
 
 beforeEach(fn () => seedRolesAndPermissions());
@@ -50,22 +49,6 @@ test('the sidebar links to the page only with the settings.edit permission', fun
     $this->get(route('admin.dashboard'))->assertSee('href="'.route('admin.settings.edit', absolute: false).'"', false);
 });
 
-test('each tab saves only its own settings and redirects back to it with a message', function (string $tab, array $expected) {
-    $this->actingAs(User::factory()->withRole('admin')->create());
-
-    Livewire::test('hata::admin.settings.edit')
-        ->set(siteSettingsInput(['form.default_role' => 'author']))
-        ->set('tab', $tab)
-        ->call('save')
-        ->assertHasNoErrors()
-        ->assertRedirect(route('admin.settings.edit', ['tab' => $tab]));
-
-    expect(Setting::query()->pluck('value', 'key')->sortKeys()->all())->toBe($expected)
-        ->and(session(Toast::SESSION_KEY)['text'])->toBe(__('hata::site_settings.messages.saved'));
-})->with([
-    'languages' => ['languages', ['default_locale' => 'uk']],
-]);
-
 test('the tab comes from the query string and falls back to general', function () {
     $this->actingAs(User::factory()->withRole('admin')->create());
 
@@ -76,18 +59,6 @@ test('the tab comes from the query string and falls back to general', function (
     Livewire::withQueryParams(['tab' => 'nonsense'])->test('hata::admin.settings.edit')
         ->assertSet('tab', 'general')
         ->assertDontSee(__('hata::site_settings.mail.send_test'));
-});
-
-test('it validates the interface default language', function () {
-    $this->actingAs(User::factory()->withRole('admin')->create());
-
-    Livewire::test('hata::admin.settings.edit')
-        ->set(siteSettingsInput(['form.default_locale' => 'fr']))
-        ->set('tab', 'languages')
-        ->call('save')
-        ->assertHasErrors(['form.default_locale']);
-
-    expect(Setting::count())->toBe(0);
 });
 
 test('switching tabs without changes opens the tab right away', function () {
