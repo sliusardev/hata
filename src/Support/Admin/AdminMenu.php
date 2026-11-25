@@ -4,67 +4,65 @@ namespace Hata\Support\Admin;
 
 use Closure;
 use Hata\Contracts\AdminUser;
-use Illuminate\Support\Facades\Log;
-use LogicException;
+use Hata\Support\Admin\Registry\Entry;
+use Hata\Support\Admin\Registry\Registry;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 /**
  * The registry of the admin sidebar: groups, and the items in them.
  *
- * Hata's own sections and a module's register in a provider's `boot()`; nothing is resolved until the sidebar
+ * Hata's own sections register while the application boots (before any provider's `boot()`), a module's in its
+ * provider's `boot()`, and `remove()` and `modify()` work whatever the order (see `Registry`); nothing is resolved until the sidebar
  * renders, so a route that does not exist (yet) cannot break the boot. A mistake in a registration (an item in a group
  * that was never declared, a parent that does not exist or a parent cycle, a route that is not defined) throws a
  * LogicException naming the item in the local and testing environments and when `app.debug` is on, so a module's own
  * tests catch it; in production the item is skipped and a warning is logged. Other errors, such as a missing route
  * parameter, are never swallowed. Bound as a singleton.
+ *
+ * @extends Registry<AdminMenuItem>
  */
-final class AdminMenu
+final class AdminMenu extends Registry
 {
     /**
-     * @var array<string, array{label: string, order: int}>
+     * @var array<string, array{label: string, order: int, collapsible: bool}>
      */
     private array $groups = [];
 
     /**
-     * @var array<string, AdminMenuItem>
+     * @var list<array{string, Closure(array{label: string, order: int, collapsible: bool}): array{label: string, order: int, collapsible: bool}}>
      */
-    private array $items = [];
+    private array $groupChanges = [];
 
     /**
      * @var list<Closure(): iterable<AdminMenuItem>>
      */
     private array $providers = [];
 
+    public function name(): string
+    {
+        return 'admin menu item';
+    }
+
     /**
-     * The registration mistakes this process has logged already.
+     * Declares a group (or renames and reorders it). `$label` is a translation key or a plain string. A collapsible
+     * group can be folded by the user in the sidebar.
+     */
+    public function group(string $key, string $label, int $order, bool $collapsible = false): static
+    {
+        $this->groups[$key] = ['label' => $label, 'order' => $order, 'collapsible' => $collapsible];
+
+        return $this;
+    }
+
+    /**
+     * Changes a group when the menu is built, whether it is declared before or after this call; a group that is not
+     * declared is skipped.
      *
-     * @var array<string, true>
+     * @param  Closure(array{label: string, order: int, collapsible: bool}): array{label: string, order: int, collapsible: bool}  $change
      */
-    private static array $warned = [];
-
-    /**
-     * Declares a group (or renames and reorders it). `$label` is a translation key or a plain string.
-     */
-    public function group(string $key, string $label, int $order): static
+    public function modifyGroup(string $key, Closure $change): static
     {
-        $this->groups[$key] = ['label' => $label, 'order' => $order];
-
-        return $this;
-    }
-
-    /**
-     * Adds an item; one with the same key replaces the earlier one.
-     */
-    public function add(AdminMenuItem $item): static
-    {
-        $this->items[$item->key] = $item;
-
-        return $this;
-    }
-
-    public function remove(string $key): static
-    {
-        unset($this->items[$key]);
+        $this->groupChanges[] = [$key, $change];
 
         return $this;
     }
@@ -86,63 +84,88 @@ final class AdminMenu
      * The menu this user sees: groups in order, each with its visible items (a parent's children right after it),
      * and no empty group.
      *
-     * @return array<string, array{label: string, items: list<AdminMenuItem>}>
+     * @return array<string, array{label: string, collapsible: bool, items: list<AdminMenuItem>}>
      */
     public function for(AdminUser $user): array
     {
-        $items = $this->items;
+        $groups = $this->resolvedGroups();
+        $all = $this->all();
 
-        foreach ($this->providers as $provider) {
-            foreach ($provider() as $item) {
-                $items[$item->key] = $item;
-            }
-        }
-
-        foreach ($items as $item) {
-            if (! isset($this->groups[$item->group])) {
-                $this->problem($item, "its group [{$item->group}] was never declared with group()");
+        foreach ($all as $item) {
+            if (! isset($groups[$item->group])) {
+                $this->problem($item->key, "its group [{$item->group}] was never declared with group()");
             }
         }
 
         $menu = [];
 
-        foreach ($this->sortedGroups() as $groupKey => $group) {
+        foreach ($groups as $groupKey => $group) {
             $visible = array_values(array_filter(
-                $this->inTreeOrder(array_filter($items, fn (AdminMenuItem $item): bool => $item->group === $groupKey)),
-                fn (AdminMenuItem $item): bool => $item->isVisibleTo($user) && $this->canBuildUrl($item),
+                $this->inTreeOrder(array_values(array_filter($all, fn (AdminMenuItem $item): bool => $item->group === $groupKey))),
+                fn (AdminMenuItem $item): bool => $this->allows($user, $item),
             ));
 
             if ($visible !== []) {
-                $menu[$groupKey] = ['label' => $group['label'], 'items' => $visible];
+                $menu[$groupKey] = ['label' => $group['label'], 'collapsible' => $group['collapsible'], 'items' => $visible];
             }
         }
 
         return $menu;
     }
 
-    /**
-     * @return array<string, array{label: string, order: int}>
-     */
-    private function sortedGroups(): array
+    protected function extraEntries(): iterable
     {
-        $position = array_flip(array_keys($this->groups));
-        $keys = array_keys($this->groups);
-        usort($keys, fn (string $a, string $b): int => [$this->groups[$a]['order'], $position[$a]] <=> [$this->groups[$b]['order'], $position[$b]]);
+        foreach ($this->providers as $provider) {
+            yield from $provider();
+        }
+    }
 
-        return array_combine($keys, array_map(fn (string $key): array => $this->groups[$key], $keys));
+    protected function validate(Entry $entry): ?string
+    {
+        try {
+            $entry->url();
+        } catch (RouteNotFoundException) {
+            return "its route [{$entry->route}] is not defined";
+        }
+
+        return null;
     }
 
     /**
-     * The items of one group by order (ties keep the order they were added in), each followed by its children. An
-     * item whose parent is not in the group is a top-level one.
+     * The groups with their changes applied, in order (ties keep the order they were declared in).
      *
-     * @param  array<string, AdminMenuItem>  $items
+     * @return array<string, array{label: string, order: int, collapsible: bool}>
+     */
+    private function resolvedGroups(): array
+    {
+        $groups = $this->groups;
+
+        foreach ($this->groupChanges as [$key, $change]) {
+            if (isset($groups[$key])) {
+                $groups[$key] = $change($groups[$key]);
+            }
+        }
+
+        $position = array_flip(array_keys($groups));
+        uksort($groups, fn (string $a, string $b): int => [$groups[$a]['order'], $position[$a]] <=> [$groups[$b]['order'], $position[$b]]);
+
+        return $groups;
+    }
+
+    /**
+     * The items of one group (already in order), each followed by its children. An item whose parent is not in the
+     * group is a top-level one.
+     *
+     * @param  list<AdminMenuItem>  $list
      * @return list<AdminMenuItem>
      */
-    private function inTreeOrder(array $items): array
+    private function inTreeOrder(array $list): array
     {
-        $position = array_flip(array_keys($items));
-        uasort($items, fn (AdminMenuItem $a, AdminMenuItem $b): int => [$a->order, $position[$a->key]] <=> [$b->order, $position[$b->key]]);
+        $items = [];
+
+        foreach ($list as $item) {
+            $items[$item->key] = $item;
+        }
 
         $children = [];
         $roots = [];
@@ -153,7 +176,7 @@ final class AdminMenu
             } elseif ($item->parent !== $item->key && isset($items[$item->parent])) {
                 $children[$item->parent][] = $item;
             } else {
-                $this->problem($item, "its parent [{$item->parent}] is not an item of the group [{$item->group}]");
+                $this->problem($item->key, "its parent [{$item->parent}] is not an item of the group [{$item->group}]");
                 $roots[] = $item;
             }
         }
@@ -175,45 +198,10 @@ final class AdminMenu
 
         foreach ($items as $item) {
             if (! in_array($item, $ordered, true)) {
-                $this->problem($item, 'it is part of a parent cycle');
+                $this->problem($item->key, 'it is part of a parent cycle');
             }
         }
 
         return $ordered;
-    }
-
-    private function canBuildUrl(AdminMenuItem $item): bool
-    {
-        try {
-            $item->url();
-
-            return true;
-        } catch (RouteNotFoundException) {
-            $this->problem($item, "its route [{$item->route}] is not defined");
-
-            return false;
-        }
-    }
-
-    /**
-     * A registration mistake: thrown where a developer sees it (local and testing), skipped elsewhere and logged once
-     * per process for each item, so a production site with `app.debug` on still renders its admin and a long-running
-     * worker does not repeat the warning on every page.
-     */
-    private function problem(AdminMenuItem $item, string $problem): void
-    {
-        $message = "The admin menu item [{$item->key}] is left out: {$problem}.";
-
-        if (app()->environment('local', 'testing')) {
-            throw new LogicException($message);
-        }
-
-        if (isset(self::$warned[$message])) {
-            return;
-        }
-
-        self::$warned[$message] = true;
-
-        Log::warning($message);
     }
 }

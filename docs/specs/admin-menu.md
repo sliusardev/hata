@@ -7,10 +7,11 @@ its own in a provider's `boot()`. The sidebar (`layouts/app/sidebar.blade.php`) 
 
 ## API
 
-- `group(string $key, string $label, int $order)`: declares a group (heading). Hata's: `platform` 10, `content` 100,
+- `group(string $key, string $label, int $order, bool $collapsible = false)`: declares a group (heading; a collapsible group can be folded, rendered from release 1 task 5). Hata's: `platform` 10, `content` 100,
+- `modifyGroup(string $key, Closure $change)`: changes a group (`label`, `order`, `collapsible`) when the menu is built, whenever it is declared; an undeclared group is skipped. Hata registers `content` and `administration` as collapsible.
   `administration` 200, `account` 300; a module picks a number between them.
 - `add(AdminMenuItem $item)`: adds an item; the same key replaces the earlier one.
-- `remove(string $key)`: removes an item by key (also a Hata one).
+- `remove(string $key)`: hides an item by key (also a Hata or lazy one), whatever the call order. `modify(string $key, Closure $change)` changes an item at read; a missing key is skipped (see `Registry`). Hata registers its entries while the application boots, before any provider's `boot()`.
 - `lazy(Closure(): iterable<AdminMenuItem>)`: items worked out on every render, for items that follow data which
   changes after boot (the content types and their on/off switch). The closure runs on every sidebar render: keep it
   cheap and make no queries. A lazy item with the same key as a fixed one overrides it.

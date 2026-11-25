@@ -12,6 +12,7 @@ use Hata\Support\Settings\SiteSettings;
 use Illuminate\Routing\Exceptions\UrlGenerationException;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\ServiceProvider;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(fn () => seedRolesAndPermissions());
@@ -331,4 +332,70 @@ it('hides a type that is switched off together with its taxonomies', function ()
     $labels = collect(renderedSidebar($this->get(route('admin.dashboard')))['Content'])->pluck('label')->all();
 
     expect($labels)->toBe(['Pages', 'Media']);
+});
+
+it('remove hides a lazy item', function () {
+    app(ContentTypes::class)->register(new PostsType);
+    app(AdminMenu::class)->remove('content.posts');
+    $this->actingAs(User::factory()->withRole('super-admin')->create());
+
+    $content = renderedSidebar($this->get(route('admin.dashboard')))['Content'];
+
+    expect(collect($content)->pluck('label')->all())->not->toContain('Posts');
+});
+
+it('does not treat a modify of an absent lazy item as a mistake', function () {
+    app(ContentTypes::class)->register(new PostsType);
+    app(SiteSettings::class)->put(['content_disabled_types' => ['posts']]);
+    app(AdminMenu::class)->modify('content.posts', fn (AdminMenuItem $item) => $item->with(order: 1));
+    $this->actingAs(User::factory()->withRole('super-admin')->create());
+
+    $this->get(route('admin.dashboard'))->assertOk();
+});
+
+it('moves an item by modify', function () {
+    app(AdminMenu::class)->modify('media', fn (AdminMenuItem $item) => $item->with(order: 1));
+    $admin = User::factory()->withRole('super-admin')->create();
+
+    $keys = collect(app(AdminMenu::class)->for($admin)['content']['items'])->pluck('key')->all();
+
+    expect($keys[0])->toBe('media');
+});
+
+it('makes groups collapsible and changes them with modifyGroup', function () {
+    $admin = User::factory()->withRole('super-admin')->create();
+
+    expect(app(AdminMenu::class)->for($admin)['content']['collapsible'])->toBeTrue()
+        ->and(app(AdminMenu::class)->for($admin)['platform']['collapsible'])->toBeFalse();
+
+    app(AdminMenu::class)->modifyGroup('content', fn (array $group) => [...$group, 'collapsible' => false])
+        ->modifyGroup('missing', fn (array $group) => $group);
+
+    expect(app(AdminMenu::class)->for($admin)['content']['collapsible'])->toBeFalse();
+});
+
+it('lets a provider that boots before Hata remove one of Hata\'s items', function () {
+    $this->app->register(new class($this->app) extends ServiceProvider
+    {
+        public function boot(): void
+        {
+            $this->app->make(AdminMenu::class)->remove('media');
+        }
+    });
+    $admin = User::factory()->withRole('super-admin')->create();
+
+    expect(collect(app(AdminMenu::class)->for($admin)['content']['items'] ?? [])->pluck('key')->all())->not->toContain('media');
+});
+
+it('works out the lazy providers once per for()', function () {
+    $calls = 0;
+    app(AdminMenu::class)->lazy(function () use (&$calls): array {
+        $calls++;
+
+        return [];
+    });
+
+    app(AdminMenu::class)->for(User::factory()->withRole('super-admin')->create());
+
+    expect($calls)->toBe(1);
 });

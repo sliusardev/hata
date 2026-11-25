@@ -98,6 +98,12 @@ class HataServiceProvider extends ServiceProvider
 
         $this->app->singleton(SiteSettings::class);
         $this->defineSettings();
+
+        // Before any provider's boot(), so a site's remove() or modify() meets Hata's entries (order-independent anyway).
+        $this->app->booting(function (): void {
+            $this->registerAdminMenu();
+            $this->registerSettingsSections();
+        });
         $this->app->singleton(DirectServing::class);
         $this->app->singleton(ContentLocales::class);
         $this->app->singleton(AdminAssets::class);
@@ -207,8 +213,6 @@ class HataServiceProvider extends ServiceProvider
         $this->configureAssets();
         $this->configureMiddleware();
         $this->configureRoutes();
-        $this->registerAdminMenu();
-        $this->registerSettingsSections();
 
         $this->loadMigrationsFrom(Hata::path('database/migrations'));
 
@@ -245,8 +249,8 @@ class HataServiceProvider extends ServiceProvider
             && ($permission === null || Gate::forUser($user)->allows($permission));
 
         $menu->group('platform', 'hata::navigation.platform', 10)
-            ->group('content', 'hata::navigation.content', 100)
-            ->group('administration', 'hata::navigation.administration', 200)
+            ->group('content', 'hata::navigation.content', 100, collapsible: true)
+            ->group('administration', 'hata::navigation.administration', 200, collapsible: true)
             ->group('account', 'hata::navigation.account', 300)
             ->add(new AdminMenuItem('dashboard', 'hata::navigation.dashboard', 'home', 'admin.dashboard', $admin(), 'platform'))
             ->add(new AdminMenuItem('media', 'hata::navigation.media', 'photo', 'admin.media.index', $admin('media.view'), 'content', 900, 'admin.media.*'))
