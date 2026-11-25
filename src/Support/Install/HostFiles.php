@@ -168,8 +168,15 @@ final class HostFiles
         $providerWritten = false;
 
         if (! is_file($providerPath)) {
-            File::ensureDirectoryExists(dirname($providerPath));
-            $providerWritten = file_put_contents($providerPath, $this->stub('hata-admin-service-provider.stub')) !== false;
+            if (! is_dir(dirname($providerPath))) {
+                @mkdir(dirname($providerPath), 0755, true);
+            }
+
+            $providerWritten = @file_put_contents($providerPath, $this->stub('hata-admin-service-provider.stub')) !== false;
+
+            if (! $providerWritten) {
+                return HostFileResult::unrecognized("Create {$providerPath} from Hata's stubs/hata-admin-service-provider.stub, then:\n\n".$manual);
+            }
         }
 
         $listed = array_filter(array_map('trim', explode("\n", $match[1])));
@@ -182,7 +189,11 @@ final class HostFiles
         $entries = array_unique([...array_map(fn (string $line): string => substr($line, 0, -strlen('::class,')), $listed), $class]);
         sort($entries);
 
-        file_put_contents($bootstrapProviders, "<?php\n\nreturn [\n".implode("\n", array_map(fn (string $entry): string => "    {$entry}::class,", $entries))."\n];\n");
+        $updated = "<?php\n\nreturn [\n".implode("\n", array_map(fn (string $entry): string => "    {$entry}::class,", $entries))."\n];\n";
+
+        if (@file_put_contents($bootstrapProviders, $updated) === false) {
+            return HostFileResult::unrecognized($manual);
+        }
 
         return HostFileResult::changed();
     }

@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use Hata\Admin;
+use Hata\Support\Admin\AdminMenuItem;
+use Hata\Support\Admin\DashboardWidget;
+use Hata\Support\Admin\TopbarItem;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -11,6 +15,8 @@ use Illuminate\Support\ServiceProvider;
  * is commented out; remove the comment marks of the ones you need. What each point does, and every option, is in
  * docs/specs/admin-extensions.md of the Hata package. Run `php artisan hata:admin` to list what the admin
  * registries hold right now (Hata's own entries and yours).
+ *
+ * Pint may remove the imports above while every example is commented out; your IDE adds them back.
  */
 class HataAdminServiceProvider extends ServiceProvider
 {

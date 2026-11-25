@@ -377,6 +377,17 @@ describe('addAdminProvider', function () {
         exec('php -l '.escapeshellarg($provider).' 2>&1', $output, $code);
         expect($code)->toBe(0, implode("\n", $output));
 
+        foreach (['Hata\\Admin', 'Hata\\Support\\Admin\\AdminMenuItem', 'Hata\\Support\\Admin\\TopbarItem', 'Hata\\Support\\Admin\\DashboardWidget'] as $imported) {
+            expect(File::get($provider))->toContain("use {$imported};")
+                ->and(class_exists($imported))->toBeTrue();
+        }
+
+        $uncommented = preg_replace('/^(\s*)\/\/ (?=Admin::|    |\)\);)/m', '$1', File::get($provider));
+        $copy = $this->hostDirectory.'/Uncommented.php';
+        File::put($copy, $uncommented);
+        exec('php -l '.escapeshellarg($copy).' 2>&1', $lintOutput, $lintCode);
+        expect($lintCode)->toBe(0, implode("\n", $lintOutput));
+
         $again = app(HostFiles::class)->addAdminProvider($provider, $providers);
         expect($again->status)->toBe(HostFileStatus::AlreadyDone)
             ->and(substr_count(File::get($providers), 'HataAdminServiceProvider::class'))->toBe(1);
@@ -402,6 +413,17 @@ describe('addAdminProvider', function () {
 
         expect($result->status)->toBe(HostFileStatus::Unrecognized)
             ->and($result->lines)->toContain('App\\Providers\\HataAdminServiceProvider::class')
+            ->and(File::get($providers))->toBe($before);
+    });
+
+    it('does not list a provider it could not write', function () {
+        $providers = hostFile('bootstrap/providers.php');
+        $before = File::get($providers);
+        File::put($this->hostDirectory.'/blocker', 'x');
+
+        $result = app(HostFiles::class)->addAdminProvider($this->hostDirectory.'/blocker/HataAdminServiceProvider.php', $providers);
+
+        expect($result->status)->toBe(HostFileStatus::Unrecognized)
             ->and(File::get($providers))->toBe($before);
     });
 });
