@@ -14,7 +14,7 @@ The page is the Livewire SFC `resources/views/livewire/admin/settings/edit.blade
 
 ## Sections
 
-The registry is `Hata\Support\Admin\SettingsSections` (a singleton; sections are `SettingsSection` value objects: key, label, icon, Livewire component, permission, order). Hata registers its own in `HataServiceProvider::registerSettingsSections()`:
+The registry is `Hata\Support\Admin\SettingsSections` (a singleton on the shared registry base of `docs/specs/admin-extensions.md`, reached as `Admin::settings()`, so it has `remove`, `modify($key, fn (SettingsSection $section) => $section->with(order: 5))`, `has` and `find` as well; `remove` hides a Hata section, `modify` changes its label, icon, permission or order; a key that is not there is skipped; sections are `SettingsSection` value objects: key, label, icon, Livewire component, permission, order). Hata registers its own in `HataServiceProvider::registerSettingsSections()`:
 
 | Key | Label | Order | Component (`hata::admin.settings.sections.…`) | What it holds |
 |---|---|---|---|---|

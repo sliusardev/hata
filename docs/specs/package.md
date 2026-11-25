@@ -84,6 +84,20 @@ Hata's `/sitemap.xml` and `/robots.txt` routes for a site that serves its own fi
 so set them before the routes load). The first two are stored by Site settings. `content.home_page` is the chosen home
 page's record id, also stored by Site settings.
 
+### What changed for v0.4.0 (admin extension points)
+
+- The admin extension points share one base (`docs/specs/admin-extensions.md`): `Hata\Admin::menu()`, `topbar()`,
+  `dashboard()`, `settings()` and `assets()`, each with `add`, `remove`, `modify`, `has` and `find`. The old
+  `app(AdminMenu::class)` and `app(SettingsSections::class)` calls keep working.
+- The dashboard is a grid of lazy widgets (`Hata\Livewire\Admin\Widget`). Hata ships "Content" and "Recent changes"; a
+  site adds its own (`php artisan make:dashboard-widget`) or hides Hata's with `Admin::dashboard()->remove('recent-changes')`.
+- "View site" moved from the bottom of the sidebar to a desktop top bar (`Admin::topbar()`); on a phone it stays in the
+  sidebar. The content and administration menu groups can be folded (the state is kept per browser).
+- A new file in the site, `app/Providers/HataAdminServiceProvider.php`. A site installed before v0.4.0 runs
+  `php artisan hata:install` again (it skips what is done, never overwrites the file) or copies
+  `vendor/sliusardev/hata/stubs/hata-admin-service-provider.stub` and lists the provider in `bootstrap/providers.php`.
+- Settings section, menu item and top bar keys are checked on registration: a bad key throws in `local` and `testing`.
+
 ### What changed for v0.3.0 (head tags, sitemap, home page)
 
 - **Breaking:** `hata::welcome` (`resources/views/welcome.blade.php`) is removed; `/` is `HomeController`, which shows the
@@ -224,12 +238,16 @@ register through it.
   services (`PageMeta`, `HomePage`) are resolved per call**, as a method argument or `app()`, never held in a
   controller's constructor: the router caches controller instances, which would keep the first request's state
   (`docs/specs/content.md`).
-- **Admin menu:** `app(AdminMenu::class)->group(...)`/`->add(new AdminMenuItem(...))` in a provider's `boot()`
-  (`docs/specs/admin-menu.md`).
+- **Admin extension points:** `Hata\Admin` is the one entry point, used in a provider's `boot()` (the installer writes the
+  site's `app/Providers/HataAdminServiceProvider.php` with a commented example of each): `Admin::menu()`
+  (`->group()`, `->add(new AdminMenuItem(...))`; `docs/specs/admin-menu.md`), `Admin::topbar()`, `Admin::dashboard()`
+  (widgets; `php artisan make:dashboard-widget`), `Admin::settings()` and `Admin::assets()`. Every registry has
+  `add`, `remove`, `modify`, `has` and `find`, and `php artisan hata:admin` lists what they hold
+  (`docs/specs/admin-extensions.md`).
 - **Admin routes:** middleware `web, auth, verified, can:admin.access`, prefix `config('hata.admin.path')`, names
   `admin.`; each page authorizes its own permission. Full Livewire pages use `#[Layout('hata::layouts.app')]`, Blade
   pages `<x-hata::layouts.app :title="…">`.
-- **Admin assets:** `app(AdminAssets::class)->add('vendor/shop', ['resources/css/admin.css'])` (build directory
+- **Admin assets:** `Admin::assets()->add('vendor/shop', ['resources/css/admin.css'])` (build directory
   under `public`, Vite entries; the manifest is looked for at `.vite/manifest.json`, then `manifest.json`; optional
   hot file and manifest name). The admin `<head>` prints them after Hata's own tags.
 - **Blade components and layouts:** `<x-hata::confirm-modal>`, `<x-hata::admin.row-actions>`,
