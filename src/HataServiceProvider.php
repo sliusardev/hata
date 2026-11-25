@@ -4,6 +4,7 @@ namespace Hata;
 
 use Closure;
 use Composer\InstalledVersions;
+use Hata\Console\Commands\AdminRegistriesCommand;
 use Hata\Console\Commands\CheckContentAddresses;
 use Hata\Console\Commands\CreateAdmin;
 use Hata\Console\Commands\InstallCommand;
@@ -227,6 +228,7 @@ class HataServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(Hata::path('database/migrations'));
 
         $this->commands([
+            AdminRegistriesCommand::class,
             CheckContentAddresses::class,
             CreateAdmin::class,
             InstallCommand::class,

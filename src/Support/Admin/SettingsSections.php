@@ -30,6 +30,11 @@ final class SettingsSections extends Registry
         return 'settings section';
     }
 
+    public function describe(Entry $entry): string
+    {
+        return "component [{$entry->component}]";
+    }
+
     /**
      * The sections this user may open, by order (ties keep the order they were added in).
      *

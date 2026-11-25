@@ -20,6 +20,17 @@ final class AdminTopbar extends Registry
         return 'top bar item';
     }
 
+    public function describe(Entry $entry): string
+    {
+        $what = match (true) {
+            $entry->component !== null => "component [{$entry->component}]",
+            $entry->route !== '' => "route [{$entry->route}]",
+            default => "url [{$entry->url}]",
+        };
+
+        return "{$what} on the {$entry->side}";
+    }
+
     /**
      * The items this user sees, by side, in order.
      *

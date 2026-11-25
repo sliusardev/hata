@@ -57,6 +57,13 @@ abstract class Registry
     abstract public function name(): string;
 
     /**
+     * What the entry does, in one line, for `hata:admin`: "route [admin.media.index] in group [content]", ….
+     *
+     * @param  TEntry  $entry
+     */
+    abstract public function describe(Entry $entry): string;
+
+    /**
      * Adds an entry; one with the same key replaces the earlier one and keeps its place among equal orders. To replace
      * an entry, add one with the same key: a `remove()` of the key hides it whenever the add happens.
      *
@@ -127,6 +134,35 @@ abstract class Registry
         uasort($entries, fn (Entry $a, Entry $b): int => [$a->order, $position[$a->key]] <=> [$b->order, $position[$b->key]]);
 
         return array_values($entries);
+    }
+
+    /**
+     * Everything the registry holds, for `hata:admin`: the valid entries in order, the entries it would leave out with
+     * their problem, and the unmatched calls. Never throws and never logs.
+     *
+     * @return array{entries: list<TEntry>, problems: array<string, string>, unmatched: list<string>}
+     */
+    public function inspect(): array
+    {
+        ['entries' => $all, 'unmatched' => $unmatched] = $this->resolve();
+
+        $position = array_flip(array_keys($all));
+        $problems = [];
+        $entries = [];
+
+        foreach ($all as $key => $entry) {
+            $problem = preg_match($this->keyPattern(), $entry->key) === 1 ? $this->validate($entry) : $this->keyProblem();
+
+            if ($problem === null) {
+                $entries[$key] = $entry;
+            } else {
+                $problems[$key] = $problem;
+            }
+        }
+
+        uasort($entries, fn (Entry $a, Entry $b): int => [$a->order, $position[$a->key]] <=> [$b->order, $position[$b->key]]);
+
+        return ['entries' => array_values($entries), 'problems' => $problems, 'unmatched' => $unmatched];
     }
 
     /**

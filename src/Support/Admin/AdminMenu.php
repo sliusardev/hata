@@ -43,6 +43,11 @@ final class AdminMenu extends Registry
         return 'admin menu item';
     }
 
+    public function describe(Entry $entry): string
+    {
+        return "route [{$entry->route}] in group [{$entry->group}]";
+    }
+
     /**
      * Declares a group (or renames and reorders it). `$label` is a translation key or a plain string. A collapsible
      * group can be folded by the user in the sidebar.

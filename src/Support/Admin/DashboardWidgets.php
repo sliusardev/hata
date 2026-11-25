@@ -20,6 +20,11 @@ final class DashboardWidgets extends Registry
         return 'dashboard widget';
     }
 
+    public function describe(Entry $entry): string
+    {
+        return "component [{$entry->component}], {$entry->width} width";
+    }
+
     /**
      * The widgets this user sees, in order.
      *
