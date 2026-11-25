@@ -20,6 +20,11 @@ class RecentChangesWidget extends Widget
         return __('hata::dashboard.widgets.recent_changes.title');
     }
 
+    public function icon(): string
+    {
+        return 'clock';
+    }
+
     protected function body(): View
     {
         /** @var AdminUser $user */

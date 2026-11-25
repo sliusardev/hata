@@ -17,21 +17,38 @@
             <flux:sidebar.nav class="gap-6 px-3 py-5">
                 @foreach (app(Hata\Support\Admin\AdminMenu::class)->for(auth()->user()) as $groupKey => $group)
                     @php $holdsCurrent = collect($group['items'])->contains(fn ($item) => $item->isCurrent()); @endphp
-                    <flux:sidebar.group
-                        :heading="__($group['label'])"
-                        :expandable="$group['collapsible']"
-                        :expanded="true"
-                        :class="$group['collapsible'] ? '' : $groupClasses"
-                        data-menu-group="{{ $groupKey }}"
-                        :data-menu-current="$holdsCurrent ? true : null"
-                    >
-                        @foreach ($group['items'] as $item)
-                            @php $isCurrent = $item->isCurrent(); @endphp
-                            <flux:sidebar.item :icon="$item->icon" :icon:variant="$isCurrent ? 'solid' : 'outline'" :href="$item->url()" :current="$isCurrent" wire:navigate wire:key="nav-{{ $item->key }}">
-                                {{ __($item->label) }}
-                            </flux:sidebar.item>
-                        @endforeach
-                    </flux:sidebar.group>
+                    @if ($group['collapsible'])
+                        <div class="grid" data-flux-sidebar-group data-menu-group="{{ $groupKey }}" @if ($holdsCurrent) data-menu-current @endif>
+                            <button
+                                type="button"
+                                data-menu-toggle
+                                aria-expanded="true"
+                                aria-controls="menu-group-{{ $groupKey }}"
+                                class="group/toggle flex w-full cursor-pointer items-center justify-between px-3 pt-1 pb-2 text-[11px] leading-none font-semibold tracking-wider text-zinc-400 uppercase hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                            >
+                                <span>{{ __($group['label']) }}</span>
+                                <flux:icon.chevron-down class="size-3.5 transition-transform group-aria-[expanded=false]/toggle:-rotate-90" />
+                            </button>
+
+                            <div id="menu-group-{{ $groupKey }}" data-menu-items class="flex min-w-0 flex-col">
+                                @foreach ($group['items'] as $item)
+                                    @php $isCurrent = $item->isCurrent(); @endphp
+                                    <flux:sidebar.item :icon="$item->icon" :icon:variant="$isCurrent ? 'solid' : 'outline'" :href="$item->url()" :current="$isCurrent" wire:navigate wire:key="nav-{{ $item->key }}">
+                                        {{ __($item->label) }}
+                                    </flux:sidebar.item>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <flux:sidebar.group :heading="__($group['label'])" :class="$groupClasses" data-menu-group="{{ $groupKey }}">
+                            @foreach ($group['items'] as $item)
+                                @php $isCurrent = $item->isCurrent(); @endphp
+                                <flux:sidebar.item :icon="$item->icon" :icon:variant="$isCurrent ? 'solid' : 'outline'" :href="$item->url()" :current="$isCurrent" wire:navigate wire:key="nav-{{ $item->key }}">
+                                    {{ __($item->label) }}
+                                </flux:sidebar.item>
+                            @endforeach
+                        </flux:sidebar.group>
+                    @endif
                 @endforeach
             </flux:sidebar.nav>
 
@@ -52,33 +69,28 @@
                             localStorage.setItem(key, JSON.stringify(list));
                         } catch (e) {}
                     };
-                    const groups = document.querySelectorAll('ui-disclosure[data-menu-group]');
                     const collapsed = read();
 
-                    groups.forEach((group) => {
+                    document.querySelectorAll('[data-menu-group] > [data-menu-toggle]').forEach((button) => {
+                        const group = button.parentElement;
                         const name = group.dataset.menuGroup;
+                        const items = group.querySelector('[data-menu-items]');
+                        const show = (open) => {
+                            items.hidden = ! open;
+                            button.setAttribute('aria-expanded', open ? 'true' : 'false');
+                        };
 
                         if (collapsed.includes(name) && ! group.hasAttribute('data-menu-current')) {
-                            let done = false;
-
-                            if ('value' in group) {
-                                try {
-                                    group.value = false;
-                                    done = true;
-                                } catch (e) {}
-                            }
-
-                            if (! done) {
-                                group.removeAttribute('open');
-                                group.removeAttribute('data-open');
-                                group.querySelectorAll('[data-open]').forEach((part) => part.removeAttribute('data-open'));
-                            }
+                            show(false);
                         }
 
-                        group.addEventListener('lofi-disclosable-change', () => {
+                        button.addEventListener('click', () => {
+                            const open = items.hidden;
                             const list = read().filter((item) => item !== name);
 
-                            if (! group.value) {
+                            show(open);
+
+                            if (! open) {
                                 list.push(name);
                             }
 

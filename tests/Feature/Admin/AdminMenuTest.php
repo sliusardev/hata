@@ -419,7 +419,7 @@ it('shows a content type whose key has an underscore or a stray hyphen', functio
     $response->assertOk()->assertSee(route('admin.content.index', $key, absolute: false), false);
 })->with(['case_studies', 'case-studies-', 'case--studies', '-case']);
 
-it('renders collapsible groups as expandable and open on the current page', function () {
+it('renders collapsible groups with a toggle and open on the current page', function () {
     $this->actingAs(User::factory()->withRole('super-admin')->create());
 
     $html = $this->get(route('admin.users.index'))->getContent();
@@ -427,14 +427,15 @@ it('renders collapsible groups as expandable and open on the current page', func
     @$document->loadHTML('<?xml encoding="utf-8"?>'.$html);
     $xpath = new DOMXPath($document);
 
-    $administration = $xpath->query('//ui-disclosure[@data-menu-group="administration"]');
+    $administration = $xpath->query('//*[@data-menu-group="administration"]');
     expect($administration)->toHaveCount(1)
-        ->and($administration->item(0)->hasAttribute('open'))->toBeTrue()
-        ->and($administration->item(0)->hasAttribute('data-menu-current'))->toBeTrue();
+        ->and($administration->item(0)->hasAttribute('data-menu-current'))->toBeTrue()
+        ->and($xpath->query('./button[@data-menu-toggle][@aria-expanded="true"]', $administration->item(0)))->toHaveCount(1)
+        ->and($xpath->query('./div[@data-menu-items][not(@hidden)]', $administration->item(0)))->toHaveCount(1);
 
     $platform = $xpath->query('//*[@data-menu-group="platform"]');
     expect($platform)->toHaveCount(1)
-        ->and($platform->item(0)->nodeName)->toBe('div');
+        ->and($xpath->query('.//*[@data-menu-toggle]', $platform->item(0)))->toHaveCount(0);
 });
 
 it('renders a collapsible group without the current page open and left to the browser', function () {
@@ -442,10 +443,11 @@ it('renders a collapsible group without the current page open and left to the br
 
     $document = new DOMDocument;
     @$document->loadHTML('<?xml encoding="utf-8"?>'.$this->get(route('admin.dashboard'))->getContent());
-    $content = (new DOMXPath($document))->query('//ui-disclosure[@data-menu-group="content"]');
+    $xpath = new DOMXPath($document);
+    $content = $xpath->query('//*[@data-menu-group="content"]');
 
     expect($content)->toHaveCount(1)
-        ->and($content->item(0)->hasAttribute('open'))->toBeTrue()
+        ->and($xpath->query('./button[@data-menu-toggle][@aria-expanded="true"]', $content->item(0)))->toHaveCount(1)
         ->and($content->item(0)->hasAttribute('data-menu-current'))->toBeFalse();
 
     $html = $this->get(route('admin.dashboard'))->getContent();

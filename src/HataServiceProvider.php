@@ -299,8 +299,8 @@ class HataServiceProvider extends ServiceProvider
         $anyType = ContentWidget::mayViewAnyType(...);
 
         $this->app->make(DashboardWidgets::class)
-            ->add(new DashboardWidget('content', 'hata::admin.widgets.content', $anyType, 'third', 10))
-            ->add(new DashboardWidget('recent-changes', 'hata::admin.widgets.recent-changes', $anyType, 'half', 20));
+            ->add(new DashboardWidget('content', 'hata::admin.widgets.content', $anyType, 'full', 10))
+            ->add(new DashboardWidget('recent-changes', 'hata::admin.widgets.recent-changes', $anyType, 'full', 20));
     }
 
     /**

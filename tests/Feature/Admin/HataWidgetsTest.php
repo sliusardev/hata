@@ -36,6 +36,19 @@ it('the content widget counts published and draft records per visible type in on
     expect($queries)->toBe(1);
 });
 
+it('renders the widget body as markup inside the card, not as escaped text', function () {
+    Entry::factory()->create(['type' => 'pages', 'status' => 'published']);
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    Livewire::test('hata::admin.widgets.content')
+        ->assertSeeHtml('<ul')
+        ->assertDontSee('&lt;ul', false);
+
+    Livewire::test('hata::admin.widgets.recent-changes')
+        ->assertSeeHtml('<ul')
+        ->assertDontSee('&lt;ul', false);
+});
+
 it('the content widget hides types the user may not view', function () {
     app(ContentTypes::class)->register(new PostsType);
     Entry::factory()->create(['type' => 'posts', 'title' => 'Chair', 'slug' => 'chair', 'path' => 'chair']);

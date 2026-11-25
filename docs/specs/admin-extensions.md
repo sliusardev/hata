@@ -91,8 +91,8 @@ Widgets load lazily in one bundled request (Livewire 4 `lazy.bundle`): the page 
 
 | Key | Order | Width | Title | What |
 |---|---|---|---|---|
-| `content` | 10 | third | Content | per active type the user may list: published, drafts, total, linking to the type's list. One grouped query on `entries`. "Published" counts the stored status, so a scheduled record counts as published. |
-| `recent-changes` | 20 | half | Recent changes | the 8 records last edited among the types the user may list, linking to their edit pages. One query on `entries`; there is no author column, which keeps it to that one query. |
+| `content` | 10 | full | Content | a tile per active type the user may list (icon, total, published and drafts), linking to the type's list. One grouped query on `entries`. "Published" counts the stored status, so a scheduled record counts as published. |
+| `recent-changes` | 20 | full | Recent changes | the 8 records last edited among the types the user may list (type icon, title, type and language, status badge, time), linking to their edit pages. One query on `entries`; there is no author column, which keeps it to that one query. |
 
 Both are shown to a user who may list at least one active content type. Their Livewire names, `hata::admin.widgets.content` and `…recent-changes`, are resolved through `Livewire::resolveMissingComponent` (Livewire's own registration ignores namespaced names).
 
@@ -136,7 +136,7 @@ Admin::dashboard()->add(new DashboardWidget('orders', \App\Livewire\Widgets\Orde
 
 Rules:
 
-- `title()` must stay cheap: the lazy placeholder calls it before `body()` runs.
+- `icon()` (optional, a Flux icon name, default none) is shown next to the title in a tinted square; keep it a constant, the placeholder calls it too.
 - Keep `title()` cheap (it runs in the dashboard's own request, for the placeholder too; a throwing `title()` is logged and shown empty outside `local` and `testing`) and `mount()` empty: do the work in `body()`. One bundled lazy request carries every widget, so an exception in `mount()` fails them all.
 - All data work belongs in `body()`; it runs after the dashboard has rendered. If it throws, the card shows "This widget could not be loaded" and the exception is logged; in `local` and `testing` the exception surfaces. A mistake in the Blade markup of the returned view is not turned into that card: Livewire renders the view inside the card, where it surfaces as an ordinary error.
 - A widget's cost is its own: state it (queries per render) and keep it constant, never per row.

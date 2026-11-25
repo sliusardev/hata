@@ -17,6 +17,14 @@ abstract class Widget extends Component
     abstract public function title(): string;
 
     /**
+     * A Flux icon shown next to the title, or null for none. Keep it a constant: the placeholder calls it too.
+     */
+    public function icon(): ?string
+    {
+        return null;
+    }
+
+    /**
      * The widget's content, without the card: all of the widget's data work happens here, so a failure of it is caught
      * by `render()`. The view itself is rendered inside the card by Livewire (where `$this` is the widget), so a mistake
      * in its markup is not turned into the error card.
@@ -40,6 +48,7 @@ abstract class Widget extends Component
 
         return view('hata::components.admin.widget-card', [
             'title' => $this->safeTitle(),
+            'icon' => $this->icon(),
             'content' => $content,
             'failed' => $failed,
         ]);
@@ -47,7 +56,7 @@ abstract class Widget extends Component
 
     public function placeholder(): string
     {
-        return view('hata::components.admin.widget-card', ['title' => $this->safeTitle(), 'loading' => true])->render();
+        return view('hata::components.admin.widget-card', ['title' => $this->safeTitle(), 'icon' => $this->icon(), 'loading' => true])->render();
     }
 
     /**

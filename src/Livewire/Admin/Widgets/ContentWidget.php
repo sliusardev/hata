@@ -20,6 +20,11 @@ class ContentWidget extends Widget
         return __('hata::dashboard.widgets.content.title');
     }
 
+    public function icon(): string
+    {
+        return 'document-text';
+    }
+
     protected function body(): View
     {
         $types = self::visibleTypesFor($this->user());
@@ -42,6 +47,7 @@ class ContentWidget extends Widget
             }
             $rows[] = [
                 'label' => $type->pluralLabel(),
+                'icon' => $type->icon(),
                 'url' => route('admin.content.index', $key),
                 'published' => $published,
                 'drafts' => $drafts,

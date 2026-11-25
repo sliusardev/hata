@@ -50,7 +50,7 @@ section with its own permission shows the item to users who have only that one (
 
 ## Collapsible groups
 
-A collapsible group is rendered as an expandable `flux:sidebar.group`. Which groups are folded is kept per browser in
+A collapsible group is Hata's own markup (not Flux's expandable group), so it looks like every other group: the same small uppercase heading, here a button with a chevron on the right, and the items without an indent. Folding sets `hidden` on the items and `aria-expanded` on the button. Which groups are folded is kept per browser in
 `localStorage` under `hata.menu.collapsed` (a list of group keys) and applied by an inline script in the sidebar before
 the first paint; the group that holds the current page is always open. Hata's `content` and `administration` groups are
 collapsible. No server cost.

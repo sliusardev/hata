@@ -1,7 +1,12 @@
 @php($widgets = \Hata\Admin::dashboard()->for(auth()->user()))
 
 <x-hata::layouts.app :title="__('hata::navigation.dashboard')">
-    <div class="flex h-full w-full flex-1 flex-col gap-4">
+    <div class="flex h-full w-full flex-1 flex-col gap-6">
+        <div>
+            <flux:heading size="xl" level="1">{{ __('hata::navigation.dashboard') }}</flux:heading>
+            <flux:subheading>{{ __('hata::dashboard.greeting', ['name' => auth()->user()->name]) }}</flux:subheading>
+        </div>
+
         @if ($widgets === [])
             <x-hata::admin.empty-state
                 icon="squares-2x2"
