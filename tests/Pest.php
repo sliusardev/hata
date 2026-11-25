@@ -17,6 +17,8 @@ require_once __DIR__.'/fixtures/ProductsType.php';
 require_once __DIR__.'/fixtures/CustomAdminPathTestCase.php';
 require_once __DIR__.'/fixtures/ShopSettingsSection.php';
 require_once __DIR__.'/fixtures/SeoRoutesOffTestCase.php';
+require_once __DIR__.'/fixtures/Registry/FakeEntry.php';
+require_once __DIR__.'/fixtures/Registry/FakeRegistry.php';
 
 /*
 |--------------------------------------------------------------------------

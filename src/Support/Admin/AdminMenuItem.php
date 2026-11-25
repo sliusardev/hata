@@ -4,6 +4,8 @@ namespace Hata\Support\Admin;
 
 use Closure;
 use Hata\Contracts\AdminUser;
+use Hata\Support\Admin\Registry\Entry;
+use Hata\Support\Admin\Registry\HasChanges;
 use Illuminate\Support\Facades\Gate;
 use WeakMap;
 
@@ -17,8 +19,10 @@ use WeakMap;
  * `$routeParameters` are passed to `route()`, and the item counts as the current one only while the current route
  * carries the same values for them (one `admin.content.index` route serves every content type).
  */
-final readonly class AdminMenuItem
+final readonly class AdminMenuItem implements Entry
 {
+    use HasChanges;
+
     /**
      * @param  string|Closure(AdminUser): bool|null  $permission
      * @param  array<string, string>  $routeParameters

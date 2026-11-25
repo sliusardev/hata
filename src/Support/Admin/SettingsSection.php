@@ -4,6 +4,8 @@ namespace Hata\Support\Admin;
 
 use Closure;
 use Hata\Contracts\AdminUser;
+use Hata\Support\Admin\Registry\Entry;
+use Hata\Support\Admin\Registry\HasChanges;
 
 /**
  * One section of the site settings page.
@@ -12,8 +14,10 @@ use Hata\Contracts\AdminUser;
  * or class that renders the section. `$permission` is a gate ability, a `Closure(AdminUser): bool`, or null for any
  * admin.
  */
-final readonly class SettingsSection
+final readonly class SettingsSection implements Entry
 {
+    use HasChanges;
+
     /**
      * @param  string|Closure(AdminUser): bool|null  $permission
      */
