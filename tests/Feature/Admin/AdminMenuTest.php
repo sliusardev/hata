@@ -30,7 +30,7 @@ function renderedSidebar(TestResponse $response): array
     $groups = [];
 
     foreach ($xpath->query('//*[@data-flux-sidebar-group]') as $group) {
-        $heading = trim($xpath->query('./div[1]', $group)->item(0)->textContent);
+        $heading = trim($xpath->query('./div[1] | ./button/span', $group)->item(0)->textContent);
         $items = [];
 
         foreach ($xpath->query('.//a[@data-flux-sidebar-item]', $group) as $link) {
@@ -419,3 +419,33 @@ it('shows a content type whose key has an underscore or a stray hyphen', functio
     expect($keys)->toContain("content.{$key}");
     $response->assertOk()->assertSee(route('admin.content.index', $key, absolute: false), false);
 })->with(['case_studies', 'case-studies-', 'case--studies', '-case']);
+
+it('renders collapsible groups as expandable and open on the current page', function () {
+    $this->actingAs(User::factory()->withRole('super-admin')->create());
+
+    $html = $this->get(route('admin.users.index'))->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML('<?xml encoding="utf-8"?>'.$html);
+    $xpath = new DOMXPath($document);
+
+    $administration = $xpath->query('//ui-disclosure[@data-menu-group="administration"]');
+    expect($administration)->toHaveCount(1)
+        ->and($administration->item(0)->hasAttribute('open'))->toBeTrue()
+        ->and($administration->item(0)->hasAttribute('data-menu-current'))->toBeTrue();
+
+    $platform = $xpath->query('//*[@data-menu-group="platform"]');
+    expect($platform)->toHaveCount(1)
+        ->and($platform->item(0)->nodeName)->toBe('div');
+});
+
+it('renders a collapsible group without the current page open and left to the browser', function () {
+    $this->actingAs(User::factory()->withRole('super-admin')->create());
+
+    $document = new DOMDocument;
+    @$document->loadHTML('<?xml encoding="utf-8"?>'.$this->get(route('admin.dashboard'))->getContent());
+    $content = (new DOMXPath($document))->query('//ui-disclosure[@data-menu-group="content"]');
+
+    expect($content)->toHaveCount(1)
+        ->and($content->item(0)->hasAttribute('open'))->toBeTrue()
+        ->and($content->item(0)->hasAttribute('data-menu-current'))->toBeFalse();
+});

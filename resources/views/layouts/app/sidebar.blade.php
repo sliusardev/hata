@@ -14,9 +14,67 @@
                 $groupClasses = 'grid [&>div:first-child]:px-3 [&>div:first-child]:pt-1 [&>div:first-child]:pb-2 [&>div:first-child]:text-[11px] [&>div:first-child]:font-semibold [&>div:first-child]:uppercase [&>div:first-child]:tracking-wider [&>div:first-child]:text-zinc-400 dark:[&>div:first-child]:text-zinc-500';
             @endphp
 
-            <flux:sidebar.nav class="gap-6 px-3 py-5">
-                @foreach (app(Hata\Support\Admin\AdminMenu::class)->for(auth()->user()) as $group)
-                    <flux:sidebar.group :heading="__($group['label'])" :class="$groupClasses">
+            <flux:sidebar.nav
+                class="gap-6 px-3 py-5"
+                x-data="{
+                    key: 'hata.menu.collapsed',
+                    read() {
+                        try {
+                            const list = JSON.parse(localStorage.getItem(this.key));
+
+                            return Array.isArray(list) ? list : [];
+                        } catch (e) {
+                            return [];
+                        }
+                    },
+                    write(list) {
+                        try {
+                            localStorage.setItem(this.key, JSON.stringify(list));
+                        } catch (e) {}
+                    },
+                    apply() {
+                        const collapsed = this.read();
+
+                        this.$root.querySelectorAll('[data-menu-group]:not([data-menu-current])').forEach((group) => {
+                            if (! collapsed.includes(group.dataset.menuGroup)) {
+                                return;
+                            }
+
+                            group.removeAttribute('open');
+                            group.querySelectorAll('[data-open]').forEach((panel) => panel.removeAttribute('data-open'));
+                        });
+                    },
+                    toggled(event) {
+                        const group = event.target.closest('ui-disclosure[data-menu-group]');
+
+                        if (! group) {
+                            return;
+                        }
+
+                        setTimeout(() => {
+                            const list = this.read().filter((name) => name !== group.dataset.menuGroup);
+
+                            if (! group.hasAttribute('open')) {
+                                list.push(group.dataset.menuGroup);
+                            }
+
+                            this.write(list);
+                        }, 0);
+                    },
+                }"
+                x-init="apply()"
+                x-on:click="toggled($event)"
+            >
+                @foreach (app(Hata\Support\Admin\AdminMenu::class)->for(auth()->user()) as $groupKey => $group)
+                    @php $holdsCurrent = collect($group['items'])->contains(fn ($item) => $item->isCurrent()); @endphp
+                    <flux:sidebar.group
+                        :heading="__($group['label'])"
+                        :expandable="$group['collapsible']"
+                        :expanded="true"
+                        :class="$group['collapsible'] ? '' : $groupClasses"
+                        data-menu-group="{{ $groupKey }}"
+                        :data-menu-current="$holdsCurrent ? true : null"
+                    >
                         @foreach ($group['items'] as $item)
                             @php $isCurrent = $item->isCurrent(); @endphp
                             <flux:sidebar.item :icon="$item->icon" :icon:variant="$isCurrent ? 'solid' : 'outline'" :href="$item->url()" :current="$isCurrent" wire:navigate wire:key="nav-{{ $item->key }}">
