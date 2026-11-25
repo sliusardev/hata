@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Livewire\Widgets;
+
+use Hata\Livewire\Admin\Widget;
+use Illuminate\Contracts\View\View;
+
+class {{ class }} extends Widget
+{
+    public function title(): string
+    {
+        return __('{{ title }}');
+    }
+
+    protected function body(): View
+    {
+        return view('livewire.widgets.{{ view }}');
+    }
+}

@@ -1,0 +1,3 @@
+<div>
+    {{-- The widget's content. Load data in {{ class }}::body(); it runs lazily, after the dashboard has rendered. --}}
+</div>

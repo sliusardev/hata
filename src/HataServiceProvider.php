@@ -9,6 +9,7 @@ use Hata\Console\Commands\CheckContentAddresses;
 use Hata\Console\Commands\CreateAdmin;
 use Hata\Console\Commands\InstallCommand;
 use Hata\Console\Commands\MakeContentType;
+use Hata\Console\Commands\MakeDashboardWidget;
 use Hata\Console\Commands\MoveMediaDisk;
 use Hata\Console\Commands\OptimizeMedia;
 use Hata\Console\Commands\PruneContentTrash;
@@ -233,6 +234,7 @@ class HataServiceProvider extends ServiceProvider
             CreateAdmin::class,
             InstallCommand::class,
             MakeContentType::class,
+            MakeDashboardWidget::class,
             MoveMediaDisk::class,
             OptimizeMedia::class,
             PruneContentTrash::class,
