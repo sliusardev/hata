@@ -120,6 +120,16 @@ final class AdminMenu extends Registry
         }
     }
 
+    protected function keyPattern(): string
+    {
+        return '/^[a-z0-9_]+([.-][a-z0-9_]+)*$/';
+    }
+
+    protected function keyProblem(): string
+    {
+        return 'its key is not lowercase letters, digits and underscores joined by hyphens or dots';
+    }
+
     protected function validate(Entry $entry): ?string
     {
         try {

@@ -399,3 +399,18 @@ it('works out the lazy providers once per for()', function () {
 
     expect($calls)->toBe(1);
 });
+
+it('shows a content type whose key has an underscore', function () {
+    app(ContentTypes::class)->register(new class extends PostsType
+    {
+        public function key(): string
+        {
+            return 'case_studies';
+        }
+    });
+    $admin = User::factory()->withRole('super-admin')->create();
+
+    $keys = collect(app(AdminMenu::class)->for($admin)['content']['items'])->pluck('key')->all();
+
+    expect($keys)->toContain('content.case_studies');
+});
