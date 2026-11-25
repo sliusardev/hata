@@ -240,7 +240,7 @@ abstract class Registry
      *
      * @return array{entries: array<string, TEntry>, unmatched: list<string>}
      */
-    private function resolve(): array
+    protected function resolve(): array
     {
         $entries = $this->entries;
 

@@ -135,3 +135,23 @@ it('skips broken sections and logs once in production', function () {
     Log::shouldHaveReceived('warning')->withArgs(fn (string $m): bool => str_contains($m, 'ghost-prod'));
     Log::shouldHaveReceived('warning')->withArgs(fn (string $m): bool => str_contains($m, 'Bad_Key'));
 });
+
+it('a section can be modified by key', function () {
+    $sections = app(SettingsSections::class)
+        ->add(section('site', 10))
+        ->add(section('mail', 20))
+        ->modify('mail', fn (SettingsSection $s) => $s->with(order: 5));
+
+    expect(keysFor(User::factory()->create()))->toBe(['mail', 'site']);
+});
+
+it('a removed section is not offered by open()', function () {
+    $user = User::factory()->create();
+    $sections = app(SettingsSections::class)
+        ->add(section('site', 10))
+        ->add(section('mail', 20))
+        ->remove('mail');
+
+    expect($sections->open($user, 'mail')->key)->toBe('site')
+        ->and($sections->visibleTo($user))->toBeTrue();
+});
