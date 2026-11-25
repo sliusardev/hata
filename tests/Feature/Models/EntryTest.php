@@ -47,7 +47,8 @@ test('a group holds one record per language', function () {
 test('a path is unique inside a type and a language', function () {
     Entry::factory()->page()->inLocale('uk')->create(['slug' => 'about', 'path' => 'about']);
 
-    expect(fn () => Entry::factory()->page()->inLocale('uk')->create(['slug' => 'about', 'path' => 'about']))
+    // inside a savepoint: PostgreSQL aborts the test's transaction on a failed statement otherwise
+    expect(fn () => DB::transaction(fn () => Entry::factory()->page()->inLocale('uk')->create(['slug' => 'about', 'path' => 'about'])))
         ->toThrow(QueryException::class);
 
     Entry::factory()->page()->inLocale('en')->create(['slug' => 'about', 'path' => 'about']);

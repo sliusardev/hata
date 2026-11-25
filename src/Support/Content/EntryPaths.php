@@ -183,13 +183,14 @@ class EntryPaths
 
     /**
      * The SQL value of a descendant's new path: the new prefix (the first binding), then what follows the old
-     * one. The only driver-specific part of `move()`.
+     * one. The only driver-specific part of `move()`: MySQL and MariaDB need `CONCAT()` (`||` is OR there), while
+     * SQLite and PostgreSQL use `||` (PostgreSQL cannot type a bare parameter inside `CONCAT()`).
      */
     private function prefixSwap(string $oldPath): string
     {
         $rest = 'SUBSTR(path, '.(strlen($oldPath) + 1).')';
 
-        return DB::connection()->getDriverName() === 'sqlite' ? "? || {$rest}" : "CONCAT(?, {$rest})";
+        return in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true) ? "CONCAT(?, {$rest})" : "? || {$rest}";
     }
 
     /**

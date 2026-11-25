@@ -357,10 +357,11 @@ A complete worked example, with its tests, is `tests/fixtures/ShopSettingsSectio
 - `php artisan migrate:fresh --seed` in the demo rebuilds it with the `ADMIN_*` super admin (the user runs database
   writes there).
 - Tests: `composer test` (Pint, PHPStan level 7, Pest on Testbench). Suites `Unit`, `Feature`, `AdminPath`, `Install`.
-  MySQL: `DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_DATABASE=hata_testing DB_USERNAME=root vendor/bin/pest`. Never run
-  the SQLite and MySQL suites at the same time; `pest --parallel` is broken in this setup.
+  MySQL: `DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_DATABASE=hata_testing DB_USERNAME=root vendor/bin/pest`;
+  PostgreSQL: `DB_CONNECTION=pgsql DB_HOST=127.0.0.1 DB_PORT=5432 DB_DATABASE=hata_testing DB_USERNAME=root vendor/bin/pest`.
+  Run one database's suite at a time; `pest --parallel` is broken in this setup.
 - CI (`.github/workflows/tests.yml`, push to `main` and pull requests): Pint and PHPStan; on PHP 8.5 a job that runs
-  `npm ci && npm run build` and fails when `dist/` changes; the suite on PHP 8.4/8.5 × SQLite/MySQL 8 with
+  `npm ci && npm run build` and fails when `dist/` changes; the suite on PHP 8.4/8.5 × SQLite/MySQL 8/PostgreSQL 18 with
   `composer install` only.
 - AI agents on client sites: `resources/boost/guidelines/core.blade.php`, which Laravel Boost adds to a site's
   guidelines when Boost is installed there.

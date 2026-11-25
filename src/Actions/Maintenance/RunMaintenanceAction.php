@@ -14,6 +14,7 @@ use Hata\Support\Maintenance\ArtisanRunner;
 use Hata\Support\Maintenance\SeederCatalog;
 use Hata\Support\Settings\SiteSettings;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
@@ -141,7 +142,8 @@ class RunMaintenanceAction
             ->update(['slot' => null, 'status' => MaintenanceStatus::Interrupted, 'finished_at' => now()]);
 
         try {
-            $run->save();
+            // its own transaction, a savepoint when nested: PostgreSQL aborts an outer transaction on a failed statement
+            DB::transaction(fn () => $run->save());
         } catch (UniqueConstraintViolationException) {
             throw MaintenanceException::busy();
         }

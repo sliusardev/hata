@@ -360,7 +360,7 @@ DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_DATABASE=hata_testing DB_USERNAME=root 
 ```
 
 GitHub Actions runs Pint and PHPStan, checks that `npm run build` leaves `dist/` unchanged (PHP 8.5), and runs the
-suite on PHP 8.4 and 8.5 against SQLite and MySQL 8, on pushes to `main` and on pull requests.
+suite on PHP 8.4 and 8.5 against SQLite, MySQL 8 and PostgreSQL 18, on pushes to `main` and on pull requests.
 
 ## License
 
