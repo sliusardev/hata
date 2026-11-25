@@ -127,13 +127,13 @@ abstract class Registry
      */
     public function all(): array
     {
-        ['entries' => $entries, 'unmatched' => $this->unmatched] = $this->resolve();
+        ['entries' => $entries, 'problems' => $problems, 'unmatched' => $this->unmatched] = $this->inspect();
 
-        $position = array_flip(array_keys($entries));
-        $entries = array_filter($entries, fn (Entry $entry): bool => $this->isValid($entry));
-        uasort($entries, fn (Entry $a, Entry $b): int => [$a->order, $position[$a->key]] <=> [$b->order, $position[$b->key]]);
+        foreach ($problems as $key => $problem) {
+            $this->problem($key, $problem);
+        }
 
-        return array_values($entries);
+        return $entries;
     }
 
     /**
@@ -148,21 +148,19 @@ abstract class Registry
 
         $position = array_flip(array_keys($all));
         $problems = [];
-        $entries = [];
 
         foreach ($all as $key => $entry) {
-            $problem = preg_match($this->keyPattern(), $entry->key) === 1 ? $this->validate($entry) : $this->keyProblem();
+            $problem = $this->problemOf($entry);
 
-            if ($problem === null) {
-                $entries[$key] = $entry;
-            } else {
+            if ($problem !== null) {
                 $problems[$key] = $problem;
+                unset($all[$key]);
             }
         }
 
-        uasort($entries, fn (Entry $a, Entry $b): int => [$a->order, $position[$a->key]] <=> [$b->order, $position[$b->key]]);
+        uasort($all, fn (Entry $a, Entry $b): int => [$a->order, $position[$a->key]] <=> [$b->order, $position[$b->key]]);
 
-        return ['entries' => array_values($entries), 'problems' => $problems, 'unmatched' => $unmatched];
+        return ['entries' => array_values($all), 'problems' => $problems, 'unmatched' => $unmatched];
     }
 
     /**
@@ -308,18 +306,12 @@ abstract class Registry
     }
 
     /**
+     * The problem with an entry: its key first, then the registry's own check; null when it is fine.
+     *
      * @param  TEntry  $entry
      */
-    private function isValid(Entry $entry): bool
+    private function problemOf(Entry $entry): ?string
     {
-        $problem = preg_match($this->keyPattern(), $entry->key) === 1 ? $this->validate($entry) : $this->keyProblem();
-
-        if ($problem === null) {
-            return true;
-        }
-
-        $this->problem($entry->key, $problem);
-
-        return false;
+        return preg_match($this->keyPattern(), $entry->key) === 1 ? $this->validate($entry) : $this->keyProblem();
     }
 }
