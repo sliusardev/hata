@@ -1,0 +1,1 @@
+<span>NOTE-COMPONENT</span>

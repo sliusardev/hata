@@ -29,7 +29,7 @@
 
             <flux:spacer />
 
-            <flux:sidebar.nav class="px-3 pb-2">
+            <flux:sidebar.nav class="px-3 pb-2 lg:hidden">
                 <flux:sidebar.item icon="arrow-top-right-on-square" :href="route('home')" target="_blank">
                     {{ __('hata::navigation.view_site') }}
                 </flux:sidebar.item>
@@ -93,6 +93,11 @@
                     </form>
                 </flux:menu>
             </flux:dropdown>
+        </flux:header>
+
+        <!-- Desktop top bar -->
+        <flux:header class="h-16 border-b border-sidebar-border max-lg:hidden" data-test="admin-topbar">
+            @include('hata::partials.admin.topbar')
         </flux:header>
 
         {{ $slot }}

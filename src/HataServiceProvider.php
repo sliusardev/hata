@@ -28,8 +28,10 @@ use Hata\Providers\FortifyServiceProvider;
 use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminMenuItem;
+use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\SettingsSection;
 use Hata\Support\Admin\SettingsSections;
+use Hata\Support\Admin\TopbarItem;
 use Hata\Support\Assets\HataAssets;
 use Hata\Support\Assets\HataVite;
 use Hata\Support\Config\HataConfig;
@@ -102,12 +104,14 @@ class HataServiceProvider extends ServiceProvider
         // Before any provider's boot(), so a site's remove() or modify() meets Hata's entries (order-independent anyway).
         $this->app->booting(function (): void {
             $this->registerAdminMenu();
+            $this->registerAdminTopbar();
             $this->registerSettingsSections();
         });
         $this->app->singleton(DirectServing::class);
         $this->app->singleton(ContentLocales::class);
         $this->app->singleton(AdminAssets::class);
         $this->app->singleton(AdminMenu::class);
+        $this->app->singleton(AdminTopbar::class);
         $this->app->singleton(SettingsSections::class);
         $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
             $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
@@ -259,6 +263,15 @@ class HataServiceProvider extends ServiceProvider
             ->add(new AdminMenuItem('settings', 'hata::navigation.site_settings', 'adjustments-horizontal', 'admin.settings.edit', fn (AdminUser $user): bool => $admin()($user) && $this->app->make(SettingsSections::class)->visibleTo($user), 'administration', 30, 'admin.settings.*'))
             ->add(new AdminMenuItem('maintenance', 'hata::navigation.maintenance', 'wrench-screwdriver', 'admin.maintenance', $admin('maintenance.run'), 'administration', 40))
             ->add(new AdminMenuItem('profile', 'hata::navigation.my_profile', 'user-circle', 'profile.edit', null, 'account', 10, 'profile.edit|language.edit|security.edit|appearance.edit'));
+    }
+
+    /**
+     * Hata's own top bar item: the link to the public site.
+     */
+    private function registerAdminTopbar(): void
+    {
+        $this->app->make(AdminTopbar::class)
+            ->add(TopbarItem::link('view-site', 'hata::navigation.view_site', 'arrow-top-right-on-square', route: 'home', newTab: true, order: 100));
     }
 
     /**
