@@ -122,12 +122,12 @@ final class AdminMenu extends Registry
 
     protected function keyPattern(): string
     {
-        return '/^[a-z0-9_]+([.-][a-z0-9_]+)*$/';
+        return '/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/';
     }
 
     protected function keyProblem(): string
     {
-        return 'its key is not lowercase letters, digits and underscores joined by hyphens or dots';
+        return 'its key is not segments of lowercase letters, digits, hyphens and underscores joined by dots';
     }
 
     protected function validate(Entry $entry): ?string

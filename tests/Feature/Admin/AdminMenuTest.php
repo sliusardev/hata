@@ -400,17 +400,22 @@ it('works out the lazy providers once per for()', function () {
     expect($calls)->toBe(1);
 });
 
-it('shows a content type whose key has an underscore', function () {
-    app(ContentTypes::class)->register(new class extends PostsType
+it('shows a content type whose key has an underscore or a stray hyphen', function (string $key) {
+    app(ContentTypes::class)->register(new class($key) extends PostsType
     {
+        public function __construct(private string $typeKey) {}
+
         public function key(): string
         {
-            return 'case_studies';
+            return $this->typeKey;
         }
     });
     $admin = User::factory()->withRole('super-admin')->create();
+    $this->actingAs($admin);
 
     $keys = collect(app(AdminMenu::class)->for($admin)['content']['items'])->pluck('key')->all();
+    $response = $this->get(route('admin.dashboard'));
 
-    expect($keys)->toContain('content.case_studies');
-});
+    expect($keys)->toContain("content.{$key}");
+    $response->assertOk()->assertSee(route('admin.content.index', $key, absolute: false), false);
+})->with(['case_studies', 'case-studies-', 'case--studies', '-case']);
