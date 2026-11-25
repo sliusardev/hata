@@ -1,6 +1,3 @@
 {
-    "preset": "laravel",
-    "notPath": [
-        "tests/fixtures/host/bootstrap/providers.php"
-    ]
+    "preset": "laravel"
 }

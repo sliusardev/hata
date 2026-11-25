@@ -42,7 +42,9 @@ Steps, in order:
      `stubs/app-service-provider-defaults.stub`, called first in `boot()`. These are the site's defaults, not Hata's.
    - `app/Providers/HataAdminServiceProvider.php`: the site's own provider for admin extensions, written from
      `stubs/hata-admin-service-provider.stub` (every example commented out) and listed in `bootstrap/providers.php`
-     (sorted, as `ServiceProvider::addProviderToBootstrapFile()` does). An existing file is never overwritten; a
+     (sorted, as `ServiceProvider::addProviderToBootstrapFile()` does). Both skeleton shapes are recognized: the
+     fully qualified entries, and the real Laravel 13 one with `use` imports (the installer adds the sorted `use` line
+     and the short `HataAdminServiceProvider::class,` entry; the by-hand text then gives both lines). An existing file is never overwritten; a
      providers file that is not in the skeleton shape is left for a by-hand line.
    - `database/seeders/DatabaseSeeder.php`: `$this->call(HataSeeder::class)`; the skeleton's Test User and
      `WithoutModelEvents` are removed (Faker is dev-only; `WithoutModelEvents` would leave the admin without a

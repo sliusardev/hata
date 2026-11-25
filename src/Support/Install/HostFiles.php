@@ -160,7 +160,24 @@ final class HostFiles
 
         $source = $this->read($bootstrapProviders);
 
-        if ($source === null || preg_match('/\A<\?php\n\nreturn \[\n((?:    [\w\\\\]+::class,\n)*)\];\n\z/', $source, $match) !== 1) {
+        $short = 'HataAdminServiceProvider';
+        $fullShape = '/\A<\?php\n\nreturn \[\n((?:    [\w\\\\]+::class,\n)*)\];\n\z/';
+        $importShape = '/\A<\?php\n\n((?:use [\w\\\\]+;\n)+)\nreturn \[\n((?:    [\w\\\\]+::class,\n)*)\];\n\z/';
+
+        $imports = null;
+        $importManual = "Add this line to the imports in bootstrap/providers.php:\n\n    use {$class};\n\nand this line to the list:\n\n    {$short}::class,";
+
+        if ($source !== null && preg_match($fullShape, $source, $match) === 1) {
+            $list = $match[1];
+        } elseif ($source !== null && preg_match($importShape, $source, $match) === 1) {
+            $imports = $match[1];
+            $list = $match[2];
+            $manual = $importManual;
+        } else {
+            if ($source !== null && preg_match('/^use [\w\\\\]+;$/m', $source) === 1) {
+                $manual = $importManual;
+            }
+
             return HostFileResult::unrecognized($manual);
         }
 
@@ -178,7 +195,36 @@ final class HostFiles
             }
         }
 
-        $listed = array_filter(array_map('trim', explode("\n", $match[1])));
+        $listed = array_filter(array_map('trim', explode("\n", $list)));
+
+        if ($imports !== null) {
+            $isImported = str_contains($imports, "use {$class};\n");
+            $isListed = in_array($class.'::class,', $listed, true) || ($isImported && in_array($short.'::class,', $listed, true));
+
+            if ($isListed) {
+                return $providerWritten ? HostFileResult::changed() : HostFileResult::alreadyDone();
+            }
+
+            if (! $isImported && in_array($short.'::class,', $listed, true)) {
+                return HostFileResult::unrecognized($manual);
+            }
+
+            $updated = $isImported ? $source : $this->addImports($source, [$class]);
+
+            if ($updated === null) {
+                return HostFileResult::unrecognized($manual);
+            }
+
+            $names = array_values(array_map(fn (string $line): string => substr($line, 0, -strlen('::class,')), $listed));
+            $updated = (string) preg_replace_callback(
+                '/(return \[\n)(?:    [\w\\\\]+::class,\n)*(\];\n)\z/',
+                fn (array $m): string => $m[1].implode('', array_map(fn (string $name): string => "    {$name}::class,\n", $this->insertSorted($names, $short))).$m[2],
+                $updated,
+            );
+
+            return @file_put_contents($bootstrapProviders, $updated) === false ? HostFileResult::unrecognized($manual) : HostFileResult::changed();
+        }
+
         $isListed = in_array($class.'::class,', $listed, true);
 
         if ($isListed) {

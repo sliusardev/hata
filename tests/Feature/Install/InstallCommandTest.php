@@ -95,7 +95,7 @@ it('writes the admin provider on install and reports it done, then already done'
         ->assertSuccessful();
 
     expect(File::exists($this->host.'/app/Providers/HataAdminServiceProvider.php'))->toBeTrue()
-        ->and(File::get($this->host.'/bootstrap/providers.php'))->toContain('App\\Providers\\HataAdminServiceProvider::class');
+        ->and(File::get($this->host.'/bootstrap/providers.php'))->toContain('use App\\Providers\\HataAdminServiceProvider;', '    HataAdminServiceProvider::class,');
 
     $this->artisan('hata:install', $options)
         ->expectsOutputToContain('Admin extensions provider')

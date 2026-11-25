@@ -371,7 +371,7 @@ describe('addAdminProvider', function () {
 
         expect($result->status)->toBe(HostFileStatus::Changed)
             ->and(File::get($provider))->toContain('class HataAdminServiceProvider extends ServiceProvider', 'php artisan hata:admin', 'docs/specs/admin-extensions.md')
-            ->and(File::get($providers))->toBe("<?php\n\nreturn [\n    App\\Providers\\AppServiceProvider::class,\n    App\\Providers\\HataAdminServiceProvider::class,\n];\n")
+            ->and(File::get($providers))->toBe("<?php\n\nuse App\\Providers\\AppServiceProvider;\nuse App\\Providers\\HataAdminServiceProvider;\n\nreturn [\n    AppServiceProvider::class,\n    HataAdminServiceProvider::class,\n];\n")
             ->and(substr_count(File::get($providers), 'HataAdminServiceProvider::class'))->toBe(1);
 
         exec('php -l '.escapeshellarg($provider).' 2>&1', $output, $code);
@@ -412,7 +412,43 @@ describe('addAdminProvider', function () {
         $result = app(HostFiles::class)->addAdminProvider($provider, $providers);
 
         expect($result->status)->toBe(HostFileStatus::Unrecognized)
-            ->and($result->lines)->toContain('App\\Providers\\HataAdminServiceProvider::class')
+            ->and($result->lines)->toContain('use App\\Providers\\HataAdminServiceProvider;', 'HataAdminServiceProvider::class,')
+            ->and(File::get($providers))->toBe($before);
+    });
+
+    it('recognizes the fully qualified shape', function () {
+        $providers = $this->hostDirectory.'/providers.php';
+        File::put($providers, "<?php\n\nreturn [\n    App\\Providers\\AppServiceProvider::class,\n];\n");
+        $provider = $this->hostDirectory.'/HataAdminServiceProvider.php';
+
+        $result = app(HostFiles::class)->addAdminProvider($provider, $providers);
+
+        expect($result->status)->toBe(HostFileStatus::Changed)
+            ->and(File::get($providers))->toBe("<?php\n\nreturn [\n    App\\Providers\\AppServiceProvider::class,\n    App\\Providers\\HataAdminServiceProvider::class,\n];\n");
+
+        $after = File::get($providers);
+        expect(app(HostFiles::class)->addAdminProvider($provider, $providers)->status)->toBe(HostFileStatus::AlreadyDone)
+            ->and(File::get($providers))->toBe($after);
+    });
+
+    it('leaves the import shape byte-identical on a second run', function () {
+        $providers = hostFile('bootstrap/providers.php');
+        $provider = $this->hostDirectory.'/HataAdminServiceProvider.php';
+
+        app(HostFiles::class)->addAdminProvider($provider, $providers);
+        $after = File::get($providers);
+
+        expect(app(HostFiles::class)->addAdminProvider($provider, $providers)->status)->toBe(HostFileStatus::AlreadyDone)
+            ->and(File::get($providers))->toBe($after);
+    });
+
+    it('does not guess at a short entry that is not imported', function () {
+        $providers = hostFile('bootstrap/providers.php', fn (string $source) => str_replace('];', "    HataAdminServiceProvider::class,\n];", $source));
+        $before = File::get($providers);
+
+        $result = app(HostFiles::class)->addAdminProvider($this->hostDirectory.'/HataAdminServiceProvider.php', $providers);
+
+        expect($result->status)->toBe(HostFileStatus::Unrecognized)
             ->and(File::get($providers))->toBe($before);
     });
 
