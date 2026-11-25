@@ -1,18 +1,21 @@
+@php($widgets = \Hata\Admin::dashboard()->for(auth()->user()))
+
 <x-hata::layouts.app :title="__('hata::navigation.dashboard')">
-    <div class="flex h-full w-full flex-1 flex-col gap-4 rounded-xl">
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <x-hata::placeholder-pattern class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
+    <div class="flex h-full w-full flex-1 flex-col gap-4">
+        @if ($widgets === [])
+            <x-hata::admin.empty-state
+                icon="squares-2x2"
+                :heading="__('hata::dashboard.empty.heading')"
+                :description="__('hata::dashboard.empty.text')"
+            />
+        @else
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-6" data-test="dashboard-grid">
+                @foreach ($widgets as $widget)
+                    <div class="{{ $widget->cellClass() }}" data-test="dashboard-widget" data-widget="{{ $widget->key }}">
+                        <livewire:dynamic-component :is="$widget->component" :key="'widget-'.$widget->key" lazy.bundle />
+                    </div>
+                @endforeach
             </div>
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <x-hata::placeholder-pattern class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
-            </div>
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-                <x-hata::placeholder-pattern class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
-            </div>
-        </div>
-        <div class="relative h-full flex-1 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-            <x-hata::placeholder-pattern class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
-        </div>
+        @endif
     </div>
 </x-hata::layouts.app>

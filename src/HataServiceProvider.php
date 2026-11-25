@@ -29,6 +29,7 @@ use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Admin\AdminTopbar;
+use Hata\Support\Admin\DashboardWidgets;
 use Hata\Support\Admin\SettingsSection;
 use Hata\Support\Admin\SettingsSections;
 use Hata\Support\Admin\TopbarItem;
@@ -113,6 +114,7 @@ class HataServiceProvider extends ServiceProvider
         $this->app->singleton(AdminMenu::class);
         $this->app->singleton(AdminTopbar::class);
         $this->app->singleton(SettingsSections::class);
+        $this->app->singleton(DashboardWidgets::class);
         $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
             $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
         ));
