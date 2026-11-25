@@ -448,4 +448,7 @@ it('renders a collapsible group without the current page open and left to the br
     expect($content)->toHaveCount(1)
         ->and($content->item(0)->hasAttribute('open'))->toBeTrue()
         ->and($content->item(0)->hasAttribute('data-menu-current'))->toBeFalse();
+
+    $html = $this->get(route('admin.dashboard'))->getContent();
+    expect(substr_count($html, "const key = 'hata.menu.collapsed'"))->toBe(1);
 });
