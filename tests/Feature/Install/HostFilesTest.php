@@ -361,3 +361,47 @@ describe('ensureAssetsPublishScript', function () {
         expectLeftUntouched($path, fn (string $file) => app(HostFiles::class)->ensureAssetsPublishScript($file), '"@php artisan view:clear --ansi"');
     });
 });
+
+describe('addAdminProvider', function () {
+    it('writes the admin provider and lists it', function () {
+        $providers = hostFile('bootstrap/providers.php');
+        $provider = $this->hostDirectory.'/HataAdminServiceProvider.php';
+
+        $result = app(HostFiles::class)->addAdminProvider($provider, $providers);
+
+        expect($result->status)->toBe(HostFileStatus::Changed)
+            ->and(File::get($provider))->toContain('class HataAdminServiceProvider extends ServiceProvider', 'php artisan hata:admin', 'docs/specs/admin-extensions.md')
+            ->and(File::get($providers))->toBe("<?php\n\nreturn [\n    App\\Providers\\AppServiceProvider::class,\n    App\\Providers\\HataAdminServiceProvider::class,\n];\n")
+            ->and(substr_count(File::get($providers), 'HataAdminServiceProvider::class'))->toBe(1);
+
+        exec('php -l '.escapeshellarg($provider).' 2>&1', $output, $code);
+        expect($code)->toBe(0, implode("\n", $output));
+
+        $again = app(HostFiles::class)->addAdminProvider($provider, $providers);
+        expect($again->status)->toBe(HostFileStatus::AlreadyDone)
+            ->and(substr_count(File::get($providers), 'HataAdminServiceProvider::class'))->toBe(1);
+    });
+
+    it('leaves an existing provider untouched', function () {
+        $providers = hostFile('bootstrap/providers.php');
+        $provider = $this->hostDirectory.'/HataAdminServiceProvider.php';
+        File::put($provider, "<?php\n// the site's own\n");
+
+        app(HostFiles::class)->addAdminProvider($provider, $providers);
+
+        expect(File::get($provider))->toBe("<?php\n// the site's own\n")
+            ->and(File::get($providers))->toContain('HataAdminServiceProvider::class');
+    });
+
+    it('prints a by-hand line for an unrecognized providers file', function () {
+        $providers = hostFile('bootstrap/providers.php', fn (string $source) => str_replace('];', "    // custom\n];", $source));
+        $provider = $this->hostDirectory.'/HataAdminServiceProvider.php';
+        $before = File::get($providers);
+
+        $result = app(HostFiles::class)->addAdminProvider($provider, $providers);
+
+        expect($result->status)->toBe(HostFileStatus::Unrecognized)
+            ->and($result->lines)->toContain('App\\Providers\\HataAdminServiceProvider::class')
+            ->and(File::get($providers))->toBe($before);
+    });
+});

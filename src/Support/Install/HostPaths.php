@@ -20,6 +20,8 @@ final readonly class HostPaths
         public string $config,
         public string $welcomeView,
         public string $robots,
+        public string $adminProvider,
+        public string $bootstrapProviders,
     ) {}
 
     /**
@@ -37,6 +39,8 @@ final readonly class HostPaths
             config: $base.'/config/hata.php',
             welcomeView: $base.'/resources/views/welcome.blade.php',
             robots: $base.'/public/robots.txt',
+            adminProvider: $base.'/app/Providers/HataAdminServiceProvider.php',
+            bootstrapProviders: $base.'/bootstrap/providers.php',
         );
     }
 
@@ -58,6 +62,8 @@ final readonly class HostPaths
             config: config_path('hata.php'),
             welcomeView: resource_path('views/welcome.blade.php'),
             robots: public_path('robots.txt'),
+            adminProvider: app_path('Providers/HataAdminServiceProvider.php'),
+            bootstrapProviders: base_path('bootstrap/providers.php'),
         );
     }
 

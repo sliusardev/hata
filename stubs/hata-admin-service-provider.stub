@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Providers;
+
+use Illuminate\Support\ServiceProvider;
+
+/**
+ * This site's own extensions of Hata's admin: menu items, top bar items, dashboard widgets and admin assets.
+ *
+ * Hata wrote this file once, when it was installed, and never changes it again: it is yours. Every example below
+ * is commented out; remove the comment marks of the ones you need. What each point does, and every option, is in
+ * docs/specs/admin-extensions.md of the Hata package. Run `php artisan hata:admin` to list what the admin
+ * registries hold right now (Hata's own entries and yours).
+ */
+class HataAdminServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        //
+    }
+
+    /**
+     * Bootstrap the site's admin extensions.
+     */
+    public function boot(): void
+    {
+        // Menu: add an item (the group is one of Hata's, or one you declare with ->group()).
+        //
+        // Admin::menu()->add(new AdminMenuItem(
+        //     key: 'orders',
+        //     label: 'Orders',
+        //     icon: 'shopping-cart',
+        //     route: 'admin.orders.index',
+        //     permission: 'orders.view',
+        //     group: 'content',
+        //     order: 50,
+        //     activePattern: 'admin.orders.*',
+        // ));
+
+        // Menu: change an item Hata or a module registered.
+        //
+        // Admin::menu()->modify('media', fn (AdminMenuItem $item) => $item->with(order: 5));
+
+        // Menu: change or declare a group.
+        //
+        // Admin::menu()->modifyGroup('content', fn (array $group) => [...$group, 'collapsible' => false]);
+        // Admin::menu()->group('shop', 'Shop', 40, collapsible: true);
+
+        // Top bar: a link (an icon button) and a Blade component of your own.
+        //
+        // Admin::topbar()->add(TopbarItem::link('help', 'Help', 'question-mark-circle', url: 'https://example.com/help', newTab: true));
+        // Admin::topbar()->add(TopbarItem::component('orders-bell', 'topbar.orders-bell', permission: 'orders.view'));
+
+        // Dashboard: add a widget (a Livewire component; `php artisan make:dashboard-widget` writes one), or remove one of Hata's.
+        //
+        // Admin::dashboard()->add(new DashboardWidget(key: 'orders', component: 'widgets.orders', permission: 'orders.view', width: 'half', order: 30));
+        // Admin::dashboard()->remove('recent-changes');
+
+        // Settings: a section of Site settings is added with Admin::settings(); see "Adding a settings section"
+        // in docs/specs/package.md of the Hata package.
+
+        // Assets: your own prebuilt admin CSS and JS, printed after Hata's in the admin <head>.
+        //
+        // Admin::assets()->add('build/admin', ['resources/css/admin.css', 'resources/js/admin.js']);
+    }
+}

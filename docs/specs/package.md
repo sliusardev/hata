@@ -40,6 +40,10 @@ Steps, in order:
    - `app/Providers/AppServiceProvider.php`: `configureDefaults()` (`Date::use(CarbonImmutable::class)`,
      `DB::prohibitDestructiveCommands()` in production, `Password::defaults()`) from
      `stubs/app-service-provider-defaults.stub`, called first in `boot()`. These are the site's defaults, not Hata's.
+   - `app/Providers/HataAdminServiceProvider.php`: the site's own provider for admin extensions, written from
+     `stubs/hata-admin-service-provider.stub` (every example commented out) and listed in `bootstrap/providers.php`
+     (sorted, as `ServiceProvider::addProviderToBootstrapFile()` does). An existing file is never overwritten; a
+     providers file that is not in the skeleton shape is left for a by-hand line.
    - `database/seeders/DatabaseSeeder.php`: `$this->call(HataSeeder::class)`; the skeleton's Test User and
      `WithoutModelEvents` are removed (Faker is dev-only; `WithoutModelEvents` would leave the admin without a
      search index). A changed seeder that uses `WithoutModelEvents` is left for a by-hand fix.

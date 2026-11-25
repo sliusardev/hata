@@ -3,6 +3,7 @@
 namespace Hata\Support\Install;
 
 use Hata\Hata;
+use Illuminate\Support\Facades\File;
 use ParseError;
 use stdClass;
 
@@ -144,6 +145,46 @@ final class HostFiles
         }
 
         return $this->write($webRoutes, $source, $updated, $manual);
+    }
+
+    /**
+     * `app/Providers/HataAdminServiceProvider.php`, written from the stub when it is missing (an existing file is the
+     * site's own and is never overwritten), and listed in `bootstrap/providers.php` as
+     * `ServiceProvider::addProviderToBootstrapFile()` lists it: already listed means unchanged, the list sorted. The
+     * providers file is edited only in Laravel's skeleton shape (one `Class::class,` per line); otherwise it is left
+     * untouched, with the line to add.
+     */
+    public function addAdminProvider(string $providerPath, string $bootstrapProviders): HostFileResult
+    {
+        $class = 'App\\Providers\\HataAdminServiceProvider';
+        $manual = "Add this line to the list in bootstrap/providers.php:\n\n    {$class}::class,";
+
+        $source = $this->read($bootstrapProviders);
+
+        if ($source === null || preg_match('/\A<\?php\n\nreturn \[\n((?:    [\w\\\\]+::class,\n)*)\];\n\z/', $source, $match) !== 1) {
+            return HostFileResult::unrecognized($manual);
+        }
+
+        $providerWritten = false;
+
+        if (! is_file($providerPath)) {
+            File::ensureDirectoryExists(dirname($providerPath));
+            $providerWritten = file_put_contents($providerPath, $this->stub('hata-admin-service-provider.stub')) !== false;
+        }
+
+        $listed = array_filter(array_map('trim', explode("\n", $match[1])));
+        $isListed = in_array($class.'::class,', $listed, true);
+
+        if ($isListed) {
+            return $providerWritten ? HostFileResult::changed() : HostFileResult::alreadyDone();
+        }
+
+        $entries = array_unique([...array_map(fn (string $line): string => substr($line, 0, -strlen('::class,')), $listed), $class]);
+        sort($entries);
+
+        file_put_contents($bootstrapProviders, "<?php\n\nreturn [\n".implode("\n", array_map(fn (string $entry): string => "    {$entry}::class,", $entries))."\n];\n");
+
+        return HostFileResult::changed();
     }
 
     /**

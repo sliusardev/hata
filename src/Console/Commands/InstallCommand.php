@@ -127,6 +127,7 @@ class InstallCommand extends Command
         }
 
         $this->fileStep("Host defaults ({$paths->relative($paths->appServiceProvider)})", $files->addHostDefaults($paths->appServiceProvider));
+        $this->fileStep("Admin extensions provider ({$paths->relative($paths->adminProvider)})", $files->addAdminProvider($paths->adminProvider, $paths->bootstrapProviders));
         $this->fileStep("Seeder call ({$paths->relative($paths->databaseSeeder)})", $files->addSeederCall($paths->databaseSeeder));
         $this->fileStep("Asset publish on composer install and update ({$paths->relative($paths->composerJson)})", $files->ensureAssetsPublishScript($paths->composerJson));
 

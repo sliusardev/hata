@@ -51,6 +51,8 @@ function hostSnapshot(string $host): array
         'app/Providers/AppServiceProvider.php',
         'database/seeders/DatabaseSeeder.php',
         'composer.json',
+        'bootstrap/providers.php',
+        'app/Providers/HataAdminServiceProvider.php',
         'config/hata.php',
         'resources/views/welcome.blade.php',
         'public/robots.txt',
@@ -83,6 +85,21 @@ it('installs on a fresh skeleton', function () {
 
     expect($owner->name)->toBe('Owner')
         ->and($owner->hasRole('super-admin'))->toBeTrue();
+});
+
+it('writes the admin provider on install and reports it done, then already done', function () {
+    $options = ['--name' => 'Owner', '--email' => 'owner@example.test', '--password' => 'secret-password'];
+
+    $this->artisan('hata:install', $options)
+        ->expectsOutputToContain('Admin extensions provider')
+        ->assertSuccessful();
+
+    expect(File::exists($this->host.'/app/Providers/HataAdminServiceProvider.php'))->toBeTrue()
+        ->and(File::get($this->host.'/bootstrap/providers.php'))->toContain('App\\Providers\\HataAdminServiceProvider::class');
+
+    $this->artisan('hata:install', $options)
+        ->expectsOutputToContain('Admin extensions provider')
+        ->assertSuccessful();
 });
 
 it('is safe to run twice', function () {
