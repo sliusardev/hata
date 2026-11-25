@@ -127,7 +127,7 @@ final class AdminMenu extends Registry
 
     protected function keyPattern(): string
     {
-        return '/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/';
+        return '/^[a-z0-9_-]+(\.[a-z0-9_-]+)*\z/';
     }
 
     protected function keyProblem(): string

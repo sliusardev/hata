@@ -7,6 +7,7 @@ use Hata\Contracts\AdminUser;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use LogicException;
+use Throwable;
 
 /**
  * The shared base of the admin registries (the menu, the settings sections, …).
@@ -127,7 +128,11 @@ abstract class Registry
      */
     public function all(): array
     {
-        ['entries' => $entries, 'problems' => $problems, 'unmatched' => $this->unmatched] = $this->inspect();
+        ['entries' => $entries, 'problems' => $problems, 'unmatched' => $this->unmatched, 'unchanged' => $unchanged] = $this->inspect();
+
+        foreach ($unchanged as $key => $problem) {
+            $this->report("The {$this->name()} [{$key}] is left unchanged: {$problem}.");
+        }
 
         foreach ($problems as $key => $problem) {
             $this->problem($key, $problem);
@@ -138,19 +143,24 @@ abstract class Registry
 
     /**
      * Everything the registry holds, for `hata:admin`: the valid entries in order, the entries it would leave out with
-     * their problem, and the unmatched calls. Never throws and never logs.
+     * their problem, the unmatched calls and the entries whose `modify()` result was refused. Never throws and never
+     * logs.
      *
-     * @return array{entries: list<TEntry>, problems: array<string, string>, unmatched: list<string>}
+     * @return array{entries: list<TEntry>, problems: array<string, string>, unmatched: list<string>, unchanged: array<string, string>}
      */
     public function inspect(): array
     {
-        ['entries' => $all, 'unmatched' => $unmatched] = $this->resolve();
+        ['entries' => $all, 'unmatched' => $unmatched, 'unchanged' => $unchanged] = $this->resolve();
 
         $position = array_flip(array_keys($all));
         $problems = [];
 
         foreach ($all as $key => $entry) {
-            $problem = $this->problemOf($entry);
+            try {
+                $problem = $this->problemOf($entry);
+            } catch (Throwable $exception) {
+                $problem = 'its check failed: '.$exception->getMessage();
+            }
 
             if ($problem !== null) {
                 $problems[$key] = $problem;
@@ -160,7 +170,7 @@ abstract class Registry
 
         uasort($all, fn (Entry $a, Entry $b): int => [$a->order, $position[$a->key]] <=> [$b->order, $position[$b->key]]);
 
-        return ['entries' => array_values($all), 'problems' => $problems, 'unmatched' => $unmatched];
+        return ['entries' => array_values($all), 'problems' => $problems, 'unmatched' => $unmatched, 'unchanged' => $unchanged];
     }
 
     /**
@@ -226,7 +236,7 @@ abstract class Registry
      */
     protected function keyPattern(): string
     {
-        return '/^[a-z0-9]+([.-][a-z0-9]+)*$/';
+        return '/^[a-z0-9]+([.-][a-z0-9]+)*\z/';
     }
 
     /**
@@ -253,8 +263,11 @@ abstract class Registry
      */
     protected function problem(string $key, string $problem): void
     {
-        $message = "The {$this->name()} [{$key}] is left out: {$problem}.";
+        $this->report("The {$this->name()} [{$key}] is left out: {$problem}.");
+    }
 
+    private function report(string $message): void
+    {
         if (app()->environment('local', 'testing')) {
             throw new LogicException($message);
         }
@@ -272,7 +285,7 @@ abstract class Registry
      * The added and extra entries in insertion order, removals dropped and modifications applied, and the calls that
      * matched nothing.
      *
-     * @return array{entries: array<string, TEntry>, unmatched: list<string>}
+     * @return array{entries: array<string, TEntry>, unmatched: list<string>, unchanged: array<string, string>}
      */
     protected function resolve(): array
     {
@@ -293,16 +306,23 @@ abstract class Registry
         }
 
         $modifyUnmatched = [];
+        $unchanged = [];
 
         foreach ($this->modifications as [$key, $change]) {
             if (isset($entries[$key])) {
-                $entries[$key] = $change($entries[$key]);
+                $changed = $change($entries[$key]);
+
+                if ($changed instanceof $entries[$key] && $changed::class === $entries[$key]::class && $changed->key === $key) {
+                    $entries[$key] = $changed;
+                } else {
+                    $unchanged[$key] = 'its modify() did not return a '.$entries[$key]::class.' with the same key';
+                }
             } else {
                 $modifyUnmatched[] = "modify [{$key}]";
             }
         }
 
-        return ['entries' => $entries, 'unmatched' => [...$modifyUnmatched, ...$unmatched]];
+        return ['entries' => $entries, 'unmatched' => [...$modifyUnmatched, ...$unmatched], 'unchanged' => $unchanged];
     }
 
     /**

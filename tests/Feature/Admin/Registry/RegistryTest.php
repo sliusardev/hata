@@ -118,3 +118,26 @@ test('dotted keys are valid', function () {
 
     expect(registryKeys($registry))->toBe(['content.posts']);
 });
+
+test('a modify() that changes the key, returns null or a wrong type throws in testing', function (Closure $change) {
+    $registry = (new FakeRegistry)->add(new FakeEntry('a'))->modify('a', $change);
+
+    expect(fn () => $registry->all())->toThrow(LogicException::class, 'The fake entry [a] is left unchanged: its modify() did not return a');
+})->with([
+    'other key' => fn () => fn (FakeEntry $entry) => $entry->with(key: 'x'),
+    'null' => fn () => fn (FakeEntry $entry) => null,
+    'wrong type' => fn () => fn (FakeEntry $entry) => new stdClass,
+]);
+
+test('a refused modify() keeps the entry unmodified and logs in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    Log::spy();
+
+    $registry = (new FakeRegistry)->add(new FakeEntry('a', label: 'orig'))
+        ->modify('a', fn (FakeEntry $entry) => $entry->with(key: 'x'));
+
+    expect(registryKeys($registry))->toBe(['a'])
+        ->and($registry->find('a')->label)->toBe('orig')
+        ->and($registry->inspect()['unchanged'])->toHaveKey('a');
+    Log::shouldHaveReceived('warning')->once();
+});

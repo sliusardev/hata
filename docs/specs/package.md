@@ -97,6 +97,11 @@ page's record id, also stored by Site settings.
   `php artisan hata:install` again (it skips what is done, never overwrites the file) or copies
   `vendor/sliusardev/hata/stubs/hata-admin-service-provider.stub` and lists the provider in `bootstrap/providers.php`.
 - Settings section, menu item and top bar keys are checked on registration: a bad key throws in `local` and `testing`.
+- **`remove()` hides a key for good**, even if the same key is added later. To replace an entry, `add()` one with the
+  same key (before v0.4.0, `remove()` followed by `add()` replaced it).
+- Menu item keys are now validated: segments of lowercase letters, digits, hyphens and underscores joined by dots
+  (`^[a-z0-9_-]+(\.[a-z0-9_-]+)*$`). In production an existing item with another key is left out and a warning is
+  logged; in `local` and `testing` it throws.
 
 ### What changed for v0.3.0 (head tags, sitemap, home page)
 

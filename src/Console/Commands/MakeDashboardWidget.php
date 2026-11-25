@@ -29,7 +29,7 @@ class MakeDashboardWidget extends Command
         $name = Str::studly((string) $this->argument('name'));
         $name = Str::endsWith($name, 'Widget') ? Str::beforeLast($name, 'Widget') : $name;
 
-        if ($name === '' || ! preg_match('/^[A-Z][A-Za-z0-9]*$/', $name)) {
+        if ($name === '' || ! preg_match('/^[A-Z][A-Za-z0-9]*\z/', $name)) {
             $this->components->error('The name must be letters and digits, such as Orders or RecentOrders.');
 
             return self::FAILURE;

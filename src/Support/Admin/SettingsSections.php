@@ -94,7 +94,7 @@ final class SettingsSections extends Registry
 
     protected function keyPattern(): string
     {
-        return '/^[a-z0-9]+(-[a-z0-9]+)*$/';
+        return '/^[a-z0-9]+(-[a-z0-9]+)*\z/';
     }
 
     protected function keyProblem(): string

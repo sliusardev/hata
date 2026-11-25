@@ -9,7 +9,6 @@ use Hata\Support\Content\Types\CategoriesType;
 use Hata\Support\Content\Types\PostsType;
 use Hata\Support\Content\Types\TagsType;
 use Hata\Support\Settings\SiteSettings;
-use Illuminate\Routing\Exceptions\UrlGenerationException;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
@@ -219,13 +218,13 @@ it('builds relative item addresses, so no request\'s host is remembered', functi
         ->and($item->url())->toStartWith('/');
 });
 
-it('does not hide a wrong route parameter', function () {
+it('does not hide a wrong route parameter in testing', function () {
     app(AdminMenu::class)
         ->group('shop', 'Shop', 50)
         ->add(new AdminMenuItem('shop.bad', 'Bad', 'star', 'admin.content.index', null, 'shop'));
     $user = User::factory()->withRole('super-admin')->create();
 
-    expect(fn () => app(AdminMenu::class)->for($user))->toThrow(UrlGenerationException::class);
+    expect(fn () => app(AdminMenu::class)->for($user))->toThrow(LogicException::class, 'shop.bad');
 });
 
 it('throws for an item in a group that was never declared', function () {

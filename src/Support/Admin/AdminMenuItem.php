@@ -6,7 +6,6 @@ use Closure;
 use Hata\Contracts\AdminUser;
 use Hata\Support\Admin\Registry\Entry;
 use Hata\Support\Admin\Registry\HasChanges;
-use Illuminate\Support\Facades\Gate;
 use WeakMap;
 
 /**
@@ -42,15 +41,7 @@ final readonly class AdminMenuItem implements Entry
 
     public function isVisibleTo(AdminUser $user): bool
     {
-        if ($this->permission === null) {
-            return true;
-        }
-
-        if ($this->permission instanceof Closure) {
-            return ($this->permission)($user);
-        }
-
-        return Gate::forUser($user)->allows($this->permission);
+        return app(AdminMenu::class)->allows($user, $this);
     }
 
     /**

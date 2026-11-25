@@ -157,9 +157,12 @@
         </flux:header>
 
         <!-- Desktop top bar -->
-        <flux:header class="h-16 border-b border-sidebar-border max-lg:hidden" data-test="admin-topbar">
-            @include('hata::partials.admin.topbar')
-        </flux:header>
+        @php($topbarItems = app(\Hata\Support\Admin\AdminTopbar::class)->for(auth()->user()))
+        @if ($topbarItems['start'] !== [] || $topbarItems['end'] !== [])
+            <flux:header class="h-16 border-b border-sidebar-border max-lg:hidden" data-test="admin-topbar">
+                @include('hata::partials.admin.topbar')
+            </flux:header>
+        @endif
 
         {{ $slot }}
 

@@ -53,6 +53,10 @@ class AdminRegistriesCommand extends Command
             $this->line('Unmatched: '.implode(', ', $report['unmatched']));
         }
 
+        foreach ($report['unchanged'] as $key => $problem) {
+            $this->line("Unchanged: [{$key}] {$problem}");
+        }
+
         if ($report['problems'] !== []) {
             $this->line('Left out:');
 

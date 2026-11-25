@@ -6,6 +6,7 @@ use Hata\Support\Admin\DashboardWidget;
 use Hata\Support\Admin\DashboardWidgets;
 use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
+use Tests\Fixtures\Widgets\BrokenTitleWidget;
 use Tests\Fixtures\Widgets\BrokenWidget;
 use Tests\Fixtures\Widgets\HelloWidget;
 
@@ -98,3 +99,23 @@ it('rejects an unknown width', function () {
 
     app(DashboardWidgets::class)->all();
 })->throws(LogicException::class, 'width');
+
+it('keeps the dashboard when a widget title throws in production', function () {
+    $this->app['env'] = 'production';
+    Log::spy();
+    Admin::dashboard()->add(new DashboardWidget('bad-title', BrokenTitleWidget::class));
+    $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
+
+    $this->get(route('admin.dashboard'))->assertOk();
+
+    Log::shouldHaveReceived('warning')->atLeast()->once();
+});
+
+it('renders a widget registered by its class name', function () {
+    Admin::dashboard()->add(new DashboardWidget('orders', HelloWidget::class, width: 'third'));
+    $this->actingAs(User::factory()->withPermissions(['admin.access'])->create());
+
+    $html = $this->get(route('admin.dashboard'))->assertOk()->getContent();
+
+    expect($html)->toContain('Hello-Title')->and(substr_count($html, 'data-test="dashboard-widget"'))->toBe(1);
+});

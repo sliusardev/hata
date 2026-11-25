@@ -34,6 +34,8 @@ Admin::dashboard()->remove('recent-changes');
 
 **Registration mistakes** (a bad key, an undefined route, a component Livewire cannot resolve, an unknown width or side, an item in an undeclared menu group) throw a `LogicException` naming the registry and the key in `local` and `testing`, so a module's own tests catch them. Elsewhere the entry is left out and one warning per message per process is logged. The menu checks the routes of every item, not only of those the user sees, so a mistake shows to the developer whoever is signed in.
 
+A `modify()` closure must return an entry of the same class with the same key (`$entry->with(...)` does). Anything else (another key, null, another type) is a registration mistake: it throws in `local` and `testing`; elsewhere the entry stays as it was and one warning is logged ("left unchanged").
+
 **No work at boot.** Registering stores objects; nothing (routes, components, translations) is resolved until a page reads the registry, and the registries make no queries.
 
 **Provider order.** `HataServiceProvider::register()` registers Hata's own entries in an application `booting` callback, which runs before any provider's `boot()`. A site's or module's `boot()` therefore always meets Hata's entries, and `remove()` and `modify()` work in any call order.
@@ -44,7 +46,7 @@ Admin::dashboard()->remove('recent-changes');
 
 `php artisan hata:install` writes `app/Providers/HataAdminServiceProvider.php` from `stubs/hata-admin-service-provider.stub` and lists it in `bootstrap/providers.php`. It is the site's file: every example in its `boot()` is commented out, the installer never overwrites it, and Hata never changes it again. The stub imports the classes its examples use; Pint may remove the imports while every example is commented out. A site installed before v0.4.0 runs `php artisan hata:install` again (it skips what is done) or copies the stub. A module registers in its own provider's `boot()` the same way.
 
-**`php artisan hata:admin`** prints, per registry, what is registered (key, order, permission, the route or component), the entries that were left out with their problem, and the `modify()` and `remove()` calls that matched nothing. It is read-only, never throws and logs nothing.
+**`php artisan hata:admin`** prints, per registry, what is registered (key, order, permission, the route or component), the entries that were left out with their problem, and the `modify()` and `remove()` calls that matched nothing. It is read-only, never throws (a check that fails is listed under "Left out:") and logs nothing. It lists the unmatched `modify()` and `remove()` calls and the refused `modify()` results ("Unchanged:"), but does not yet mark which entries a `modify()` or `remove()` changed (planned). Known gap: it does not report an admin menu item in an undeclared group or under a missing parent; those show up when the menu is built.
 
 **`php artisan make:dashboard-widget Orders [--width=third|half|full]`** writes `app/Livewire/Widgets/OrdersWidget.php` and `resources/views/livewire/widgets/orders.blade.php` (never over an existing file) and prints the line to add to `HataAdminServiceProvider`. It does not edit the provider: a printed line is easier to place by hand than a generated edit is to review.
 
@@ -68,7 +70,7 @@ Details, `AdminMenuItem` and the group API: `docs/specs/admin-menu.md`. Hata's o
 
 ## Top bar
 
-Desktop only (`lg` and up): a bar across the top of the content area, the height of the sidebar header. On a phone it is not shown (a second header row would cost space), and "View site" stays at the bottom of the sidebar there. Its items are plain links (no `wire:navigate`), so a link may leave the admin.
+Desktop only (`lg` and up): a bar across the top of the content area, the height of the sidebar header. On a phone it is not shown (a second header row would cost space), and "View site" stays at the bottom of the sidebar there. That mobile link is fixed markup, not a registry entry, so `Admin::topbar()->remove('view-site')` affects the desktop bar only. A bar with no visible item is not drawn at all. Its items are plain links (no `wire:navigate`), so a link may leave the admin.
 
 `TopbarItem` entries, two kinds:
 
@@ -135,6 +137,7 @@ Admin::dashboard()->add(new DashboardWidget('orders', \App\Livewire\Widgets\Orde
 Rules:
 
 - `title()` must stay cheap: the lazy placeholder calls it before `body()` runs.
+- Keep `title()` cheap (it runs in the dashboard's own request, for the placeholder too; a throwing `title()` is logged and shown empty outside `local` and `testing`) and `mount()` empty: do the work in `body()`. One bundled lazy request carries every widget, so an exception in `mount()` fails them all.
 - All data work belongs in `body()`; it runs after the dashboard has rendered. If it throws, the card shows "This widget could not be loaded" and the exception is logged; in `local` and `testing` the exception surfaces. A mistake in the Blade markup of the returned view is not turned into that card: Livewire renders the view inside the card, where it surfaces as an ordinary error.
 - A widget's cost is its own: state it (queries per render) and keep it constant, never per row.
 - Use Flux and the Tailwind classes Hata's build already contains, or your own assets through `Admin::assets()`; a site never runs Hata's build.

@@ -39,7 +39,7 @@ abstract class Widget extends Component
         }
 
         return view('hata::components.admin.widget-card', [
-            'title' => $this->title(),
+            'title' => $this->safeTitle(),
             'content' => $content,
             'failed' => $failed,
         ]);
@@ -47,6 +47,25 @@ abstract class Widget extends Component
 
     public function placeholder(): string
     {
-        return view('hata::components.admin.widget-card', ['title' => $this->title(), 'loading' => true])->render();
+        return view('hata::components.admin.widget-card', ['title' => $this->safeTitle(), 'loading' => true])->render();
+    }
+
+    /**
+     * The title for the card; a throwing `title()` must not blank the whole dashboard (the placeholders of every widget
+     * are rendered in the dashboard's own request), so outside local and testing it is empty and logged.
+     */
+    private function safeTitle(): string
+    {
+        try {
+            return $this->title();
+        } catch (Throwable $exception) {
+            if (app()->environment('local', 'testing')) {
+                throw $exception;
+            }
+
+            Log::warning('The dashboard widget ['.static::class.'] title failed: '.$exception->getMessage(), ['exception' => $exception]);
+
+            return '';
+        }
     }
 }

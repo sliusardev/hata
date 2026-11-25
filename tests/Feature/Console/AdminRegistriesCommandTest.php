@@ -1,6 +1,7 @@
 <?php
 
 use Hata\Admin;
+use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Admin\DashboardWidget;
 
 test('it lists Hata\'s own entries', function () {
@@ -29,5 +30,14 @@ test('it reports a broken entry instead of failing', function () {
     $this->artisan('hata:admin')
         ->expectsOutputToContain('Left out:')
         ->expectsOutputToContain('broken')
+        ->assertSuccessful();
+});
+
+test('it lists a menu item whose route needs a parameter it does not get', function () {
+    Admin::menu()->add(new AdminMenuItem('needs-param', 'Needs', 'home', 'admin.content.index', null, 'content'));
+
+    $this->artisan('hata:admin')
+        ->expectsOutputToContain('Left out:')
+        ->expectsOutputToContain('needs-param')
         ->assertSuccessful();
 });

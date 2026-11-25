@@ -3,7 +3,6 @@
 namespace Hata\Support\Install;
 
 use Hata\Hata;
-use Illuminate\Support\Facades\File;
 use ParseError;
 use stdClass;
 
