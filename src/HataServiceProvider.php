@@ -18,6 +18,8 @@ use Hata\Http\Middleware\EnsureRegistrationIsEnabled;
 use Hata\Http\Middleware\LookUpContent;
 use Hata\Http\Middleware\SetContentLocale;
 use Hata\Http\Middleware\SetLocale;
+use Hata\Livewire\Admin\Widgets\ContentWidget;
+use Hata\Livewire\Admin\Widgets\RecentChangesWidget;
 use Hata\Models\Entry;
 use Hata\Models\EntryGroup;
 use Hata\Models\Role;
@@ -29,6 +31,7 @@ use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Admin\AdminTopbar;
+use Hata\Support\Admin\DashboardWidget;
 use Hata\Support\Admin\DashboardWidgets;
 use Hata\Support\Admin\SettingsSection;
 use Hata\Support\Admin\SettingsSections;
@@ -107,6 +110,7 @@ class HataServiceProvider extends ServiceProvider
             $this->registerAdminMenu();
             $this->registerAdminTopbar();
             $this->registerSettingsSections();
+            $this->registerDashboardWidgets();
         });
         $this->app->singleton(DirectServing::class);
         $this->app->singleton(ContentLocales::class);
@@ -274,6 +278,25 @@ class HataServiceProvider extends ServiceProvider
     {
         $this->app->make(AdminTopbar::class)
             ->add(TopbarItem::link('view-site', 'hata::navigation.view_site', 'arrow-top-right-on-square', route: 'home', newTab: true, order: 100));
+    }
+
+    /**
+     * Hata's own dashboard widgets: shown to a user who may list at least one active content type.
+     */
+    private function registerDashboardWidgets(): void
+    {
+        // A namespaced name skips Livewire's explicit registrations, so the classes are answered as missing components.
+        $classes = [
+            'hata::admin.widgets.content' => ContentWidget::class,
+            'hata::admin.widgets.recent-changes' => RecentChangesWidget::class,
+        ];
+        Livewire::resolveMissingComponent(fn (string $name): ?string => $classes[$name] ?? null);
+
+        $anyType = ContentWidget::mayViewAnyType(...);
+
+        $this->app->make(DashboardWidgets::class)
+            ->add(new DashboardWidget('content', 'hata::admin.widgets.content', $anyType, 'third', 10))
+            ->add(new DashboardWidget('recent-changes', 'hata::admin.widgets.recent-changes', $anyType, 'half', 20));
     }
 
     /**
