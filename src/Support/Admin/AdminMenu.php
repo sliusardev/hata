@@ -15,8 +15,8 @@ use Symfony\Component\Routing\Exception\RouteNotFoundException;
  * provider's `boot()`, and `remove()` and `modify()` work whatever the order (see `Registry`); nothing is resolved until the sidebar
  * renders, so a route that does not exist (yet) cannot break the boot. A mistake in a registration (an item in a group
  * that was never declared, a parent that does not exist or a parent cycle, a route that is not defined) throws a
- * LogicException naming the item in the local and testing environments and when `app.debug` is on, so a module's own
- * tests catch it; in production the item is skipped and a warning is logged. Other errors, such as a missing route
+ * LogicException naming the item in the local and testing environments, so a module's own
+ * tests catch it; elsewhere the item is skipped and a warning is logged. Other errors, such as a missing route
  * parameter, are never swallowed. Bound as a singleton.
  *
  * @extends Registry<AdminMenuItem>

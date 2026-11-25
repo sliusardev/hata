@@ -65,8 +65,8 @@ ones). Children follow their parent in their own order. A child is shown even wh
 ## Mistakes in a registration
 
 An item in a group that was never declared, a parent that is not an item of the group, a parent cycle, or a route that
-is not defined (checked for every item, not only the ones the user sees) throws a `LogicException` naming the item, in the `local` and `testing` environments and when
-`app.debug` is on, so a module's own tests fail. In production the item is skipped and a warning is logged. Other
+is not defined (checked for every item, not only the ones the user sees) throws a `LogicException` naming the item, in the `local` and `testing` environments, so a module's own tests
+fail. Elsewhere the item is skipped and a warning is logged. Other
 errors (a missing route parameter, for one) are never swallowed.
 
 Tests: `tests/Feature/Admin/AdminMenuTest.php` (an explicit list of today's sidebar, visibility per kind of user,

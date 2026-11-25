@@ -17,7 +17,7 @@ Release 1 (v0.4.0) covers four registries: the sidebar menu, the desktop top bar
 | `modify($key, fn ($entry) => $entry->with(...))` | Changes an entry. Applied when the registry is read, in the order the calls were made, so it may precede the `add()` of the entry. |
 | `has($key)`, `find($key)` | Whether the key is registered and not removed; the entry with its modifications, or null. |
 | `all()` | Every valid entry by `order`, ties in insertion order, removals and modifications applied. |
-| `entriesFor($user)` | `all()` limited to what the user may see (each registry wraps it as `for($user)`). |
+| `entriesFor($user)` | `all()` limited to what the user may see (the top bar, the dashboard and the settings sections wrap it as `for($user)`; the menu's `for($user)` returns its groups instead). |
 
 ```php
 Admin::menu()->modify('media', fn (AdminMenuItem $item) => $item->with(order: 5));
@@ -83,7 +83,7 @@ Desktop only (`lg` and up): a bar across the top of the content area, the height
 
 ## Dashboard widgets
 
-`/admin` (`admin.dashboard`) renders the widgets the user may see in a 6-column grid. A `DashboardWidget(key, component, permission, width = 'third', order = 100)` cell takes 2, 3 or 6 columns for `third`, `half` and `full` from `md` up; below `md` every widget is full width. With no widget visible the page shows an empty state. The widget's `permission` is checked when the dashboard lists it; the component must still authorize anything sensitive it loads, because a Livewire request can name any component.
+`/admin` (`admin.dashboard`) renders the widgets the user may see in a 6-column grid. A `DashboardWidget(key, component, permission, width = 'third', order = 100)` cell takes 2, 3 or 6 columns for `third`, `half` and `full` from `md` up; below `md` every widget is full width. With no widget visible the page shows an empty state. A widget's `component` is a Livewire component name (`'widgets.orders'`, as the provider stub shows) or a class (`OrdersWidget::class`, as `make:dashboard-widget` prints). The widget's `permission` is checked when the dashboard lists it; the component must still authorize anything sensitive it loads, because a Livewire request can name any component.
 
 Widgets load lazily in one bundled request (Livewire 4 `lazy.bundle`): the page appears at once and N widgets cost one extra request, not N. A widget is a Livewire component extending `Hata\Livewire\Admin\Widget`, which gives the card frame, a placeholder of the card's shape and the error card.
 
