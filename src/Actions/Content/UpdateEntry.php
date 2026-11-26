@@ -2,6 +2,7 @@
 
 namespace Hata\Actions\Content;
 
+use Closure;
 use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
 use Hata\Exceptions\ProtectedActionException;
@@ -31,12 +32,16 @@ class UpdateEntry
      * a redirect): only a language of the site that its group does not have yet (in the trash either), and only a
      * record with nothing under it, as its descendants would stay in the old language.
      *
+     * `$alsoSave` is called with the saved record inside the same transaction, after it is written (a form's
+     * registered cards save there), so whatever it throws rolls the save back.
+     *
      * @param  array<string, mixed>  $data  The form data; validated here (EntryInput).
+     * @param  (Closure(Entry): void)|null  $alsoSave
      *
      * @throws ValidationException
      * @throws ProtectedActionException when the record is in the trash (it is restored first)
      */
-    public function handle(AdminUser $actor, Entry $entry, array $data, ?string $locale = null): Entry
+    public function handle(AdminUser $actor, Entry $entry, array $data, ?string $locale = null, ?Closure $alsoSave = null): Entry
     {
         Gate::forUser($actor)->authorize('update', $entry);
 
@@ -60,7 +65,7 @@ class UpdateEntry
         $input['new_terms'] = array_filter($input['new_terms'], fn (string $taxonomy): bool => $actor->can("{$taxonomy}.create"), ARRAY_FILTER_USE_KEY);
 
         try {
-            return DB::transaction(function () use ($entry, $type, $input, $locale, $moves): Entry {
+            return DB::transaction(function () use ($entry, $type, $input, $locale, $moves, $alsoSave): Entry {
                 $this->paths->lockForSave($entry, $input['parent'], $locale);
 
                 if ($moves) {
@@ -70,6 +75,10 @@ class UpdateEntry
                 }
 
                 $this->writer->save($entry, $type, $entry->group, $input);
+
+                if ($alsoSave !== null) {
+                    $alsoSave($entry);
+                }
 
                 return $entry;
             });

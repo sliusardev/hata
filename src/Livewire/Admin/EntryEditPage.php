@@ -72,6 +72,7 @@ abstract class EntryEditPage extends EntryFormPage
         $this->entryId = $entry->id;
         $this->boundEntry = $entry->loadMissing('group');
         $this->form->fillFromEntry($this->entry);
+        $this->mountExtensions($entry);
     }
 
     /**
@@ -216,8 +217,18 @@ abstract class EntryEditPage extends EntryFormPage
         // A record in the trash is read-only until it is restored.
         abort_if($this->entry->trashed(), 403);
 
+        if ($this->refusedByCards()) {
+            return;
+        }
+
         try {
-            $entry = $updateEntry->handle(Auth::user(), $this->entry, $this->form->data($this->contentType), $this->locale !== $this->openedLocale ? $this->locale : null);
+            $entry = $updateEntry->handle(
+                Auth::user(),
+                $this->entry,
+                $this->form->data($this->contentType),
+                $this->locale !== $this->openedLocale ? $this->locale : null,
+                alsoSave: fn (Entry $saved) => $this->saveExtensions($saved),
+            );
         } catch (ValidationException $exception) {
             $this->forgetUnsaved();
             $this->showErrors($exception);

@@ -42,6 +42,7 @@ new #[Layout('hata::layouts.app')] class extends EntryFormPage {
         }
 
         $this->locale = $locale;
+        $this->mountExtensions(null);
 
         $from = request()->query('from');
 
@@ -172,8 +173,12 @@ new #[Layout('hata::layouts.app')] class extends EntryFormPage {
             return;
         }
 
+        if ($this->refusedByCards()) {
+            return;
+        }
+
         try {
-            $entry = $createEntry->handle(Auth::user(), $this->contentType, $this->locale, $this->form->data($this->contentType), $source);
+            $entry = $createEntry->handle(Auth::user(), $this->contentType, $this->locale, $this->form->data($this->contentType), $source, alsoSave: fn (Entry $saved) => $this->saveExtensions($saved));
         } catch (ValidationException $exception) {
             $this->showErrors($exception);
 

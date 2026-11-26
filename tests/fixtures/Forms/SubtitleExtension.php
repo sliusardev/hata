@@ -1,0 +1,55 @@
+<?php
+
+namespace Tests\Fixtures\Forms;
+
+use Hata\Support\Admin\Forms\FormContext;
+use Hata\Support\Admin\Forms\FormExtension;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
+
+/**
+ * Test-only form card, as a module would write one: a subtitle kept in the module's own table.
+ */
+class SubtitleExtension extends FormExtension
+{
+    /**
+     * Each save() call: the record's key, the values and the transaction level it ran at.
+     *
+     * @var list<array{mixed, array<string, mixed>, int}>
+     */
+    public static array $saves = [];
+
+    public static bool $fail = false;
+
+    public static function register(): void
+    {
+        view()->addNamespace('form-fixtures', dirname(__DIR__, 3).'/workbench/resources/views/forms');
+    }
+
+    public function fill(?Model $record, FormContext $context): array
+    {
+        return ['text' => $record === null ? '' : (string) DB::table('entry_subtitles')->where('entry_id', $record->getKey())->value('subtitle')];
+    }
+
+    public function rules(FormContext $context): array
+    {
+        return ['text' => ['required', 'string', 'max:50']];
+    }
+
+    public function view(): string
+    {
+        return 'form-fixtures::subtitle';
+    }
+
+    public function save(Model $record, array $values, FormContext $context): void
+    {
+        self::$saves[] = [$record->getKey(), $values, DB::transactionLevel()];
+
+        DB::table('entry_subtitles')->updateOrInsert(['entry_id' => $record->getKey()], ['subtitle' => $values['text']]);
+
+        if (self::$fail) {
+            throw new RuntimeException('The subtitle could not be saved.');
+        }
+    }
+}

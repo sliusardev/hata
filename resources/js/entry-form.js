@@ -47,7 +47,8 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
         },
 
         /**
-         * The form's values without the rich text ones, as a string to compare.
+         * The form's values without the rich text ones, and the registered cards' values (`extensions`, outside
+         * the form object), as a string to compare.
          */
         snapshot() {
             const form = JSON.parse(JSON.stringify(this.$wire.form ?? {}));
@@ -55,7 +56,7 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
             delete form.body;
             editorModels.forEach((name) => delete form.fields?.[name]);
 
-            return JSON.stringify(form);
+            return JSON.stringify([form, this.$wire.extensions ?? {}]);
         },
 
         isDirty() {

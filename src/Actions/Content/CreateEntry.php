@@ -2,6 +2,7 @@
 
 namespace Hata\Actions\Content;
 
+use Closure;
 use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
 use Hata\Models\Entry;
@@ -33,11 +34,16 @@ class CreateEntry
      * those of published records in other languages, so the shared fields of the data are ignored. A new record
      * (no source) has a group of its own, and its creator sets them.
      *
+     * `$alsoSave` is called with the new record inside the same transaction, after it is written (a form's
+     * registered cards save there), so whatever it throws rolls the record back. It is not called when the group's
+     * existing record is returned instead.
+     *
      * @param  array<string, mixed>  $data  The form data; validated here (EntryInput).
+     * @param  (Closure(Entry): void)|null  $alsoSave
      *
      * @throws ValidationException
      */
-    public function handle(AdminUser $actor, ContentType $type, string $locale, array $data, ?Entry $source = null): Entry
+    public function handle(AdminUser $actor, ContentType $type, string $locale, array $data, ?Entry $source = null, ?Closure $alsoSave = null): Entry
     {
         Gate::forUser($actor)->authorize('create', [Entry::class, $type->key()]);
 
@@ -76,7 +82,7 @@ class CreateEntry
                 throw ValidationException::withMessages(['status' => __('hata::content.entry.publish_forbidden')]);
             }
 
-            return DB::transaction(function () use ($type, $locale, $source, $input): Entry {
+            return DB::transaction(function () use ($type, $locale, $source, $input, $alsoSave): Entry {
                 $this->paths->lockForSave(null, $input['parent'], $locale);
 
                 $group = $source !== null
@@ -85,6 +91,10 @@ class CreateEntry
 
                 $entry = new Entry(['entry_group_id' => $group->id, 'type' => $type->key(), 'locale' => $locale]);
                 $this->writer->save($entry, $type, $group, $input);
+
+                if ($alsoSave !== null) {
+                    $alsoSave($entry);
+                }
 
                 return $entry;
             });

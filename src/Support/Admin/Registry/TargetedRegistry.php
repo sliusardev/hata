@@ -26,7 +26,7 @@ abstract class TargetedRegistry
     /**
      * The targets that are not under `content`. Add a target here to open it to every targeted registry.
      */
-    public const PLAIN_TARGETS = ['users'];
+    public const PLAIN_TARGETS = ['users', 'profile', 'register'];
 
     /**
      * @var list<array{string, string, mixed}>
@@ -66,7 +66,7 @@ abstract class TargetedRegistry
             if ($this->validTarget($target)) {
                 $valid[] = $target;
             } else {
-                $this->report("The {$this->name()} target [{$target}] is not valid: use users, content.*, content.@records, content.@taxonomies or content.<type key>.");
+                $this->report("The {$this->name()} target [{$target}] is not valid: use ".implode(', ', static::PLAIN_TARGETS).', content.*, content.@records, content.@taxonomies or content.<type key>.');
             }
         }
 

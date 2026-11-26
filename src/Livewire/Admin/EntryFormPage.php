@@ -2,13 +2,16 @@
 
 namespace Hata\Livewire\Admin;
 
+use Hata\Livewire\Admin\Concerns\HasFormExtensions;
 use Hata\Livewire\Forms\EntryForm;
 use Hata\Models\Entry;
 use Hata\Models\Media;
+use Hata\Support\Admin\Forms\FormContext;
 use Hata\Support\Content\BodySanitizer;
 use Hata\Support\Content\ContentType;
 use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\EntryAuthors;
+use Hata\Support\Content\EntryInput;
 use Hata\Support\Content\EntryPaths;
 use Hata\Support\Content\Fields\RichText;
 use Hata\Support\Content\HomePage;
@@ -43,6 +46,8 @@ use Livewire\Component;
  */
 abstract class EntryFormPage extends Component
 {
+    use HasFormExtensions;
+
     #[Locked]
     public string $type = '';
 
@@ -424,16 +429,61 @@ abstract class EntryFormPage extends Component
     }
 
     /**
-     * Puts a save action's validation errors on the form's fields and tells the browser to scroll to the first.
+     * The form cards' target is the type's (`content.<type key>`, which also reads `content.*` and its group).
      */
-    protected function showErrors(ValidationException $exception): void
+    protected function formContext(): FormContext
     {
-        foreach ($exception->errors() as $key => $messages) {
+        return new FormContext('content.'.$this->type, $this->contentType, Auth::user(), $this->record() === null);
+    }
+
+    /**
+     * Whether a registered card refuses the save. Its errors are then shown together with those the form's own
+     * validation finds (run without writing anything), so one Save reports every problem; nothing is stored.
+     */
+    protected function refusedByCards(): bool
+    {
+        $errors = $this->extensionErrors();
+
+        if ($errors === []) {
+            return false;
+        }
+
+        try {
+            EntryInput::validate($this->contentType, $this->locale, $this->record(), $this->form->data($this->contentType));
+        } catch (ValidationException $exception) {
+            $this->addFormErrors($exception->errors());
+        }
+
+        foreach ($errors as $key => $messages) {
             foreach ($messages as $message) {
-                $this->addError("form.{$key}", $message);
+                $this->addError($key, $message);
             }
         }
 
         $this->dispatch('entry-form-invalid');
+
+        return true;
+    }
+
+    /**
+     * Puts a save action's validation errors on the form's fields and tells the browser to scroll to the first.
+     */
+    protected function showErrors(ValidationException $exception): void
+    {
+        $this->addFormErrors($exception->errors());
+
+        $this->dispatch('entry-form-invalid');
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $errors
+     */
+    private function addFormErrors(array $errors): void
+    {
+        foreach ($errors as $key => $messages) {
+            foreach ($messages as $message) {
+                $this->addError("form.{$key}", $message);
+            }
+        }
     }
 }

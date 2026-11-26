@@ -9,6 +9,9 @@
     - $localeChoices   the languages the language select offers (EntryFormPage::localeChoices()); with fewer than
                        two the language is shown as fixed.
 
+    The cards a site or module registers (Admin::formCards()) are drawn after Hata's own: `main` below the SEO card,
+    `side` at the end of the sidebar; their values are `extensions`, outside `form`.
+
     Everything the browser does without a request (the slug following the title, the address prefix, the search
     preview, the leave-page warning, Ctrl/Cmd+S) is the Alpine component `entryForm` (resources/js/entry-form.js).
 --}}
@@ -29,6 +32,7 @@
     $state = $entry?->state();
     $languageCodes = array_map(fn ($language) => $language->code, $languages);
     $present = collect($groupEntries)->whereIn('locale', $languageCodes);
+    $formCards = $this->formCards;
     $card = 'rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-700 dark:bg-zinc-900/40';
     $config = [
         'readonly' => $readOnly,
@@ -222,6 +226,10 @@
                         <flux:textarea wire:model="form.seo_description" :label="__('hata::content.form.seo.meta_description')" :placeholder="__('hata::content.form.seo.meta_description_placeholder')" :disabled="$readOnly" rows="2" resize="vertical" maxlength="500" />
                     </div>
                 </div>
+
+                @if ($formCards !== [])
+                    @include('hata::partials.admin.forms.cards', ['cards' => $formCards, 'area' => 'main', 'frame' => $card, 'values' => $this->extensions, 'livewire' => true, 'readOnly' => $readOnly])
+                @endif
             </div>
 
             {{-- Right: publication and what the record shares --}}
@@ -392,6 +400,10 @@
                         </div>
                     @endif
                 </div>
+                @endif
+
+                @if ($formCards !== [])
+                    @include('hata::partials.admin.forms.cards', ['cards' => $formCards, 'area' => 'side', 'frame' => $card, 'values' => $this->extensions, 'livewire' => true, 'readOnly' => $readOnly])
                 @endif
 
                 @if ($entry !== null && ! $readOnly && $abilities['delete'])

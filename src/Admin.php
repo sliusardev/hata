@@ -6,6 +6,7 @@ use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidgets;
+use Hata\Support\Admin\Forms\FormCards;
 use Hata\Support\Admin\Lists\BulkActions;
 use Hata\Support\Admin\Lists\RowActions;
 use Hata\Support\Admin\Lists\TableColumns;
@@ -77,6 +78,18 @@ final class Admin
     public static function bulkActions(string|array $targets): TargetScope
     {
         return app(BulkActions::class)->on($targets);
+    }
+
+    /**
+     * The cards a site or module adds to a form: `Admin::formCards('content.posts')->add(new FormCard(...))`; the
+     * targets are the entry forms (`content.*`, `content.@records`, `content.@taxonomies`, `content.<type key>`), the
+     * user form (`users`), the signed-in user's profile (`profile`) and registration (`register`).
+     *
+     * @param  string|list<string>  $targets
+     */
+    public static function formCards(string|array $targets): TargetScope
+    {
+        return app(FormCards::class)->on($targets);
     }
 
     public static function assets(): AdminAssets

@@ -35,6 +35,8 @@ use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidget;
 use Hata\Support\Admin\DashboardWidgets;
+use Hata\Support\Admin\Forms\FormCards;
+use Hata\Support\Admin\Forms\FormExtensions;
 use Hata\Support\Admin\Lists\BulkActions;
 use Hata\Support\Admin\Lists\ListContext;
 use Hata\Support\Admin\Lists\RowActions;
@@ -134,6 +136,8 @@ class HataServiceProvider extends ServiceProvider
         $this->app->singleton(TableFilters::class);
         $this->app->singleton(RowActions::class);
         $this->app->singleton(BulkActions::class);
+        $this->app->singleton(FormCards::class);
+        $this->app->singleton(FormExtensions::class);
         $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
             $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
         ));
