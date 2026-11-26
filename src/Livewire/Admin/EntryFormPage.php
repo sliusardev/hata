@@ -2,6 +2,8 @@
 
 namespace Hata\Livewire\Admin;
 
+use Flux\Flux;
+use Hata\Exceptions\FormCardFailed;
 use Hata\Livewire\Admin\Concerns\HasFormExtensions;
 use Hata\Livewire\Forms\EntryForm;
 use Hata\Models\Entry;
@@ -463,6 +465,34 @@ abstract class EntryFormPage extends Component
         $this->dispatch('entry-form-invalid');
 
         return true;
+    }
+
+    /**
+     * A card's `save()` failed and the save was rolled back: its validation messages go under the card's fields
+     * (a key the card's view does not show still appears in the danger toast); anything else is thrown as it was.
+     */
+    protected function showCardFailure(FormCardFailed $failure): void
+    {
+        $original = $failure->original();
+
+        if (! $original instanceof ValidationException) {
+            throw $original;
+        }
+
+        $messages = [];
+
+        foreach ($original->errors() as $key => $keyMessages) {
+            $path = str_starts_with($key, 'extensions.') || $failure->card === null ? $key : "extensions.{$failure->card}.{$key}";
+
+            foreach ($keyMessages as $message) {
+                $this->addError($path, $message);
+                $messages[] = $message;
+            }
+        }
+
+        Flux::toast(variant: 'danger', text: implode(' ', array_unique($messages)));
+
+        $this->dispatch('entry-form-invalid');
     }
 
     /**

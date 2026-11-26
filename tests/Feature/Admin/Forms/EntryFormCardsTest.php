@@ -4,9 +4,11 @@ use App\Models\User;
 use Hata\Admin;
 use Hata\Models\Entry;
 use Hata\Support\Admin\Forms\FormCard;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Tests\Fixtures\Forms\EmptyFillExtension;
 use Tests\Fixtures\Forms\SubtitleExtension;
 
 beforeEach(function () {
@@ -14,6 +16,8 @@ beforeEach(function () {
     SubtitleExtension::register();
     SubtitleExtension::$saves = [];
     SubtitleExtension::$fail = false;
+    SubtitleExtension::$duplicate = false;
+    SubtitleExtension::$invalid = null;
     $this->actingAs(User::factory()->withRole('editor')->create());
 });
 
@@ -164,4 +168,71 @@ test('a card whose extension is not a FormExtension, or whose area is unknown, i
     Admin::formCards('content.pages')->add(subtitleCard('broken', ['area' => 'footer']));
 
     expect(fn () => cardCreateForm())->toThrow('its area [footer] is not main or side');
+});
+
+test('a unique violation in a card\'s own table on create rolls back and surfaces as itself, never as a taken slug', function () {
+    Admin::formCards('content.pages')->add(subtitleCard());
+    SubtitleExtension::$duplicate = true;
+
+    $form = cardCreateForm()
+        ->set('form.title', 'About')->set('form.slug', 'about')
+        ->set('extensions.subtitle.text', 'Who we are');
+
+    expect(fn () => $form->call('save'))->toThrow(UniqueConstraintViolationException::class);
+
+    expect(Entry::query()->count())->toBe(0)
+        ->and(DB::table('entry_subtitles')->count())->toBe(0);
+});
+
+test('a unique violation in a card\'s own table on edit rolls the record back and surfaces as itself', function () {
+    Admin::formCards('content.pages')->add(subtitleCard());
+    $entry = Entry::factory()->published()->create(['type' => 'pages', 'title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    SubtitleExtension::$duplicate = true;
+
+    $form = cardEditForm($entry)
+        ->set('form.title', 'Changed')
+        ->set('extensions.subtitle.text', 'Who we are');
+
+    expect(fn () => $form->call('save'))->toThrow(UniqueConstraintViolationException::class);
+
+    expect($entry->fresh()->title)->toBe('About')
+        ->and(DB::table('entry_subtitles')->count())->toBe(0);
+});
+
+test('an exception in a card\'s save on edit rolls the record back', function () {
+    Admin::formCards('content.pages')->add(subtitleCard());
+    $entry = Entry::factory()->published()->create(['type' => 'pages', 'title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    SubtitleExtension::$fail = true;
+
+    $form = cardEditForm($entry)->set('form.title', 'Changed')->set('extensions.subtitle.text', 'Who we are');
+
+    expect(fn () => $form->call('save'))->toThrow(RuntimeException::class, 'The subtitle could not be saved.');
+
+    expect($entry->fresh()->title)->toBe('About')
+        ->and(DB::table('entry_subtitles')->count())->toBe(0);
+});
+
+test('a ValidationException from a card\'s save on edit is shown under the card and writes nothing', function () {
+    Admin::formCards('content.pages')->add(subtitleCard());
+    $entry = Entry::factory()->published()->create(['type' => 'pages', 'title' => 'About', 'slug' => 'about', 'path' => 'about']);
+    SubtitleExtension::$invalid = ['text' => 'This subtitle is used elsewhere.', 'sku' => 'The SKU is taken.'];
+
+    $form = cardEditForm($entry)
+        ->set('form.title', 'Changed')
+        ->set('extensions.subtitle.text', 'Who we are')
+        ->call('save')
+        ->assertHasErrors(['extensions.subtitle.text', 'extensions.subtitle.sku'])
+        ->assertHasNoErrors(['form.slug', 'form.text', 'form.sku'])
+        ->assertDispatched('entry-form-invalid')
+        ->assertNotDispatched('entry-saved');
+
+    expect($form->html())->toContain('This subtitle is used elsewhere.')
+        ->and($entry->fresh()->title)->toBe('About')
+        ->and(DB::table('entry_subtitles')->count())->toBe(0);
+});
+
+test('a card whose fill() names no field still holds every field its rules name', function () {
+    Admin::formCards('content.pages')->add(subtitleCard('empty', ['extension' => EmptyFillExtension::class]));
+
+    cardCreateForm()->assertSet('extensions', ['empty' => ['text' => null]]);
 });

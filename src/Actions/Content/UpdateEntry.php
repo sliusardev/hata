@@ -5,6 +5,7 @@ namespace Hata\Actions\Content;
 use Closure;
 use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
+use Hata\Exceptions\FormCardFailed;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
 use Hata\Models\EntryGroup;
@@ -33,12 +34,13 @@ class UpdateEntry
      * record with nothing under it, as its descendants would stay in the old language.
      *
      * `$alsoSave` is called with the saved record inside the same transaction, after it is written (a form's
-     * registered cards save there), so whatever it throws rolls the save back.
+     * registered cards save there), so whatever it throws rolls the save back; it comes out as a `FormCardFailed`.
      *
      * @param  array<string, mixed>  $data  The form data; validated here (EntryInput).
      * @param  (Closure(Entry): void)|null  $alsoSave
      *
      * @throws ValidationException
+     * @throws FormCardFailed when `$alsoSave` throws
      * @throws ProtectedActionException when the record is in the trash (it is restored first)
      */
     public function handle(AdminUser $actor, Entry $entry, array $data, ?string $locale = null, ?Closure $alsoSave = null): Entry
@@ -77,7 +79,8 @@ class UpdateEntry
                 $this->writer->save($entry, $type, $entry->group, $input);
 
                 if ($alsoSave !== null) {
-                    $alsoSave($entry);
+                    // Wrapped, so the catches below never take a card's failure for the record's own.
+                    FormCardFailed::guard(fn () => $alsoSave($entry));
                 }
 
                 return $entry;

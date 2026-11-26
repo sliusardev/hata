@@ -183,6 +183,10 @@ new #[Layout('hata::layouts.app')] class extends EntryFormPage {
             $this->showErrors($exception);
 
             return;
+        } catch (Hata\Exceptions\FormCardFailed $failure) {
+            $this->showCardFailure($failure);
+
+            return;
         }
 
         $this->finished = true;

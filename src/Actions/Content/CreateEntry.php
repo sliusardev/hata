@@ -5,6 +5,7 @@ namespace Hata\Actions\Content;
 use Closure;
 use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
+use Hata\Exceptions\FormCardFailed;
 use Hata\Models\Entry;
 use Hata\Models\EntryGroup;
 use Hata\Support\Content\ContentType;
@@ -35,13 +36,14 @@ class CreateEntry
      * (no source) has a group of its own, and its creator sets them.
      *
      * `$alsoSave` is called with the new record inside the same transaction, after it is written (a form's
-     * registered cards save there), so whatever it throws rolls the record back. It is not called when the group's
-     * existing record is returned instead.
+     * registered cards save there), so whatever it throws rolls the record back; it comes out as a `FormCardFailed`.
+     * It is not called when the group's existing record is returned instead.
      *
      * @param  array<string, mixed>  $data  The form data; validated here (EntryInput).
      * @param  (Closure(Entry): void)|null  $alsoSave
      *
      * @throws ValidationException
+     * @throws FormCardFailed when `$alsoSave` throws
      */
     public function handle(AdminUser $actor, ContentType $type, string $locale, array $data, ?Entry $source = null, ?Closure $alsoSave = null): Entry
     {
@@ -93,7 +95,8 @@ class CreateEntry
                 $this->writer->save($entry, $type, $group, $input);
 
                 if ($alsoSave !== null) {
-                    $alsoSave($entry);
+                    // Wrapped, so the catches below never take a card's failure for the record's own.
+                    FormCardFailed::guard(fn () => $alsoSave($entry));
                 }
 
                 return $entry;

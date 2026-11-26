@@ -6,6 +6,7 @@ use Hata\Support\Admin\Forms\FormContext;
 use Hata\Support\Admin\Forms\FormExtension;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
@@ -21,6 +22,18 @@ class SubtitleExtension extends FormExtension
     public static array $saves = [];
 
     public static bool $fail = false;
+
+    /**
+     * Writes the subtitle twice, so the module's own unique index refuses it.
+     */
+    public static bool $duplicate = false;
+
+    /**
+     * Messages save() throws as a ValidationException (keys as the card gives them), or null.
+     *
+     * @var array<string, string>|null
+     */
+    public static ?array $invalid = null;
 
     public static function register(): void
     {
@@ -47,6 +60,14 @@ class SubtitleExtension extends FormExtension
         self::$saves[] = [$record->getKey(), $values, DB::transactionLevel()];
 
         DB::table('entry_subtitles')->updateOrInsert(['entry_id' => $record->getKey()], ['subtitle' => $values['text']]);
+
+        if (self::$duplicate) {
+            DB::table('entry_subtitles')->insert(['entry_id' => $record->getKey(), 'subtitle' => $values['text']]);
+        }
+
+        if (self::$invalid !== null) {
+            throw ValidationException::withMessages(self::$invalid);
+        }
 
         if (self::$fail) {
             throw new RuntimeException('The subtitle could not be saved.');

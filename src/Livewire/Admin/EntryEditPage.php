@@ -7,6 +7,7 @@ use Hata\Actions\Content\RestoreEntry;
 use Hata\Actions\Content\TrashEntry;
 use Hata\Actions\Content\UnlinkTranslation;
 use Hata\Actions\Content\UpdateEntry;
+use Hata\Exceptions\FormCardFailed;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
 use Hata\Support\Content\ContentTypes;
@@ -237,6 +238,11 @@ abstract class EntryEditPage extends EntryFormPage
         } catch (ProtectedActionException $exception) {
             $this->forgetUnsaved();
             Flux::toast(variant: 'danger', text: $exception->getMessage());
+
+            return;
+        } catch (FormCardFailed $failure) {
+            $this->forgetUnsaved();
+            $this->showCardFailure($failure);
 
             return;
         }

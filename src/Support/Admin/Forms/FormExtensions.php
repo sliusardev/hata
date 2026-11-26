@@ -2,6 +2,7 @@
 
 namespace Hata\Support\Admin\Forms;
 
+use Hata\Exceptions\FormCardFailed;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\View\ComponentAttributeBag;
 
@@ -25,7 +26,10 @@ final class FormExtensions
         $values = [];
 
         foreach ($cards as $card) {
-            $values[$card->key] = $this->extension($card)->fill($record, $context);
+            $extension = $this->extension($card);
+
+            // Every field the rules name is there, so the card's values are an object in the browser from the start.
+            $values[$card->key] = [...array_fill_keys($this->fields($extension, $context), null), ...$extension->fill($record, $context)];
         }
 
         return $values;
@@ -71,9 +75,12 @@ final class FormExtensions
     /**
      * Calls each card's `save()` with the values of the fields its rules name (a field it names that was not posted
      * is null). Call it inside the form's transaction, after the record is saved and once the values are valid.
+     * Whatever a card throws comes out as a `FormCardFailed` naming the card.
      *
      * @param  list<FormCard>  $cards
      * @param  array<array-key, mixed>  $values  by card key
+     *
+     * @throws FormCardFailed
      */
     public function save(array $cards, Model $record, array $values, FormContext $context): void
     {
@@ -82,12 +89,11 @@ final class FormExtensions
             $posted = is_array($values[$card->key] ?? null) ? $values[$card->key] : [];
             $own = [];
 
-            foreach (array_keys($extension->rules($context)) as $field) {
-                $name = explode('.', (string) $field)[0];
-                $own[$name] = $posted[$name] ?? null;
+            foreach ($this->fields($extension, $context) as $field) {
+                $own[$field] = $posted[$field] ?? null;
             }
 
-            $extension->save($record, $own, $context);
+            FormCardFailed::guard(fn () => $extension->save($record, $own, $context), $card->key);
         }
     }
 
@@ -105,6 +111,19 @@ final class FormExtensions
             'name' => "extensions[{$cardKey}][{$field}]",
             'value' => old("extensions.{$cardKey}.{$field}"),
         ]);
+    }
+
+    /**
+     * The top-level fields a card's rules name (`tags.*` names `tags`).
+     *
+     * @return list<string>
+     */
+    private function fields(FormExtension $extension, FormContext $context): array
+    {
+        return array_values(array_unique(array_map(
+            fn (int|string $field): string => explode('.', (string) $field)[0],
+            array_keys($extension->rules($context)),
+        )));
     }
 
     private function extension(FormCard $card): FormExtension

@@ -27,7 +27,10 @@ abstract class FormExtension
 
     /**
      * Validation rules by field name, relative to the card (`['birthday' => ['nullable', 'date']]`). Only the fields
-     * named here reach `save()`, whatever the browser posts.
+     * named here reach `save()`, whatever the browser posts; the filter is by top-level field (`tags.*` lets the whole
+     * `tags` value through, checked by its rules). Every named field is in the card's values from the start (null
+     * when `fill()` leaves it out). Validate here, not in `save()`: a check in `rules()` is shown with the form's own
+     * errors before anything is written.
      *
      * @return array<string, mixed>
      */
@@ -43,7 +46,8 @@ abstract class FormExtension
 
     /**
      * Stores the validated values of the fields `rules()` names, inside the form's transaction; on create `$record` is
-     * the new record.
+     * the new record. Anything it throws rolls the record back: a `ValidationException` (keys relative to the card)
+     * is shown under the card's fields, anything else is thrown as it is.
      *
      * @param  array<string, mixed>  $values
      */
