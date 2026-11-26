@@ -14,6 +14,7 @@ use Hata\Console\Commands\MoveMediaDisk;
 use Hata\Console\Commands\OptimizeMedia;
 use Hata\Console\Commands\PruneContentTrash;
 use Hata\Console\Commands\PruneMediaDeletions;
+use Hata\Console\Commands\ReindexContentSearch;
 use Hata\Console\Commands\SyncPermissions;
 use Hata\Contracts\AdminUser;
 use Hata\Http\Middleware\EnsureRegistrationIsEnabled;
@@ -248,6 +249,7 @@ class HataServiceProvider extends ServiceProvider
         $this->commands([
             AdminRegistriesCommand::class,
             CheckContentAddresses::class,
+            ReindexContentSearch::class,
             CreateAdmin::class,
             InstallCommand::class,
             MakeContentType::class,

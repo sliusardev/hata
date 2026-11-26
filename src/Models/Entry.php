@@ -67,6 +67,11 @@ class Entry extends Model implements UsesMedia
     use HasFactory, HasSearchIndex, SoftDeletes;
 
     /**
+     * How much of one field's text goes into the search index.
+     */
+    public const int SEARCH_TEXT_LIMIT = 1000;
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -78,9 +83,56 @@ class Entry extends Model implements UsesMedia
         ];
     }
 
+    /**
+     * What the admin list's search looks in: the title and the slug, and what the type adds (its excerpt, the
+     * fields it declares searchable; a shared field's value comes from the group). One column, so a search costs
+     * the same whatever a type adds.
+     */
     protected function searchIndexSource(): string
     {
-        return $this->title.' '.$this->slug;
+        $parts = [$this->title.' '.$this->slug];
+        $type = app(ContentTypes::class)->find((string) $this->type);
+
+        if ($type === null) {
+            return $parts[0];
+        }
+
+        if ($type->searchesExcerpt()) {
+            $parts[] = (string) $this->excerpt;
+        }
+
+        $shared = null;
+
+        foreach ($type->searchableFields() as $field) {
+            if ($field->isShared) {
+                $shared ??= $this->getAttribute('entry_group_id') === null ? [] : ($this->group->shared ?? []);
+                $stored = $shared[$field->name] ?? null;
+            } else {
+                $stored = $this->fields[$field->name] ?? null;
+            }
+
+            $parts[] = mb_substr($field->searchText($stored), 0, self::SEARCH_TEXT_LIMIT);
+        }
+
+        return implode(' ', array_filter($parts, fn (string $part): bool => $part !== ''));
+    }
+
+    /**
+     * Stores the search index again when it no longer matches the record (a shared field changed in another
+     * translation, a field was made searchable), without touching the record's dates. Says whether it changed.
+     */
+    public function refreshSearchIndex(): bool
+    {
+        $index = mb_strtolower($this->searchIndexSource());
+
+        if ($index === $this->search_index) {
+            return false;
+        }
+
+        static::withTrashed()->whereKey($this->getKey())->toBase()->update(['search_index' => $index]);
+        $this->setAttribute('search_index', $index)->syncOriginalAttribute('search_index');
+
+        return true;
     }
 
     /**

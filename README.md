@@ -186,7 +186,7 @@ built-in catalogue. The installer stores the interface default as the first one.
   the site's seeders, clear or rebuild the caches, read and delete log files; every run is journaled. If "Rebuild
   caches" ever leaves the site unable to open, delete the files in `bootstrap/cache/` (keep `.gitignore`).
 
-Commands: `hata:install`, `admin:create`, `permissions:sync [--prune]`, `make:content-type`, `content:check`,
+Commands: `hata:install`, `admin:create`, `permissions:sync [--prune]`, `make:content-type`, `content:check`, `content:reindex-search`,
 `content:prune-trash`, `media:optimize`, `media:move-disk`, `media:prune-deleted`.
 
 ## Extending Hata

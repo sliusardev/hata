@@ -114,6 +114,33 @@ abstract class ContentType
     }
 
     /**
+     * The parts of the common form the admin list's search also looks in, next to the title and the slug:
+     * `excerpt` is the only one (the body is too large for it). A site's type returns `['excerpt']`. A field of the
+     * type's own is searched when it is declared `->searchable()`.
+     *
+     * @return list<string>
+     */
+    protected function searchable(): array
+    {
+        return [];
+    }
+
+    public function searchesExcerpt(): bool
+    {
+        return in_array('excerpt', $this->searchable(), true) && $this->supports('excerpt');
+    }
+
+    /**
+     * The type's own fields whose values are kept in a record's search index.
+     *
+     * @return list<Field>
+     */
+    public function searchableFields(): array
+    {
+        return array_values(array_filter($this->fields(), fn (Field $field): bool => $field->isSearchable));
+    }
+
+    /**
      * Where the type's translations live: empty for a site's or a module's type (`content.types.<key>.*` in the
      * site's own lang files), `hata::` for the types Hata ships.
      */

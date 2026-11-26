@@ -13,6 +13,8 @@ abstract class Field
 
     public bool $isRequired = false;
 
+    public bool $isSearchable = false;
+
     public ?string $labelKey = null;
 
     final public function __construct(public readonly string $name) {}
@@ -51,6 +53,26 @@ abstract class Field
         $this->isShared = true;
 
         return $this;
+    }
+
+    /**
+     * The admin list's search also finds a record by this field's value: it is kept in the record's `search_index`
+     * with the title and the slug, so searching costs no more than before. Records stored earlier get it on their
+     * next save, or all at once with `php artisan content:reindex-search`.
+     */
+    public function searchable(): static
+    {
+        $this->isSearchable = true;
+
+        return $this;
+    }
+
+    /**
+     * What a stored value adds to the search index: text and numbers as they are, nothing for other kinds.
+     */
+    public function searchText(mixed $stored): string
+    {
+        return is_string($stored) || is_int($stored) || is_float($stored) ? (string) $stored : '';
     }
 
     public function required(): static

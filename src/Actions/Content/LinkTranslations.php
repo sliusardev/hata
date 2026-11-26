@@ -68,6 +68,11 @@ class LinkTranslations
         Entry::withTrashed()->whereKey($theirs->id)->toBase()->update(['entry_group_id' => $mine->entry_group_id]);
         EntryGroup::query()->whereKey([$mine->entry_group_id, $left])->toBase()->update(['updated_at' => now()]);
 
+        // The record now carries its new group's shared values: where one of them is searched, its index follows.
+        if (array_filter($entry->type()->searchableFields(), fn ($field): bool => $field->isShared) !== []) {
+            Entry::withTrashed()->with('group')->find($theirs->id)?->refreshSearchIndex();
+        }
+
         // Only a group that is really empty goes (the foreign key would take a record added meanwhile with it).
         EntryGroup::deleteEmptied([$left]);
     }

@@ -89,6 +89,15 @@ class EntryWriter
         }
 
         $sharedWritten = $this->saveShared($group, $type, $input['fields']);
+
+        // A shared field that is searched belongs to every translation's index, this record's included: it was
+        // saved before the group was.
+        if ($sharedWritten && array_filter($type->searchableFields(), fn ($field): bool => $field->isShared) !== []) {
+            $entry->setRelation('group', $group)->refreshSearchIndex();
+
+            Entry::withTrashed()->where('entry_group_id', $group->id)->whereKeyNot($entry->id)->get()
+                ->each(fn (Entry $translation) => $translation->setRelation('group', $group)->refreshSearchIndex());
+        }
         $this->syncUsages($entry, $group, $type, $sharedWritten);
         $this->syncTerms($entry, $type, $input['terms'], $input['new_terms']);
     }

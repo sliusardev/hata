@@ -35,6 +35,18 @@ class RichText extends Field
         return is_string($stored) ? $stored : '';
     }
 
+    /**
+     * Searched by its text, without the markup.
+     */
+    public function searchText(mixed $stored): string
+    {
+        if (! is_string($stored)) {
+            return '';
+        }
+
+        return trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags(str_replace('<', ' <', $stored)), ENT_QUOTES | ENT_HTML5)));
+    }
+
     public function view(): string
     {
         return 'rich-text';

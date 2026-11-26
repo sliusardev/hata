@@ -159,6 +159,21 @@ cached. The command only writes files; it runs no migration and writes nothing t
 `MediaFile`, `Gallery`) is built with `Field::make($name)` and chained `label($key)`, `shared()` (the value is
 the same in every language of a record group) and `required()`. `Select` adds `options()`.
 
+**Searchable fields.** `searchable()` on a field makes the admin list's search find a record by that field's value:
+`Text::make('sku')->searchable()`. The value is kept in the record's `search_index` next to the title and the slug
+(`Entry::searchIndexSource()`), so the search stays one `LIKE` on one column whatever a type adds, works the same on
+SQLite, MySQL and PostgreSQL, and never queries the JSON `fields` column (decision 57). What a field adds is
+`Field::searchText()`: text and numbers as they are, a `RichText` by its text without the markup, nothing for the
+other kinds (toggle, file, gallery; a `Select` by its stored value, not its label); at most 1000 characters per
+field (`Entry::SEARCH_TEXT_LIMIT`). A type also searches the excerpt by returning `['excerpt']` from its protected
+`searchable()` (the body is never indexed: it is too large). A shared field is in the index of every translation:
+saving it in one refreshes the others (`Entry::refreshSearchIndex()`, which writes only the column and leaves
+`updated_at` alone), and so does linking a record into another group. The index is written on save, so records
+stored before a field became searchable are found by it only after their next save or after
+`php artisan content:reindex-search` (`ReindexContentSearch`: every record, trashed ones too, in chunks of 500,
+writing only those whose index changed; safe to run again). Not built: search rules that add conditions to the
+query (for a module's data in its own table), and a button for the reindex on the maintenance page.
+
 | Method | Meaning |
 |---|---|
 | `rules()` | validation rules for the value (`required` or `nullable`, then the kind's own) |
@@ -470,7 +485,7 @@ then Media; the group shows when any of them or `media.view` holds.
   of the listed languages, one query per select, at most 300 each; a value that is not a term of that taxonomy is
   dropped, and changing the language clears them). A taxonomy whose `hasListFilter()` returns false has no select
   (its terms still show in the column).
-- Filters: search (`search_index`, title and slug, case-insensitive with Cyrillic; the term is cut at 200 characters,
+- Filters: search (`search_index`: title, slug and what the type declares searchable, case-insensitive with Cyrillic; the term is cut at 200 characters,
   `SEARCH_MAX`, in `mount()` and `updatedSearch()`, and the input has `maxlength="200"`); the list's language ("All languages", the
   default, then every language added to the site, a switched-off one marked "off"). The language select and the row's language codes
   are absent on a site with one language.
