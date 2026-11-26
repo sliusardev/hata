@@ -124,6 +124,19 @@ class Entry extends Model implements UsesMedia
     }
 
     /**
+     * Loads the image a public page shows: one query when the record has one and its type has the `image` part, else
+     * none. A type with the part switched off keeps the stored id, and its `image` is null.
+     */
+    public function loadPublicImage(): void
+    {
+        if ($this->image_id === null) {
+            return;
+        }
+
+        $this->type()->supports('image') ? $this->load('image') : $this->setRelation('image', null);
+    }
+
+    /**
      * Every record of the group, this one included (trashed ones excluded). Safe to eager load.
      *
      * @return HasMany<Entry, $this>

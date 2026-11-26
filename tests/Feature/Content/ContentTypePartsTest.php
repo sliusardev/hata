@@ -3,6 +3,7 @@
 use App\Models\User;
 use Hata\Enums\EntryStatus;
 use Hata\Models\Entry;
+use Hata\Models\Media;
 use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\Types\CategoriesType;
 use Hata\Support\Content\Types\PagesType;
@@ -18,7 +19,6 @@ beforeEach(function () {
         'content_locales' => [['code' => 'en', 'active' => true]],
         'content_default_locale' => 'en',
     ]);
-
 });
 
 /**
@@ -81,14 +81,51 @@ test('a subclass of the posts type keeps its key and permissions, adds a field a
 
 test('with one part off the form, the list, the public page and the head render', function (string $part) {
     $admin = useLeanPosts([$part]);
-    $entry = leanPost();
+    $image = Media::factory()->create();
+    $entry = leanPost(['image_id' => $image->id]);
 
     Livewire::test('hata::admin.content.create', ['type' => 'posts'])->assertOk();
     Livewire::test('hata::admin.content.edit', ['type' => 'posts', 'entry' => $entry])->assertOk();
     Livewire::test('hata::admin.content.index', ['type' => 'posts'])->assertOk();
 
-    $this->get('/posts/hello')->assertOk();
+    $page = $this->get('/posts/hello')->assertOk();
+    $list = $this->get('/posts')->assertOk()->assertSee('Hello');
+
+    // A part that is off is off on the public pages too: the stored value is kept, never printed.
+    if ($part === 'image') {
+        $page->assertDontSee($image->url(), escape: false)->assertDontSee('og:image', escape: false);
+        $list->assertDontSee($image->thumbUrl() ?? $image->url(), escape: false);
+    } else {
+        $page->assertSee($image->url(), escape: false)->assertSee('og:image', escape: false);
+        $list->assertSee($image->thumbUrl() ?? $image->url(), escape: false);
+    }
+
+    $part === 'body' ? $page->assertDontSee('The body text') : $page->assertSee('The body text');
+    expect($entry->fresh()->image_id)->toBe($image->id)->and($entry->fresh()->body)->toBe('<p>The body text</p>');
 })->with(PARTS);
+
+test('without body, seo and excerpt the head has no description from the body', function () {
+    useLeanPosts(['body', 'seo', 'excerpt']);
+    leanPost();
+
+    $this->get('/posts/hello')->assertOk()->assertDontSee('The body text')->assertDontSee('<meta name="description"', escape: false);
+});
+
+test('a new record of a type without authors, and a new term, carry their creator', function () {
+    app(ContentTypes::class)->register(new CategoriesType);
+    $admin = useLeanPosts(['author']);
+
+    Livewire::withQueryParams(['locale' => 'en'])->test('hata::admin.content.create', ['type' => 'posts'])
+        ->set('form.title', 'Fresh')->set('form.slug', 'fresh')
+        ->call('save')->assertHasNoErrors();
+
+    Livewire::withQueryParams(['locale' => 'en'])->test('hata::admin.content.create', ['type' => 'categories'])
+        ->set('form.title', 'News')->set('form.slug', 'news')
+        ->call('save')->assertHasNoErrors();
+
+    expect(Entry::query()->where('type', 'posts')->where('path', 'fresh')->firstOrFail()->author_id)->toBe($admin->id)
+        ->and(Entry::query()->where('type', 'categories')->where('slug', 'news')->firstOrFail()->author_id)->toBe($admin->id);
+});
 
 test('with one part off a save keeps the stored value of that part', function (string $part) {
     $admin = useLeanPosts([$part]);

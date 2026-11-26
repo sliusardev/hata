@@ -86,7 +86,7 @@ class ContentRouter
      * type), the address a redirect leads to (only to a record the viewer may see), or null. Takes the lookup
      * LookUpContent already made, else makes it. Then one query for the record's translations (the public ones, or
      * all of them for a viewer who may edit the type; none on a
-     * one-language site) and one for its image when it has one.
+     * one-language site) and one for its image when it has one and its type shows images.
      */
     public function resolve(string $locale, string $path, ?AdminUser $viewer, ?ContentLookup $lookup = null): ?ContentMatch
     {
@@ -128,9 +128,7 @@ class ContentRouter
             ]);
         }
 
-        if ($entry->image_id !== null) {
-            $entry->load('image');
-        }
+        $entry->loadPublicImage();
 
         return ContentMatch::entry($entry, $preview);
     }

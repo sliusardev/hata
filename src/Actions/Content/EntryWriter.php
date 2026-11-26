@@ -44,8 +44,9 @@ class EntryWriter
             'published_at' => $input['published_at'] ?? ($input['status'] === EntryStatus::Published ? now() : null),
         ]);
 
-        // A part the type has switched off is not written: a stored value stays as it is.
-        if ($type->supports('author')) {
+        // A part the type has switched off is not written: a stored value stays as it is. A new record still gets its
+        // creator, whatever the type shows (a term, a type without authors), as before the parts could be switched off.
+        if ($type->supports('author') || ! $entry->exists) {
             $entry->author_id = $input['author_id'];
         }
 

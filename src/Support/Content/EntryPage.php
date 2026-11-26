@@ -45,7 +45,7 @@ class EntryPage
             ->setOgTitle($type->supports('seo') && filled($entry->seo_title) ? (string) $entry->seo_title : $entry->title)
             ->setDescription($this->description($entry, $type))
             ->setCanonical(self::withPage($canonical ?? $entry->url(), $records?->currentPage() ?? 1))
-            ->setImage($taxonomy ? null : $entry->image)
+            ->setImage($taxonomy || ! $type->supports('image') ? null : $entry->image)
             ->setType($taxonomy || $type->hierarchical() ? 'website' : 'article')
             ->setNoindex($preview);
 
@@ -53,7 +53,8 @@ class EntryPage
             'entry' => $entry,
             'records' => $records,
             'terms' => $this->termsOf($entry),
-            'body' => $this->renderer->render($entry->body),
+            // A part the type has switched off is not printed; its stored value is kept.
+            'body' => $this->renderer->render($type->supports('body') ? $entry->body : null),
             'galleries' => $this->galleries($entry),
             'preview' => $preview,
             'languageOff' => $languageOff,
@@ -67,7 +68,7 @@ class EntryPage
 
     /**
      * The text the head describes the page with: the SEO description when the type has SEO, else the excerpt when it
-     * has one, else the body (the head cuts it down).
+     * has one, else the body when it has one (the head cuts it down).
      */
     private function description(Entry $entry, ContentType $type): ?string
     {
@@ -79,7 +80,7 @@ class EntryPage
             return $entry->excerpt;
         }
 
-        return $entry->body;
+        return $type->supports('body') ? $entry->body : null;
     }
 
     /**

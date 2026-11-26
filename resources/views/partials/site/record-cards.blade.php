@@ -9,7 +9,7 @@
         @foreach ($records as $record)
             <li>
                 <a href="{{ $record->url() }}" class="group block">
-                    @if ($record->image?->isImage())
+                    @if ($record->type()->supports('image') && $record->image?->isImage())
                         <img src="{{ $record->image->thumbUrl() ?? $record->image->url() }}" alt="{{ $record->image->altFor(app()->getLocale()) }}" loading="lazy" decoding="async" class="mb-3 aspect-[3/2] w-full rounded-xl bg-zinc-100 object-cover dark:bg-zinc-800">
                     @endif
                     <h2 class="text-lg font-semibold leading-snug text-zinc-900 group-hover:underline dark:text-white">{{ $record->title }}</h2>

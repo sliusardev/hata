@@ -33,7 +33,8 @@ class HomePage
 
     /**
      * The record of the pages type in the chosen record's group and the language, in any state (the caller checks
-     * `isPublic()`). One query, by a subquery on the group, and one for its image when it has one.
+     * `isPublic()`). One query, by a subquery on the group, and one for its image when it has one and its type shows
+     * images.
      */
     public function recordFor(string $locale): ?Entry
     {
@@ -53,9 +54,7 @@ class HomePage
             ->where('entry_group_id', fn ($query) => $query->select('entry_group_id')->from('entries')->where('id', $id))
             ->first();
 
-        if ($record?->image_id !== null) {
-            $record->load('image');
-        }
+        $record?->loadPublicImage();
 
         return $this->records[$locale] = $record;
     }
