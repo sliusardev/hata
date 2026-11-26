@@ -25,7 +25,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
     $timezone = config('hata.admin.timezone');
     $trashDays = (int) config('hata.content.trash_days');
     $homeGroupId = $this->homeGroupId;
-    $selectable = $abilities['edit'] || $abilities['delete'];
+    $selectable = $abilities['edit'] || $abilities['delete'] || $this->listBulkActions !== [];
     $listContext = $this->listContext();
     $checkbox = 'size-4 cursor-pointer rounded accent-zinc-800 dark:accent-white';
 @endphp
@@ -301,6 +301,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                             <flux:button size="sm" variant="danger" icon="trash" x-on:click="$wire.confirmBulk('trash')" data-test="bulk-trash">{{ __('hata::content.list.actions.trash') }}</flux:button>
                         @endif
                     @endif
+                    @include('hata::partials.admin.lists.bulk-actions')
                     <flux:button size="sm" variant="ghost" x-on:click="$wire.selected = []">{{ __('hata::content.list.bulk.clear') }}</flux:button>
                 </div>
             </div>

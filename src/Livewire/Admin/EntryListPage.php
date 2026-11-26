@@ -121,14 +121,6 @@ abstract class EntryListPage extends Component
     public bool $showDeleteModal = false;
 
     /**
-     * The ids of the rows picked with the checkboxes (strings, as the checkboxes send them). Cleared whenever the
-     * rows change; the bulk actions use only those that are records of this type.
-     *
-     * @var list<string>
-     */
-    public array $selected = [];
-
-    /**
      * What the bulk dialog asks about: `trash` or `delete` for the picked rows, `empty` for the whole trash.
      */
     #[Locked]
@@ -597,14 +589,6 @@ abstract class EntryListPage extends Component
         abort_unless($user instanceof AdminUser, 403);
 
         return $user;
-    }
-
-    /**
-     * @return list<int>
-     */
-    protected function selectedIds(): array
-    {
-        return array_values(array_unique(array_filter(array_map(intval(...), $this->selected), fn (int $id): bool => $id > 0)));
     }
 
     /**

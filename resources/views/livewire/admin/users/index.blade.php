@@ -49,12 +49,19 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
 
     public function updatedSearch(): void
     {
+        $this->selected = [];
         $this->resetPage();
     }
 
     public function updatedRole(): void
     {
+        $this->selected = [];
         $this->resetPage();
+    }
+
+    public function updatedPaginators(): void
+    {
+        $this->selected = [];
     }
 
     public function clearFilters(): void
@@ -62,6 +69,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
         $this->search = '';
         $this->role = '';
         $this->filters = [];
+        $this->selected = [];
         $this->resetPage();
     }
 
@@ -111,6 +119,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
             $this->sortDirection = 'asc';
         }
 
+        $this->selected = [];
         $this->resetPage();
     }
 
@@ -208,7 +217,16 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     }
 }; ?>
 
-<section class="w-full space-y-6">
+@php
+    $selectable = $this->listBulkActions !== [];
+    $checkbox = 'size-4 cursor-pointer rounded accent-zinc-800 dark:accent-white';
+@endphp
+
+<section class="w-full space-y-6" @if ($selectable) x-data="{
+        pageIds() { return [...$el.querySelectorAll('[data-row-check]')].map((box) => box.value) },
+        allPicked() { const ids = this.pageIds(); return ids.length > 0 && ids.every((id) => $wire.selected.includes(id)) },
+        pickAll(on) { $wire.selected = on ? this.pageIds() : [] },
+    }" @endif>
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('hata::users.index.title') }}</flux:heading>
@@ -255,6 +273,11 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     @else
         <flux:table :paginate="$this->users">
             <flux:table.columns>
+                @if ($selectable)
+                    <flux:table.column class="w-8">
+                        <input type="checkbox" class="{{ $checkbox }}" x-bind:checked="allPicked()" x-on:change="pickAll($event.target.checked)" aria-label="{{ __('hata::common.bulk.select_all') }}" data-test="select-all" />
+                    </flux:table.column>
+                @endif
                 <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">{{ __('hata::users.index.columns.user') }}</flux:table.column>
                 @foreach ($this->listColumns as $column)
                     @include('hata::partials.admin.lists.column-header', ['column' => $column, 'sortBy' => $sortBy, 'direction' => $sortDirection])
@@ -266,6 +289,11 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                 @php($listContext = $this->listContext())
                 @foreach ($this->users as $user)
                     <flux:table.row :key="$user->id">
+                        @if ($selectable)
+                            <flux:table.cell class="w-8">
+                                <input type="checkbox" class="{{ $checkbox }}" value="{{ $user->id }}" x-model="$wire.selected" data-row-check aria-label="{{ __('hata::common.bulk.select', ['title' => $user->name]) }}" data-test="select-user-{{ $user->id }}" />
+                            </flux:table.cell>
+                        @endif
                         <flux:table.cell>
                             <div class="flex items-center gap-3">
                                 <flux:avatar size="sm" :name="$user->name" :initials="$user->initials()" />
@@ -302,6 +330,17 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                 @endforeach
             </flux:table.rows>
         </flux:table>
+
+        @if ($selectable)
+            <div x-cloak x-show="$wire.selected.length > 0" class="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" data-test="bulk-bar">
+                <span class="text-sm font-medium text-zinc-900 dark:text-white">{{ __('hata::common.bulk.selected') }} <span class="tabular-nums" x-text="$wire.selected.length"></span></span>
+
+                <div class="flex flex-wrap items-center gap-2 sm:ms-auto">
+                    @include('hata::partials.admin.lists.bulk-actions')
+                    <flux:button size="sm" variant="ghost" x-on:click="$wire.selected = []">{{ __('hata::common.bulk.clear') }}</flux:button>
+                </div>
+            </div>
+        @endif
     @endif
 
     <x-hata::confirm-modal

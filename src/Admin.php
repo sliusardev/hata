@@ -6,6 +6,7 @@ use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidgets;
+use Hata\Support\Admin\Lists\BulkActions;
 use Hata\Support\Admin\Lists\RowActions;
 use Hata\Support\Admin\Lists\TableColumns;
 use Hata\Support\Admin\Lists\TableFilters;
@@ -66,6 +67,16 @@ final class Admin
     public static function rowActions(string|array $targets): TargetScope
     {
         return app(RowActions::class)->on($targets);
+    }
+
+    /**
+     * The buttons of a list's bulk bar: `Admin::bulkActions('users')->add(new BulkAction(...))`; the targets are the columns' targets.
+     *
+     * @param  string|list<string>  $targets
+     */
+    public static function bulkActions(string|array $targets): TargetScope
+    {
+        return app(BulkActions::class)->on($targets);
     }
 
     public static function assets(): AdminAssets

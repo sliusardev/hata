@@ -5,6 +5,8 @@ namespace Hata\Livewire\Admin\Concerns;
 use Closure;
 use Flux\Flux;
 use Hata\Contracts\AdminUser;
+use Hata\Support\Admin\Lists\BulkAction;
+use Hata\Support\Admin\Lists\BulkActions;
 use Hata\Support\Admin\Lists\ListContext;
 use Hata\Support\Admin\Lists\RowAction;
 use Hata\Support\Admin\Lists\RowActions;
@@ -28,6 +30,8 @@ use Livewire\Attributes\Url;
  * @property-read array<string, array<array-key, string>> $listFilterOptions
  * @property-read list<RowAction> $listRowActions
  * @property-read RowAction|null $pendingRowAction
+ * @property-read list<BulkAction> $listBulkActions
+ * @property-read BulkAction|null $pendingBulkAction
  */
 trait HasListExtensions
 {
@@ -49,6 +53,22 @@ trait HasListExtensions
     public ?int $rowActionId = null;
 
     public bool $showRowActionModal = false;
+
+    /**
+     * The ids of the rows picked with the checkboxes (strings, as the checkboxes send them). Cleared whenever the
+     * rows change; a bulk action gets only those that are records of the list's view.
+     *
+     * @var list<string>
+     */
+    public array $selected = [];
+
+    /**
+     * The bulk action a dialog waits for a confirmation of.
+     */
+    #[Locked]
+    public ?string $bulkActionKey = null;
+
+    public bool $showBulkActionModal = false;
 
     abstract protected function listContext(): ListContext;
 
@@ -164,6 +184,7 @@ trait HasListExtensions
 
     public function updatedFilters(): void
     {
+        $this->selected = [];
         $this->resetPage();
     }
 
@@ -258,6 +279,124 @@ trait HasListExtensions
             $this->rowActionId = null;
             unset($this->pendingRowAction);
         }
+    }
+
+    /**
+     * The registered bulk actions this list shows in its tab, for the signed-in user. When there are none, the list
+     * draws no checkboxes and no bar of its own.
+     *
+     * @return list<BulkAction>
+     */
+    #[Computed]
+    public function listBulkActions(): array
+    {
+        return app(BulkActions::class)->for(Auth::user(), $this->listContext());
+    }
+
+    /**
+     * The bulk action the confirmation dialog is open for.
+     */
+    #[Computed]
+    public function pendingBulkAction(): ?BulkAction
+    {
+        foreach ($this->listBulkActions as $action) {
+            if ($action->key === $this->bulkActionKey) {
+                return $action;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Opens the shared dialog when the action asks first (a confirmation text or `danger`), else runs it.
+     */
+    public function confirmBulkAction(string $key): void
+    {
+        $action = $this->bulkActionNamed($key);
+
+        if (! $action->asksFirst()) {
+            $this->runBulkAction($key);
+
+            return;
+        }
+
+        $this->bulkActionKey = $key;
+        $this->showBulkActionModal = true;
+    }
+
+    /**
+     * Runs what the dialog was opened for.
+     */
+    public function runPendingBulkAction(): void
+    {
+        abort_if($this->bulkActionKey === null, 404);
+
+        $this->runBulkAction($this->bulkActionKey);
+    }
+
+    /**
+     * Runs a bulk action once, on the selected records: the action must be visible in this list for this user (404),
+     * and the records are loaded through `recordQuery()`, so an id outside the view is dropped, never handed over.
+     */
+    public function runBulkAction(string $key): void
+    {
+        $action = $this->bulkActionNamed($key);
+        $user = $this->rowActionUser();
+        $ids = $this->selectedIds();
+
+        $records = $ids === [] ? $this->recordQuery()->getModel()->newCollection() : $this->recordQuery()->whereKey($ids)->get();
+
+        $this->closeBulkAction();
+        $this->selected = [];
+
+        if ($records->isEmpty()) {
+            return;
+        }
+
+        $message = app($action->handler)($records, $user);
+
+        if (is_string($message) && $message !== '') {
+            Flux::toast(variant: 'success', text: $message);
+        }
+
+        $this->forgetList();
+    }
+
+    /**
+     * Forgets the pending bulk action when its dialog closes (Cancel included).
+     */
+    public function updatedShowBulkActionModal(bool $open): void
+    {
+        if (! $open) {
+            $this->closeBulkAction();
+        }
+    }
+
+    /**
+     * @return list<int>
+     */
+    protected function selectedIds(): array
+    {
+        return array_values(array_unique(array_filter(array_map(intval(...), $this->selected), fn (int $id): bool => $id > 0)));
+    }
+
+    private function closeBulkAction(): void
+    {
+        $this->showBulkActionModal = false;
+        $this->bulkActionKey = null;
+        unset($this->pendingBulkAction);
+    }
+
+    private function bulkActionNamed(string $key): BulkAction
+    {
+        foreach ($this->listBulkActions as $action) {
+            if ($action->key === $key) {
+                return $action;
+            }
+        }
+
+        abort(404);
     }
 
     private function rowActionNamed(string $key): RowAction

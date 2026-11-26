@@ -35,6 +35,7 @@ use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidget;
 use Hata\Support\Admin\DashboardWidgets;
+use Hata\Support\Admin\Lists\BulkActions;
 use Hata\Support\Admin\Lists\ListContext;
 use Hata\Support\Admin\Lists\RowActions;
 use Hata\Support\Admin\Lists\TableColumn;
@@ -132,6 +133,7 @@ class HataServiceProvider extends ServiceProvider
         $this->app->singleton(TableColumns::class);
         $this->app->singleton(TableFilters::class);
         $this->app->singleton(RowActions::class);
+        $this->app->singleton(BulkActions::class);
         $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
             $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
         ));

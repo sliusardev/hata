@@ -15,6 +15,14 @@ return [
         'view' => 'View',
     ],
 
+    'bulk' => [
+        'selected' => 'Selected:',
+        'clear' => 'Clear selection',
+        'select_all' => 'Select every user on the page',
+        'select' => 'Select ":title"',
+        'confirm' => 'Run this on the selected record?|Run this on the :count selected records?',
+    ],
+
     'filters' => [
         'all' => 'All',
     ],
