@@ -27,7 +27,7 @@ type, fields, a taxonomy) is in the README, section "Content types". Design: `do
 | `taxonomyOf()` | the keys of the types this type is a taxonomy of (`['posts']`); empty for an ordinary type. `isTaxonomy()` tells whether it names any |
 | `hasListFilter()` | for a taxonomy: whether the list of its types has a filter by its terms (true by default) |
 | `without()` (protected, default `[]`) | the parts of the common form the type does not use: `body`, `image`, `publication`, `author`, `excerpt`, `seo` (a site's type returns e.g. `['author', 'excerpt']`; `make:content-type` writes an empty one with the list) |
-| `supports($feature)` | whether a record has a part: not in `without()`; for a taxonomy only `excerpt` and `seo` (a term is a name, an address and a description) and only when not in `without()` |
+| `supports($feature)` | whether a record has a part: not in `without()`; for a taxonomy only `excerpt` and `seo` (a term is a name, an address and a description) and only when not in `without()`. A subclass that overrode `supports()` should return its list from `without()` instead |
 | `perPage()` | admin list page size, 20 by default |
 | `permission($action)` | `"{key}.{action}"` |
 | `assertValidBase($locale)` | throws `InvalidArgumentException` when `base($locale)` is neither null nor one segment matching `EntrySlug::FORMAT` (`blog/news`, `/blog`, `Blog` and `''` are refused): `Entry::url()` would build an address the content route never matches |
@@ -330,7 +330,7 @@ box shows a skeleton; if it fails, a message asks to reload.
 | `published_at` | nullable date, read in the site's display timezone (`hata.admin.timezone`) and returned in UTC (decision 38) |
 | `excerpt` / `seo_title` / `seo_description` | at most 1000 / 255 / 500; trimmed, empty becomes null |
 
-A part a type switches off (`without()`) is absent from the form, has no validation rule and is never written: `EntryWriter` leaves the stored value of `author_id`, `image_id`, `excerpt`, the SEO texts or the body as it is. A type without `publication` always saves as published. The public page follows: the head's description is the SEO description when the type has `seo`, else the excerpt when it has one, else the body; the SEO title (`Entry::documentTitle()`, the share title) counts only with `seo`; cards and the term page print an excerpt only for a type that has `excerpt`. A site hides a kit part by subclassing the kit type and listing the subclass in `config/hata.php` in its place (same key, so records, permissions and addresses stay).
+A part a type switches off (`without()`) is absent from the form, has no validation rule and is never written: `EntryWriter` leaves the stored value of `author_id`, `image_id`, `excerpt`, the SEO texts or the body as it is. A type without `publication` always saves as published. The public page follows: the head's description is the SEO description when the type has `seo`, else the excerpt when it has one, else the body; the SEO title (`Entry::documentTitle()`, the share title) counts only with `seo`; cards and the term page print an excerpt only for a type that has `excerpt`. A site hides a kit part by subclassing the kit type, overriding `without()` and listing the subclass in `config/hata.php` in its place (same key, so records, permissions and addresses stay). A switched-off part keeps its stored value, so switching it on again brings it back.
 | `body` | nullable string of at most `EntryInput::BODY_MAX_BYTES` (1 000 000 bytes, under the sanitizer's cut), so a long body is a field error, never cut |
 | `fields.<name>` | each field's own `rules()` |
 
@@ -487,6 +487,12 @@ then Media; the group shows when any of them or `media.view` holds.
   language listed, each language's tree follows the other in the site's order of languages; rows are
   indented by `depth()` only on the All tab with no search (a status tab or a search can
   hide a row's parent, and a child would be indented under nothing).
+- **Extending the list.** The columns after the title, the filters after the list's own, the "⋮" items and the bulk bar are registry entries
+  aimed at `content.*`, `content.@records`, `content.@taxonomies` or `content.<type key>` (`Admin::columns()`, `filters()`,
+  `rowActions()`, `bulkActions()`; `docs/specs/admin-extensions.md`). Hata's own columns (terms, records, status, author, date, removal)
+  are registered on `content.*` and can be hidden or reordered per type. A registered sort is flat (the tree order returns with "Tree order"),
+  tab counts ignore registered filters as they ignore the search, and a registered row or bulk action is not shown in the Trash tab unless its
+  `visibleIn` says so. A list costs the same queries for 1 and 20 rows (`AssertsListQueries`).
 - Row: thumbnail (`thumbUrl()` of the image, else a neutral block; fixed 40 px), the title linking to the edit page,
   the address (`url(false)`), the language codes of the group (the translation
   chips, below; in the Trash tab the record's own code instead), the Status column (a badge for every record:
@@ -622,6 +628,11 @@ error instead of creating a record outside the group. Save calls
   fields) and the excerpt; a "Details" card with `localFields()` when the type has any; the "Search engines" card with a
   live preview (address; title: the SEO title alone, else the title, " - " and the site name, the rule of
   `Entry::documentTitle()`; description falling back to the excerpt) and the SEO title and description.
+- **Form cards.** A site or module adds cards to the form with `Admin::formCards('content.posts')->add(new FormCard(...))` (`area: 'main'` below
+  the SEO card, `'side'` at the end of this column; `docs/specs/admin-extensions.md`). Their values are the page's `$extensions`, validated with
+  the form and saved by `CreateEntry`/`UpdateEntry` inside their transaction after the record; an exception in a card's `save()` rolls the record
+  back, and when `CreateEntry` finds the group already has a record in that language, the cards are not saved. The type's `without()` removes
+  Hata's own parts (body, image, publication, author, excerpt, SEO) from the form.
 - **Right column**: "Publication" (status Draft/Published, date and time as `datetime-local` in `hata.admin.timezone` with
   the timezone named under it; a hint when Published with a future date, and when Published without a date); a user
   without the type's `edit` sees the status fixed to Draft with a line that an editor publishes it. "Language and
@@ -937,6 +948,8 @@ answers `User-agent: *` / `Disallow:` and, when the sitemap is on, `Sitemap: <ur
 ([package](package.md)). `sitemap.xml` and `robots.txt` are reserved slugs.
 
 ## Tests
+
+`tests/Feature/Admin/Lists/ContentColumnsTest.php`, `tests/Feature/Admin/Forms/EntryFormCardsTest.php` and `tests/Feature/Content/ContentTypePartsTest.php` cover the registered columns, the form cards and `without()`. In the terms column the `data-test="term-records-<id>"` marker sits on an inner span, no longer on the cell.
 
 `tests/Feature/Seo` (`PageMetaFallbackTest`, `HeadTagsTest`, `SitemapTest`, `RobotsTest`),
 `tests/Feature/Content/HomePageTest.php`, and the `SeoRoutesOff` suite (both routes switched off before the routes

@@ -26,6 +26,7 @@ Admin group (`routes/admin.php`): `auth, verified, can:admin.access`. Components
 - Roles are eager loaded (`with('roles')`).
 - Deleting goes through `<x-hata::confirm-modal>` with the user's name. The menu item is hidden when deletion isn't allowed.
 
+- **Extension points** (`docs/specs/admin-extensions.md`, target `users`): the columns after the name (email 10, roles 20, language 30, created 40 are Hata's own registry entries), filters after the role filter, "⋮" items after Edit and Delete, and bulk actions with row checkboxes (shown only when a bulk action is visible to the actor) are added from a site. A registered sort never replaces the whitelist: an unknown or hidden `sortBy` falls back to the default. **A bulk handler receives whoever was selected, including super admins and the actor**, so it applies `AccessRules` itself. A row action's permission is checked per user row and must not query.
 - The "last super admin" rule in the list is decided from one count of super admins per render (`AccessRules::superAdminCount()`, passed to `userDeletionDenial()`), not a query per super-admin row.
 
 ## Form (create / edit)
@@ -44,6 +45,7 @@ Livewire Form object `Hata\Livewire\Forms\UserForm`, shared partial `partials/ad
 - Roles the actor can't assign are disabled, with an explanation.
 - After saving: redirect to the list plus a toast (`Toast::success`).
 - A protection-rule violation shows up as the `form.roles` error.
+- **Form cards** (target `users`, `docs/specs/admin-extensions.md`): a site's cards are drawn after the form's own blocks in one column and validated and saved with the form. `CreateUser`/`UpdateUser` call each card's `save()` with the user inside their transaction after the roles are synced, so a `ProtectedActionException` or a card's exception rolls everything back and no card value is stored. A card's `ValidationException` is shown under its fields.
 
 ## Actions (`src/Actions/Users`)
 

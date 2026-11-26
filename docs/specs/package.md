@@ -86,6 +86,14 @@ Hata's `/sitemap.xml` and `/robots.txt` routes for a site that serves its own fi
 so set them before the routes load). The first two are stored by Site settings. `content.home_page` is the chosen home
 page's record id, also stored by Site settings.
 
+### What changed for v0.5.0 (admin extension points, release 2)
+
+- New targeted registries (`docs/specs/admin-extensions.md`): `Admin::columns()`, `filters()`, `rowActions()`, `bulkActions()` and `formCards()`, aimed at `users`, `profile`, `register`, `content.*`, `content.@records`, `content.@taxonomies` or `content.<type key>`. The `HataAdminServiceProvider` stub has a commented example of each (the file is the site's and is not rewritten: copy the examples from `vendor/sliusardev/hata/stubs/hata-admin-service-provider.stub`).
+- The lists' columns are registry entries now (`users`: email, roles, locale, created_at; `content.*`: taxonomies, records, status, author, date, removal). A site that overrode nothing is unaffected; a site that overrode a list's Blade view in `resources/views/vendor/hata/` stops receiving its fixes (as before) and must look at the new `partials/admin/lists/` markup. The users list gained a "Clear filters" button in its no-results state.
+- `ContentType::supports()` now also answers `excerpt` and `seo`, and `without()` is the way to switch parts of the form off (`body`, `image`, `publication`, `author`, `excerpt`, `seo`); a switched-off part keeps its stored value. A type subclass that overrides `supports()` should move to `without()`.
+- Markup: `data-test="term-records-<id>"` moved from the cell to an inner span of the terms list's records column.
+- `php artisan hata:admin` prints one table per target that received a call.
+
 ### What changed for v0.4.0 (admin extension points)
 
 - The admin extension points share one base (`docs/specs/admin-extensions.md`): `Hata\Admin::menu()`, `topbar()`,
@@ -250,7 +258,9 @@ register through it.
   (`->group()`, `->add(new AdminMenuItem(...))`; `docs/specs/admin-menu.md`), `Admin::topbar()`, `Admin::dashboard()`
   (widgets; `php artisan make:dashboard-widget`), `Admin::settings()` and `Admin::assets()`. Every registry has
   `add`, `remove`, `modify`, `has` and `find`, and `php artisan hata:admin` lists what they hold
-  (`docs/specs/admin-extensions.md`).
+  (`docs/specs/admin-extensions.md`). Aimed at a target (`users`, `content.*`, `content.posts`, `profile`, `register`):
+  `Admin::columns()`, `filters()`, `rowActions()`, `bulkActions()` and `formCards()`; a content type switches parts of
+  its form off with `without()`.
 - **Admin routes:** middleware `web, auth, verified, can:admin.access`, prefix `config('hata.admin.path')`, names
   `admin.`; each page authorizes its own permission. Full Livewire pages use `#[Layout('hata::layouts.app')]`, Blade
   pages `<x-hata::layouts.app :title="…">`.

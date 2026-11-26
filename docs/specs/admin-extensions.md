@@ -4,7 +4,7 @@
 
 A site or a module adds, reorders, changes and hides parts of the admin **without editing or overriding a Hata file**, so `composer update` keeps bringing fixes. Hata's own parts are registered through the same API, so a site can reorder or hide any of them by key.
 
-Release 1 (v0.4.0) covers four registries: the sidebar menu, the desktop top bar, the dashboard widgets and the site settings sections. Admin assets (`AdminAssets`) stay as they were. Release 2 (planned): list columns, filters, row and bulk actions, form cards and content type fields; see the design.
+Release 1 (v0.4.0) covers four registries: the sidebar menu, the desktop top bar, the dashboard widgets and the site settings sections. Release 2 (v0.5.0) adds five **targeted** registries (list columns, list filters, row actions, bulk actions and form cards, see "Targets") and the content type's `without()`. Admin assets (`AdminAssets`) stay as they were.
 
 ## The shared base
 
@@ -42,11 +42,11 @@ A `modify()` closure must return an entry of the same class with the same key (`
 
 ## `Hata\Admin` and the site's provider
 
-`Hata\Admin` is a plain class with static methods that resolve the singletons (not a facade, so PHPStan and the IDE see the real types): `Admin::menu()`, `Admin::topbar()`, `Admin::dashboard()`, `Admin::settings()`, `Admin::assets()`. `app(AdminMenu::class)` and the other old spellings keep working.
+`Hata\Admin` is a plain class with static methods that resolve the singletons (not a facade, so PHPStan and the IDE see the real types): `Admin::menu()`, `Admin::topbar()`, `Admin::dashboard()`, `Admin::settings()`, `Admin::assets()` and, aimed at a target, `Admin::columns($targets)`, `Admin::filters($targets)`, `Admin::rowActions($targets)`, `Admin::bulkActions($targets)` and `Admin::formCards($targets)`. `app(AdminMenu::class)` and the other old spellings keep working.
 
 `php artisan hata:install` writes `app/Providers/HataAdminServiceProvider.php` from `stubs/hata-admin-service-provider.stub` and lists it in `bootstrap/providers.php`. It is the site's file: every example in its `boot()` is commented out, the installer never overwrites it, and Hata never changes it again. The stub imports the classes its examples use; Pint may remove the imports while every example is commented out. A site installed before v0.4.0 runs `php artisan hata:install` again (it skips what is done) or copies the stub. A module registers in its own provider's `boot()` the same way.
 
-**`php artisan hata:admin`** prints, per registry, what is registered (key, order, permission, the route or component), the entries that were left out with their problem, and the `modify()` and `remove()` calls that matched nothing. It is read-only, never throws (a check that fails is listed under "Left out:") and logs nothing. It lists the unmatched `modify()` and `remove()` calls and the refused `modify()` results ("Unchanged:"), but does not yet mark which entries a `modify()` or `remove()` changed (planned). Known gap: it does not report an admin menu item in an undeclared group or under a missing parent; those show up when the menu is built.
+**`php artisan hata:admin`** prints, per registry, what is registered (key, order, permission, the route or component), the entries that were left out with their problem, and the `modify()` and `remove()` calls that matched nothing ("Unmatched:"). For each targeted registry it prints one table per target that received a call (`List columns [users]`, `List columns [content.posts]`, `Form cards [profile]`, …), listing what that list or form resolves, Hata's own entries included, so a site sees what a narrower target inherited from `content.*`. It also lists the refused `modify()` results ("Unchanged:"). It is read-only, never throws (a check that fails is listed under "Left out:") and logs nothing. It does not yet mark which entries a `modify()` or `remove()` changed (planned). Known gap: it does not report an admin menu item in an undeclared group or under a missing parent; those show up when the menu is built. A target nobody called is not listed, so Hata's own `content.*` and `users` columns are what a fresh site sees.
 
 **`php artisan make:dashboard-widget Orders [--width=third|half|full]`** writes `app/Livewire/Widgets/OrdersWidget.php` and `resources/views/livewire/widgets/orders.blade.php` (never over an existing file) and prints the line to add to `HataAdminServiceProvider`. It does not edit the provider: a printed line is easier to place by hand than a generated edit is to review.
 
@@ -158,40 +158,203 @@ The registry and the section contract are in `docs/specs/site-settings.md` and `
 
 ## Tests
 
-`tests/Feature/Admin/` holds the base (`Registry/`), the menu, the top bar, the dashboard and Hata's widgets; the installer's provider step is in `tests/Feature/Install/`. A module tests its own registrations the same way: a mistake in a registration throws in `testing`.
+`tests/Feature/Admin/` holds the base and the targeted base (`Registry/`), the menu, the top bar, the dashboard and Hata's widgets, `Lists/` (columns, filters, row actions, bulk actions) and `Forms/` (entry and user form cards); the profile and registration cards are in `tests/Feature/Settings/ProfileCardsTest.php` and `tests/Feature/Auth/RegistrationCardsTest.php`, the type's parts in `tests/Feature/Content/ContentTypePartsTest.php`; the installer's provider step, whose test checks that every class the stub imports exists and that the stub with its examples uncommented is valid PHP, is in `tests/Feature/Install/`. A module tests its own registrations the same way: a mistake in a registration throws in `testing`, and a list's cost is asserted with `AssertsListQueries` (below).
 
-## List columns (release 2)
+## Targets (release 2)
 
-`Admin::columns('users')` (or `content.*`, `content.posts`, …; `TableColumns`, a `TargetedRegistry`) adds, hides (`remove()`) or changes (`modify()`) the columns of a list between the fixed first column and the "⋮" column. A `TableColumn` has a `key` (also the `?sortBy=` value; underscores allowed), a `label` (translation key or plain text), a `value` (a `Closure(Model, ListContext)` returning a string or `Htmlable`, or a Blade view given `record` and `context`), `with` (an array for `->with()` or a `Closure(Builder)`, applied once per page), `sort` (`Closure(Builder, direction)`; makes the column sortable), `visibleIn`, `permission`, `order`, `hideBelow` (`md`/`lg`) and `align`. A column the user may not see is neither shown, loaded nor sortable; an unknown or hidden sort key falls back to the default. The users list registers its own `email` (10), `roles` (20), `locale` (30) and `created_at` (40) the same way. Lists use the `HasListExtensions` trait (`listColumns`, `applyColumnLoads()`, `registeredSort()`); tests assert a list costs the same queries with 1 and 20 rows through `Hata\Testing\AssertsListQueries::assertListQueriesStable()`.
+A **targeted** registry (`Hata\Support\Admin\Registry\TargetedRegistry`) holds entries aimed at a list or a form instead of one admin-wide list. `Admin::columns('content.posts')` returns a `TargetScope` whose `add()`, `remove()` and `modify()` are recorded for that target (the scope returns itself, so calls chain); an array of targets records each call for every one of them.
 
-The content list registers its own on `content.*` the same way: `taxonomies` (10, the type has active taxonomies; its header names them), `records` (20, taxonomies), `status` (30, not in the trash and the type publishes), `author` (40, the type has authors), `date` (50, sortable, not in the trash) and `removal` (60, trash only). Hiding one for a type is `Admin::columns('content.posts')->remove('author')`. A registered sort on the content list is flat: the tree order, and its indent, return with "reset sort" (or the third click on the column's header). Its eager loads are added to the page's query once; the `terms` of a type with taxonomies stay in `EntryListQuery`.
+| Target | Aims at |
+|---|---|
+| `users` | the users list; for form cards also the user form (create and edit) |
+| `profile` | the signed-in user's profile page (form cards only in practice) |
+| `register` | the registration form (form cards only in practice) |
+| `content.*` | every content list and entry form |
+| `content.@records` | the lists and forms of ordinary types |
+| `content.@taxonomies` | the lists and forms of taxonomies |
+| `content.<type key>` | one type (`content.posts`), key `[a-z0-9_-]+` |
 
-## List filters (release 2)
+Any other target is a registration mistake (`LogicException` in `local` and `testing`, one logged warning per process elsewhere, and the call is skipped).
 
-`Admin::filters('users')` (or `content.*`, `content.posts`, …; `TableFilters`, a `TargetedRegistry`) adds, hides or changes the filters of a list. A `TableFilter` has a `key` (lowercase letters and digits joined by hyphens or underscores, no dots: it is the `?filter[key]=` value and a Livewire model path), a `label` (translation key or plain text; the select's accessible name), `options` (`Closure(ListContext): array<string, string>`, value => label, called once per render), `apply` (`Closure(Builder, string)`), `visibleIn`, `permission` and `order`. It is drawn as a native `flux:select` with an "All" option after the list's own filters; a change resets the page and the selection. `apply` runs only for a value that is a key of the filter's options, so a forged URL value is ignored, and a filter the user may not see is neither drawn nor applied. "Clear filters" and `isFiltered()` count registered values (the users list gained a "Clear filters" button in its no-results state). The page's `filters` property and the `listFilters`, `listFilterOptions`, `applyFilters()` methods come from `HasListExtensions`.
+**Resolving.** Nothing is decided when a call is made: the calls are recorded in order, and a list or form asks `resolve($target)`, which replays the chain of the target (`content.posts` is `content.*`, then `content.@records` or `content.@taxonomies`, then `content.posts`) into a fresh registry: all `add()` calls first, then the `modify()` calls, then the `remove()` calls, each from the widest target to the narrowest, within a target in call order. So a narrower target overrides a wider one's entry of the same key, and removes or changes it for itself only, whatever order the providers booted in; `Admin::columns('content.posts')->remove('author')` hides the column on the posts list and leaves the pages list alone. The result is memoized until the next call, and `chain()` reads the content types, so it must run when a list opens, never at boot. `modify()` and `remove()` of a key that is not there are skipped and shown by `hata:admin`, as in release 1.
 
-## Row actions (release 2)
+**Keys.** Each registry has its own alphabet (`…Registry::keyPattern()`), because the keys are used differently:
 
-`Admin::rowActions('users')` (or `content.*`, `content.posts`, …; `RowActions`, a `TargetedRegistry`) adds items to the "⋮" menu of a list, after Hata's own and behind a separator (Hata's own items stay as they are; a site adds, never replaces them). A `RowAction` is made with `RowAction::link($key, $label, $icon, Closure $url, …)` (the URL is worked out per row from the record; `newTab: true` opens it in a new tab) or `RowAction::handler($key, $label, $icon, HandlerClass::class, …, danger: false, confirm: null)`. A handler is resolved from the container and called as `__invoke(Model $record, AdminUser $user): ?string`; a returned string is shown as a success toast (escaped), null shows none. `confirm` (a translation key or text) opens the list's one shared dialog first (`confirmRowAction`, then `runPendingRowAction`); `danger` draws the item red. Keys hold lowercase letters, digits, hyphens and underscores (no dots: they travel in `wire:click` calls). `permission` is checked per record: a string ability goes through `Gate::forUser($user)->allows($ability, $record)`, a `Closure(AdminUser, Model): bool` is called once per row and must not query (use the data the list's columns eager-load). `visibleIn` is a `Closure(ListContext): bool`; without it the action is not shown in the trash, and with it a handler in the trash loads its record with `onlyTrashed()` through the list's own query. A row whose only items are a site's still gets its menu.
+| Registry | Key alphabet | Why |
+|---|---|---|
+| columns | lowercase letters and digits joined by hyphens, underscores or dots | the key is the `?sortBy=` value (`created_at`) |
+| filters | joined by hyphens or underscores, no dots | the key is a Livewire model path (`filters.<key>`) and a `?filter[key]=` value |
+| row actions, bulk actions | joined by hyphens or underscores, no dots | keys travel in `wire:click` calls |
+| form cards | joined by hyphens or underscores, no dots | the key is a segment of `extensions.<key>.<field>` |
 
-`runRowAction($key, $id)` is the one way a handler runs, and it is a security boundary: the action must be visible in the list's context for the user (else 404), the record is loaded through `recordQuery()->whereKey($id)->firstOrFail()` (the list's type, the language filter and the tab, the trash being `onlyTrashed()`; on the users list every user), so an id outside the current view is a 404, and a record the action's `allows()` refuses is a 403, all before the handler is resolved. A link action cannot be run. The lists use `HasListExtensions` (`listRowActions`, `pendingRowAction`, `recordQuery()`, `forgetList()`) and the partials `partials/admin/lists/row-actions` and `action-confirm` (drawn only when a row action is registered, so a list without one has the same markup as before).
+**Labels.** A `label` (and a filter's option labels, a `confirm` text) is a translation key or plain text and passes through `__()`, which returns an unknown key unchanged: a site writes `'Views'`, a module `'shop::lists.views'`.
 
-## Bulk actions (release 2)
+## Lists (release 2)
 
-`Admin::bulkActions('users')` (or `content.*`, `content.posts`, …; `BulkActions`, a `TargetedRegistry`) adds buttons to a list's bulk bar, after Hata's own. A `BulkAction` is `new BulkAction($key, $label, $icon, HandlerClass::class, permission: null, order: 100, visibleIn: null, danger: false, confirm: null)`. The handler is resolved from the container and called once as `__invoke(Collection $records, AdminUser $actor): ?string` with the selected records; a returned string is a success toast (escaped). `permission` (a string ability or `Closure(AdminUser): bool`) is checked for the user when the actions are listed, since there is no single record; `visibleIn` is a `Closure(ListContext): bool`, and without it the action is not shown in the trash. An action with `confirm` or `danger` always asks first in the shared dialog (`confirmBulkAction`, then `runPendingBulkAction`; a danger action without text gets a generic question). Keys follow the row actions' rule.
+The users list and every content list (`hata::admin.users.index`, `hata::admin.content.index`) take the four list registries through the trait `Hata\Livewire\Admin\Concerns\HasListExtensions`. A page names its target in `listContext()` (a `ListContext`: `target`, `type` or null for users, the open `tab`; `isTrash()`, `isTaxonomy()`) and supplies `recordQuery()` and `forgetList()`. The first column of each list (the name or title with its link, the tree indent, the language chips and badges) and the "⋮" column are fixed and cannot be registered or removed.
 
-`runBulkAction($key)` is a security boundary like `runRowAction`: the action must be visible for the user (404) and the records are `recordQuery()->whereKey(selected ids)->get()`, so an id outside the view (another type, another tab) is dropped; an empty result calls no handler. The selection (`$selected`, now in `HasListExtensions`) is page-bound and cleared on page, search, filter, sort and tab changes and after a run. The users list gains row checkboxes, a select-page box and the bulk bar only when a bulk action is visible to the user; without one its HTML is as before. Partials: `partials/admin/lists/bulk-actions` (the buttons) and the shared `action-confirm` dialog.
+### Columns
+
+`Admin::columns('users')`, `content.*`, `content.posts`, … (`TableColumns`). A `TableColumn(key, label, value, with = [], sort = null, visibleIn = null, permission = null, order = 100, hideBelow = null, align = 'start')`:
+
+| Argument | Meaning |
+|---|---|
+| `value` | a `Closure(Model, ListContext): string\|Htmlable\|null` (a string is escaped) or the name of a Blade view rendered with `record` and `context` |
+| `with` | an array for `->with()` or a `Closure(Builder)` (`withCount`, `addSelect`), applied once to the page's query, never per row |
+| `sort` | a `Closure(Builder, 'asc'\|'desc')`; makes the column sortable by its key |
+| `visibleIn` | a `Closure(ListContext): bool`; null is every tab |
+| `permission`, `order` | as in the shared base; a column the user may not see is neither drawn nor loaded nor sortable |
+| `hideBelow`, `align` | `md` or `lg`; `start`, `center` or `end` |
+
+A site column's `with` for a relation the list already loads (the content list loads its `terms`, the users list its `roles`) replaces the list's own constrained load, so name another relation or add a `Closure`. An unknown or hidden `?sortBy=` falls back to the list's default. A registered sort on the content list is flat: the tree order and its indent come back with "Tree order" (or the third click on the header). Registered sorts are never on JSON `fields` keys (decision 57).
+
+Hata's own columns are registered the same way (`HataServiceProvider::registerListColumns()`), so a site can reorder or hide them:
+
+| Target | Key | Order | Shown |
+|---|---|---|---|
+| `users` | `email` / `roles` / `locale` / `created_at` | 10 / 20 / 30 / 40 | always; `email` and `created_at` are sortable |
+| `content.*` | `taxonomies` | 10 | the type has an active taxonomy |
+| `content.*` | `records` | 20 | a taxonomy: how many records use the term |
+| `content.*` | `status` | 30 | not in the trash and the type publishes |
+| `content.*` | `author` | 40 | the type has authors |
+| `content.*` | `date` | 50 | not in the trash; sortable |
+| `content.*` | `removal` | 60 | the trash tab |
+
+### Filters
+
+`Admin::filters(…)` (`TableFilters`). A `TableFilter(key, label, options, apply, visibleIn = null, permission = null, order = 100)`: `options` is a `Closure(ListContext): array<string, string>` (value => label), called once per render; `apply` is a `Closure(Builder, string)`. A filter is drawn as a native `flux:select` with an "All" option, after the list's own filters; a change resets the page and the selection. `apply` runs only for a value that is a key of the options, so a forged `?filter[key]=` value is ignored; a filter the user may not see is neither drawn nor applied. "Clear filters" counts registered values. Tab counts ignore registered filters, as they ignore the search. The page's `filters` property, `listFilters`, `listFilterOptions` and `applyFilters()` come from the trait.
+
+### Row actions
+
+`Admin::rowActions(…)` (`RowActions`) adds items to the "⋮" menu after Hata's own and behind a separator (Hata's own items stay; a site adds, never replaces them). Made with `RowAction::link($key, $label, $icon, Closure $url, permission, order, visibleIn, newTab)` (the URL is worked out per row; one query at most is the caller's business, use eager loads) or `RowAction::handler($key, $label, $icon, HandlerClass::class, permission, order, visibleIn, danger, confirm)`. A handler is resolved from the container and called as `__invoke(Model $record, AdminUser $user): ?string`; a returned string is shown as a success toast (escaped), null shows none. `confirm` opens the list's one shared dialog first; `danger` draws the item red.
+
+`permission` is checked **per record**: a string ability goes through `Gate::forUser($user)->allows($ability, $record)`, a `Closure(AdminUser, Model): bool` is called once per row and must not query (use what the columns eager-load). `runRowAction($key, $id)` is the security boundary: the action must be visible in the list's context for the user (else 404), the record is loaded through `recordQuery()->whereKey($id)->firstOrFail()` (the list's scope: type, language filter and tab, the trash being `onlyTrashed()`; on the users list every user), so an id outside the list's view is a 404, and a record the action refuses is a 403, all before the handler is resolved. A link action cannot be run. **Default `visibleIn`: not in the trash**; give `visibleIn` to show an action there, and its handler then loads from the list's trash query.
+
+### Bulk actions
+
+`Admin::bulkActions(…)` (`BulkActions`) adds buttons to the bulk bar after Hata's own: `new BulkAction($key, $label, $icon, HandlerClass::class, permission, order, visibleIn, danger, confirm)`. The handler is called once as `__invoke(Collection $records, AdminUser $actor): ?string`. Differences from row actions: `permission` (a string ability or `Closure(AdminUser): bool`) is checked **once for the actor** (there is no single record); the records come only through `recordQuery()->whereKey(selected ids)`, so an id outside the view is dropped and an empty result calls no handler; the selection (`$selected`) is page-bound and cleared on page, search, filter, sort and tab changes and after a run; an action with `confirm` or `danger` always asks first (a danger action without text gets a generic question). The confirm step is a UI step, not authorization. Same default `visibleIn` (not in the trash).
+
+**On the users list a handler receives whoever was selected, including super admins and the actor.** The handler must apply the protection rules itself with `Hata\Support\Permissions\AccessRules` (decision 21); the registry checks only the action's permission.
+
+The users list gains row checkboxes, a select-page box and the bulk bar only when a bulk action is visible to the user; without one, and without a row action, its HTML is as before. Partials: `partials/admin/lists/row-actions`, `bulk-actions` and the shared `action-confirm` dialog. Livewire parts: `confirmRowAction`/`runPendingRowAction`/`runRowAction`, `confirmBulkAction`/`runPendingBulkAction`/`runBulkAction`.
+
+### Cost
+
+A column, filter, row action or bulk action costs **at most one query per page, never one per row**: columns load through `with` once, filter options are called once per render, a row action's `permission` must not query, a bulk handler is called once. Hata's own lists are asserted with `Hata\Testing\AssertsListQueries` (`assertListQueriesStable($seed, $render)`: seeds one record, renders once to warm the caches, counts the queries, seeds up to twenty records, counts again, and fails when the two differ). A site or module uses the same trait in its tests.
+
+```php
+uses(AssertsListQueries::class);
+
+test('the orders column costs one query per page', function () {
+    $this->actingAs(User::factory()->withRole('admin')->create());
+
+    $this->assertListQueriesStable(
+        seed: fn (int $count) => Order::factory()->count($count)->create(),
+        render: fn () => Livewire::test('hata::admin.users.index'),
+    );
+});
+```
 
 ## Form cards (release 2)
 
-`Admin::formCards('content.posts')` (or `content.*`, `content.@records`, `content.@taxonomies`; `users`, `profile` and `register` are valid targets of every targeted registry (`users`, `profile` and `register` are wired); `FormCards`, a `TargetedRegistry`) adds a card to a form, after Hata's own blocks (they stay as they are). A `FormCard` is `new FormCard($key, ExtensionClass::class, permission: null, order: 100, area: 'main')`: `main` is drawn below the entry form's SEO card, `side` at the end of its sidebar, both in the form's own card frame (`partials/admin/forms/cards`). Keys hold lowercase letters, digits, hyphens and underscores (no dots: they are segments of `extensions.<key>.<field>`); the extension must be a class extending `FormExtension` and the area `main` or `side`, else it is a registration mistake. `permission` is null for anyone (a guest on registration), an ability checked through the Gate for the actor (never passed for a guest), or a `Closure(?AdminUser): bool` (`FormCard::allows()`).
+`Admin::formCards(…)` (`FormCards`) adds a card to a form after Hata's own blocks (they stay as they are). A `FormCard($key, ExtensionClass::class, permission = null, order = 100, area = 'main')`: `main` is drawn below the entry form's SEO card, `side` at the end of its sidebar; the user form is one column (`main` cards, then `side`); on `profile` and `register` the cards are drawn after the email field. The entry form and the user form draw a card in Hata's card frame (`partials/admin/forms/cards`); **on `profile` and `register` the cards are drawn bare**, because the fields of those forms are bare, so one card view serves `users`, `profile` and `register`. The extension must be a class extending `FormExtension` and the area `main` or `side`, else it is a registration mistake. `permission` is null for anyone (a guest on registration), an ability checked through the Gate for the actor (never for a guest), or a `Closure(?AdminUser): bool`.
 
-The extension (`Hata\Support\Admin\Forms\FormExtension`, resolved from the container on every call) has `fill(?Model $record, FormContext $context): array` (the initial values, once on mount; on create `$record` is null; one query at most), `rules(FormContext $context): array` (rules by field, relative to the card), `view(): string` and `save(Model $record, array $values, FormContext $context): void`. `FormContext` carries `target`, `type` (the `ContentType`, or null), `actor` (null for a guest) and `isCreate()`. The view gets `$key`, `$values` (its own), `$field` (`Closure(string): ComponentAttributeBag`: `wire:model="extensions.<key>.<field>"` in a Livewire form, `name="extensions[<key>][<field>]"` with the old input in a plain one) and `$errorName` (`Closure(string): string`, the dot path for `<flux:error>`). Bind an input with `<flux:input :attributes="$field('birthday')" />` (Blade spreads only `{{ $attributes }}` inside a component tag, so `{{ $field(...) }}` does not work there); interactivity is Alpine only. A read-only form disables the card's inputs (the card is drawn in a disabled `fieldset`).
+### `FormExtension`
 
-`FormExtensions` (stateless) does the work for any form: `fill()`, `rules()` (keyed `extensions.<key>.<field>`), `attributes()` (each field's own name in messages), `save()` and `field()`. A card's values are untrusted: only the fields its `rules()` name reach `save()` (a named field that was not posted is null), and a card the actor may not see is neither drawn, validated nor saved, whatever is posted. Livewire pages use the trait `Hata\Livewire\Admin\Concerns\HasFormExtensions` (`$extensions`, the computed `formCards`, `formContext()`, `mountExtensions()`, `extensionErrors()`, `saveExtensions()`).
+The class (`Hata\Support\Admin\Forms\FormExtension`) is resolved from the container on every call and keeps no state:
 
-The entry form (create and edit): the cards' values are `$extensions`, outside `$form`; with no card it is `[]` and the form's markup is unchanged. Save first validates the cards (no throw); if any fails, the form's own validation also runs without writing (`EntryInput::validate`), both sets of errors show together and nothing is stored. Otherwise `CreateEntry`/`UpdateEntry::handle(..., alsoSave:)` call each card's `save()` with the saved record inside their transaction, after the record is written and before the create page redirects (the edit page stays, decision 65); an exception in `save()` rolls the record back. The actions run `alsoSave` through `FormCardFailed::guard()` (and `FormExtensions::save()` wraps each card, naming it), so their own catches (a unique violation shown as "slug taken", a language taken) never take a card's failure for the record's: the page shows a card's `ValidationException` under the card's fields (keys relative to the card, or full `extensions.` paths) plus a danger toast, and rethrows anything else as it was (`FormCardFailed::original()`). Validation belongs in `rules()`. Every field the rules name (by top-level key: `tags.*` names `tags`) is in the card's values from mount, null when `fill()` leaves it out. The unsaved-changes guard's snapshot includes `$wire.extensions`.
+| Method | Meaning |
+|---|---|
+| `fill(?Model $record, FormContext $context): array` | the initial values, once when the form opens (on create `$record` is null); one query at most |
+| `rules(FormContext $context): array` | rules by field, relative to the card |
+| `view(): string` | the Blade view drawn inside the frame |
+| `save(Model $record, array $values, FormContext $context): void` | stores the validated values inside the form's transaction |
 
-The user form (create and edit, target `users`): the same trait, `$extensions` and card frame, drawn after the form's own blocks in one column (`main` and `side` cards both, `side` after `main`); with no card it is `[]` and the markup is unchanged. Save runs `validateWithCards()` of the trait: the form's own errors and the cards' are shown together and nothing is stored when either fails. `CreateUser`/`UpdateUser::handle(..., alsoSave:)` call the cards' `save()` with the user inside their transaction, after the roles are synced, so a `ProtectedActionException` (a role the actor may not assign) or a card's exception rolls everything back and no card value is stored; a card's `ValidationException` is shown under the card by `showCardFailure()` (the trait's; the entry form adds its scroll event). The card's context has no type and `isCreate()` tells create from edit.
+`FormContext` has `target`, `type` (the `ContentType`, null outside the entry form), `actor` (null for a guest on registration) and `isCreate()`.
 
-The profile page (`/settings/profile`, target `profile`, the signed-in user editing themselves) and the registration form (target `register`, Fortify's plain Blade form, no signed-in user): cards are drawn after the email field, bare (no card frame, the fields of those forms are bare), so a site's card view is the same for all three targets (`$field('birthday')` gives `wire:model` on the profile page and `name="extensions[key][field]"` plus the old input on registration). The profile page uses `HasFormExtensions` and saves the user and the cards in one `DB::transaction`; with no card its markup and behaviour are unchanged. `CreateNewUser` validates Hata's rules and the cards' in one `Validator` (all errors come back together with the old input, keyed `extensions.<key>.<field>`) and creates the user, the default role and the cards' `save()` in one transaction; a card's `ValidationException` is rethrown under its fields, any other exception is thrown as it was and no user remains. The context is `FormContext('register', null, null, true)`: a card with a string ability is never shown to a guest, a `Closure` permission receives null, and values posted for a card that is not shown are ignored.
+**The view** receives `$key`, `$values` (the card's own), `$field` (a `Closure(string): ComponentAttributeBag`) and `$errorName` (a `Closure(string): string`). Bind an input with `<flux:input :attributes="$field('birthday')" />`; `{{ $field('birthday') }}` does not work, because Blade spreads only `{{ $attributes }}` inside a component tag. The error element reads `<flux:error :name="$errorName('birthday')" />`. `$field` gives `wire:model="extensions.<key>.<field>"` in a Livewire form and `name="extensions[<key>][<field>]"` plus the old input on registration. Interactivity is Alpine only; a read-only form disables the card's inputs.
+
+**Validation and saving.**
+
+- A card's values are untrusted. **Only the top-level keys named by `rules()` reach `save()`** (`tags.*` lets the whole `tags` value through, checked by its rules); a named field that was not posted is null, and every named field is in the card's values from mount. A card the actor may not see is neither drawn, validated nor saved, whatever is posted.
+- **Validation belongs in `rules()`**: the card's errors and the form's own are shown together and any error stops the whole save, so nothing is written. Do not validate in `save()`.
+- `save()` runs inside the form's transaction, after the record is written and before any redirect (the edit page stays, decision 65). **Whatever `save()` throws rolls the record back.** Hata wraps it in `Hata\Exceptions\FormCardFailed` (`FormCardFailed::guard()`), so an action's own catches (a taken slug, a taken language) never take a card's failure for the record's. The page then shows a `ValidationException` (keys relative to the card, or full `extensions.` paths) under the card's fields plus a danger toast, and rethrows anything else as the original exception (`FormCardFailed::original()`).
+- On the entry form, **when `CreateEntry` finds that the group already has a record in that language, nothing is created and the cards are not saved.**
+
+`FormExtensions` (stateless) does the work for any form (`fill()`, `rules()` keyed `extensions.<key>.<field>`, `attributes()`, `save()`, `field()`); Livewire pages use the trait `Hata\Livewire\Admin\Concerns\HasFormExtensions` (`$extensions`, the computed `formCards`, `formContext()`, `mountExtensions()`, `validateWithCards()`, `showCardFailure()`, `saveExtensions()`). The unsaved-changes guard of the entry form includes `$wire.extensions`.
+
+**Where each form saves.** The entry form: `CreateEntry`/`UpdateEntry::handle(..., alsoSave:)`, after the record is written. The user form: `CreateUser`/`UpdateUser::handle(..., alsoSave:)`, after the roles are synced, so a `ProtectedActionException` (a role the actor may not assign) rolls everything back too. The profile page (`/settings/profile`, the signed-in user editing themselves): the user and the cards in one `DB::transaction`. Registration (Fortify's plain Blade form): `CreateNewUser` validates Hata's rules and the cards' in one `Validator`, creates the user, the default role and the cards in one transaction, and a card's `ValidationException` comes back under its fields with the old input; the context is `FormContext('register', null, null, true)`, a string ability is never satisfied by a guest and a `Closure` receives null. A form with no card has the same markup and behaviour as before.
+
+### Example: a birthday and gender on the user, profile and registration forms
+
+Store a site's own fields in columns of `users` (a migration of the site: `date('birthday')->nullable()`, `string('gender')->nullable()`), or, for a module, in a table of its own keyed by `user_id` (never in Hata's tables, and not in the JSON `fields` of `entries` for anything a list filters or sorts by, decision 57).
+
+```php
+use Hata\Support\Admin\Forms\FormContext;
+use Hata\Support\Admin\Forms\FormExtension;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\Rule;
+
+class PersonalCard extends FormExtension
+{
+    public function fill(?Model $record, FormContext $context): array
+    {
+        return [
+            'birthday' => $record?->birthday?->format('Y-m-d'),
+            'gender' => $record?->gender,
+        ];
+    }
+
+    public function rules(FormContext $context): array
+    {
+        return [
+            'birthday' => ['nullable', 'date', 'before:today'],
+            'gender' => ['nullable', Rule::in(['female', 'male', 'other'])],
+        ];
+    }
+
+    public function view(): string
+    {
+        return 'admin.cards.personal';
+    }
+
+    public function save(Model $record, array $values, FormContext $context): void
+    {
+        $record->forceFill($values)->save();
+    }
+}
+```
+
+```blade
+{{-- resources/views/admin/cards/personal.blade.php --}}
+<div class="grid gap-4 sm:grid-cols-2">
+    <flux:field>
+        <flux:label>{{ __('Birthday') }}</flux:label>
+        <flux:input type="date" :attributes="$field('birthday')" />
+        <flux:error :name="$errorName('birthday')" />
+    </flux:field>
+    <flux:field>
+        <flux:label>{{ __('Gender') }}</flux:label>
+        <flux:select :attributes="$field('gender')">
+            <flux:select.option value="">-</flux:select.option>
+            <flux:select.option value="female">{{ __('Female') }}</flux:select.option>
+            <flux:select.option value="male">{{ __('Male') }}</flux:select.option>
+            <flux:select.option value="other">{{ __('Other') }}</flux:select.option>
+        </flux:select>
+        <flux:error :name="$errorName('gender')" />
+    </flux:field>
+</div>
+```
+
+```php
+// HataAdminServiceProvider::boot()
+Admin::formCards(['users', 'profile', 'register'])->add(new FormCard('personal', PersonalCard::class, order: 50));
+```
+
+## Content type parts: `without()`
+
+A `ContentType` subclass overrides the protected `without()` to switch parts of the common form off: `body`, `image`, `publication` (status and date), `author`, `excerpt` and `seo`. `supports($feature)` answers whether a record has a part: it is false for a part in `without()`, and for a taxonomy everything but `excerpt` and `seo` (a term is a name, an address and a description, always published). A part that is off leaves the form, has no validation rule and is never written: **a switched-off part keeps its stored value**, so switching it on again restores it. A type that overrides `supports()` itself should move to `without()`. The details (the public page, the list columns that follow) are in `docs/specs/content.md`.
+
+## Hata's own entries in the targeted registries
+
+Hata registers columns only (the tables above); the row action, bulk action, filter and form card registries start empty, so a site's first entry is the only one, and Hata's own list actions and form blocks are not entries and cannot be replaced or removed through them.

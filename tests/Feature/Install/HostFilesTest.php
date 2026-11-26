@@ -377,12 +377,14 @@ describe('addAdminProvider', function () {
         exec('php -l '.escapeshellarg($provider).' 2>&1', $output, $code);
         expect($code)->toBe(0, implode("\n", $output));
 
-        foreach (['Hata\\Admin', 'Hata\\Support\\Admin\\AdminMenuItem', 'Hata\\Support\\Admin\\TopbarItem', 'Hata\\Support\\Admin\\DashboardWidget'] as $imported) {
+        foreach (['Hata\\Admin', 'Hata\\Support\\Admin\\AdminMenuItem', 'Hata\\Support\\Admin\\TopbarItem', 'Hata\\Support\\Admin\\DashboardWidget', 'Hata\\Support\\Admin\\Forms\\FormCard', 'Hata\\Support\\Admin\\Lists\\BulkAction', 'Hata\\Support\\Admin\\Lists\\RowAction', 'Hata\\Support\\Admin\\Lists\\TableColumn', 'Hata\\Support\\Admin\\Lists\\TableFilter'] as $imported) {
             expect(File::get($provider))->toContain("use {$imported};")
                 ->and(class_exists($imported))->toBeTrue();
         }
 
         $uncommented = preg_replace('/^(\s*)\/\/ (?=Admin::|    |\)\);)/m', '$1', File::get($provider));
+        expect($uncommented)->toContain('Admin::columns(', 'Admin::filters(', 'Admin::rowActions(', 'Admin::bulkActions(', 'Admin::formCards(')
+            ->not->toContain('// Admin::columns(');
         $copy = $this->hostDirectory.'/Uncommented.php';
         File::put($copy, $uncommented);
         exec('php -l '.escapeshellarg($copy).' 2>&1', $lintOutput, $lintCode);

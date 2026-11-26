@@ -17,6 +17,7 @@ Middleware: `auth`. Security also requires `password.confirm`. Routes are in `ro
 
 - Name and email (`ProfileValidationRules`). Changing the email resets `email_verified_at`.
 - Deleting your own account (requires the password).
+- **Form cards** (target `profile`, `docs/specs/admin-extensions.md`): a site's cards are drawn bare after the email field. Saving stores the user and the cards in one transaction; with no card the page is unchanged. The same card view serves the user form and registration. Registration (target `register`, Fortify's plain form, a guest) validates the cards with Hata's rules in one pass and creates the user, the default role and the cards in one transaction; a card whose permission is an ability string is never shown to a guest.
 
 ## Language
 

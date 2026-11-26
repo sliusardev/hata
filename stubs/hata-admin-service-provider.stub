@@ -5,11 +5,16 @@ namespace App\Providers;
 use Hata\Admin;
 use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Admin\DashboardWidget;
+use Hata\Support\Admin\Forms\FormCard;
+use Hata\Support\Admin\Lists\BulkAction;
+use Hata\Support\Admin\Lists\RowAction;
+use Hata\Support\Admin\Lists\TableColumn;
+use Hata\Support\Admin\Lists\TableFilter;
 use Hata\Support\Admin\TopbarItem;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * This site's own extensions of Hata's admin: menu items, top bar items, dashboard widgets and admin assets.
+ * This site's own extensions of Hata's admin: menu items, top bar items, dashboard widgets, list columns, filters and actions, form cards and admin assets.
  *
  * Hata wrote this file once, when it was installed, and never changes it again: it is yours. Every example below
  * is commented out; remove the comment marks of the ones you need. What each point does, and every option, is in
@@ -64,6 +69,51 @@ class HataAdminServiceProvider extends ServiceProvider
         //
         // Admin::dashboard()->add(new DashboardWidget(key: 'orders', component: 'widgets.orders', permission: 'orders.view', width: 'half', order: 30));
         // Admin::dashboard()->remove('recent-changes');
+
+        // Lists: the targets are `users`, `content.*` (every content list), `content.@records`, `content.@taxonomies`
+        // and `content.<type key>` (for example `content.posts`).
+        //
+        // A column after the fixed first column; `with` loads what it shows once per page, never per row.
+        //
+        // Admin::columns('content.posts')->add(new TableColumn(
+        //     key: 'views',
+        //     label: 'Views',
+        //     value: fn ($record) => number_format($record->fields['views'] ?? 0),
+        //     sort: fn ($query, string $direction) => $query->orderBy('id', $direction),
+        //     order: 45,
+        //     hideBelow: 'lg',
+        // ));
+        // Admin::columns('content.posts')->remove('author');
+
+        // A filter drawn as a select; `apply` runs only for a value that is one of the options.
+        //
+        // Admin::filters('users')->add(new TableFilter(
+        //     key: 'verified',
+        //     label: 'Email',
+        //     options: fn () => ['yes' => 'Verified', 'no' => 'Not verified'],
+        //     apply: fn ($query, string $value) => $value === 'yes' ? $query->whereNotNull('email_verified_at') : $query->whereNull('email_verified_at'),
+        // ));
+
+        // An item in the row's three-dot menu: a link built from the record, or a handler class called with the record and the actor.
+        //
+        // Admin::rowActions('content.posts')->add(RowAction::link('open-shop', 'Open in shop', 'arrow-top-right-on-square', fn ($record) => 'https://example.com/'.$record->path, newTab: true));
+        // Admin::rowActions('users')->add(RowAction::handler('send-welcome', 'Send welcome email', 'envelope', \App\Admin\SendWelcome::class, permission: 'users.edit', confirm: 'Send the welcome email?'));
+
+        // A button of the bulk bar: the handler gets the selected records and the actor.
+        //
+        // Admin::bulkActions('content.posts')->add(new BulkAction(
+        //     key: 'feature',
+        //     label: 'Feature',
+        //     icon: 'star',
+        //     handler: \App\Admin\FeaturePosts::class,
+        //     permission: 'posts.edit',
+        // ));
+
+        // Form cards: a card on the entry form (`content.*`, `content.posts`, ...), the user form (`users`), the profile page
+        // (`profile`) and registration (`register`). The extension extends Hata\Support\Admin\Forms\FormExtension.
+        //
+        // Admin::formCards(['users', 'profile', 'register'])->add(new FormCard('birthday', \App\Admin\BirthdayCard::class, order: 50));
+        // Admin::formCards('content.posts')->add(new FormCard('seo-extra', \App\Admin\SeoExtraCard::class, permission: 'posts.edit', area: 'side'));
 
         // Settings: a section of Site settings is added with Admin::settings(); see "Adding a settings section"
         // in docs/specs/package.md of the Hata package.
