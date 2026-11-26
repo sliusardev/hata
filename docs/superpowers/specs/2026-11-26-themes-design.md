@@ -37,6 +37,7 @@ taxonomies and single pages, its own layouts, its own classes, functions and dat
 
 - A theme must never need to edit or override a Hata file, and Hata's updates must never overwrite a theme.
 - Public pages stay plain Blade: no Livewire, no Flux, no admin JavaScript (decision 59), whatever the theme.
+- A theme's look never depends on an admin setting: the admin's colour scheme does not reach the public side.
 - The theme mechanism must not scan folders or query the database on a public request.
 - A broken or deleted theme must not take the site down: the site falls back to the built-in views.
 
@@ -183,7 +184,9 @@ stay Hata partials a theme may include (`hata::partials.site.language-switcher`,
 ## Theme settings
 
 - Declared in the manifest with content field classes (`Text`, `Textarea`, `RichText`, `Number`, `Date`,
-  `Toggle`, `Select`, `MediaFile`, `Gallery`), drawn with the same field views the entry form uses.
+  `Toggle`, `Select`, `MediaFile`, `Gallery`), drawn with the same field views the entry form uses, and a new
+  `Color` field (a colour picker with the hex value beside it, validated as `#rrggbb`; usable by content types
+  as well).
 - A new field option `translatable()`: the value is kept per content language and `theme('footer_text')`
   answers the current language's, falling back to the default language's. (For theme settings only in this
   release; a content type's field that calls it is a registration mistake.)
@@ -203,8 +206,12 @@ stay Hata partials a theme may include (`hata::partials.site.language-switcher`,
 - **Settings** of a theme (`/admin/themes/{key}`): the form of its declared fields, saved together; available
   for an inactive theme too, so it can be prepared before it goes live. A theme without settings has no such
   page.
-- The colour scheme, the logos and the rest of Site settings → Appearance stay where they are and keep
-  applying to the public pages of any theme that uses those variables.
+- **The colour scheme of Site settings → Appearance is the admin's only** (the user's ruling). A theme never
+  receives it: it brings its own colours, and offers its own schemes through its settings when it wants to
+  (a `Select` of the theme's presets, or colours picked with the new `Color` field, which the theme's layout
+  prints as its own CSS variables). The built-in public layout stops including the admin's scheme too and
+  keeps one neutral look. The logos stay the site's: a theme prints them with `<x-hata::site-logo>` when it
+  wants the uploaded ones.
 
 ### Preview
 
@@ -227,7 +234,8 @@ nothing: the check reads the session only when a session cookie came with the re
 `php artisan make:theme nyam [--name="Nyam"]` writes `themes/nyam/` with a manifest, `layouts/main`, `home`,
 `entry`, `list`, `term`, `errors/404`, `partials/header` and `footer`, `assets/css/theme.css`, `lang/en.php`
 and the site's other content languages, and a commented example of one setting, one per-record template and
-`src/Theme.php`. The starter is a simple, clean, readable theme in plain CSS that shows a type's fields, the
+`src/Theme.php`. The starter declares two colour presets and an accent `Color` setting and prints them as CSS
+variables in its layout, as the example of a theme's own colour scheme. It is a simple, clean, readable theme in plain CSS that shows a type's fields, the
 record's image and gallery, the terms, the translations switcher and pagination, so a developer edits working
 markup instead of starting from nothing. It refuses to overwrite an existing folder.
 
