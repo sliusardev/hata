@@ -121,7 +121,8 @@ test('a registered filter holding one of its values turns the tree indent off', 
 });
 
 test('a value of no visible filter, or not among the options, does not count as filtered', function (string $list) {
-    Admin::filters($list === 'users' ? 'users' : 'content.pages')->add(stockFilter());
+    // apply narrows nothing: the stock filter's own column is not on users
+    Admin::filters($list === 'users' ? 'users' : 'content.pages')->add(stockFilter(['apply' => fn ($query) => $query]));
 
     $params = ['filter' => ['nope' => 'x', 'stock' => 'bogus']];
     $component = $list === 'users'
