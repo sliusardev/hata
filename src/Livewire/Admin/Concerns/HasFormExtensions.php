@@ -138,9 +138,7 @@ trait HasFormExtensions
 
         $messages = [];
 
-        foreach ($original->errors() as $key => $keyMessages) {
-            $path = str_starts_with($key, 'extensions.') || $failure->card === null ? $key : "extensions.{$failure->card}.{$key}";
-
+        foreach ($failure->errors() as $path => $keyMessages) {
             foreach ($keyMessages as $message) {
                 $this->addError($path, $message);
                 $messages[] = $message;

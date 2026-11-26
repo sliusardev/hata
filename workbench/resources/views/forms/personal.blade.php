@@ -7,7 +7,13 @@
     </flux:field>
     <flux:field>
         <flux:label>Gender</flux:label>
-        <flux:input :attributes="$field('gender')" data-test="personal-gender" />
+        {{-- A native select, marked from $values: on registration the browser ignores a value on the select itself. --}}
+        <flux:select :attributes="$field('gender')" data-test="personal-gender">
+            <flux:select.option value="">-</flux:select.option>
+            @foreach (['f' => 'Female', 'm' => 'Male', 'x' => 'Other'] as $genderValue => $genderLabel)
+                <flux:select.option :value="$genderValue" :selected="($values['gender'] ?? '') === $genderValue">{{ $genderLabel }}</flux:select.option>
+            @endforeach
+        </flux:select>
         <flux:error :name="$errorName('gender')" />
     </flux:field>
 </div>

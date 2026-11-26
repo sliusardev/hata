@@ -3,6 +3,7 @@
 namespace Hata\Exceptions;
 
 use Closure;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
@@ -34,6 +35,29 @@ final class FormCardFailed extends RuntimeException
         } catch (Throwable $exception) {
             throw new self($card, $exception);
         }
+    }
+
+    /**
+     * The messages of the `ValidationException` the card threw, keyed by their path in the form's data: a key relative
+     * to the card becomes `extensions.<card>.<key>`, a full `extensions.` path (or any key of an unknown card) stays.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function errors(): array
+    {
+        $original = $this->original();
+
+        if (! $original instanceof ValidationException) {
+            return [];
+        }
+
+        $errors = [];
+
+        foreach ($original->errors() as $key => $messages) {
+            $errors[str_starts_with($key, 'extensions.') || $this->card === null ? $key : "extensions.{$this->card}.{$key}"] = $messages;
+        }
+
+        return $errors;
     }
 
     /**

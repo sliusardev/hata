@@ -11,6 +11,7 @@ beforeEach(function () {
     PersonalExtension::register();
     PersonalExtension::$saves = [];
     PersonalExtension::$fail = false;
+    PersonalExtension::$refuse = false;
     $this->user = User::factory()->create(['name' => 'Old Name']);
     $this->actingAs($this->user);
 });
@@ -81,7 +82,42 @@ test('a card the user may not see is not drawn or saved', function () {
     Admin::formCards('profile')->add(new FormCard(key: 'personal', extension: PersonalExtension::class, permission: 'users.view'));
 
     $component = Livewire::test('hata::settings.profile')->assertSet('extensions', []);
-    $component->set('name', 'New Name')->call('updateProfileInformation');
+    $component->set('name', 'New Name')
+        ->set('extensions.personal.birthday', 'garbage')
+        ->set('extensions.personal.gender', 'f')
+        ->call('updateProfileInformation')
+        ->assertHasNoErrors();
 
-    expect($component->html())->not->toContain('data-test="form-card-personal"')->and(PersonalExtension::$saves)->toBe([]);
+    expect($component->html())->not->toContain('data-test="form-card-personal"')->and(PersonalExtension::$saves)->toBe([])
+        ->and(DB::table('users')->where('id', $this->user->id)->value('gender'))->toBeNull();
+});
+
+test('a side card is drawn on the profile page after the main ones', function () {
+    Admin::formCards('profile')
+        ->add(new FormCard(key: 'aside', extension: PersonalExtension::class, area: 'side'))
+        ->add(profileCard());
+
+    $html = Livewire::test('hata::settings.profile')->html();
+
+    expect($html)->toContain('data-test="form-card-aside"')
+        ->and(strpos($html, 'data-test="form-card-personal"'))->toBeLessThan(strpos($html, 'data-test="form-card-aside"'));
+});
+
+test('a ValidationException from the card\'s save rolls back and leaves the signed-in user as stored', function () {
+    Admin::formCards('profile')->add(profileCard());
+    PersonalExtension::$refuse = true;
+
+    Livewire::test('hata::settings.profile')
+        ->set('name', 'New Name')
+        ->set('extensions.personal.birthday', '1990-12-10')
+        ->call('updateProfileInformation')
+        ->assertHasErrors(['extensions.personal.birthday']);
+
+    expect($this->user->fresh()->name)->toBe('Old Name')->and(auth()->user()->name)->toBe('Old Name');
+});
+
+test('a form card permission closure gets the form context', function () {
+    Admin::formCards('profile')->add(new FormCard(key: 'personal', extension: PersonalExtension::class, permission: fn ($actor, $context) => $context->target === 'profile' && ! $context->isCreate()));
+
+    expect(Livewire::test('hata::settings.profile')->html())->toContain('data-test="form-card-personal"');
 });

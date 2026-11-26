@@ -12,6 +12,7 @@ beforeEach(function () {
     PersonalExtension::register();
     PersonalExtension::$saves = [];
     PersonalExtension::$fail = false;
+    PersonalExtension::$refuse = false;
 });
 
 function registrationInput(array $extra = []): array
@@ -77,7 +78,7 @@ test('the error shows under the card field and the old input refills it', functi
         ->post(route('register.store'), registrationInput(['extensions' => ['personal' => ['birthday' => '', 'gender' => 'f']]]))
         ->getContent();
 
-    expect($html)->toContain('value="f"')->toContain('birthday field is required');
+    expect($html)->toMatch('/<option\s+selected="selected"\s+value="f"/')->toContain('birthday field is required');
 });
 
 test('a card that fails while saving leaves no user', function () {
@@ -103,8 +104,33 @@ test('a card behind an ability is not shown to a guest and its values are ignore
     expect(PersonalExtension::$saves)->toBe([])->and(User::query()->where('email', 'ada@example.test')->exists())->toBeTrue();
 });
 
-test('a closure permission receives null for a guest', function () {
-    Admin::formCards('register')->add(registrationCard(fn ($actor) => $actor === null));
+test('a closure permission receives null for a guest and the form context', function () {
+    Admin::formCards('register')->add(registrationCard(fn ($actor, $context) => $actor === null && $context->target === 'register' && $context->isCreate()));
 
     $this->get(route('register'))->assertSee('form-card-personal', false);
+});
+
+test('a side card is drawn after the main ones, and the plain form carries no wire:key', function () {
+    Admin::formCards('register')
+        ->add(new FormCard(key: 'aside', extension: PersonalExtension::class, area: 'side'))
+        ->add(registrationCard());
+
+    $html = $this->get(route('register'))->assertOk()->getContent();
+
+    expect($html)->toContain('data-test="form-card-aside"')
+        ->and(strpos($html, 'data-test="form-card-personal"'))->toBeLessThan(strpos($html, 'data-test="form-card-aside"'))
+        ->and($html)->not->toContain('wire:key="form-card-');
+});
+
+test('a ValidationException from a card\'s save comes back under its field and creates no user', function () {
+    Admin::formCards('register')->add(registrationCard());
+    PersonalExtension::$refuse = true;
+
+    $this->from(route('register'))
+        ->post(route('register.store'), registrationInput(['extensions' => ['personal' => ['birthday' => '1990-12-10', 'gender' => 'f']]]))
+        ->assertRedirect(route('register'))
+        ->assertSessionHasErrors(['extensions.personal.birthday' => 'That birthday is taken.'])
+        ->assertSessionHasInput('extensions.personal.gender', 'f');
+
+    expect(User::query()->where('email', 'ada@example.test')->exists())->toBeFalse();
 });

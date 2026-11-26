@@ -59,6 +59,9 @@ new #[Layout('hata::layouts.app')] #[Title('hata::settings.profile.title')] clas
                 FormCardFailed::guard(fn () => $this->saveExtensions($user));
             });
         } catch (FormCardFailed $failure) {
+            // The transaction rolled the row back; the signed-in user in memory still holds the unsaved values.
+            $user->refresh();
+
             $this->showCardFailure($failure);
 
             return;
@@ -79,8 +82,10 @@ new #[Layout('hata::layouts.app')] #[Title('hata::settings.profile.title')] clas
 
             <flux:input wire:model="email" :label="__('hata::common.fields.email')" type="email" required autocomplete="email" />
 
-            {{-- The registered form cards (site and module fields), bare like the fields above. --}}
-            @include('hata::partials.admin.forms.cards', ['cards' => $this->formCards, 'area' => 'main', 'frame' => '', 'values' => $this->extensions, 'livewire' => true, 'readOnly' => false, 'bare' => true])
+            {{-- The registered form cards (site and module fields), bare like the fields above; one column, so the side cards come after the main ones. --}}
+            @foreach (['main', 'side'] as $cardArea)
+                @include('hata::partials.admin.forms.cards', ['cards' => $this->formCards, 'area' => $cardArea, 'frame' => '', 'values' => $this->extensions, 'livewire' => true, 'readOnly' => false, 'bare' => true])
+            @endforeach
 
             <div class="flex items-center gap-4">
                 <div class="flex items-center justify-end">

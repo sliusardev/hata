@@ -6,6 +6,7 @@ use Hata\Support\Admin\Forms\FormContext;
 use Hata\Support\Admin\Forms\FormExtension;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
@@ -22,6 +23,11 @@ class PersonalExtension extends FormExtension
     public static array $saves = [];
 
     public static bool $fail = false;
+
+    /**
+     * When set, save() refuses with a ValidationException on the birthday (a check only the save can make).
+     */
+    public static bool $refuse = false;
 
     public static function register(): void
     {
@@ -62,6 +68,10 @@ class PersonalExtension extends FormExtension
 
         if (self::$fail) {
             throw new RuntimeException('The personal data could not be saved.');
+        }
+
+        if (self::$refuse) {
+            throw ValidationException::withMessages(['birthday' => 'That birthday is taken.']);
         }
     }
 }

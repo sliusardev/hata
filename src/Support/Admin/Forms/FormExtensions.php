@@ -56,7 +56,8 @@ final class FormExtensions
 
     /**
      * The name a validation message gives each field: the field's own name, as for a field of the form itself
-     * ("The birthday field is required", not "The extensions.profile.birthday field ...").
+     * ("The birthday field is required", not "The extensions.profile.birthday field ..."). A wildcard takes the name
+     * of the field it is in (`tags.*` is "tags", `links.*.url` is "url").
      *
      * @param  list<FormCard>  $cards
      * @return array<string, string>
@@ -66,7 +67,9 @@ final class FormExtensions
         $attributes = [];
 
         foreach (array_keys($this->rules($cards, $context)) as $path) {
-            $attributes[$path] = str_replace('_', ' ', (string) last(explode('.', $path)));
+            $named = array_values(array_filter(explode('.', $path), fn (string $segment): bool => $segment !== '*'));
+
+            $attributes[$path] = str_replace('_', ' ', (string) end($named));
         }
 
         return $attributes;
@@ -99,7 +102,8 @@ final class FormExtensions
 
     /**
      * The attributes binding one of a card's inputs: `wire:model` in a Livewire form, else the posted name and the
-     * old input value.
+     * old input value (an input's `value`; a select, a radio or a checkbox is marked from the view's `$values`, which
+     * hold the old input on registration).
      */
     public function field(string $cardKey, string $field, bool $livewire): ComponentAttributeBag
     {

@@ -27,7 +27,7 @@ final class FormCards extends TargetedRegistry
     {
         return array_values(array_filter(
             $this->resolve($context->target)->all(),
-            fn (FormCard $card): bool => $card->allows($context->actor),
+            fn (FormCard $card): bool => $card->allows($context->actor, $context),
         ));
     }
 

@@ -5,7 +5,7 @@
     - $cards     the cards the form shows (FormCards::for()), in order;
     - $area      the area drawn here: main or side;
     - $frame     the card frame's classes, the form's own;
-    - $values    every card's values, by card key;
+    - $values    every card's values, by card key (on registration the old input, so a select can mark its option);
     - $livewire  whether the inputs bind with wire:model (else they are posted by name, with the old input);
     - $readOnly  whether the form is read-only: the card's inputs are disabled;
     - $bare      whether to draw the card without a frame (the profile and registration forms, whose fields are bare).
@@ -21,7 +21,7 @@
     @php
         $cardKey = $formCard->key;
     @endphp
-    <div @class([$frame.' p-5' => ! ($bare ?? false)]) wire:key="form-card-{{ $cardKey }}" data-test="form-card-{{ $cardKey }}">
+    <div @class([$frame.' p-5' => ! ($bare ?? false)]) @if ($livewire) wire:key="form-card-{{ $cardKey }}" @endif data-test="form-card-{{ $cardKey }}">
         <fieldset class="min-w-0" @disabled($readOnly ?? false)>
             @include(app($formCard->extension)->view(), [
                 'key' => $cardKey,

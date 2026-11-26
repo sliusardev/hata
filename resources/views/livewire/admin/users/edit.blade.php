@@ -21,6 +21,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Layout('hata::layouts.app')] #[Title('hata::users.edit.title')] class extends Component {
+    use HasFormExtensions;
+
     /**
      * Untyped on purpose: Livewire resolves a typed public property named like a route parameter from the container,
      * and an interface cannot be built. `mount()` sets the host's model.
@@ -29,8 +31,6 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.edit.title')] class exte
      */
     #[Locked]
     public $user;
-
-    use HasFormExtensions;
 
     public UserForm $form;
 

@@ -60,18 +60,12 @@ class CreateNewUser implements CreatesNewUsers
                 return $user;
             });
         } catch (FormCardFailed $failure) {
-            $original = $failure->original();
-
-            if (! $original instanceof ValidationException) {
-                throw $original;
+            if (! $failure->original() instanceof ValidationException) {
+                throw $failure->original();
             }
 
             // Keyed as the card's view reads them, so they come back under its fields with the old input.
-            throw ValidationException::withMessages(collect($original->errors())->mapWithKeys(
-                fn (array $messages, string $key): array => [
-                    (str_starts_with($key, 'extensions.') || $failure->card === null ? $key : "extensions.{$failure->card}.{$key}") => $messages,
-                ],
-            )->all());
+            throw ValidationException::withMessages($failure->errors());
         }
     }
 

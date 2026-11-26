@@ -1,7 +1,8 @@
 @php
     $registerContext = new Hata\Support\Admin\Forms\FormContext('register', null, null, true);
     $formCards = app(Hata\Support\Admin\Forms\FormCards::class)->for($registerContext);
-    $formValues = [];
+    // The old input after a failed post, so a card's view marks a select, a radio or a checkbox from $values.
+    $formValues = is_array(old('extensions')) ? old('extensions') : [];
 @endphp
 <x-hata::layouts.auth :title="__('hata::auth.register.title')">
     <div class="flex flex-col gap-6">
@@ -35,8 +36,10 @@
                 placeholder="email@example.com"
             />
 
-            {{-- The registered form cards (site and module fields), plain fields in this form. --}}
-            @include('hata::partials.admin.forms.cards', ['cards' => $formCards, 'area' => 'main', 'frame' => '', 'values' => $formValues, 'livewire' => false, 'readOnly' => false, 'bare' => true])
+            {{-- The registered form cards (site and module fields), plain fields in this form; one column, so the side cards come after the main ones. --}}
+            @foreach (['main', 'side'] as $cardArea)
+                @include('hata::partials.admin.forms.cards', ['cards' => $formCards, 'area' => $cardArea, 'frame' => '', 'values' => $formValues, 'livewire' => false, 'readOnly' => false, 'bare' => true])
+            @endforeach
 
             <!-- Password -->
             <flux:input
