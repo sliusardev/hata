@@ -275,6 +275,22 @@ describe('seeders', function () {
     })->with(['App\Models\User', 'Database\Seeders\DemoSeeder', '../DemoSeeder', '', 'DemoSeeder --database=other']);
 });
 
+describe('search index', function () {
+    it('rebuilds the search index of the content records and shows its card', function () {
+        $fake = fakeArtisan();
+
+        Livewire::actingAs(maintainer())->test('hata::admin.maintenance.index')
+            ->assertSeeHtml('data-test="maintenance-run-reindex_search"')
+            ->call('confirm', 'reindex_search')
+            ->assertSee(__('hata::maintenance.actions.reindex_search.confirm'));
+
+        runMaintenance('reindex_search')->assertRedirect(route('admin.maintenance'));
+
+        expect($fake->calls)->toBe([['content:reindex-search', []]])
+            ->and(MaintenanceRun::query()->latest('id')->first()->action)->toBe(MaintenanceAction::ReindexSearch);
+    });
+});
+
 describe('caches', function () {
     it('clears the caches', function () {
         $fake = fakeArtisan();

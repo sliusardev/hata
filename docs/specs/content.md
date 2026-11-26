@@ -172,7 +172,7 @@ saving it in one refreshes the others (`Entry::refreshSearchIndex()`, which writ
 stored before a field became searchable are found by it only after their next save or after
 `php artisan content:reindex-search` (`ReindexContentSearch`: every record, trashed ones too, in chunks of 500,
 writing only those whose index changed; safe to run again). Not built: search rules that add conditions to the
-query (for a module's data in its own table), and a button for the reindex on the maintenance page.
+query (for a module's data in its own table). The maintenance page runs the reindex too ("Rebuild the search index", `MaintenanceAction::ReindexSearch`), for a hosting without a console.
 
 | Method | Meaning |
 |---|---|

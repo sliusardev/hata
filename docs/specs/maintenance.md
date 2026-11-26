@@ -52,6 +52,7 @@ see what the command printed and who ran what.
 | `seed` | `db:seed --class={full class} --force` |
 | `clear_caches` | `optimize:clear` |
 | `rebuild_caches` | `optimize` |
+| `reindex_search` | `content:reindex-search` (rewrites the search index of every content record after a field of a type was made searchable; see "Searchable fields" in `content.md`) |
 
 `Hata\Actions\Maintenance\RunMaintenanceAction::handle(AdminUser $actor, MaintenanceAction $action, ?string $seeder)`:
 

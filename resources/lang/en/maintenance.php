@@ -38,6 +38,12 @@ return [
             'confirm' => 'The caches will be rebuilt. Later changes to .env and routes are not picked up until you rebuild or clear them again.',
             'confirm_local' => 'This is a local environment: with cached config and routes your code changes to .env and routes stop showing until you clear the caches.',
         ],
+        'reindex_search' => [
+            'title' => 'Rebuild the search index',
+            'description' => 'Writes the search index of every content record again. Run it after a field of a content type was made searchable, so records saved earlier are found by it too.',
+            'button' => 'Rebuild the index',
+            'confirm' => 'The search index of every content record will be written again. Nothing else changes: the records and their dates stay as they are.',
+        ],
     ],
     'confirm' => [
         'heading' => 'Run this action?',

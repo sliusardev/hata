@@ -11,6 +11,7 @@ enum MaintenanceAction: string
     case Seed = 'seed';
     case ClearCaches = 'clear_caches';
     case RebuildCaches = 'rebuild_caches';
+    case ReindexSearch = 'reindex_search';
 
     /**
      * The Artisan command and its options.
@@ -24,6 +25,7 @@ enum MaintenanceAction: string
             self::Seed => ['db:seed', ['--class' => $seeder, '--force' => true]],
             self::ClearCaches => ['optimize:clear', []],
             self::RebuildCaches => ['optimize', []],
+            self::ReindexSearch => ['content:reindex-search', []],
         };
     }
 

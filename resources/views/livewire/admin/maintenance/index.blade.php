@@ -365,6 +365,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::maintenance.title')] class ext
             MaintenanceAction::Seed => __('hata::maintenance.actions.seed.confirm', ['seeder' => (string) $this->confirmedSeeder]),
             MaintenanceAction::ClearCaches => __('hata::maintenance.actions.clear_caches.confirm'),
             MaintenanceAction::RebuildCaches => __('hata::maintenance.actions.rebuild_caches.confirm'),
+            MaintenanceAction::ReindexSearch => __('hata::maintenance.actions.reindex_search.confirm'),
             null => '',
         };
     }
@@ -471,8 +472,8 @@ new #[Layout('hata::layouts.app')] #[Title('hata::maintenance.title')] class ext
             @endif
         </div>
 
-        {{-- Caches --}}
-        @foreach ([['clear_caches', 'trash'], ['rebuild_caches', 'bolt']] as [$key, $icon])
+        {{-- Caches, and the content search index --}}
+        @foreach ([['clear_caches', 'trash'], ['rebuild_caches', 'bolt'], ['reindex_search', 'magnifying-glass']] as [$key, $icon])
             <div class="{{ $cardClasses }}" wire:key="card-{{ $key }}" data-test="maintenance-{{ $key }}">
                 <div class="flex items-start gap-4">
                     <div class="{{ $iconClasses }}"><flux:icon :name="$icon" variant="outline" class="size-5" /></div>
