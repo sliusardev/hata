@@ -44,6 +44,14 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
 
     public function mount(): void
     {
+        $this->authorizeList();
+    }
+
+    /**
+     * Checked on mount and again before a registered action runs.
+     */
+    protected function authorizeList(): void
+    {
         $this->authorize('viewAny', Hata::userModel());
     }
 
@@ -222,11 +230,11 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     $checkbox = 'size-4 cursor-pointer rounded accent-zinc-800 dark:accent-white';
 @endphp
 
-<section class="w-full space-y-6" @if ($selectable) x-data="{
+<section class="w-full space-y-6"@if ($selectable) x-data="{
         pageIds() { return [...$el.querySelectorAll('[data-row-check]')].map((box) => box.value) },
         allPicked() { const ids = this.pageIds(); return ids.length > 0 && ids.every((id) => $wire.selected.includes(id)) },
         pickAll(on) { $wire.selected = on ? this.pageIds() : [] },
-    }" @endif>
+    }"@endif>
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('hata::users.index.title') }}</flux:heading>
@@ -288,6 +296,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
             <flux:table.rows>
                 @php($listContext = $this->listContext())
                 @foreach ($this->users as $user)
+                    @php([$userEditable, $userDeletable] = [$this->canEdit($user), $this->canDelete($user)])
                     <flux:table.row :key="$user->id">
                         @if ($selectable)
                             <flux:table.cell class="w-8">
@@ -299,7 +308,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                                 <flux:avatar size="sm" :name="$user->name" :initials="$user->initials()" />
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2 font-medium text-zinc-800 dark:text-white">
-                                        @if ($this->canEdit($user))
+                                        @if ($userEditable)
                                             <a href="{{ route('admin.users.edit', $user) }}" wire:navigate class="truncate hover:underline" data-test="edit-user-link-{{ $user->id }}">{{ $user->name }}</a>
                                         @else
                                             <span class="truncate">{{ $user->name }}</span>
@@ -317,13 +326,15 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                         @endforeach
                         <flux:table.cell align="end">
                             <x-hata::admin.row-actions data-test="user-actions-{{ $user->id }}">
-                                @if ($this->canEdit($user))
+                                @if ($userEditable)
                                     <flux:menu.item icon="pencil-square" :href="route('admin.users.edit', $user)" wire:navigate>{{ __('hata::common.actions.edit') }}</flux:menu.item>
                                 @endif
-                                @if ($this->canDelete($user))
+                                @if ($userDeletable)
                                     <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $user->id }})" data-test="delete-user-{{ $user->id }}">{{ __('hata::common.actions.delete') }}</flux:menu.item>
                                 @endif
-                                @include('hata::partials.admin.lists.row-actions', ['record' => $user, 'hasOwn' => $this->canEdit($user) || $this->canDelete($user)])
+                                @if ($this->listRowActions !== [])
+                                    @include('hata::partials.admin.lists.row-actions', ['record' => $user, 'context' => $listContext, 'hasOwn' => $userEditable || $userDeletable])
+                                @endif
                             </x-hata::admin.row-actions>
                         </flux:table.cell>
                     </flux:table.row>

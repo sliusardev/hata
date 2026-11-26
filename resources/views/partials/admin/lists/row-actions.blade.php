@@ -1,5 +1,5 @@
-{{-- The registered row actions (Admin::rowActions()) in a row's "⋮" menu, after the list's own items. Needs the HasListExtensions trait; `hasOwn` says whether the menu has items before them. --}}
-@php($visibleRowActions = array_filter($this->listRowActions, fn ($action): bool => $action->allows(auth()->user(), $record)))
+{{-- The registered row actions (Admin::rowActions()) in a row's "⋮" menu, after the list's own items. Needs the HasListExtensions trait; receives `record`, the list's `context` and `hasOwn` (whether the menu has items before them). The list skips the include when no action is registered. --}}
+@php($visibleRowActions = array_filter($this->listRowActions, fn ($action): bool => $action->allows(auth()->user(), $record, $context)))
 @if ($visibleRowActions !== [])
     @if ($hasOwn)
         <flux:menu.separator />

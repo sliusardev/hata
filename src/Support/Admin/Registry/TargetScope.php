@@ -26,6 +26,9 @@ final class TargetScope
     }
 
     /**
+     * `Closure(never)`: the scope serves every targeted registry, so it cannot name the entry class the closure
+     * receives (a `TableColumn`, a `FormCard`, …); `never` accepts a closure typed for any of them.
+     *
      * @param  Closure(never): Entry  $change
      */
     public function modify(string $key, Closure $change): static

@@ -2,8 +2,11 @@
 
 use App\Models\User;
 use Hata\Admin;
+use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
 use Hata\Support\Admin\Lists\BulkAction;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\ViewException;
 use Livewire\Livewire;
 use Tests\Fixtures\Lists\ArchiveBulkHandler;
 
@@ -11,6 +14,7 @@ beforeEach(function () {
     seedRolesAndPermissions();
     ArchiveBulkHandler::$calls = [];
     ArchiveBulkHandler::$message = 'Archived <b>all</b>';
+    ArchiveBulkHandler::$throw = null;
     $this->actingAs(User::factory()->withRole('admin')->create(['name' => 'Chief']));
 });
 
@@ -131,4 +135,50 @@ test('a bulk action on users gets the selected users and the selection clears on
         ->call('runBulkAction', 'archive');
 
     expect(ArchiveBulkHandler::$calls)->toBe([[$other->id]]);
+});
+
+test('a bulk handler refuses with a ProtectedActionException or a ValidationException, shown as a danger toast', function (string $case) {
+    ArchiveBulkHandler::$throw = $case === 'refusal'
+        ? new ProtectedActionException('Not these')
+        : ValidationException::withMessages(['reason' => 'Not these']);
+    Admin::bulkActions('content.pages')->add(archiveBulk());
+    $one = bulkPage('One');
+
+    Livewire::test('hata::admin.content.index', ['type' => 'pages'])
+        ->set('selected', [(string) $one->id])
+        ->call('runBulkAction', 'archive')
+        ->assertOk()
+        ->assertSet('selected', [])
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['slots']['text'] ?? null) === 'Not these' && ($params['dataset']['variant'] ?? null) === 'danger');
+})->with(['refusal', 'validation']);
+
+test('a user who lost the list\'s permission cannot run a bulk action', function () {
+    Admin::bulkActions('content.pages')->add(archiveBulk());
+    $user = User::factory()->withPermissions(['admin.access', 'pages.view'])->create();
+    $this->actingAs($user);
+    $one = bulkPage('One');
+
+    $component = Livewire::test('hata::admin.content.index', ['type' => 'pages'])->set('selected', [(string) $one->id]);
+
+    $user->revokePermissionTo('pages.view');
+
+    $component->call('runBulkAction', 'archive')->assertForbidden();
+
+    expect(ArchiveBulkHandler::$calls)->toBe([]);
+});
+
+test('a bulk action handler class without __invoke is a registration mistake', function () {
+    Admin::bulkActions('users')->add(archiveBulk(['handler' => stdClass::class]));
+
+    expect(fn () => Livewire::test('hata::admin.users.index'))->toThrow(ViewException::class, 'has no __invoke');
+});
+
+test('the users list clears its selection on a page change', function () {
+    Admin::bulkActions('users')->add(archiveBulk());
+    User::factory()->count(30)->create();
+
+    Livewire::test('hata::admin.users.index')
+        ->set('selected', ['1', '2'])
+        ->call('gotoPage', 2)
+        ->assertSet('selected', []);
 });

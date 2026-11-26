@@ -27,7 +27,7 @@ final class BulkActions extends TargetedRegistry
     public function for(AdminUser $user, ListContext $context): array
     {
         return array_values(array_filter(
-            $this->resolve($context->target)->entriesFor($user),
+            $this->resolve($context->target)->entriesFor($user, $context),
             fn (BulkAction $action): bool => $action->visibleIn !== null ? (bool) ($action->visibleIn)($context) : ! $context->isTrash(),
         ));
     }

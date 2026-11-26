@@ -103,3 +103,52 @@ test('a filter hidden in a tab by visibleIn is not applied there', function () {
 test('lists without a registered filter draw none', function () {
     expect(Livewire::test('hata::admin.users.index')->html())->not->toContain('wire:model.live="filters.');
 });
+
+test('a registered filter holding one of its values turns the tree indent off', function () {
+    Admin::filters('content.pages')->add(stockFilter(['apply' => fn ($query, string $value) => $query->where('title', 'Child')]));
+    $parent = Entry::factory()->published()->create(['type' => 'pages', 'title' => 'Parent', 'slug' => 'parent', 'path' => 'parent']);
+    Entry::factory()->published()->create(['type' => 'pages', 'title' => 'Child', 'slug' => 'child', 'path' => 'parent/child', 'parent_id' => $parent->id]);
+
+    $component = Livewire::test('hata::admin.content.index', ['type' => 'pages']);
+    expect($component->html())->toContain('data-depth="1"');
+
+    $component->set('filters.stock', 'bogus');
+    expect($component->html())->toContain('data-depth="1"');
+
+    $component->set('filters.stock', 'out');
+    expect($component->instance()->entries->pluck('title')->all())->toBe(['Child'])
+        ->and($component->html())->not->toContain('data-depth="1"');
+});
+
+test('a value of no visible filter, or not among the options, does not count as filtered', function (string $list) {
+    Admin::filters($list === 'users' ? 'users' : 'content.pages')->add(stockFilter());
+
+    $params = ['filter' => ['nope' => 'x', 'stock' => 'bogus']];
+    $component = $list === 'users'
+        ? Livewire::withQueryParams($params)->test('hata::admin.users.index')
+        : Livewire::withQueryParams($params)->test('hata::admin.content.index', ['type' => 'pages']);
+
+    expect($component->instance()->isFiltered())->toBeFalse();
+
+    $component->set('filters.stock', 'out');
+    expect($component->instance()->isFiltered())->toBeTrue();
+})->with(['content', 'users']);
+
+test('forged filter input answers 200 and never reaches apply', function (mixed $filter, string $list) {
+    $called = false;
+    Admin::filters($list === 'users' ? 'users' : 'content.pages')->add(stockFilter(['apply' => function () use (&$called) {
+        $called = true;
+    }]));
+    filterEntries();
+
+    $component = $list === 'users'
+        ? Livewire::withQueryParams(['filter' => $filter])->test('hata::admin.users.index')
+        : Livewire::withQueryParams(['filter' => $filter])->test('hata::admin.content.index', ['type' => 'pages']);
+
+    $component->assertOk();
+    expect($called)->toBeFalse()->and($component->instance()->isFiltered())->toBeFalse();
+})->with([
+    'a scalar' => ['abc'],
+    'a nested array' => [['x' => ['y' => 'z']]],
+    'an array for a registered key' => [['stock' => ['out']]],
+])->with(['content', 'users']);

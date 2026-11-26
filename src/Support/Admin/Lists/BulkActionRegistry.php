@@ -37,6 +37,10 @@ final class BulkActionRegistry extends Registry
 
     protected function validate(Entry $entry): ?string
     {
-        return class_exists($entry->handler) ? null : "its handler [{$entry->handler}] is not a class";
+        if (! class_exists($entry->handler)) {
+            return "its handler [{$entry->handler}] is not a class";
+        }
+
+        return method_exists($entry->handler, '__invoke') ? null : "its handler [{$entry->handler}] has no __invoke method";
     }
 }

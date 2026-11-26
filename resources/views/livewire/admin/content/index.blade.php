@@ -15,8 +15,8 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
     $counts = $this->counts;
     $abilities = $this->abilities;
     $inTrash = $tab === 'trash';
-    // Only the full tree is indented: a status tab or a filter can hide a row's parent.
-    $indent = $this->listQuery->isTree() && $tab === 'all' && trim($search) === '' && $termFilter === [];
+    // Only the full tree is indented: a status tab or a filter (a registered one too) can hide a row's parent.
+    $indent = $this->listQuery->isTree() && $tab === 'all' && trim($search) === '' && $termFilter === [] && ! $this->hasListFilterValue();
     // A term is always published and has no author: its list has no status tabs and columns, and counts its records.
     $publishes = $contentType->supports('publication');
     $taxonomies = $this->taxonomies;
@@ -270,7 +270,9 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                                             <flux:menu.item variant="danger" icon="trash" wire:click="confirmTrash({{ $entry->id }})" data-test="trash-entry-{{ $entry->id }}">{{ __('hata::content.list.actions.trash') }}</flux:menu.item>
                                         @endif
                                     @endif
-                                    @include('hata::partials.admin.lists.row-actions', ['record' => $entry, 'hasOwn' => $inTrash ? ($abilities['edit'] || $abilities['delete']) : ($abilities['edit'] || $abilities['delete'] || $entry->isPublic())])
+                                    @if ($this->listRowActions !== [])
+                                        @include('hata::partials.admin.lists.row-actions', ['record' => $entry, 'context' => $listContext, 'hasOwn' => $inTrash ? ($abilities['edit'] || $abilities['delete']) : ($abilities['edit'] || $abilities['delete'] || $entry->isPublic())])
+                                    @endif
                                 </x-hata::admin.row-actions>
                             </flux:table.cell>
                         </flux:table.row>

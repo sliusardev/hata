@@ -28,7 +28,7 @@ final class TableFilters extends TargetedRegistry
         $registry = $this->resolve($context->target);
 
         return array_values(array_filter(
-            $registry->entriesFor($user),
+            $registry->entriesFor($user, $context),
             fn (TableFilter $filter): bool => $filter->visibleIn === null || (bool) ($filter->visibleIn)($context),
         ));
     }

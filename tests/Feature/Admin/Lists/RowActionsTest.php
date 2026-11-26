@@ -2,11 +2,18 @@
 
 use App\Models\User;
 use Hata\Admin;
+use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Entry;
+use Hata\Support\Admin\Lists\BulkAction;
+use Hata\Support\Admin\Lists\ListContext;
 use Hata\Support\Admin\Lists\RowAction;
+use Hata\Support\Admin\Lists\TableColumn;
+use Hata\Support\Admin\Lists\TableFilter;
 use Hata\Testing\AssertsListQueries;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\ViewException;
 use Livewire\Livewire;
+use Tests\Fixtures\Lists\ArchiveBulkHandler;
 use Tests\Fixtures\Lists\ArchiveHandler;
 
 uses(AssertsListQueries::class);
@@ -15,6 +22,7 @@ beforeEach(function () {
     seedRolesAndPermissions();
     ArchiveHandler::$calls = [];
     ArchiveHandler::$message = 'Archived <b>it</b>';
+    ArchiveHandler::$throw = null;
     $this->actingAs(User::factory()->withRole('admin')->create(['name' => 'Chief']));
 });
 
@@ -296,4 +304,69 @@ test('a handler class that does not exist is a registration mistake', function (
     Admin::rowActions('users')->add(archiveAction(['handler' => 'App\\Nope\\Missing']));
 
     expect(fn () => Livewire::test('hata::admin.users.index'))->toThrow(ViewException::class, 'is not a class');
+});
+
+test('a handler refuses with a ProtectedActionException or a ValidationException, shown as a danger toast', function (string $case) {
+    ArchiveHandler::$throw = $case === 'refusal'
+        ? new ProtectedActionException('Not this one')
+        : ValidationException::withMessages(['reason' => 'Not this one']);
+    Admin::rowActions('content.pages')->add(archiveAction(['confirm' => 'Sure?']));
+    $entry = pageEntry();
+
+    Livewire::test('hata::admin.content.index', ['type' => 'pages'])
+        ->call('confirmRowAction', 'archive', $entry->id)
+        ->call('runPendingRowAction')
+        ->assertOk()
+        ->assertSet('showRowActionModal', false)
+        ->assertSet('rowActionKey', null)
+        ->assertDispatched('toast-show', fn (string $name, array $params): bool => ($params['slots']['text'] ?? null) === 'Not this one' && ($params['dataset']['variant'] ?? null) === 'danger');
+})->with(['refusal', 'validation']);
+
+test('a user who lost the list\'s permission cannot run a row action', function (string $list) {
+    Admin::rowActions($list === 'users' ? 'users' : 'content.pages')->add(archiveAction());
+    $user = User::factory()->withPermissions(['admin.access', 'pages.view', 'users.view'])->create();
+    $this->actingAs($user);
+    $record = $list === 'users' ? User::factory()->create() : pageEntry();
+
+    $component = $list === 'users'
+        ? Livewire::test('hata::admin.users.index')
+        : Livewire::test('hata::admin.content.index', ['type' => 'pages']);
+
+    $user->revokePermissionTo($list === 'users' ? 'users.view' : 'pages.view');
+
+    $component->call('runRowAction', 'archive', $record->id)->assertForbidden();
+
+    expect(ArchiveHandler::$calls)->toBe([]);
+})->with(['content', 'users']);
+
+test('a row action handler class without __invoke is a registration mistake', function () {
+    Admin::rowActions('users')->add(archiveAction(['handler' => stdClass::class]));
+
+    expect(fn () => Livewire::test('hata::admin.users.index'))->toThrow(ViewException::class, 'has no __invoke');
+});
+
+test('permission closures of list entries get the list context', function () {
+    $seen = [];
+    $remember = function (string $what) use (&$seen): Closure {
+        return function (...$arguments) use ($what, &$seen): bool {
+            $seen[$what] = end($arguments);
+
+            return true;
+        };
+    };
+    Admin::columns('content.pages')->add(new TableColumn(key: 'views', label: 'Views', value: fn () => '1', permission: $remember('column')));
+    Admin::filters('content.pages')->add(new TableFilter(key: 'stock', label: 'Stock', options: fn () => ['in' => 'In'], apply: fn () => null, permission: $remember('filter')));
+    Admin::rowActions('content.pages')->add(archiveAction(['permission' => $remember('row')]));
+    Admin::bulkActions('content.pages')->add(new BulkAction(key: 'feature', label: 'Feature', icon: 'star', handler: ArchiveBulkHandler::class, permission: $remember('bulk')));
+    pageEntry();
+
+    Livewire::test('hata::admin.content.index', ['type' => 'pages'])->set('tab', 'published')->assertOk();
+
+    expect(array_keys($seen))->toEqualCanonicalizing(['column', 'filter', 'row', 'bulk']);
+
+    foreach ($seen as $context) {
+        expect($context)->toBeInstanceOf(ListContext::class)
+            ->and($context->target)->toBe('content.pages')
+            ->and($context->tab)->toBe('published');
+    }
 });

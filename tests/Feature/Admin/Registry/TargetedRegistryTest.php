@@ -103,3 +103,12 @@ test('in production a bad target is skipped and logged once', function () {
     expect($registry->targets())->toBe([]);
     Log::shouldHaveReceived('warning')->once();
 });
+
+test('a remove on a wide target also hides the key a narrower target adds again', function () {
+    $registry = new FakeTargetedRegistry;
+    $registry->on('content.*')->remove('a');
+    $registry->on('content.posts')->add(new FakeEntry('a'));
+
+    expect(targetedKeys($registry, 'content.posts'))->toBe([])
+        ->and($registry->resolve('content.posts')->unmatched())->toBe([]);
+});

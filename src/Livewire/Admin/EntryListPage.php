@@ -133,11 +133,9 @@ abstract class EntryListPage extends Component
 
     public function mount(string $type): void
     {
-        abort_unless(app(ContentTypes::class)->isActive($type), 404);
-
-        $this->authorize('viewAny', [Entry::class, $type]);
-
         $this->type = $type;
+        $this->authorizeList();
+
         $this->tab = in_array($this->tab, EntryListQuery::TABS, true) ? $this->tab : 'all';
         $this->search = mb_substr($this->search, 0, self::SEARCH_MAX);
         $this->locale = $this->validLocale($this->locale !== '' ? $this->locale : (string) session(self::LOCALE_SESSION_KEY));
@@ -221,12 +219,6 @@ abstract class EntryListPage extends Component
     public function updatedTermFilter(): void
     {
         $this->termFilter = $this->validTerms($this->termFilter);
-        $this->selected = [];
-        $this->resetPage();
-    }
-
-    public function updatedFilters(): void
-    {
         $this->selected = [];
         $this->resetPage();
     }
@@ -316,6 +308,16 @@ abstract class EntryListPage extends Component
         $types = Entry::query()->whereKey(array_values($wanted))->pluck('type', 'id');
 
         return array_map(strval(...), array_filter($wanted, fn (int $id, string $key): bool => ($types[$id] ?? null) === $key, ARRAY_FILTER_USE_BOTH));
+    }
+
+    /**
+     * The type is on and the user may list it: checked on mount and again before a registered action runs.
+     */
+    protected function authorizeList(): void
+    {
+        abort_unless(app(ContentTypes::class)->isActive($this->type), 404);
+
+        $this->authorize('viewAny', [Entry::class, $this->type]);
     }
 
     protected function listContext(): ListContext

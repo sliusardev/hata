@@ -5,6 +5,7 @@ namespace Hata\Livewire\Admin\Concerns;
 use Closure;
 use Flux\Flux;
 use Hata\Contracts\AdminUser;
+use Hata\Exceptions\ProtectedActionException;
 use Hata\Support\Admin\Lists\BulkAction;
 use Hata\Support\Admin\Lists\BulkActions;
 use Hata\Support\Admin\Lists\ListContext;
@@ -17,6 +18,7 @@ use Hata\Support\Admin\Lists\TableFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -85,6 +87,12 @@ trait HasListExtensions
      * Drops what the page cached, after an action changed records.
      */
     abstract protected function forgetList(): void;
+
+    /**
+     * Checks again what the page's `mount()` checks (the list is there and the user may open it): run before a
+     * registered action, so a user who lost the list's permission while the page was open cannot act from it.
+     */
+    abstract protected function authorizeList(): void;
 
     /**
      * @return list<TableColumn>
@@ -156,6 +164,28 @@ trait HasListExtensions
     }
 
     /**
+     * The value of every visible filter that holds one of its options, by filter key. The one rule for what narrows
+     * the list: `applyFilters()` applies these, and only these make the list filtered (`hasListFilterValue()`), so a
+     * forged, unknown or hidden key, or a value that is not an option, counts for nothing.
+     *
+     * @return array<string, string>
+     */
+    protected function activeListFilters(): array
+    {
+        $active = [];
+
+        foreach ($this->listFilters as $filter) {
+            $value = $this->filters[$filter->key] ?? '';
+
+            if (is_string($value) && $value !== '' && array_key_exists($value, $this->listFilterOptions[$filter->key])) {
+                $active[$filter->key] = $value;
+            }
+        }
+
+        return $active;
+    }
+
+    /**
      * Narrows the page's query by every visible filter whose value is one of its options.
      *
      * @param  Builder<*>  $query
@@ -163,23 +193,25 @@ trait HasListExtensions
      */
     protected function applyFilters(Builder $query): Builder
     {
-        foreach ($this->listFilters as $filter) {
-            $value = $this->filters[$filter->key] ?? '';
+        $filters = [];
 
-            if (is_string($value) && $value !== '' && array_key_exists($value, $this->listFilterOptions[$filter->key])) {
-                ($filter->apply)($query, $value);
-            }
+        foreach ($this->listFilters as $filter) {
+            $filters[$filter->key] = $filter;
+        }
+
+        foreach ($this->activeListFilters() as $key => $value) {
+            ($filters[$key]->apply)($query, $value);
         }
 
         return $query;
     }
 
     /**
-     * Whether a registered filter has a value.
+     * Whether a registered filter narrows the list (see `activeListFilters()`).
      */
     protected function hasListFilterValue(): bool
     {
-        return array_filter($this->filters, fn (mixed $value): bool => $value !== '' && $value !== null) !== [];
+        return $this->activeListFilters() !== [];
     }
 
     public function updatedFilters(): void
@@ -221,6 +253,7 @@ trait HasListExtensions
      */
     public function confirmRowAction(string $key, int $id): void
     {
+        $this->authorizeList();
         $action = $this->rowActionNamed($key);
 
         if ($action->confirm === null) {
@@ -252,15 +285,12 @@ trait HasListExtensions
      */
     public function runRowAction(string $key, int $id): void
     {
+        $this->authorizeList();
         $action = $this->rowActionNamed($key);
         $user = $this->rowActionUser();
         $record = $this->recordFor($action, $id);
 
-        $message = app($action->handler)($record, $user);
-
-        if (is_string($message) && $message !== '') {
-            Flux::toast(variant: 'success', text: $message);
-        }
+        $this->runHandler(fn (): mixed => app($action->handler)($record, $user));
 
         $this->showRowActionModal = false;
         $this->rowActionKey = null;
@@ -313,6 +343,7 @@ trait HasListExtensions
      */
     public function confirmBulkAction(string $key): void
     {
+        $this->authorizeList();
         $action = $this->bulkActionNamed($key);
 
         if (! $action->asksFirst()) {
@@ -341,6 +372,7 @@ trait HasListExtensions
      */
     public function runBulkAction(string $key): void
     {
+        $this->authorizeList();
         $action = $this->bulkActionNamed($key);
         $user = $this->rowActionUser();
         $ids = $this->selectedIds();
@@ -354,11 +386,7 @@ trait HasListExtensions
             return;
         }
 
-        $message = app($action->handler)($records, $user);
-
-        if (is_string($message) && $message !== '') {
-            Flux::toast(variant: 'success', text: $message);
-        }
+        $this->runHandler(fn (): mixed => app($action->handler)($records, $user));
 
         $this->forgetList();
     }
@@ -379,6 +407,33 @@ trait HasListExtensions
     protected function selectedIds(): array
     {
         return array_values(array_unique(array_filter(array_map(intval(...), $this->selected), fn (int $id): bool => $id > 0)));
+    }
+
+    /**
+     * Calls a row or bulk handler: the text it returns is a success toast; a refusal (`ProtectedActionException`)
+     * or a `ValidationException` it throws is a danger toast with its message, as Hata's own list actions show one.
+     *
+     * @param  Closure(): mixed  $handler
+     */
+    private function runHandler(Closure $handler): void
+    {
+        try {
+            $message = $handler();
+        } catch (ProtectedActionException $exception) {
+            Flux::toast(variant: 'danger', text: $exception->getMessage());
+
+            return;
+        } catch (ValidationException $exception) {
+            $first = collect($exception->errors())->flatten()->first();
+
+            Flux::toast(variant: 'danger', text: is_string($first) ? $first : $exception->getMessage());
+
+            return;
+        }
+
+        if (is_string($message) && $message !== '') {
+            Flux::toast(variant: 'success', text: $message);
+        }
     }
 
     private function closeBulkAction(): void
@@ -414,7 +469,7 @@ trait HasListExtensions
     {
         $record = $this->recordQuery()->whereKey($id)->firstOrFail();
 
-        abort_unless($action->allows($this->rowActionUser(), $record), 403);
+        abort_unless($action->allows($this->rowActionUser(), $record, $this->listContext()), 403);
 
         return $record;
     }

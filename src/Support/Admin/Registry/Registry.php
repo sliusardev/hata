@@ -5,8 +5,6 @@ namespace Hata\Support\Admin\Registry;
 use Closure;
 use Hata\Contracts\AdminUser;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
-use LogicException;
 use Throwable;
 
 /**
@@ -25,6 +23,8 @@ use Throwable;
  */
 abstract class Registry
 {
+    use ReportsMistakes;
+
     /**
      * @var array<string, TEntry>
      */
@@ -44,13 +44,6 @@ abstract class Registry
      * @var list<string>
      */
     private array $unmatched = [];
-
-    /**
-     * The registration mistakes this process has logged already, per registry class.
-     *
-     * @var array<class-string, array<string, true>>
-     */
-    private static array $warned = [];
 
     /**
      * What the registry holds, in messages: "admin menu item", "settings section", ….
@@ -174,26 +167,30 @@ abstract class Registry
     }
 
     /**
-     * The entries this user may see, in the order of `all()`.
+     * The entries this user may see, in the order of `all()`. A registry read for a list or a form passes what it
+     * is drawn for as `$context`, and a permission closure receives it as its last argument.
      *
      * @return list<TEntry>
      */
-    public function entriesFor(AdminUser $user): array
+    public function entriesFor(AdminUser $user, ?object $context = null): array
     {
-        return array_values(array_filter($this->all(), fn (Entry $entry): bool => $this->allows($user, $entry)));
+        return array_values(array_filter($this->all(), fn (Entry $entry): bool => $this->allows($user, $entry, $context)));
     }
 
     /**
+     * Whether the user may see the entry: no permission, a string ability through the Gate, or a closure called with
+     * the user (and the context, when there is one: a closure that takes only the user ignores it).
+     *
      * @param  TEntry  $entry
      */
-    public function allows(AdminUser $user, Entry $entry): bool
+    public function allows(AdminUser $user, Entry $entry, ?object $context = null): bool
     {
         if ($entry->permission === null) {
             return true;
         }
 
         if ($entry->permission instanceof Closure) {
-            return (bool) ($entry->permission)($user);
+            return (bool) ($context === null ? ($entry->permission)($user) : ($entry->permission)($user, $context));
         }
 
         return Gate::forUser($user)->allows($entry->permission);
@@ -208,16 +205,6 @@ abstract class Registry
     public function unmatched(): array
     {
         return $this->unmatched;
-    }
-
-    /**
-     * Forgets which mistakes were logged. For tests only.
-     *
-     * @internal
-     */
-    public static function forgetWarnings(): void
-    {
-        unset(self::$warned[static::class]);
     }
 
     /**
@@ -264,21 +251,6 @@ abstract class Registry
     protected function problem(string $key, string $problem): void
     {
         $this->report("The {$this->name()} [{$key}] is left out: {$problem}.");
-    }
-
-    private function report(string $message): void
-    {
-        if (app()->environment('local', 'testing')) {
-            throw new LogicException($message);
-        }
-
-        if (isset(self::$warned[static::class][$message])) {
-            return;
-        }
-
-        self::$warned[static::class][$message] = true;
-
-        Log::warning($message);
     }
 
     /**

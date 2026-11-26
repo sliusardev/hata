@@ -12,10 +12,13 @@ use Hata\Support\Admin\Registry\HasChanges;
  * calls once, as `__invoke(Collection $records, AdminUser $actor): ?string`, with the selected records of the
  * list's view; the returned text is shown as a success toast (null: none).
  *
- * `$label` is a translation key or a plain string. `$permission` is checked for the user when the actions are
- * listed (there is no single record): a string ability, or a `Closure(AdminUser): bool`. `$visibleIn` is a
- * `Closure(ListContext): bool`; without it the action is not shown in the trash. `$confirm` (a translation key or
- * text) asks first in the list's shared dialog; a `$danger` action always asks.
+ * `$label` is a translation key or a plain string. `$visibleIn` is a `Closure(ListContext): bool`; without it the
+ * action is not shown in the trash. `$permission` is checked for the user when the actions are listed (there is no
+ * single record): a string ability, or a `Closure(AdminUser, ListContext): bool`. `$confirm` (a translation key or
+ * text) asks first in the list's shared dialog; a `$danger` action always asks. A handler refuses by throwing
+ * `ProtectedActionException` (or a `ValidationException`): its message is shown as a danger toast.
+ *
+ * The tail options (`visibleIn`, `permission`, `order`, …) are best given as named arguments.
  */
 final readonly class BulkAction implements Entry
 {
@@ -23,17 +26,17 @@ final readonly class BulkAction implements Entry
 
     /**
      * @param  class-string  $handler
-     * @param  string|Closure(AdminUser): bool|null  $permission
      * @param  (Closure(ListContext): bool)|null  $visibleIn
+     * @param  string|Closure(AdminUser, ListContext): bool|null  $permission
      */
     public function __construct(
         public string $key,
         public string $label,
         public string $icon,
         public string $handler,
+        public ?Closure $visibleIn = null,
         public string|Closure|null $permission = null,
         public int $order = 100,
-        public ?Closure $visibleIn = null,
         public bool $danger = false,
         public ?string $confirm = null,
     ) {}

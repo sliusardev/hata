@@ -14,7 +14,10 @@ use Hata\Support\Admin\Registry\HasChanges;
  * (a string is escaped) or the name of a Blade view rendered with `['record' => …, 'context' => …]`. `$with` is an
  * array for `->with()` or a `Closure(Builder): void` (`withCount`, `addSelect`), applied once per page, never per
  * row. `$sort` makes the column sortable by its key: `Closure(Builder, string $direction): void`. `$visibleIn` is a
- * `Closure(ListContext): bool` (null: every tab). `$hideBelow` is `md` or `lg`, `$align` is `start`, `center` or `end`.
+ * `Closure(ListContext): bool` (null: every tab). `$permission` is a string ability or a
+ * `Closure(AdminUser, ListContext): bool`. `$hideBelow` is `md` or `lg`, `$align` is `start`, `center` or `end`.
+ *
+ * The options after `value` are best given as named arguments.
  */
 final readonly class TableColumn implements Entry
 {
@@ -26,7 +29,7 @@ final readonly class TableColumn implements Entry
 
     /**
      * @param  array<int|string, mixed>|Closure  $with
-     * @param  string|Closure(AdminUser): bool|null  $permission
+     * @param  string|Closure(AdminUser, ListContext): bool|null  $permission
      */
     public function __construct(
         public string $key,

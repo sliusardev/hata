@@ -28,7 +28,7 @@ final class TableColumns extends TargetedRegistry
         $registry = $this->resolve($context->target);
 
         return array_values(array_filter(
-            $registry->entriesFor($user),
+            $registry->entriesFor($user, $context),
             fn (TableColumn $column): bool => $column->visibleIn === null || (bool) ($column->visibleIn)($context),
         ));
     }

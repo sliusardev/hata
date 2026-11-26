@@ -31,20 +31,31 @@ trait AssertsListQueries
     }
 
     /**
+     * Counts the queries of one render. A query log the test had switched on stays on, with its entries; one that was
+     * off is switched off and emptied again.
+     *
      * @param  Closure(): mixed  $render
      */
     private function countListQueries(Closure $render): int
     {
-        DB::flushQueryLog();
-        DB::enableQueryLog();
+        $wasLogging = DB::logging();
+
+        if (! $wasLogging) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+        }
+
+        $before = count(DB::getQueryLog());
 
         try {
             $render();
 
-            $count = count(DB::getQueryLog());
+            $count = count(DB::getQueryLog()) - $before;
         } finally {
-            DB::disableQueryLog();
-            DB::flushQueryLog();
+            if (! $wasLogging) {
+                DB::disableQueryLog();
+                DB::flushQueryLog();
+            }
         }
 
         return $count;

@@ -2,7 +2,6 @@
 
 namespace Hata\Support\Admin\Forms;
 
-use Hata\Contracts\AdminUser;
 use Hata\Support\Admin\Registry\Entry;
 use Hata\Support\Admin\Registry\Registry;
 
@@ -21,14 +20,6 @@ final class FormCardRegistry extends Registry
     public function describe(Entry $entry): string
     {
         return "extension [{$entry->extension}] in [{$entry->area}]";
-    }
-
-    /**
-     * A card's permission may let a guest through (registration), so the form asks `FormCard::allows()`.
-     */
-    public function allows(AdminUser $user, Entry $entry): bool
-    {
-        return $entry->allows($user);
     }
 
     /**

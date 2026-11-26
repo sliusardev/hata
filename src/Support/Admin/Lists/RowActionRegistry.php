@@ -27,7 +27,7 @@ final class RowActionRegistry extends Registry
      * An action's permission needs the record, so the registry lets every action through and the list asks
      * `RowAction::allows()` per record.
      */
-    public function allows(AdminUser $user, Entry $entry): bool
+    public function allows(AdminUser $user, Entry $entry, ?object $context = null): bool
     {
         return true;
     }
@@ -53,6 +53,10 @@ final class RowActionRegistry extends Registry
 
         if ($entry->handler !== null && ! class_exists($entry->handler)) {
             return "its handler [{$entry->handler}] is not a class";
+        }
+
+        if ($entry->handler !== null && ! method_exists($entry->handler, '__invoke')) {
+            return "its handler [{$entry->handler}] has no __invoke method";
         }
 
         return null;

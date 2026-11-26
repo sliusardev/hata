@@ -3,8 +3,6 @@
 namespace Hata\Support\Admin\Registry;
 
 use Hata\Support\Content\ContentTypes;
-use Illuminate\Support\Facades\Log;
-use LogicException;
 
 /**
  * A registry whose entries are aimed at a list: `users`, every content list (`content.*`), the lists of records
@@ -23,6 +21,8 @@ use LogicException;
  */
 abstract class TargetedRegistry
 {
+    use ReportsMistakes;
+
     /**
      * The targets that are not under `content`. Add a target here to open it to every targeted registry.
      */
@@ -37,11 +37,6 @@ abstract class TargetedRegistry
      * @var array<string, TRegistry>
      */
     private array $resolved = [];
-
-    /**
-     * @var array<class-string, array<string, true>>
-     */
-    private static array $warned = [];
 
     /**
      * @return TRegistry
@@ -155,30 +150,5 @@ abstract class TargetedRegistry
 
         return in_array($target, ['content.*', 'content.@records', 'content.@taxonomies'], true)
             || preg_match('/\Acontent\.[a-z0-9_-]+\z/', $target) === 1;
-    }
-
-    private function report(string $message): void
-    {
-        if (app()->environment('local', 'testing')) {
-            throw new LogicException($message);
-        }
-
-        if (isset(self::$warned[static::class][$message])) {
-            return;
-        }
-
-        self::$warned[static::class][$message] = true;
-
-        Log::warning($message);
-    }
-
-    /**
-     * Forgets which mistakes were logged. For tests only.
-     *
-     * @internal
-     */
-    public static function forgetWarnings(): void
-    {
-        unset(self::$warned[static::class]);
     }
 }
