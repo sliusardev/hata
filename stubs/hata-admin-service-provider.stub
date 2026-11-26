@@ -73,13 +73,15 @@ class HataAdminServiceProvider extends ServiceProvider
         // Lists: the targets are `users`, `content.*` (every content list), `content.@records`, `content.@taxonomies`
         // and `content.<type key>` (for example `content.posts`).
         //
-        // A column after the fixed first column; `with` loads what it shows once per page, never per row.
+        // A column after the fixed first column; `with` loads what it shows once per page, never per row. A content
+        // row is a narrow select (no `fields`, `body`, `excerpt`, ...): add what the value reads through `with`.
+        // Give the options after `value` as named arguments.
         //
         // Admin::columns('content.posts')->add(new TableColumn(
         //     key: 'views',
         //     label: 'Views',
         //     value: fn ($record) => number_format($record->fields['views'] ?? 0),
-        //     sort: fn ($query, string $direction) => $query->orderBy('id', $direction),
+        //     with: fn ($query) => $query->addSelect('fields'),
         //     order: 45,
         //     hideBelow: 'lg',
         // ));
@@ -94,12 +96,14 @@ class HataAdminServiceProvider extends ServiceProvider
         //     apply: fn ($query, string $value) => $value === 'yes' ? $query->whereNotNull('email_verified_at') : $query->whereNull('email_verified_at'),
         // ));
 
-        // An item in the row's three-dot menu: a link built from the record, or a handler class called with the record and the actor.
+        // An item in the row's three-dot menu: a link built from the record, or a handler class called with the record and
+        // the actor (to refuse, it throws Hata\Exceptions\ProtectedActionException; its message is shown).
         //
         // Admin::rowActions('content.posts')->add(RowAction::link('open-shop', 'Open in shop', 'arrow-top-right-on-square', fn ($record) => 'https://example.com/'.$record->path, newTab: true));
         // Admin::rowActions('users')->add(RowAction::handler('send-welcome', 'Send welcome email', 'envelope', \App\Admin\SendWelcome::class, permission: 'users.edit', confirm: 'Send the welcome email?'));
 
-        // A button of the bulk bar: the handler gets the selected records and the actor.
+        // A button of the bulk bar: the handler gets the selected records and the actor (on `users`, it applies
+        // Hata\Support\Permissions\AccessRules itself).
         //
         // Admin::bulkActions('content.posts')->add(new BulkAction(
         //     key: 'feature',
