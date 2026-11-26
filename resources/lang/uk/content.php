@@ -112,6 +112,7 @@ return [
         'tree_order' => 'Порядок дерева',
         'columns' => [
             'title' => 'Заголовок',
+            'taxonomies' => 'Таксономії',
             'records' => 'Записів',
             'status' => 'Статус',
             'author' => 'Автор',

@@ -2,6 +2,7 @@
 
 namespace Hata\Support\Content;
 
+use Closure;
 use Hata\Enums\EntryState;
 use Hata\Models\Entry;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -41,6 +42,11 @@ final class EntryListQuery
     private array $terms = [];
 
     private string $sort;
+
+    /**
+     * The sort of a registered column, set while `$sort` is its key.
+     */
+    private ?Closure $registered = null;
 
     /**
      * @var 'asc'|'desc'
@@ -105,12 +111,21 @@ final class EntryListQuery
     }
 
     /**
-     * `tree` is path order and only applies to a hierarchical type; an unknown sort keeps the type's default.
+     * `tree` is path order and only applies to a hierarchical type; an unknown sort keeps the type's default. A sort
+     * the page got from a registered column (`$registered`, used when the key is not one of `SORTS`) is flat.
+     *
+     * @param  (Closure(Builder<Entry>, string): mixed)|null  $registered
      */
-    public function sort(string $column, string $direction): self
+    public function sort(string $column, string $direction, ?Closure $registered = null): self
     {
-        if (in_array($column, self::SORTS, true) && ($column !== 'tree' || $this->type->hierarchical())) {
+        if (in_array($column, self::SORTS, true)) {
+            if ($column !== 'tree' || $this->type->hierarchical()) {
+                $this->sort = $column;
+                $this->registered = null;
+            }
+        } elseif ($registered !== null) {
             $this->sort = $column;
+            $this->registered = $registered;
         }
 
         $this->direction = $direction === 'desc' ? 'desc' : 'asc';
@@ -218,6 +233,12 @@ final class EntryListQuery
     {
         if ($this->tab === 'trash') {
             return $query->orderByDesc('deleted_at')->orderByDesc('id');
+        }
+
+        if ($this->registered !== null) {
+            ($this->registered)($query, $this->direction);
+
+            return $query->orderBy('id', $this->direction);
         }
 
         return match ($this->sort) {

@@ -26,6 +26,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
     $trashDays = (int) config('hata.content.trash_days');
     $homeGroupId = $this->homeGroupId;
     $selectable = $abilities['edit'] || $abilities['delete'];
+    $listContext = $this->listContext();
     $checkbox = 'size-4 cursor-pointer rounded accent-zinc-800 dark:accent-white';
 @endphp
 
@@ -157,23 +158,9 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                     @else
                         <flux:table.column sortable :sorted="$this->sortColumn() === 'title'" :direction="$this->sortDirection()" wire:click="sort('title')">{{ __('hata::content.list.columns.title') }}</flux:table.column>
                     @endif
-                    @if ($taxonomies !== [])
-                        <flux:table.column class="max-lg:hidden">{{ implode(' / ', array_map(fn ($taxonomy) => $taxonomy->pluralLabel(), $taxonomies)) }}</flux:table.column>
-                    @endif
-                    @if ($contentType->isTaxonomy())
-                        <flux:table.column class="max-md:hidden">{{ __('hata::content.list.columns.records') }}</flux:table.column>
-                    @endif
-                    @if (! $inTrash && $publishes)
-                        <flux:table.column class="max-md:hidden">{{ __('hata::content.list.columns.status') }}</flux:table.column>
-                    @endif
-                    @if ($contentType->supports('author'))
-                        <flux:table.column class="max-lg:hidden">{{ __('hata::content.list.columns.author') }}</flux:table.column>
-                    @endif
-                    @if ($inTrash)
-                        <flux:table.column class="max-lg:hidden">{{ __('hata::content.list.columns.removal') }}</flux:table.column>
-                    @else
-                        <flux:table.column sortable :sorted="$this->sortColumn() === 'date'" :direction="$this->sortDirection()" wire:click="sort('date')" class="max-lg:hidden">{{ __('hata::content.list.columns.date') }}</flux:table.column>
-                    @endif
+                    @foreach ($this->listColumns as $column)
+                        @include('hata::partials.admin.lists.column-header', ['column' => $column, 'sortBy' => $this->sortColumn(), 'direction' => $this->sortDirection(), 'label' => $column->key === 'taxonomies' ? implode(' / ', array_map(fn ($taxonomy) => $taxonomy->pluralLabel(), $taxonomies)) : null])
+                    @endforeach
                     <flux:table.column align="end"><span class="sr-only">{{ __('hata::content.list.columns.actions') }}</span></flux:table.column>
                 </flux:table.columns>
 
@@ -244,39 +231,9 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                                 </div>
                             </flux:table.cell>
 
-                            @if ($taxonomies !== [])
-                                <flux:table.cell class="max-lg:hidden">
-                                    <div class="max-w-56 text-sm text-zinc-600 dark:text-zinc-300" data-test="entry-terms-{{ $entry->id }}">
-                                        @forelse ($entry->terms->groupBy('type') as $termType => $terms)
-                                            <div class="truncate" title="{{ $terms->pluck('title')->implode(', ') }}">{{ $terms->pluck('title')->implode(', ') }}</div>
-                                        @empty
-                                            <span class="text-zinc-400">—</span>
-                                        @endforelse
-                                    </div>
-                                </flux:table.cell>
-                            @endif
-
-                            @if ($contentType->isTaxonomy())
-                                <flux:table.cell class="tabular-nums max-md:hidden" data-test="term-records-{{ $entry->id }}">{{ $entry->term_records_count }}</flux:table.cell>
-                            @endif
-
-                            @if (! $inTrash && $publishes)
-                                <flux:table.cell class="max-md:hidden">
-                                    <flux:badge size="sm" :color="$stateColor" data-test="entry-state-{{ $entry->id }}" data-state="{{ strtolower($state->name) }}">{{ $stateLabel }}</flux:badge>
-                                </flux:table.cell>
-                            @endif
-
-                            @if ($contentType->supports('author'))
-                                <flux:table.cell class="max-lg:hidden">{{ $entry->author?->name ?? '—' }}</flux:table.cell>
-                            @endif
-
-                            <flux:table.cell class="max-lg:hidden">
-                                @if ($inTrash)
-                                    {{ __('hata::content.list.removed_on', ['date' => $entry->deleted_at->copy()->addDays($trashDays)->tz($timezone)->isoFormat('LL')]) }}
-                                @else
-                                    {{ ($entry->published_at ?? $entry->created_at)?->tz($timezone)->isoFormat('LL') }}
-                                @endif
-                            </flux:table.cell>
+                            @foreach ($this->listColumns as $column)
+                                @include('hata::partials.admin.lists.column-cell', ['column' => $column, 'record' => $entry, 'context' => $listContext])
+                            @endforeach
 
                             <flux:table.cell align="end">
                                 <x-hata::admin.row-actions data-test="entry-actions-{{ $entry->id }}">

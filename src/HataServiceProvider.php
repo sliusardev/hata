@@ -35,6 +35,7 @@ use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidget;
 use Hata\Support\Admin\DashboardWidgets;
+use Hata\Support\Admin\Lists\ListContext;
 use Hata\Support\Admin\Lists\TableColumn;
 use Hata\Support\Admin\Lists\TableColumns;
 use Hata\Support\Admin\SettingsSection;
@@ -43,6 +44,8 @@ use Hata\Support\Admin\TopbarItem;
 use Hata\Support\Assets\HataAssets;
 use Hata\Support\Assets\HataVite;
 use Hata\Support\Config\HataConfig;
+use Hata\Support\Content\ContentType;
+use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\HomePage;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\LanguageCatalog;
@@ -319,6 +322,32 @@ class HataServiceProvider extends ServiceProvider
             ->add(new TableColumn('roles', 'hata::users.index.columns.roles', $views.'roles', with: ['roles'], order: 20))
             ->add(new TableColumn('locale', 'hata::users.index.columns.locale', $views.'locale', order: 30, hideBelow: 'lg'))
             ->add(new TableColumn('created_at', 'hata::users.index.columns.created_at', $views.'created_at', sort: fn ($query, string $direction) => $query->orderBy('created_at', $direction), order: 40, hideBelow: 'lg'));
+
+        $views = 'hata::partials.admin.lists.columns.content.';
+        $hasTaxonomies = function (ListContext $context): bool {
+            $types = $this->app->make(ContentTypes::class);
+
+            return $context->type !== null && array_filter(
+                $types->taxonomiesOf($context->type->key()),
+                fn (ContentType $taxonomy): bool => $types->isActive($taxonomy->key()),
+            ) !== [];
+        };
+
+        $this->app->make(TableColumns::class)->on('content.*')
+            ->add(new TableColumn('taxonomies', 'hata::content.list.columns.taxonomies', $views.'taxonomies', visibleIn: $hasTaxonomies, order: 10, hideBelow: 'lg'))
+            ->add(new TableColumn('records', 'hata::content.list.columns.records', $views.'records', visibleIn: fn (ListContext $context): bool => $context->isTaxonomy(), order: 20, hideBelow: 'md'))
+            ->add(new TableColumn('status', 'hata::content.list.columns.status', $views.'status', visibleIn: fn (ListContext $context): bool => ! $context->isTrash() && (bool) $context->type?->supports('publication'), order: 30, hideBelow: 'md'))
+            ->add(new TableColumn('author', 'hata::content.list.columns.author', $views.'author', visibleIn: fn (ListContext $context): bool => (bool) $context->type?->supports('author'), order: 40, hideBelow: 'lg'))
+            ->add(new TableColumn(
+                'date',
+                'hata::content.list.columns.date',
+                $views.'date',
+                sort: fn ($query, string $direction) => $query->orderByRaw($direction === 'asc' ? 'coalesce(published_at, created_at) asc' : 'coalesce(published_at, created_at) desc'),
+                visibleIn: fn (ListContext $context): bool => ! $context->isTrash(),
+                order: 50,
+                hideBelow: 'lg',
+            ))
+            ->add(new TableColumn('removal', 'hata::content.list.columns.removal', $views.'removal', visibleIn: fn (ListContext $context): bool => $context->isTrash(), order: 60, hideBelow: 'lg'));
     }
 
     /**

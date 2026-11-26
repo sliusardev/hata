@@ -112,6 +112,7 @@ return [
         'tree_order' => 'Tree order',
         'columns' => [
             'title' => 'Title',
+            'taxonomies' => 'Taxonomies',
             'records' => 'Records',
             'status' => 'Status',
             'author' => 'Author',

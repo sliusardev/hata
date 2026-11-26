@@ -193,11 +193,11 @@ abstract class EntryListPage extends Component
      */
     public function sort(string $column): void
     {
-        if (! in_array($column, ['title', 'date'], true)) {
+        if (! in_array($column, ['title', 'date'], true) && $this->registeredSort($column) === null) {
             return;
         }
 
-        $first = $column === 'title' ? 'asc' : 'desc';
+        $first = $column === 'date' ? 'desc' : 'asc';
 
         if ($this->sortColumn() !== $column) {
             [$this->sort, $this->dir] = [$column, $first];
@@ -320,7 +320,7 @@ abstract class EntryListPage extends Component
 
     protected function listContext(): ListContext
     {
-        return new ListContext('content.'.$this->type, $this->contentType, $this->tab);
+        return new ListContext('content.'.$this->contentType->key(), $this->contentType, $this->tab);
     }
 
     #[Computed]
@@ -336,7 +336,7 @@ abstract class EntryListPage extends Component
             ->tab($this->tab)
             ->search($this->search)
             ->terms(array_map(intval(...), $this->termFilter))
-            ->sort($this->sortColumn(), $this->sortDirection());
+            ->sort($this->sortColumn(), $this->sortDirection(), $this->registeredSort($this->sortColumn()));
     }
 
     /**
@@ -345,7 +345,7 @@ abstract class EntryListPage extends Component
     #[Computed]
     public function entries(): LengthAwarePaginator
     {
-        return $this->listQuery->paginate($this->contentType->perPage());
+        return $this->applyColumnLoads($this->listQuery->query())->paginate($this->contentType->perPage());
     }
 
     /**
@@ -624,7 +624,7 @@ abstract class EntryListPage extends Component
             return $this->dir;
         }
 
-        return in_array($this->sortColumn(), ['title', 'tree'], true) ? 'asc' : 'desc';
+        return $this->sortColumn() === 'date' ? 'desc' : 'asc';
     }
 
     protected function liveEntry(int $entryId): Entry
