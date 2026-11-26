@@ -40,16 +40,4 @@ final readonly class TableColumn implements Entry
         public ?string $hideBelow = null,
         public string $align = 'start',
     ) {}
-
-    /**
-     * The responsive classes, written out in full so Tailwind finds them.
-     */
-    public function hideClass(): string
-    {
-        return match ($this->hideBelow) {
-            'md' => 'max-md:hidden',
-            'lg' => 'max-lg:hidden',
-            default => '',
-        };
-    }
 }

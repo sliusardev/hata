@@ -233,6 +233,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
             </flux:table.columns>
 
             <flux:table.rows>
+                @php($listContext = $this->listContext())
                 @foreach ($this->users as $user)
                     <flux:table.row :key="$user->id">
                         <flux:table.cell>
@@ -254,7 +255,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                             </div>
                         </flux:table.cell>
                         @foreach ($this->listColumns as $column)
-                            @include('hata::partials.admin.lists.column-cell', ['column' => $column, 'record' => $user, 'context' => $this->listContext()])
+                            @include('hata::partials.admin.lists.column-cell', ['column' => $column, 'record' => $user, 'context' => $listContext])
                         @endforeach
                         <flux:table.cell align="end">
                             <x-hata::admin.row-actions data-test="user-actions-{{ $user->id }}">

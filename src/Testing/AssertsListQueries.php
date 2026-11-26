@@ -35,12 +35,17 @@ trait AssertsListQueries
      */
     private function countListQueries(Closure $render): int
     {
-        $count = 0;
-        DB::listen(function () use (&$count): void {
-            $count++;
-        });
+        DB::flushQueryLog();
+        DB::enableQueryLog();
 
-        $render();
+        try {
+            $render();
+
+            $count = count(DB::getQueryLog());
+        } finally {
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
 
         return $count;
     }
