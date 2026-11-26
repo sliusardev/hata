@@ -6,6 +6,8 @@ use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidgets;
+use Hata\Support\Admin\Lists\TableColumns;
+use Hata\Support\Admin\Registry\TargetScope;
 use Hata\Support\Admin\SettingsSections;
 
 /**
@@ -31,6 +33,17 @@ final class Admin
     public static function dashboard(): DashboardWidgets
     {
         return app(DashboardWidgets::class);
+    }
+
+    /**
+     * The columns of a list: `Admin::columns('users')->add(new TableColumn(...))`; targets are `users`, `content.*`,
+     * `content.@records`, `content.@taxonomies` and `content.<type key>`.
+     *
+     * @param  string|list<string>  $targets
+     */
+    public static function columns(string|array $targets): TargetScope
+    {
+        return app(TableColumns::class)->on($targets);
     }
 
     public static function assets(): AdminAssets

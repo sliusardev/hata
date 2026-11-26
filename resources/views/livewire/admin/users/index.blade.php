@@ -5,6 +5,8 @@ use Hata\Exceptions\ProtectedActionException;
 use Hata\Models\Role;
 use Hata\Contracts\AdminUser;
 use Hata\Hata;
+use Hata\Livewire\Admin\Concerns\HasListExtensions;
+use Hata\Support\Admin\Lists\ListContext;
 use Hata\Support\Permissions\AccessRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
@@ -19,9 +21,8 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class extends Component {
+    use HasListExtensions;
     use WithPagination;
-
-    private const array SORTABLE = ['name', 'email', 'created_at'];
 
     #[Url(except: '')]
     public string $search = '';
@@ -55,9 +56,27 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
         $this->resetPage();
     }
 
+    protected function listContext(): ListContext
+    {
+        return new ListContext('users', null);
+    }
+
+    /**
+     * The keys the list may be sorted by: the name and the visible sortable columns.
+     *
+     * @return list<string>
+     */
+    private function sortableKeys(): array
+    {
+        return ['name', ...array_map(
+            fn ($column): string => $column->key,
+            array_filter($this->listColumns, fn ($column): bool => $column->sort !== null),
+        )];
+    }
+
     public function sort(string $column): void
     {
-        if (! in_array($column, self::SORTABLE, true)) {
+        if (! in_array($column, $this->sortableKeys(), true)) {
             return;
         }
 
@@ -77,16 +96,20 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     #[Computed]
     public function users(): LengthAwarePaginator
     {
-        $sortBy = in_array($this->sortBy, self::SORTABLE, true) ? $this->sortBy : 'created_at';
+        $sortBy = in_array($this->sortBy, $this->sortableKeys(), true) ? $this->sortBy : 'created_at';
         $direction = $this->sortDirection === 'asc' ? 'asc' : 'desc';
 
-        return Hata::userModel()::query()
-            ->with('roles')
+        $query = $this->applyColumnLoads(Hata::userModel()::query())
             ->search($this->search)
-            ->when($this->role !== '', fn ($query) => $query->whereHas('roles', fn ($roles) => $roles->whereKey((int) $this->role)))
-            ->orderBy($sortBy, $direction)
-            ->orderBy('id', $direction)
-            ->paginate(25);
+            ->when($this->role !== '', fn ($query) => $query->whereHas('roles', fn ($roles) => $roles->whereKey((int) $this->role)));
+
+        match (true) {
+            $sortBy === 'name' => $query->orderBy('name', $direction),
+            $this->registeredSort($sortBy) !== null => ($this->registeredSort($sortBy))($query, $direction),
+            default => $query->orderBy('created_at', $direction),
+        };
+
+        return $query->orderBy('id', $direction)->paginate(25);
     }
 
     /**
@@ -203,10 +226,9 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
         <flux:table :paginate="$this->users">
             <flux:table.columns>
                 <flux:table.column sortable :sorted="$sortBy === 'name'" :direction="$sortDirection" wire:click="sort('name')">{{ __('hata::users.index.columns.user') }}</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'email'" :direction="$sortDirection" wire:click="sort('email')" class="max-md:hidden">{{ __('hata::users.index.columns.email') }}</flux:table.column>
-                <flux:table.column>{{ __('hata::users.index.columns.roles') }}</flux:table.column>
-                <flux:table.column class="max-lg:hidden">{{ __('hata::users.index.columns.locale') }}</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'created_at'" :direction="$sortDirection" wire:click="sort('created_at')" class="max-lg:hidden">{{ __('hata::users.index.columns.created_at') }}</flux:table.column>
+                @foreach ($this->listColumns as $column)
+                    @include('hata::partials.admin.lists.column-header', ['column' => $column, 'sortBy' => $sortBy, 'direction' => $sortDirection])
+                @endforeach
                 <flux:table.column align="end"><span class="sr-only">{{ __('hata::users.index.columns.actions') }}</span></flux:table.column>
             </flux:table.columns>
 
@@ -231,18 +253,9 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                                 </div>
                             </div>
                         </flux:table.cell>
-                        <flux:table.cell class="max-md:hidden">{{ $user->email }}</flux:table.cell>
-                        <flux:table.cell>
-                            <div class="flex flex-wrap gap-1">
-                                @forelse ($user->roles as $userRole)
-                                    <flux:badge size="sm" :color="$userRole->isSuperAdmin() ? 'amber' : 'zinc'" :class="$userRole->isSuperAdmin() ? '' : 'bg-accent/10! text-accent-content! dark:bg-accent/20!'">{{ $userRole->displayName() }}</flux:badge>
-                                @empty
-                                    <flux:text size="sm" variant="subtle">{{ __('hata::users.index.no_roles') }}</flux:text>
-                                @endforelse
-                            </div>
-                        </flux:table.cell>
-                        <flux:table.cell class="max-lg:hidden">{{ config('hata.admin.interface_locales')[$user->locale ?? app(\Hata\Support\Localization\ContentLocales::class)->interfaceDefault()] ?? '—' }}</flux:table.cell>
-                        <flux:table.cell class="max-lg:hidden">{{ $user->created_at?->tz(config('hata.admin.timezone'))->isoFormat('LL') }}</flux:table.cell>
+                        @foreach ($this->listColumns as $column)
+                            @include('hata::partials.admin.lists.column-cell', ['column' => $column, 'record' => $user, 'context' => $this->listContext()])
+                        @endforeach
                         <flux:table.cell align="end">
                             <x-hata::admin.row-actions data-test="user-actions-{{ $user->id }}">
                                 @if ($this->canEdit($user))

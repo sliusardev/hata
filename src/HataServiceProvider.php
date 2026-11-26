@@ -35,6 +35,8 @@ use Hata\Support\Admin\AdminMenuItem;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidget;
 use Hata\Support\Admin\DashboardWidgets;
+use Hata\Support\Admin\Lists\TableColumn;
+use Hata\Support\Admin\Lists\TableColumns;
 use Hata\Support\Admin\SettingsSection;
 use Hata\Support\Admin\SettingsSections;
 use Hata\Support\Admin\TopbarItem;
@@ -113,6 +115,7 @@ class HataServiceProvider extends ServiceProvider
             $this->registerAdminTopbar();
             $this->registerSettingsSections();
             $this->registerDashboardWidgets();
+            $this->registerListColumns();
         });
         $this->app->singleton(DirectServing::class);
         $this->app->singleton(ContentLocales::class);
@@ -121,6 +124,7 @@ class HataServiceProvider extends ServiceProvider
         $this->app->singleton(AdminTopbar::class);
         $this->app->singleton(SettingsSections::class);
         $this->app->singleton(DashboardWidgets::class);
+        $this->app->singleton(TableColumns::class);
         $this->app->scoped(HataVite::class, fn ($app): HataVite => HataAssets::makeVite(
             $app->bound('hata.hot_file') ? $app->make('hata.hot_file') : Hata::path('hot'),
         ));
@@ -301,6 +305,20 @@ class HataServiceProvider extends ServiceProvider
         $this->app->make(DashboardWidgets::class)
             ->add(new DashboardWidget('content', 'hata::admin.widgets.content', $anyType, 'full', 10))
             ->add(new DashboardWidget('recent-changes', 'hata::admin.widgets.recent-changes', $anyType, 'full', 20));
+    }
+
+    /**
+     * Hata's own list columns: the users list's.
+     */
+    private function registerListColumns(): void
+    {
+        $views = 'hata::partials.admin.lists.columns.users.';
+
+        $this->app->make(TableColumns::class)->on('users')
+            ->add(new TableColumn('email', 'hata::users.index.columns.email', $views.'email', sort: fn ($query, string $direction) => $query->orderBy('email', $direction), order: 10, hideBelow: 'md'))
+            ->add(new TableColumn('roles', 'hata::users.index.columns.roles', $views.'roles', with: ['roles'], order: 20))
+            ->add(new TableColumn('locale', 'hata::users.index.columns.locale', $views.'locale', order: 30, hideBelow: 'lg'))
+            ->add(new TableColumn('created_at', 'hata::users.index.columns.created_at', $views.'created_at', sort: fn ($query, string $direction) => $query->orderBy('created_at', $direction), order: 40, hideBelow: 'lg'));
     }
 
     /**

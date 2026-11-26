@@ -159,3 +159,7 @@ The registry and the section contract are in `docs/specs/site-settings.md` and `
 ## Tests
 
 `tests/Feature/Admin/` holds the base (`Registry/`), the menu, the top bar, the dashboard and Hata's widgets; the installer's provider step is in `tests/Feature/Install/`. A module tests its own registrations the same way: a mistake in a registration throws in `testing`.
+
+## List columns (release 2)
+
+`Admin::columns('users')` (or `content.*`, `content.posts`, …; `TableColumns`, a `TargetedRegistry`) adds, hides (`remove()`) or changes (`modify()`) the columns of a list between the fixed first column and the "⋮" column. A `TableColumn` has a `key` (also the `?sortBy=` value; underscores allowed), a `label` (translation key or plain text), a `value` (a `Closure(Model, ListContext)` returning a string or `Htmlable`, or a Blade view given `record` and `context`), `with` (an array for `->with()` or a `Closure(Builder)`, applied once per page), `sort` (`Closure(Builder, direction)`; makes the column sortable), `visibleIn`, `permission`, `order`, `hideBelow` (`md`/`lg`) and `align`. A column the user may not see is neither shown, loaded nor sortable; an unknown or hidden sort key falls back to the default. The users list registers its own `email` (10), `roles` (20), `locale` (30) and `created_at` (40) the same way. Lists use the `HasListExtensions` trait (`listColumns`, `applyColumnLoads()`, `registeredSort()`); tests assert a list costs the same queries with 1 and 20 rows through `Hata\Testing\AssertsListQueries::assertListQueriesStable()`.

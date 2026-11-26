@@ -14,3 +14,9 @@ parameters:
 
     configDirectories:
         - config/
+
+    ignoreErrors:
+        -
+            # A test helper for sites and modules: used by their tests, which are not analysed.
+            identifier: trait.unused
+            path: src/Testing/AssertsListQueries.php

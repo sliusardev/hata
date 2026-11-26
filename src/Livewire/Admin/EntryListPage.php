@@ -13,7 +13,9 @@ use Hata\Actions\Content\TrashEntry;
 use Hata\Contracts\AdminUser;
 use Hata\Enums\EntryStatus;
 use Hata\Exceptions\ProtectedActionException;
+use Hata\Livewire\Admin\Concerns\HasListExtensions;
 use Hata\Models\Entry;
+use Hata\Support\Admin\Lists\ListContext;
 use Hata\Support\Content\ContentType;
 use Hata\Support\Content\ContentTypes;
 use Hata\Support\Content\EntryListQuery;
@@ -50,6 +52,7 @@ use Throwable;
  */
 abstract class EntryListPage extends Component
 {
+    use HasListExtensions;
     use WithPagination;
 
     /**
@@ -313,6 +316,11 @@ abstract class EntryListPage extends Component
         $types = Entry::query()->whereKey(array_values($wanted))->pluck('type', 'id');
 
         return array_map(strval(...), array_filter($wanted, fn (int $id, string $key): bool => ($types[$id] ?? null) === $key, ARRAY_FILTER_USE_BOTH));
+    }
+
+    protected function listContext(): ListContext
+    {
+        return new ListContext('content.'.$this->type, $this->contentType, $this->tab);
     }
 
     #[Computed]
