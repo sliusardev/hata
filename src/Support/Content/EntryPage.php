@@ -42,8 +42,8 @@ class EntryPage
         // resolved here, not held: PageMeta is scoped to the request and this object may outlive it
         app(PageMeta::class)
             ->setTitle($entry->documentTitle())
-            ->setOgTitle(filled($entry->seo_title) ? (string) $entry->seo_title : $entry->title)
-            ->setDescription(filled($entry->seo_description) ? $entry->seo_description : (filled($entry->excerpt) ? $entry->excerpt : $entry->body))
+            ->setOgTitle($type->supports('seo') && filled($entry->seo_title) ? (string) $entry->seo_title : $entry->title)
+            ->setDescription($this->description($entry, $type))
             ->setCanonical(self::withPage($canonical ?? $entry->url(), $records?->currentPage() ?? 1))
             ->setImage($taxonomy ? null : $entry->image)
             ->setType($taxonomy || $type->hierarchical() ? 'website' : 'article')
@@ -63,6 +63,23 @@ class EntryPage
         ]);
 
         return $preview ? $response->header('Cache-Control', 'no-store') : $response;
+    }
+
+    /**
+     * The text the head describes the page with: the SEO description when the type has SEO, else the excerpt when it
+     * has one, else the body (the head cuts it down).
+     */
+    private function description(Entry $entry, ContentType $type): ?string
+    {
+        if ($type->supports('seo') && filled($entry->seo_description)) {
+            return $entry->seo_description;
+        }
+
+        if ($type->supports('excerpt') && filled($entry->excerpt)) {
+            return $entry->excerpt;
+        }
+
+        return $entry->body;
     }
 
     /**

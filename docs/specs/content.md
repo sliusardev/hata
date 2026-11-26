@@ -26,7 +26,8 @@ type, fields, a taxonomy) is in the README, section "Content types". Design: `do
 | `required()` | true for a type the site cannot do without (pages): it has no switch in Site settings → Content types |
 | `taxonomyOf()` | the keys of the types this type is a taxonomy of (`['posts']`); empty for an ordinary type. `isTaxonomy()` tells whether it names any |
 | `hasListFilter()` | for a taxonomy: whether the list of its types has a filter by its terms (true by default) |
-| `supports($feature)` | whether a record has the `body`, the `image`, the `publication` card (status and date) or the `author`; false for a taxonomy, whose record is a name, an address and a description |
+| `without()` (protected, default `[]`) | the parts of the common form the type does not use: `body`, `image`, `publication`, `author`, `excerpt`, `seo` (a site's type returns e.g. `['author', 'excerpt']`; `make:content-type` writes an empty one with the list) |
+| `supports($feature)` | whether a record has a part: not in `without()`; for a taxonomy only `excerpt` and `seo` (a term is a name, an address and a description) and only when not in `without()` |
 | `perPage()` | admin list page size, 20 by default |
 | `permission($action)` | `"{key}.{action}"` |
 | `assertValidBase($locale)` | throws `InvalidArgumentException` when `base($locale)` is neither null nor one segment matching `EntrySlug::FORMAT` (`blog/news`, `/blog`, `Blog` and `''` are refused): `Entry::url()` would build an address the content route never matches |
@@ -68,7 +69,7 @@ from that method. Its records are **terms**: ordinary rows of `entries`, one per
 path, redirects and the trash like any record, so it has the same list and form pages, the same four permissions
 (`categories.view|create|edit|delete`) and the same translation tools. What differs:
 
-- `isTaxonomy()` is true and `supports('body'|'image'|'publication'|'author')` is false: the form has the title, the
+- `isTaxonomy()` is true and `supports('body'|'image'|'publication'|'author')` is false (`excerpt` and `seo` stay on): the form has the title, the
   address, the description (`excerpt`), the parent (a tree taxonomy), the language card and the SEO card; the list has
   no status tabs and columns and shows how many records are filed under each term (`withCount('termRecords')`).
 - A term is always published: `CreateEntry` and `UpdateEntry` force the status of any type without
@@ -328,6 +329,8 @@ box shows a skeleton; if it fails, a message asks to reload.
 | `status` | required, `draft` or `published` (the stored status; a future date with `published` schedules) |
 | `published_at` | nullable date, read in the site's display timezone (`hata.admin.timezone`) and returned in UTC (decision 38) |
 | `excerpt` / `seo_title` / `seo_description` | at most 1000 / 255 / 500; trimmed, empty becomes null |
+
+A part a type switches off (`without()`) is absent from the form, has no validation rule and is never written: `EntryWriter` leaves the stored value of `author_id`, `image_id`, `excerpt`, the SEO texts or the body as it is. A type without `publication` always saves as published. The public page follows: the head's description is the SEO description when the type has `seo`, else the excerpt when it has one, else the body; the SEO title (`Entry::documentTitle()`, the share title) counts only with `seo`; cards and the term page print an excerpt only for a type that has `excerpt`. A site hides a kit part by subclassing the kit type and listing the subclass in `config/hata.php` in its place (same key, so records, permissions and addresses stay).
 | `body` | nullable string of at most `EntryInput::BODY_MAX_BYTES` (1 000 000 bytes, under the sanitizer's cut), so a long body is a field error, never cut |
 | `fields.<name>` | each field's own `rules()` |
 

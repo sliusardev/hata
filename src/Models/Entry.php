@@ -308,7 +308,7 @@ class Entry extends Model implements UsesMedia
      */
     public function documentTitle(): string
     {
-        if (filled($this->seo_title)) {
+        if (filled($this->seo_title) && $this->type()->supports('seo')) {
             return (string) $this->seo_title;
         }
 

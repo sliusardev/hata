@@ -195,7 +195,9 @@
                         <x-hata::admin.rich-text wire:model="form.body" :label="__('hata::content.form.body')" :images="$images" :locale="$locale" :readonly="$readOnly" />
                     @endif
 
-                    <flux:textarea wire:model="form.excerpt" :label="__('hata::content.form.excerpt')" :description:trailing="__('hata::content.form.excerpt_hint')" :disabled="$readOnly" rows="3" resize="vertical" maxlength="1000" />
+                    @if ($contentType->supports('excerpt'))
+                        <flux:textarea wire:model="form.excerpt" :label="__('hata::content.form.excerpt')" :description:trailing="__('hata::content.form.excerpt_hint')" :disabled="$readOnly" rows="3" resize="vertical" maxlength="1000" />
+                    @endif
                 </div>
 
                 @if ($localFields !== [])
@@ -211,6 +213,7 @@
                     </div>
                 @endif
 
+                @if ($contentType->supports('seo'))
                 <div class="{{ $card }} p-5">
                     <flux:heading level="2">{{ __('hata::content.form.seo.title') }}</flux:heading>
                     <flux:text class="mt-1 text-sm">{{ __('hata::content.form.seo.description') }}</flux:text>
@@ -226,6 +229,7 @@
                         <flux:textarea wire:model="form.seo_description" :label="__('hata::content.form.seo.meta_description')" :placeholder="__('hata::content.form.seo.meta_description_placeholder')" :disabled="$readOnly" rows="2" resize="vertical" maxlength="500" />
                     </div>
                 </div>
+                @endif
 
                 @if ($formCards !== [])
                     @include('hata::partials.admin.forms.cards', ['cards' => $formCards, 'area' => 'main', 'frame' => $card, 'values' => $this->extensions, 'livewire' => true, 'readOnly' => $readOnly])

@@ -14,6 +14,7 @@ use Tests\TestCase;
 
 require_once __DIR__.'/fixtures/RecordingDisk.php';
 require_once __DIR__.'/fixtures/ProductsType.php';
+require_once __DIR__.'/fixtures/Content/LeanPostsType.php';
 require_once __DIR__.'/fixtures/CustomAdminPathTestCase.php';
 require_once __DIR__.'/fixtures/ShopSettingsSection.php';
 require_once __DIR__.'/fixtures/SeoRoutesOffTestCase.php';

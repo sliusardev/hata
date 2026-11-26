@@ -24,7 +24,7 @@
         @endif
     </header>
 
-    @if (filled($entry->excerpt))
+    @if ($entry->type()->supports('excerpt') && filled($entry->excerpt))
         <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-300">{{ $entry->excerpt }}</p>
     @endif
 

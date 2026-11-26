@@ -40,15 +40,31 @@ class EntryWriter
             'title' => $input['title'],
             'slug' => $input['slug'],
             'parent_id' => $input['parent']?->id,
-            'author_id' => $input['author_id'],
-            'image_id' => $input['image_id'],
             'status' => $input['status'],
             'published_at' => $input['published_at'] ?? ($input['status'] === EntryStatus::Published ? now() : null),
-            'excerpt' => $input['excerpt'],
-            'seo_title' => $input['seo_title'],
-            'seo_description' => $input['seo_description'],
-            'body' => $this->sanitizer->clean($input['body']),
         ]);
+
+        // A part the type has switched off is not written: a stored value stays as it is.
+        if ($type->supports('author')) {
+            $entry->author_id = $input['author_id'];
+        }
+
+        if ($type->supports('image')) {
+            $entry->image_id = $input['image_id'];
+        }
+
+        if ($type->supports('excerpt')) {
+            $entry->excerpt = $input['excerpt'];
+        }
+
+        if ($type->supports('seo')) {
+            $entry->seo_title = $input['seo_title'];
+            $entry->seo_description = $input['seo_description'];
+        }
+
+        if ($type->supports('body')) {
+            $entry->body = $this->sanitizer->clean($input['body']);
+        }
 
         $local = [];
 

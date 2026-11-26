@@ -495,6 +495,17 @@ class ContentTypeGenerator
                 {
                     return [];
                 }
+
+                /**
+                 * The parts of the common form this type does not use: 'body', 'image', 'publication', 'author',
+                 * 'excerpt', 'seo'. A part listed here leaves the form and is never written.
+                 *
+                 * @return list<string>
+                 */
+                protected function without(): array
+                {
+                    return [];
+                }
             }
 
             PHP;

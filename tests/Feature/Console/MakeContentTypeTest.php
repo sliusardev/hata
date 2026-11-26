@@ -260,6 +260,8 @@ test('it writes the class into the site\'s app/ContentTypes', function () {
 
     expect($source)->toContain('namespace App\\ContentTypes;')
         ->toContain('class RecipesType extends ContentType')
+        ->toContain('protected function without(): array')
+        ->toContain("'body', 'image', 'publication', 'author',")
         ->not->toContain('translationPrefix');
 });
 

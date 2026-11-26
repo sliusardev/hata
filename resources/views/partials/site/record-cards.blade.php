@@ -17,7 +17,7 @@
                 @if ($record->published_at !== null)
                     <time datetime="{{ $record->published_at->toDateString() }}" class="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">{{ $record->published_at->tz(config('hata.admin.timezone'))->isoFormat('LL') }}</time>
                 @endif
-                @if (filled($record->excerpt))
+                @if ($record->type()->supports('excerpt') && filled($record->excerpt))
                     <p class="mt-2 text-zinc-600 dark:text-zinc-300">{{ $record->excerpt }}</p>
                 @endif
             </li>

@@ -46,6 +46,18 @@ final class EntryInput
     public const int BODY_MAX_BYTES = 1_000_000;
 
     /**
+     * The rules of each part of the form that a type can switch off (ContentType::supports()). `publication` is
+     * not here: the status is forced to published for a type without it, and the date stays validated.
+     */
+    private const array PART_RULES = [
+        'author' => ['author_id'],
+        'image' => ['image_id'],
+        'body' => ['body'],
+        'excerpt' => ['excerpt'],
+        'seo' => ['seo_title', 'seo_description'],
+    ];
+
+    /**
      * Validates the data and returns it ready to write: ids as integers, the parent as a record, the status as
      * the enum, the date in UTC (it arrives in the site's display timezone, decision 38), empty texts as null and
      * every field of the type keyed by name (its form value; the writer converts it for storage).
@@ -198,6 +210,14 @@ final class EntryInput
 
         foreach ($withSharedFields ? $type->fields() : $type->localFields() as $field) {
             $rules["fields.{$field->name}"] = $field->rules();
+        }
+
+        // A part the type does not use is not validated, so the validated data never carries it and the writer
+        // leaves the stored value alone.
+        foreach (self::PART_RULES as $part => $names) {
+            if (! $type->supports($part)) {
+                $rules = array_diff_key($rules, array_flip($names));
+            }
         }
 
         return $rules;

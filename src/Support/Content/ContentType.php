@@ -89,12 +89,28 @@ abstract class ContentType
     }
 
     /**
-     * Whether a record of the type has a part of the common form: `body`, `image`, `publication` (status and
-     * date) or `author`. A term has none of them: it is a name, an address and a description, always published.
+     * The parts of the common form this type does not use: `body`, `image`, `publication` (status and date),
+     * `author`, `excerpt` and `seo`. A part that is off leaves the form, and a save never writes it, so a stored
+     * value stays as it is. A site's type returns the ones it wants gone (`['author', 'excerpt']`).
+     *
+     * @return list<string>
+     */
+    protected function without(): array
+    {
+        return [];
+    }
+
+    /**
+     * Whether a record of the type has a part of the common form (see `without()`). A term has only `excerpt` and
+     * `seo`: it is a name, an address and a description, always published.
      */
     public function supports(string $feature): bool
     {
-        return ! $this->isTaxonomy();
+        if ($this->isTaxonomy() && ! in_array($feature, ['excerpt', 'seo'], true)) {
+            return false;
+        }
+
+        return ! in_array($feature, $this->without(), true);
     }
 
     /**
