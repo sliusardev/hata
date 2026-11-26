@@ -1,3 +1,8 @@
+@php
+    $registerContext = new Hata\Support\Admin\Forms\FormContext('register', null, null, true);
+    $formCards = app(Hata\Support\Admin\Forms\FormCards::class)->for($registerContext);
+    $formValues = [];
+@endphp
 <x-hata::layouts.auth :title="__('hata::auth.register.title')">
     <div class="flex flex-col gap-6">
         <x-hata::auth-header :title="__('hata::auth.register.heading')" :description="__('hata::auth.register.description')" />
@@ -29,6 +34,9 @@
                 autocomplete="email"
                 placeholder="email@example.com"
             />
+
+            {{-- The registered form cards (site and module fields), plain fields in this form. --}}
+            @include('hata::partials.admin.forms.cards', ['cards' => $formCards, 'area' => 'main', 'frame' => '', 'values' => $formValues, 'livewire' => false, 'readOnly' => false, 'bare' => true])
 
             <!-- Password -->
             <flux:input
