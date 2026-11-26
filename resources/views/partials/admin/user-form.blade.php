@@ -84,4 +84,15 @@
         <flux:error name="form.roles" />
         <flux:error name="form.roles.*" />
     </flux:fieldset>
+
+    @if ($this->formCards !== [])
+        @php
+            $cardFrame = 'rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-700 dark:bg-zinc-900/40';
+        @endphp
+
+        {{-- The registered form cards; a side card is shown here too, as this form has one column. --}}
+        @foreach (['main', 'side'] as $cardArea)
+            @include('hata::partials.admin.forms.cards', ['cards' => $this->formCards, 'area' => $cardArea, 'frame' => $cardFrame, 'values' => $this->extensions, 'livewire' => true, 'readOnly' => false])
+        @endforeach
+    @endif
 </div>

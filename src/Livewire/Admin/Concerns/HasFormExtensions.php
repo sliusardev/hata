@@ -2,12 +2,16 @@
 
 namespace Hata\Livewire\Admin\Concerns;
 
+use Closure;
+use Flux\Flux;
+use Hata\Exceptions\FormCardFailed;
 use Hata\Support\Admin\Forms\FormCard;
 use Hata\Support\Admin\Forms\FormCards;
 use Hata\Support\Admin\Forms\FormContext;
 use Hata\Support\Admin\Forms\FormExtensions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 
 /**
@@ -83,5 +87,66 @@ trait HasFormExtensions
         }
 
         app(FormExtensions::class)->save($this->formCards, $record, $this->extensions, $this->formContext());
+    }
+
+    /**
+     * Validates the page's own form with `$validateForm` and the cards together: both sets of errors are shown at
+     * once, and the form's validated data comes back only when neither failed (null: nothing may be saved).
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $validateForm  Throws a `ValidationException` with the errors keyed as the page shows them (`form.name`), as a Livewire form's `validate()` does.
+     * @return T|null
+     */
+    protected function validateWithCards(Closure $validateForm): mixed
+    {
+        try {
+            $data = $validateForm();
+        } catch (ValidationException $exception) {
+            // Caught, so Livewire does not put them on the page: they are shown here, with the cards' own.
+            $data = null;
+
+            foreach ($exception->errors() as $key => $messages) {
+                foreach ($messages as $message) {
+                    $this->addError($key, $message);
+                }
+            }
+        }
+
+        $errors = $this->extensionErrors();
+
+        foreach ($errors as $key => $messages) {
+            foreach ($messages as $message) {
+                $this->addError($key, $message);
+            }
+        }
+
+        return $errors === [] ? $data : null;
+    }
+
+    /**
+     * A card's `save()` failed and the save was rolled back: its validation messages go under the card's fields (a
+     * key the card's view does not show still appears in the danger toast); anything else is thrown as it was.
+     */
+    protected function showCardFailure(FormCardFailed $failure): void
+    {
+        $original = $failure->original();
+
+        if (! $original instanceof ValidationException) {
+            throw $original;
+        }
+
+        $messages = [];
+
+        foreach ($original->errors() as $key => $keyMessages) {
+            $path = str_starts_with($key, 'extensions.') || $failure->card === null ? $key : "extensions.{$failure->card}.{$key}";
+
+            foreach ($keyMessages as $message) {
+                $this->addError($path, $message);
+                $messages[] = $message;
+            }
+        }
+
+        Flux::toast(variant: 'danger', text: implode(' ', array_unique($messages)));
     }
 }

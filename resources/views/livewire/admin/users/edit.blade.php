@@ -3,7 +3,10 @@
 use Hata\Actions\Users\DeleteUser;
 use Hata\Actions\Users\UpdateUser;
 use Hata\Exceptions\ProtectedActionException;
+use Hata\Exceptions\FormCardFailed;
+use Hata\Livewire\Admin\Concerns\HasFormExtensions;
 use Hata\Livewire\Forms\UserForm;
+use Hata\Support\Admin\Forms\FormContext;
 use Hata\Models\Role;
 use Hata\Contracts\AdminUser;
 use Hata\Hata;
@@ -27,6 +30,8 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.edit.title')] class exte
     #[Locked]
     public $user;
 
+    use HasFormExtensions;
+
     public UserForm $form;
 
     public bool $showDeleteModal = false;
@@ -49,6 +54,12 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.edit.title')] class exte
 
         $this->user = $user->load('roles');
         $this->form->fillFromUser($this->user);
+        $this->mountExtensions($this->user);
+    }
+
+    protected function formContext(): FormContext
+    {
+        return new FormContext('users', null, Auth::user(), false);
     }
 
     #[Computed]
@@ -80,10 +91,18 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.edit.title')] class exte
     {
         $this->authorize('update', $this->user);
 
-        $data = $this->form->validateForUpdate($this->user, includeRoles: ! $this->rolesLocked);
+        $data = $this->validateWithCards(fn () => $this->form->validateForUpdate($this->user, includeRoles: ! $this->rolesLocked));
+
+        if ($data === null) {
+            return;
+        }
 
         try {
-            $updateUser->handle(Auth::user(), $this->user, $data);
+            $updateUser->handle(Auth::user(), $this->user, $data, alsoSave: fn (AdminUser $saved) => $this->saveExtensions($saved));
+        } catch (FormCardFailed $failure) {
+            $this->showCardFailure($failure);
+
+            return;
         } catch (ProtectedActionException $exception) {
             $this->addError('form.roles', $exception->getMessage());
 

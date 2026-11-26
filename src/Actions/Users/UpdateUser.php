@@ -2,7 +2,9 @@
 
 namespace Hata\Actions\Users;
 
+use Closure;
 use Hata\Contracts\AdminUser;
+use Hata\Exceptions\FormCardFailed;
 use Hata\Exceptions\ProtectedActionException;
 use Hata\Support\Permissions\AccessRules;
 use Illuminate\Support\Facades\DB;
@@ -20,10 +22,12 @@ class UpdateUser
      * Roles are only synced when the "roles" key is present.
      *
      * @param  array{name: string, email: string, locale: string, password?: string|null, roles?: list<int>}  $data  Validated input.
+     * @param  (Closure(AdminUser): void)|null  $alsoSave  Called with the saved user inside the transaction, after the roles are synced (the form's registered cards save there); whatever it throws rolls everything back as a `FormCardFailed`.
      *
      * @throws ProtectedActionException
+     * @throws FormCardFailed when `$alsoSave` throws
      */
-    public function handle(AdminUser $actor, AdminUser $user, array $data): AdminUser
+    public function handle(AdminUser $actor, AdminUser $user, array $data, ?Closure $alsoSave = null): AdminUser
     {
         Gate::forUser($actor)->authorize('update', $user);
 
@@ -31,7 +35,7 @@ class UpdateUser
             throw ProtectedActionException::because($denial);
         }
 
-        return DB::transaction(function () use ($actor, $user, $data): AdminUser {
+        return DB::transaction(function () use ($actor, $user, $data, $alsoSave): AdminUser {
             $user->fill([
                 'name' => $data['name'],
                 'email' => Str::lower($data['email']),
@@ -46,6 +50,10 @@ class UpdateUser
 
             if (array_key_exists('roles', $data)) {
                 $this->syncUserRoles->handle($actor, $user, $data['roles']);
+            }
+
+            if ($alsoSave !== null) {
+                FormCardFailed::guard(fn () => $alsoSave($user));
             }
 
             return $user;

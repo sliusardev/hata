@@ -2,7 +2,10 @@
 
 use Hata\Actions\Users\CreateUser;
 use Hata\Exceptions\ProtectedActionException;
+use Hata\Exceptions\FormCardFailed;
+use Hata\Livewire\Admin\Concerns\HasFormExtensions;
 use Hata\Livewire\Forms\UserForm;
+use Hata\Support\Admin\Forms\FormContext;
 use Hata\Models\Role;
 use Hata\Contracts\AdminUser;
 use Hata\Hata;
@@ -14,6 +17,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Layout('hata::layouts.app')] #[Title('hata::users.create.title')] class extends Component {
+    use HasFormExtensions;
+
     public UserForm $form;
 
     public function mount(): void
@@ -21,6 +26,12 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.create.title')] class ex
         $this->authorize('create', Hata::userModel());
 
         $this->form->locale = app(\Hata\Support\Localization\ContentLocales::class)->interfaceDefault();
+        $this->mountExtensions(null);
+    }
+
+    protected function formContext(): FormContext
+    {
+        return new FormContext('users', null, Auth::user(), true);
     }
 
     /**
@@ -39,10 +50,18 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.create.title')] class ex
     {
         $this->authorize('create', Hata::userModel());
 
-        $data = $this->form->validateForCreate();
+        $data = $this->validateWithCards(fn () => $this->form->validateForCreate());
+
+        if ($data === null) {
+            return;
+        }
 
         try {
-            $createUser->handle(Auth::user(), $data);
+            $createUser->handle(Auth::user(), $data, alsoSave: fn (AdminUser $saved) => $this->saveExtensions($saved));
+        } catch (FormCardFailed $failure) {
+            $this->showCardFailure($failure);
+
+            return;
         } catch (ProtectedActionException $exception) {
             $this->addError('form.roles', $exception->getMessage());
 
