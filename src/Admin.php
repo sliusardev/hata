@@ -7,6 +7,7 @@ use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidgets;
 use Hata\Support\Admin\Lists\TableColumns;
+use Hata\Support\Admin\Lists\TableFilters;
 use Hata\Support\Admin\Registry\TargetScope;
 use Hata\Support\Admin\SettingsSections;
 
@@ -44,6 +45,16 @@ final class Admin
     public static function columns(string|array $targets): TargetScope
     {
         return app(TableColumns::class)->on($targets);
+    }
+
+    /**
+     * The filters of a list: `Admin::filters('users')->add(new TableFilter(...))`; the targets are the columns' targets.
+     *
+     * @param  string|list<string>  $targets
+     */
+    public static function filters(string|array $targets): TargetScope
+    {
+        return app(TableFilters::class)->on($targets);
     }
 
     public static function assets(): AdminAssets

@@ -15,6 +15,10 @@ return [
         'view' => 'Переглянути',
     ],
 
+    'filters' => [
+        'all' => 'Усі',
+    ],
+
     'fields' => [
         'confirm_password' => 'Підтвердження пароля',
         'current_password' => 'Поточний пароль',

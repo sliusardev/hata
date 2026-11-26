@@ -15,6 +15,10 @@ return [
         'view' => 'View',
     ],
 
+    'filters' => [
+        'all' => 'All',
+    ],
+
     'fields' => [
         'confirm_password' => 'Confirm password',
         'current_password' => 'Current password',

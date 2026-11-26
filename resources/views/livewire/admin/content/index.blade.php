@@ -113,6 +113,8 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
             </flux:select>
         @endforeach
 
+        @include('hata::partials.admin.lists.filters')
+
         @if ($inTrash && $abilities['delete'] && $counts['trash'] > 0)
             <flux:button variant="danger" size="sm" icon="trash" x-on:click="$wire.confirmBulk('empty')" class="sm:ms-auto" data-test="empty-trash">
                 {{ __('hata::content.list.bulk.empty_trash') }}

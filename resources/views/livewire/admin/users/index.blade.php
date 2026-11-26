@@ -56,6 +56,19 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
         $this->resetPage();
     }
 
+    public function clearFilters(): void
+    {
+        $this->search = '';
+        $this->role = '';
+        $this->filters = [];
+        $this->resetPage();
+    }
+
+    public function isFiltered(): bool
+    {
+        return trim($this->search) !== '' || $this->role !== '' || $this->hasListFilterValue();
+    }
+
     protected function listContext(): ListContext
     {
         return new ListContext('users', null);
@@ -99,7 +112,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
         $sortBy = in_array($this->sortBy, $this->sortableKeys(), true) ? $this->sortBy : 'created_at';
         $direction = $this->sortDirection === 'asc' ? 'asc' : 'desc';
 
-        $query = $this->applyColumnLoads(Hata::userModel()::query())
+        $query = $this->applyFilters($this->applyColumnLoads(Hata::userModel()::query()))
             ->search($this->search)
             ->when($this->role !== '', fn ($query) => $query->whereHas('roles', fn ($roles) => $roles->whereKey((int) $this->role)));
 
@@ -214,6 +227,8 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                 <flux:select.option :value="$roleOption->id" wire:key="role-filter-{{ $roleOption->id }}">{{ $roleOption->displayName() }}</flux:select.option>
             @endforeach
         </flux:select>
+
+        @include('hata::partials.admin.lists.filters')
     </div>
 
     @if ($this->users->isEmpty())
@@ -221,7 +236,11 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
             icon="users"
             :heading="$this->hasAnyUsers ? __('hata::users.index.no_results.title') : __('hata::users.index.empty.title')"
             :description="$this->hasAnyUsers ? __('hata::users.index.no_results.description') : __('hata::users.index.empty.description')"
-        />
+        >
+            @if ($this->hasAnyUsers && $this->isFiltered())
+                <flux:button size="sm" class="mt-4" wire:click="clearFilters">{{ __('hata::users.index.no_results.clear') }}</flux:button>
+            @endif
+        </x-hata::admin.empty-state>
     @else
         <flux:table :paginate="$this->users">
             <flux:table.columns>

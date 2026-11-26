@@ -28,6 +28,7 @@ return [
         'no_results' => [
             'title' => 'No users found',
             'description' => 'Try a different search or role filter.',
+            'clear' => 'Clear filters',
         ],
     ],
 

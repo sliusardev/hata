@@ -232,10 +232,17 @@ abstract class EntryListPage extends Component
         $this->resetPage();
     }
 
+    public function updatedFilters(): void
+    {
+        $this->selected = [];
+        $this->resetPage();
+    }
+
     public function clearFilters(): void
     {
         $this->search = '';
         $this->termFilter = [];
+        $this->filters = [];
         $this->selected = [];
         $this->resetPage();
     }
@@ -345,7 +352,7 @@ abstract class EntryListPage extends Component
     #[Computed]
     public function entries(): LengthAwarePaginator
     {
-        return $this->applyColumnLoads($this->listQuery->query())->paginate($this->contentType->perPage());
+        return $this->applyFilters($this->applyColumnLoads($this->listQuery->query()))->paginate($this->contentType->perPage());
     }
 
     /**
@@ -403,7 +410,7 @@ abstract class EntryListPage extends Component
 
     public function isFiltered(): bool
     {
-        return trim($this->search) !== '' || $this->termFilter !== [];
+        return trim($this->search) !== '' || $this->termFilter !== [] || $this->hasListFilterValue();
     }
 
     public function confirmTrash(int $entryId): void
