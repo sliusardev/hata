@@ -6,6 +6,7 @@ use Hata\Support\Admin\AdminAssets;
 use Hata\Support\Admin\AdminMenu;
 use Hata\Support\Admin\AdminTopbar;
 use Hata\Support\Admin\DashboardWidgets;
+use Hata\Support\Admin\Lists\RowActions;
 use Hata\Support\Admin\Lists\TableColumns;
 use Hata\Support\Admin\Lists\TableFilters;
 use Hata\Support\Admin\Registry\TargetScope;
@@ -55,6 +56,16 @@ final class Admin
     public static function filters(string|array $targets): TargetScope
     {
         return app(TableFilters::class)->on($targets);
+    }
+
+    /**
+     * The "⋮" menu items of a list: `Admin::rowActions('users')->add(RowAction::link(...))`; the targets are the columns' targets.
+     *
+     * @param  string|list<string>  $targets
+     */
+    public static function rowActions(string|array $targets): TargetScope
+    {
+        return app(RowActions::class)->on($targets);
     }
 
     public static function assets(): AdminAssets

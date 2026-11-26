@@ -24,6 +24,7 @@ use Hata\Support\Content\Types\PagesType;
 use Hata\Support\Localization\ContentLocales;
 use Hata\Support\Localization\Language;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
@@ -328,6 +329,14 @@ abstract class EntryListPage extends Component
     protected function listContext(): ListContext
     {
         return new ListContext('content.'.$this->contentType->key(), $this->contentType, $this->tab);
+    }
+
+    /**
+     * @return Builder<Entry>
+     */
+    protected function recordQuery(): Builder
+    {
+        return $this->listQuery->recordQuery();
     }
 
     #[Computed]

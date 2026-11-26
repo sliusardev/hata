@@ -270,6 +270,7 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
                                             <flux:menu.item variant="danger" icon="trash" wire:click="confirmTrash({{ $entry->id }})" data-test="trash-entry-{{ $entry->id }}">{{ __('hata::content.list.actions.trash') }}</flux:menu.item>
                                         @endif
                                     @endif
+                                    @include('hata::partials.admin.lists.row-actions', ['record' => $entry, 'hasOwn' => $inTrash ? ($abilities['edit'] || $abilities['delete']) : ($abilities['edit'] || $abilities['delete'] || $entry->isPublic())])
                                 </x-hata::admin.row-actions>
                             </flux:table.cell>
                         </flux:table.row>
@@ -347,4 +348,6 @@ new #[Layout('hata::layouts.app')] class extends EntryListPage {
             {{ trans_choice('hata::content.list.bulk.delete_confirm', $bulkCount) }}
         @endif
     </x-hata::confirm-modal>
+
+    @include('hata::partials.admin.lists.action-confirm')
 </section>

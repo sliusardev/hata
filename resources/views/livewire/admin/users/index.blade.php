@@ -9,6 +9,7 @@ use Hata\Livewire\Admin\Concerns\HasListExtensions;
 use Hata\Support\Admin\Lists\ListContext;
 use Hata\Support\Permissions\AccessRules;
 use Flux\Flux;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -67,6 +68,16 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     public function isFiltered(): bool
     {
         return trim($this->search) !== '' || $this->role !== '' || $this->hasListFilterValue();
+    }
+
+    protected function recordQuery(): Builder
+    {
+        return Hata::userModel()::query();
+    }
+
+    protected function forgetList(): void
+    {
+        unset($this->users, $this->hasAnyUsers);
     }
 
     protected function listContext(): ListContext
@@ -193,7 +204,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
 
         $this->showDeleteModal = false;
         $this->deletingUserId = null;
-        unset($this->users, $this->hasAnyUsers);
+        $this->forgetList();
     }
 }; ?>
 
@@ -284,6 +295,7 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
                                 @if ($this->canDelete($user))
                                     <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $user->id }})" data-test="delete-user-{{ $user->id }}">{{ __('hata::common.actions.delete') }}</flux:menu.item>
                                 @endif
+                                @include('hata::partials.admin.lists.row-actions', ['record' => $user, 'hasOwn' => $this->canEdit($user) || $this->canDelete($user)])
                             </x-hata::admin.row-actions>
                         </flux:table.cell>
                     </flux:table.row>
@@ -300,4 +312,6 @@ new #[Layout('hata::layouts.app')] #[Title('hata::users.index.title')] class ext
     >
         {{ __('hata::users.delete.confirm', ['name' => $this->deletingUser?->name]) }}
     </x-hata::confirm-modal>
+
+    @include('hata::partials.admin.lists.action-confirm')
 </section>

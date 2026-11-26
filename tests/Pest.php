@@ -21,6 +21,7 @@ require_once __DIR__.'/fixtures/Registry/FakeEntry.php';
 require_once __DIR__.'/fixtures/Registry/FakeRegistry.php';
 require_once __DIR__.'/fixtures/Widgets/BrokenWidget.php';
 require_once __DIR__.'/fixtures/Widgets/HelloWidget.php';
+require_once __DIR__.'/fixtures/Lists/ArchiveHandler.php';
 
 /*
 |--------------------------------------------------------------------------

@@ -174,6 +174,26 @@ final class EntryListQuery
                 ->where('entry_terms.term_id', $term));
         }
 
+        return $this->order($this->scoped($query));
+    }
+
+    /**
+     * One record as this list scopes its rows: the type, the languages and the tab (the trash for `trash`), without
+     * the search, the terms, the sort or the eager loads. A handler for a row loads its record through it.
+     *
+     * @return Builder<Entry>
+     */
+    public function recordQuery(): Builder
+    {
+        return $this->scoped(Entry::query()->ofType($this->type->key()));
+    }
+
+    /**
+     * @param  Builder<Entry>  $query
+     * @return Builder<Entry>
+     */
+    private function scoped(Builder $query): Builder
+    {
         $this->inLanguages($query);
 
         match ($this->tab) {
@@ -184,7 +204,7 @@ final class EntryListQuery
             default => null,
         };
 
-        return $this->order($query);
+        return $query;
     }
 
     /**
