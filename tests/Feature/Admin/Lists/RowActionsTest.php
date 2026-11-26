@@ -257,3 +257,43 @@ test('a row action can be removed and modified like other entries', function () 
     Admin::rowActions('users')->remove('archive');
     expect(Livewire::test('hata::admin.users.index')->html())->not->toContain('Renamed');
 });
+
+test('a cancelled dialog does not break a later tab switch', function () {
+    Admin::rowActions('content.pages')->add(archiveAction(['confirm' => 'Really archive this?']));
+    Admin::rowActions('content.pages')->add(archiveAction(['key' => 'archive-trash', 'visibleIn' => fn () => true]));
+    $entry = pageEntry();
+
+    $component = Livewire::test('hata::admin.content.index', ['type' => 'pages'])
+        ->call('confirmRowAction', 'archive', $entry->id)
+        ->assertSet('showRowActionModal', true)
+        ->set('showRowActionModal', false)
+        ->assertSet('rowActionKey', null)
+        ->set('tab', 'trash')
+        ->assertOk();
+
+    expect($component->html())->not->toContain('Really archive this?');
+});
+
+test('a pending key that left the context renders nothing instead of a 404', function () {
+    Admin::rowActions('content.pages')->add(archiveAction(['confirm' => 'Really archive this?']));
+    Admin::rowActions('content.pages')->add(archiveAction(['key' => 'archive-trash', 'visibleIn' => fn () => true]));
+    $entry = pageEntry();
+
+    Livewire::test('hata::admin.content.index', ['type' => 'pages'])
+        ->call('confirmRowAction', 'archive', $entry->id)
+        ->set('tab', 'trash')
+        ->assertOk();
+});
+
+test('confirmRowAction on a refused record is a 403 and the dialog stays closed', function () {
+    Admin::rowActions('content.pages')->add(archiveAction(['confirm' => 'Sure?', 'permission' => fn ($user, Entry $entry): bool => false]));
+    $entry = pageEntry();
+
+    Livewire::test('hata::admin.content.index', ['type' => 'pages'])->call('confirmRowAction', 'archive', $entry->id)->assertForbidden();
+});
+
+test('a handler class that does not exist is a registration mistake', function () {
+    Admin::rowActions('users')->add(archiveAction(['handler' => 'App\\Nope\\Missing']));
+
+    expect(fn () => Livewire::test('hata::admin.users.index'))->toThrow(ViewException::class, 'is not a class');
+});

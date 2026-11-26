@@ -185,7 +185,13 @@ trait HasListExtensions
     #[Computed]
     public function pendingRowAction(): ?RowAction
     {
-        return $this->rowActionKey === null ? null : $this->rowActionNamed($this->rowActionKey, false);
+        foreach ($this->listRowActions as $action) {
+            if ($action->key === $this->rowActionKey && ! $action->isLink()) {
+                return $action;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -195,13 +201,14 @@ trait HasListExtensions
     public function confirmRowAction(string $key, int $id): void
     {
         $action = $this->rowActionNamed($key);
-        $this->recordFor($action, $id);
 
         if ($action->confirm === null) {
             $this->runRowAction($key, $id);
 
             return;
         }
+
+        $this->recordFor($action, $id);
 
         $this->rowActionKey = $key;
         $this->rowActionId = $id;
@@ -241,10 +248,22 @@ trait HasListExtensions
         $this->forgetList();
     }
 
-    private function rowActionNamed(string $key, bool $handlerOnly = true): RowAction
+    /**
+     * Forgets the pending action when its dialog closes (Cancel included), so a stale key never outlives it.
+     */
+    public function updatedShowRowActionModal(bool $open): void
+    {
+        if (! $open) {
+            $this->rowActionKey = null;
+            $this->rowActionId = null;
+            unset($this->pendingRowAction);
+        }
+    }
+
+    private function rowActionNamed(string $key): RowAction
     {
         foreach ($this->listRowActions as $action) {
-            if ($action->key === $key && (! $handlerOnly || ! $action->isLink())) {
+            if ($action->key === $key && ! $action->isLink()) {
                 return $action;
             }
         }
