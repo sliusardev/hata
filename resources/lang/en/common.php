@@ -24,7 +24,7 @@ return [
     ],
 
     'filters' => [
-        'all' => 'All',
+        'all' => ':label: all',
     ],
 
     'fields' => [

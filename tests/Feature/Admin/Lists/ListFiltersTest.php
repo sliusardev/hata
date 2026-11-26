@@ -153,3 +153,10 @@ test('forged filter input answers 200 and never reaches apply', function (mixed 
     'a nested array' => [['x' => ['y' => 'z']]],
     'an array for a registered key' => [['stock' => ['out']]],
 ])->with(['content', 'users']);
+
+test('the empty option of a registered filter names the filter', function () {
+    Admin::filters(['content.pages', 'users'])->add(stockFilter());
+
+    Livewire::test('hata::admin.content.index', ['type' => 'pages'])->assertSeeHtml('>Stock: all<');
+    Livewire::test('hata::admin.users.index')->assertSeeHtml('>Stock: all<');
+});

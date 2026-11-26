@@ -24,7 +24,7 @@ return [
     ],
 
     'filters' => [
-        'all' => 'Усі',
+        'all' => ':label: усі',
     ],
 
     'fields' => [
