@@ -18,8 +18,6 @@
  * next to `from`).
  */
 export default function entryForm({ readonly, slugFollows, prefix, siteName, nowLocal, editorModels, leaveModal, savedLocale, savedState, saveLabels, localeRefused }) {
-    let initial = null;
-
     // The site's clock runs on from the time the page was rendered: the difference to the browser's clock is kept,
     // so "now" stays right on a form left open (saving no longer reloads the page).
     const clockOffset = new Date(nowLocal).getTime() - Date.now();
@@ -41,9 +39,11 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
         pendingUrl: null,
         leaveAfterSave: false,
         leaving: false,
+        // What the form held when it was opened or last saved. Reactive, so the "unsaved" mark follows a save.
+        initial: null,
 
         init() {
-            initial = this.snapshot();
+            this.initial = this.snapshot();
         },
 
         /**
@@ -65,7 +65,7 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
             }
 
             // A saved record whose language was changed in the form has that to save.
-            return this.editorChanged || this.snapshot() !== initial || (!!this.savedLocale && this.$wire.locale !== this.savedLocale);
+            return this.editorChanged || this.snapshot() !== this.initial || (!!this.savedLocale && this.$wire.locale !== this.savedLocale);
         },
 
         addressPrefix() {
@@ -191,7 +191,7 @@ export default function entryForm({ readonly, slugFollows, prefix, siteName, now
             this.editorChanged = false;
             document.title = title;
             this.$nextTick(() => {
-                initial = this.snapshot();
+                this.initial = this.snapshot();
 
                 if (this.leaveAfterSave && this.pendingUrl) {
                     this.leaving = true;
